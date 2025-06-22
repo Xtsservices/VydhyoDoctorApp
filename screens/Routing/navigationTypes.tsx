@@ -7,4 +7,6 @@ export type RootStackParamList = {
   ConsultationPreferences: undefined;
   FinancialSetupScreen: undefined;
   KYCDetailsScreen: undefined;
+  ConfirmationScreen: undefined;
+  ProfileReview: undefined;
 };

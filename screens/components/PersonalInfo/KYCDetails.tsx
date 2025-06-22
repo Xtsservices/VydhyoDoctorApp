@@ -23,11 +23,12 @@ const KYCDetailsScreen = () => {
   };
 
   const handleNext = () => {
+    navigation.navigate('ConfirmationScreen' as never); 
+
     if (!aadhaarUploaded || !pancardUploaded || !termsAccepted) {
     //   alert('Please upload both Aadhaar and Pancard proofs and accept the Terms & Conditions.');
       return;
     }
-    // navigation.navigate('NextScreen'); // Replace with your next screen
   };
 
    const handleBack = () => {
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   nextButton: {
-    backgroundColor: '#1e3a8a',
+    backgroundColor: '#00203F',
     padding: 15,
     borderRadius: 8,
     position: 'absolute',
