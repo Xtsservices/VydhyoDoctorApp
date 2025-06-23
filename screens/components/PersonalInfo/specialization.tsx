@@ -3,13 +3,11 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import DocumentPicker, { types } from 'react-native-document-picker';
 
-  import type { RouteProp } from '@react-navigation/native';
 
-  type SpecializationDetailsProps = {
-    route: RouteProp<{ params: { userId: string } }, 'params'>;
-  };
+  interface SpecializationDetailsProps {
+    route: { params: { userId: string } };
+  }
 
   const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
   const { userId } = route.params;
