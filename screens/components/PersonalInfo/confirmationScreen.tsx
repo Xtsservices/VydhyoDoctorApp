@@ -1,7 +1,7 @@
-import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, Dimensions, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
 
 interface FormData {
   name: string;
@@ -14,8 +14,10 @@ interface FormData {
   accountNumber: string;
 }
 
+const { width, height } = Dimensions.get('window');
+
 const ConfirmationScreen: React.FC = () => {
-    const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [formData, setFormData] = useState<FormData>({
     name: 'Dr. Karthik',
     email: 'karthik@email.com',
@@ -43,10 +45,11 @@ const ConfirmationScreen: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    if (validateForm()) {
-    //   alert('Verification Submitted!');
+    navigation.navigate('ProfileReview');
+    if (!validateForm()) {
+      Alert.alert('Error', 'Please correct the errors in the form before submitting.');
+      return;
     }
-    navigation.navigate('ProfileReview' as never);
   };
 
   const handleChange = (field: keyof FormData, value: string) => {
@@ -54,175 +57,259 @@ const ConfirmationScreen: React.FC = () => {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
-    const handleBack = () => {
+  const handleBack = () => {
     navigation.goBack();
   };
 
   return (
     <View style={styles.container}>
-         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                                        <Icon name="arrow-left" size={20} color="#000" />
-                                      </TouchableOpacity>
-      <Text style={styles.header}>Step 6 - Confirmation</Text>
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Review your details</Text>
-        {/* Personal Info Section */}
-        <View style={styles.row}>
-          <Icon name="account" size={20} color="#000" />
-          <Text style={styles.label}>Personal Info</Text>
-          <TouchableOpacity onPress={() => handleChange('name', '')}>
-            <Icon name="pencil" size={20} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-        <TextInput
-          value={formData.name}
-          onChangeText={(text) => handleChange('name', text)}
-          style={styles.input}
-          placeholder="Enter Name"
-          editable={true}
-          autoCapitalize="words"
-        />
-        {errors.name && <Text style={styles.error}>{errors.name}</Text>}
-        <TextInput
-          value={formData.email}
-          onChangeText={(text) => handleChange('email', text)}
-          style={styles.input}
-          placeholder="Enter Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={true}
-        />
-        {errors.email && <Text style={styles.error}>{errors.email}</Text>}
-        <TextInput
-          value={formData.phone}
-          onChangeText={(text) => handleChange('phone', text)}
-          style={styles.input}
-          placeholder="Enter Phone (e.g., +91 234 567 8901)"
-          keyboardType="phone-pad"
-          editable={true}
-        />
-        {errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
-
-        {/* Specialization Section */}
-        <View style={styles.row}>
-          <Icon name="briefcase" size={20} color="#000" />
-          <Text style={styles.label}>Specialization</Text>
-          <TouchableOpacity onPress={() => handleChange('specialization', '')}>
-            <Icon name="pencil" size={20} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-        <TextInput
-          value={formData.specialization}
-          onChangeText={(text) => handleChange('specialization', text)}
-          style={styles.input}
-          placeholder="Enter Specialization"
-          editable={true}
-        />
-        {errors.specialization && <Text style={styles.error}>{errors.specialization}</Text>}
-
-        {/* Practice Section */}
-        <View style={styles.row}>
-          <Icon name="office-building" size={20} color="#000" />
-          <Text style={styles.label}>Practice</Text>
-          <TouchableOpacity onPress={() => handleChange('practice', '')}>
-            <Icon name="pencil" size={20} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-        <TextInput
-          value={formData.practice}
-          onChangeText={(text) => handleChange('practice', text)}
-          style={styles.input}
-          placeholder="Enter Practice"
-          editable={true}
-        />
-        {errors.practice && <Text style={styles.error}>{errors.practice}</Text>}
-
-        {/* Consultation Preferences Section */}
-        <View style={styles.row}>
-          <Icon name="calendar" size={20} color="#000" />
-          <Text style={styles.label}>Consultation Preferences</Text>
-          <TouchableOpacity onPress={() => handleChange('consultationPreferences', '')}>
-            <Icon name="pencil" size={20} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-        <TextInput
-          value={formData.consultationPreferences}
-          onChangeText={(text) => handleChange('consultationPreferences', text)}
-          style={styles.input}
-          placeholder="Enter Preferences"
-          editable={true}
-        />
-        {errors.consultationPreferences && <Text style={styles.error}>{errors.consultationPreferences}</Text>}
-
-        {/* Financial Setup Section */}
-        <View style={styles.row}>
-          <Icon name="bank" size={20} color="#000" />
-          <Text style={styles.label}>Financial Setup</Text>
-          <TouchableOpacity onPress={() => handleChange('bank', '')}>
-            <Icon name="pencil" size={20} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-        <TextInput
-          value={formData.bank}
-          onChangeText={(text) => handleChange('bank', text)}
-          style={styles.input}
-          placeholder="Enter Bank"
-          editable={true}
-        />
-        {errors.bank && <Text style={styles.error}>{errors.bank}</Text>}
-        <TextInput
-          value={formData.accountNumber}
-          onChangeText={(text) => handleChange('accountNumber', text)}
-          style={styles.input}
-          placeholder="Enter Account Number"
-          keyboardType="number-pad"
-          editable={true}
-        />
-        {errors.accountNumber && <Text style={styles.error}>{errors.accountNumber}</Text>}
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Icon name="arrow-left" size={width * 0.06} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Confirmation</Text>
       </View>
+
+      {/* Form Content */}
+      <ScrollView style={styles.formContainer}>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Review Your Details</Text>
+
+          {/* Personal Info Section */}
+          <View style={styles.row}>
+            <Icon name="account" size={width * 0.05} color="#00796B" />
+            <Text style={styles.label}>Personal Info</Text>
+            <TouchableOpacity onPress={() => handleChange('name', '')}>
+              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            value={formData.name}
+            onChangeText={(text) => handleChange('name', text)}
+            style={[styles.input, errors.name && styles.errorInput]}
+            placeholder="Enter Name"
+            placeholderTextColor="#999"
+            autoCapitalize="words"
+          />
+          {errors.name && <Text style={styles.error}>{errors.name}</Text>}
+          <TextInput
+            value={formData.email}
+            onChangeText={(text) => handleChange('email', text)}
+            style={[styles.input, errors.email && styles.errorInput]}
+            placeholder="Enter Email"
+            placeholderTextColor="#999"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          {errors.email && <Text style={styles.error}>{errors.email}</Text>}
+          <TextInput
+            value={formData.phone}
+            onChangeText={(text) => handleChange('phone', text)}
+            style={[styles.input, errors.phone && styles.errorInput]}
+            placeholder="Enter Phone (e.g., +91 234 567 8901)"
+            placeholderTextColor="#999"
+            keyboardType="phone-pad"
+          />
+          {errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
+
+          {/* Specialization Section */}
+          <View style={styles.row}>
+            <Icon name="briefcase" size={width * 0.05} color="#00796B" />
+            <Text style={styles.label}>Specialization</Text>
+            <TouchableOpacity onPress={() => handleChange('specialization', '')}>
+              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            value={formData.specialization}
+            onChangeText={(text) => handleChange('specialization', text)}
+            style={[styles.input, errors.specialization && styles.errorInput]}
+            placeholder="Enter Specialization"
+            placeholderTextColor="#999"
+          />
+          {errors.specialization && <Text style={styles.error}>{errors.specialization}</Text>}
+
+          {/* Practice Section */}
+          <View style={styles.row}>
+            <Icon name="office-building" size={width * 0.05} color="#00796B" />
+            <Text style={styles.label}>Practice</Text>
+            <TouchableOpacity onPress={() => handleChange('practice', '')}>
+              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            value={formData.practice}
+            onChangeText={(text) => handleChange('practice', text)}
+            style={[styles.input, errors.practice && styles.errorInput]}
+            placeholder="Enter Practice"
+            placeholderTextColor="#999"
+          />
+          {errors.practice && <Text style={styles.error}>{errors.practice}</Text>}
+
+          {/* Consultation Preferences Section */}
+          <View style={styles.row}>
+            <Icon name="calendar" size={width * 0.05} color="#00796B" />
+            <Text style={styles.label}>Consultation Preferences</Text>
+            <TouchableOpacity onPress={() => handleChange('consultationPreferences', '')}>
+              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            value={formData.consultationPreferences}
+            onChangeText={(text) => handleChange('consultationPreferences', text)}
+            style={[styles.input, errors.consultationPreferences && styles.errorInput]}
+            placeholder="Enter Preferences"
+            placeholderTextColor="#999"
+          />
+          {errors.consultationPreferences && <Text style={styles.error}>{errors.consultationPreferences}</Text>}
+
+          {/* Financial Setup Section */}
+          <View style={styles.row}>
+            <Icon name="bank" size={width * 0.05} color="#00796B" />
+            <Text style={styles.label}>Financial Setup</Text>
+            <TouchableOpacity onPress={() => handleChange('bank', '')}>
+              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            value={formData.bank}
+            onChangeText={(text) => handleChange('bank', text)}
+            style={[styles.input, errors.bank && styles.errorInput]}
+            placeholder="Enter Bank"
+            placeholderTextColor="#999"
+          />
+          {errors.bank && <Text style={styles.error}>{errors.bank}</Text>}
+          <TextInput
+            value={formData.accountNumber}
+            onChangeText={(text) => handleChange('accountNumber', text)}
+            style={[styles.input, errors.accountNumber && styles.errorInput]}
+            placeholder="Enter Account Number"
+            placeholderTextColor="#999"
+            keyboardType="number-pad"
+          />
+          {errors.accountNumber && <Text style={styles.error}>{errors.accountNumber}</Text>}
+        </View>
+
+        {/* Spacer to ensure content is not hidden by the Next button */}
+        <View style={styles.spacer} />
+      </ScrollView>
+
+      {/* Next Button */}
       <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Icon name="send" size={20} color="#fff" />
-        <Text style={styles.submitText}>Submit for Verification</Text>
+        <Text style={styles.submitText}>Next</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#E6F3E6', padding: 20 },
-      backButton: {
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.04,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
   },
-  header: { fontSize: 18, fontWeight: 'bold', marginBottom: 100, color:'#000', textAlign: 'center' },
-  card: { backgroundColor: '#fff', borderRadius: 10, padding: 15, elevation: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  label: { flex: 1, marginLeft: 10, fontSize: 14 , color: '#333', fontWeight: '500' },
-  input: { 
-    // borderBottomWidth: 1, 
-    // borderColor: '#ccc', 
-    marginBottom: -10, 
-    padding: 4, 
-    fontSize: 14,
-    color: '#6B7280',
+  backButton: {
+    padding: width * 0.02,
   },
-  error: { color: 'red', fontSize: 12, marginBottom: 5 },
-  submitButton: { 
-    backgroundColor: '#00203F', 
-    padding: 12, 
-    borderRadius: 5, 
-    flexDirection: 'row', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginTop: 20 ,
-     position: 'absolute',
-    bottom: 20,
-    width: '90%',
-    alignSelf: 'center',
+  headerTitle: {
+    flex: 1,
+    fontSize: width * 0.05,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    marginRight: width * 0.06,
   },
-  submitText: { color: '#fff', fontSize: 16, marginLeft: 10 },
+  formContainer: {
+    flex: 1,
+    paddingHorizontal: width * 0.05,
+    paddingVertical: height * 0.03,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: width * 0.04,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: width * 0.045,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: height * 0.02,
+    textAlign: 'center',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: height * 0.015,
+  },
+  label: {
+    flex: 1,
+    marginLeft: width * 0.03,
+    fontSize: width * 0.04,
+    color: '#333',
+    fontWeight: '500',
+  },
+  input: {
+    height: height * 0.06,
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: width * 0.03,
+    marginBottom: height * 0.01,
+    backgroundColor: '#fff',
+    color: '#333',
+    fontSize: width * 0.04,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  errorInput: {
+    borderColor: '#D32F2F',
+  },
+  error: {
+    color: '#D32F2F',
+    fontSize: width * 0.035,
+    marginBottom: height * 0.01,
+  },
+  submitButton: {
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: width * 0.05,
+    marginBottom: height * 0.03,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  submitText: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+  spacer: {
+    height: height * 0.1,
+  },
 });
 
 export default ConfirmationScreen;

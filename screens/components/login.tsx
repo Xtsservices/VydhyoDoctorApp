@@ -1,4 +1,4 @@
-import React, { use, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,23 +8,18 @@ import {
   Dimensions,
   Linking,
   Image,
-  TextInput as TextInputType
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Toast from 'react-native-toast-message';
 import { UsePost } from '../auth/auth';
-const { width } = Dimensions.get('window');
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 
-// Replace this with your actual stack param list
-type RootStackParamList = {
-  PersonalInfo: undefined;
-  // add other routes here if needed
-};
+const { width, height } = Dimensions.get('window');
 
 const DoctorLoginScreen = () => {
- const navigation = useNavigation<any>();
+  const navigation = useNavigation<any>();
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [showOtp, setShowOtp] = useState(false);
@@ -34,18 +29,16 @@ const DoctorLoginScreen = () => {
   const [token, setToken] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
 
-    const otpRefs = useRef<(TextInputType | null)[]>(Array(6).fill(null));
+  const otpRefs = useRef<(TextInput | null)[]>(Array(6).fill(null));
 
- const handleOtpChange = (text: string, index: number) => {
+  const handleOtpChange = (text: string, index: number) => {
     const newOtp = [...otp];
     newOtp[index] = text;
     setOtp(newOtp);
 
-    // Move focus to next input if a digit is entered
     if (text && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
-    // Move focus to previous input if the current input is cleared
     if (!text && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
@@ -56,7 +49,7 @@ const DoctorLoginScreen = () => {
     return mobileRegex.test(number);
   };
 
-  const handleSendOtp = async() => {
+  const handleSendOtp = async () => {
     if (!mobile) {
       setMobileError('Mobile number is required');
       return;
@@ -66,51 +59,52 @@ const DoctorLoginScreen = () => {
       return;
     }
     setMobileError('');
-    setShowOtp(true);
+    setIsOtpSent(true);
     try {
-     const response = await UsePost('auth/login', {
+      const response = await UsePost('auth/login', {
         mobile,
         userType: 'doctor',
         language: 'tel',
       });
-console.log("response",response)
-if (response.status === 'success' && 'data' in response && response.data) {
-      setUserId(response.data.userId);
-      setShowOtp(true);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: response.data.message || 'OTP sent successfully',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-    } else {
-      setMobileError('message' in response ? response.message : 'Failed to send OTP');
-    }
+      console.log('response', response);
+      if (response.status === 'success' && 'data' in response && response.data) {
+        setUserId(response.data.userId);
+        setShowOtp(true);
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: response.data.message || 'OTP sent successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      } else {
+        setMobileError('message' in response ? response.message : 'Failed to send OTP');
+        setIsOtpSent(false);
+      }
     } catch (error) {
       setMobileError('Network error. Please try again.');
+      setIsOtpSent(false);
       console.error('Error sending OTP:', error);
-    } 
+    }
   };
 
- const handleLogin = async () => {
+  const handleLogin = async () => {
     const otpString = otp.join('');
     if (otpString.length !== 6 || !/^\d{6}$/.test(otpString)) {
       setOtpError('Please enter a valid 6-digit OTP');
       return;
     }
     setOtpError('');
-    
-    // Validate mandatory fields
+
     if (!userId) {
-    setOtpError('User ID is required');
-    return;
-  }
-  if (!mobile) {
-    setOtpError('Mobile number is required');
-    return;
-  }
-      console.log('validateOtp body', userId, otpString, mobile);
+      setOtpError('User ID is required');
+      return;
+    }
+    if (!mobile) {
+      setOtpError('Mobile number is required');
+      return;
+    }
+    console.log('validateOtp body', userId, otpString, mobile);
 
     try {
       const response = await UsePost('auth/validateOtp', {
@@ -119,93 +113,106 @@ if (response.status === 'success' && 'data' in response && response.data) {
         mobile,
       });
       console.log('validateOtp response', response);
-    if (response.status === 'success' && 'data' in response && response.data) {
-      const { accessToken } = response.data; // Extract accessToken from response
-      if (accessToken) {
-        await AsyncStorage.setItem('authToken', accessToken); // Store token in local storage
-        setToken(accessToken); // Update token state if needed
+      if (response.status === 'success' && 'data' in response && response.data) {
+        const { accessToken } = response.data;
+        if (accessToken) {
+          await AsyncStorage.setItem('authToken', accessToken);
+          setToken(accessToken);
+        }
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: response.data.message ? response.data.message : 'Login successful',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        navigation.navigate('PersonalInfo');
+      } else {
+        setOtpError('message' in response ? response.message : 'Invalid OTP');
       }
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: response.data.message ? response.data.message : 'Login successful',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      navigation.navigate('PersonalInfo'); // Navigate to PersonalInfo page
-    } else {
-      setOtpError('message' in response ? response.message : 'Invalid OTP');
-    }
     } catch (error) {
       setOtpError('Network error. Please try again.');
       console.error('Error validating OTP:', error);
     }
   };
+
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <View style={styles.logoWrapper}>
-          <Image
-            source={require('../assets/logo.png')}
-            style={styles.logo}
+        <Text style={styles.headerTitle}>Doctor Login</Text>
+      </View>
+
+      {/* Form Content */}
+      <ScrollView style={styles.formContainer}>
+        <View style={styles.logoContainer}>
+          <View style={styles.logoWrapper}>
+            <Image source={require('../assets/logo.png')} style={styles.logo} />
+          </View>
+          <Text style={styles.portalTitle}>VYDHYO Doctor Portal</Text>
+          <TouchableOpacity onPress={() => Linking.openURL('#')}>
+            <Text style={styles.signInLink}>Sign in to your account</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.label}>Mobile Number*</Text>
+        <View style={[styles.inputContainer, mobileError ? styles.inputError : null]}>
+          <Icon name="phone" size={20} color="#00796B" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="+91 9876543210"
+            placeholderTextColor="#999"
+            keyboardType="phone-pad"
+            value={mobile}
+            onChangeText={(text) => {
+              setMobile(text);
+              setMobileError('');
+              setIsOtpSent(false);
+            }}
+            maxLength={10}
           />
         </View>
-        <Text style={styles.portalTitle}>VYDHYO Doctor Portal</Text>
-        <TouchableOpacity onPress={() => Linking.openURL('#')}>
-          <Text style={styles.signInLink}>Sign in to your account</Text>
+        {mobileError ? <Text style={styles.errorText}>{mobileError}</Text> : null}
+
+        {showOtp && (
+          <>
+            <Text style={styles.label}>OTP</Text>
+            <View style={styles.otpContainer}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={(ref) => {
+                    otpRefs.current[index] = ref;
+                  }}
+                  style={styles.otpBox}
+                  keyboardType="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChangeText={(text) => handleOtpChange(text, index)}
+                />
+              ))}
+            </View>
+            {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
+          </>
+        )}
+
+        {/* Spacer to ensure content is not hidden by the button */}
+        <View style={styles.spacer} />
+      </ScrollView>
+
+      {/* Send OTP or Login Button */}
+      {!showOtp ? (
+        <TouchableOpacity
+          style={[styles.button, isOtpSent && styles.disabledButton]}
+          onPress={handleSendOtp}
+          disabled={isOtpSent}
+        >
+          <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text>
         </TouchableOpacity>
-      </View>
-
-      <Text style={styles.label}>Mobile Number*</Text>
-      <View style={[styles.inputContainer, mobileError ? styles.inputError : null]}>
-        <Icon name="phone" size={20} color="#333" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="+91 9876543210"
-          placeholderTextColor="#999"
-          keyboardType="phone-pad"
-          value={mobile}
-          onChangeText={(text) => {
-            setMobile(text);
-            setMobileError('');
-            setIsOtpSent(false);
-          }}
-          maxLength={10}
-        />
-      </View>
-      {mobileError ? <Text style={styles.errorText}>{mobileError}</Text> : null}
-
-      <TouchableOpacity style={styles.sendOtpButton} onPress={handleSendOtp} disabled={isOtpSent}>
-        <Text style={[styles.sendOtpText, isOtpSent ? styles.sendOtpButtonDisabled : null]}>
-          Send OTP
-        </Text>
-      </TouchableOpacity>
-
-      {showOtp && (
-        <>
-          <Text style={styles.label}>OTP</Text>
-          <View style={styles.otpContainer}>
-            {otp.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={(ref) => { otpRefs.current[index] = ref; }}
-                style={styles.otpBox}
-                keyboardType="numeric"
-                maxLength={1}
-                value={digit}
-                onChangeText={(text) => handleOtpChange(text, index)}
-              />
-            ))}
-          </View>
-
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginText}>Login</Text>
-          </TouchableOpacity>
-        </>
+      ) : (
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -214,124 +221,149 @@ if (response.status === 'success' && 'data' in response && response.data) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 20,
-    paddingTop: 40,
+    backgroundColor: '#F5F7FA',
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.04,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: width * 0.05,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  formContainer: {
+    flex: 1,
+    paddingHorizontal: width * 0.05,
+    paddingVertical: height * 0.03,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: height * 0.04,
   },
   logoWrapper: {
-    width: 70,
-    height: 70,
+    width: width * 0.2,
+    height: width * 0.2,
     backgroundColor: '#FFFFFF',
-    borderRadius: 75,
+    borderRadius: width * 0.1,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
+    elevation: 5,
   },
   logo: {
-    height: 70,
-    width: 70,
+    width: width * 0.2,
+    height: width * 0.2,
   },
   portalTitle: {
-    fontSize: 18,
+    fontSize: width * 0.05,
     fontWeight: '600',
-    marginVertical: 8,
-    color: '#111827',
+    color: '#333',
+    marginVertical: height * 0.01,
   },
   signInLink: {
-    color: 'purple',
+    color: '#00796B',
+    fontSize: width * 0.04,
+    fontWeight: '500',
     textDecorationLine: 'underline',
-    fontSize: 14,
   },
   label: {
-    fontSize: 14,
-    marginBottom: 6,
-    marginTop: 10,
-    color: '#000',
+    fontSize: width * 0.04,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: height * 0.01,
+    marginTop: height * 0.015,
   },
   inputContainer: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 50,
+    borderRadius: 8,
+    height: height * 0.06,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   inputError: {
+    borderColor: '#D32F2F',
     borderWidth: 1,
-    borderColor: 'red',
   },
   icon: {
-    marginRight: 8,
+    marginHorizontal: width * 0.03,
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: width * 0.04,
     color: '#333',
-  },
-  sendOtpButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  sendOtpButtonDisabled: {
-    backgroundColor: '#A5D6A7', // Lighter green to indicate disabled state
-    opacity: 0.6,
-  },
-  sendOtpText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
   },
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginTop: height * 0.01,
+    marginBottom: height * 0.02,
   },
   otpBox: {
     borderWidth: 1,
-    borderColor: '#000',
-    borderRadius: 6,
-    width: width * 0.11,
-    height: 50,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    width: width * 0.12,
+    height: height * 0.06,
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: width * 0.04,
     backgroundColor: '#fff',
-    color: '#000',
+    color: '#333',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: 8,
-  },
-  forgotText: {
-    color: 'purple',
-    fontSize: 13,
-  },
-  loginButton: {
-    backgroundColor: '#001F3F',
-    marginTop: 20,
-    paddingVertical: 15,
-    borderRadius: 10,
+  button: {
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
     alignItems: 'center',
+    marginHorizontal: width * 0.05,
+    marginBottom: height * 0.03,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
   },
-  loginText: {
-    color: 'white',
-    fontSize: 16,
+  disabledButton: {
+    backgroundColor: '#B0BEC5',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: width * 0.045,
     fontWeight: '600',
   },
   errorText: {
-    color: 'red',
-    fontSize: 12,
-    marginTop: 5,
-    marginBottom: 5,
+    color: '#D32F2F',
+    fontSize: width * 0.035,
+    marginTop: height * 0.005,
+    marginBottom: height * 0.01,
+  },
+  spacer: {
+    height: height * 0.1,
   },
 });
 
