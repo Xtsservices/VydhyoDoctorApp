@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { use, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -74,18 +74,19 @@ const DoctorLoginScreen = () => {
         language: 'tel',
       });
 console.log("response",response)
-if (response.status === 'success') {
-        setShowOtp(true);
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'OTP sent successfully',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-      } else {
-        setMobileError('message' in response ? response.message : 'Failed to send OTP');
-      }
+if (response.status === 'success' && 'data' in response && response.data) {
+      setUserId(response.data.userId);
+      setShowOtp(true);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: response.data.message || 'OTP sent successfully',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    } else {
+      setMobileError('message' in response ? response.message : 'Failed to send OTP');
+    }
     } catch (error) {
       setMobileError('Network error. Please try again.');
       console.error('Error sending OTP:', error);
@@ -99,7 +100,18 @@ if (response.status === 'success') {
       return;
     }
     setOtpError('');
-navigation.navigate('PersonalInfo');
+    
+    // Validate mandatory fields
+    if (!userId) {
+    setOtpError('User ID is required');
+    return;
+  }
+  if (!mobile) {
+    setOtpError('Mobile number is required');
+    return;
+  }
+      console.log('validateOtp body', userId, otpString, mobile);
+
     try {
       const response = await UsePost('auth/validateOtp', {
         userId,
@@ -107,23 +119,23 @@ navigation.navigate('PersonalInfo');
         mobile,
       });
       console.log('validateOtp response', response);
-      if (response.status === 'success') {
-        const newToken = 'data' in response && response.data.token ? response.data.token : token; // Use new token if returned, else keep existing
-        if (newToken) {
-          await AsyncStorage.setItem('authToken', newToken);
-        }
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'Login successful',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-        
-        // TODO: Navigate to the next screen
-      } else {
-        setOtpError('message' in response ? response.message : 'Invalid OTP');
+    if (response.status === 'success' && 'data' in response && response.data) {
+      const { accessToken } = response.data; // Extract accessToken from response
+      if (accessToken) {
+        await AsyncStorage.setItem('authToken', accessToken); // Store token in local storage
+        setToken(accessToken); // Update token state if needed
       }
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: response.data.message ? response.data.message : 'Login successful',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      navigation.navigate('PersonalInfo'); // Navigate to PersonalInfo page
+    } else {
+      setOtpError('message' in response ? response.message : 'Invalid OTP');
+    }
     } catch (error) {
       setOtpError('Network error. Please try again.');
       console.error('Error validating OTP:', error);

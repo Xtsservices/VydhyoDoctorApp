@@ -3,9 +3,17 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import DocumentPicker, { types } from 'react-native-document-picker';
 
+  import type { RouteProp } from '@react-navigation/native';
 
-const SpecializationDetails = () => {
+  type SpecializationDetailsProps = {
+    route: RouteProp<{ params: { userId: string } }, 'params'>;
+  };
+
+  const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
+  const { userId } = route.params;
+  console.log('Received userId:', userId);
   const [formData, setFormData] = useState({ 
     specialization: '', subSpecialization: '', yearsExperience: '', degrees: '', certifications: '' });
 
@@ -63,6 +71,53 @@ const SpecializationDetails = () => {
     //     console.error('File picker error:', err);
     //   }
     // }
+  };
+
+
+  const handleUploadPress = async () => {
+    try {
+      // Launch the Document Picker for PDF files
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf"],  // Allow PDF, audio, and video files
+      copyToCacheDirectory: true,  // Keep the file in cache
+      });
+  
+      // Log the response for debugging
+      console.log("Document Picker Response:", res);
+  
+      // Check if the user canceled the selection
+      if (res.canceled) {
+        Alert.alert("Cancelled", "File selection was cancelled");
+        return;
+      }
+  
+      // Check if assets are available
+      const { assets } = res;
+  
+      if (!assets || assets.length === 0) {
+        Alert.alert("Error", "No file selected");
+        return;
+      }
+  
+      // Extract file details from the first asset
+      const { uri, name, mimeType } = assets[0];
+  
+      // Log the file details
+      console.log("File details:", { uri, name, mimeType });
+  
+      // Validate if the file URI is present
+      if (!uri) {
+        Alert.alert("Error", "No file selected");
+        return;
+      }
+  
+      
+      // Perform the API call for file upload
+     
+    } catch (err) {
+      Alert.alert("Error", "An error occurred: " + err.message);
+      console.error("Upload Error:", err);
+    }
   };
 
 const handleBack = () => {

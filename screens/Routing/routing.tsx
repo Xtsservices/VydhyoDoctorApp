@@ -19,12 +19,12 @@ const Routing = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator >
-        {/* <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={DoctorLoginScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="Specialization" component={SpecializationDetails} options={{ headerShown: false }}/>
         <Stack.Screen name="Practice" component={PracticeScreen} options={{ headerShown: false }}/>
-        <Stack.Screen name="ConsultationPreferences" component={ConsultationPreferences} options={{ headerShown: false }}/> */}
+        <Stack.Screen name="ConsultationPreferences" component={ConsultationPreferences} options={{ headerShown: false }}/>
         <Stack.Screen name="FinancialSetupScreen" component={FinancialSetupScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="KYCDetailsScreen" component={KYCDetailsScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="ConfirmationScreen" component={ConfirmationScreen} options={{ headerShown: false }}/>
