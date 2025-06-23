@@ -48,6 +48,58 @@ const ConsultationPreferences = () => {
     navigation.goBack();
   };
 
+  const handleNext = async () => {
+    if (!isFormValid()) return;
+
+    const payload = {
+      consultationModeFee: [
+        { type: 'In-Person', fee: parseInt(fees.inPerson) },
+        { type: 'Video', fee: parseInt(fees.video) },
+        { type: 'Home Visit', fee: parseInt(fees.homeVisit) },
+      ],
+    };
+
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Toast.show({
+          type: 'error',
+          text1: 'Authentication Error',
+          text2: 'Token not found',
+        });
+        return;
+      }
+
+      const response = await axios.post(
+        'http://216.10.251.239:3000/users/updateConsultationModes',
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log('API Response:', response);
+      if (response.status == 200) {
+        Toast.show({
+          type: 'success',
+          text1: 'Preferences saved successfully',
+        });
+        (navigation as any).navigate('FinancialSetupScreen')
+      }
+
+      // navigation.navigate('FinancialSetupScreen');
+    } catch (error: any) {
+      console.error('API Error:', error?.response?.data || error.message);
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to update preferences',
+        text2: error?.response?.data?.message || 'Something went wrong',
+      });
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}

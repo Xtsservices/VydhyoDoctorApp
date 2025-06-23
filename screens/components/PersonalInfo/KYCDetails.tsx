@@ -9,8 +9,8 @@ const pancard_icon = require('../../assets/pan.png');
 const { width, height } = Dimensions.get('window');
 
 const KYCDetailsScreen = () => {
-  const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
-  const [pancardUploaded, setPancardUploaded] = useState(false);
+ const [aadhaarImage, setAadhaarImage] = useState<{ uri: string } | null>(null);
+  const [panImage, setPanImage] = useState<{ uri: string } | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const navigation = useNavigation<any>();
 
@@ -129,12 +129,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   label: {
-    fontSize: width * 0.04,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: height * 0.01,
-    marginTop: height * 0.015,
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#000',
   },
+ 
   uploadBox: {
     borderWidth: 2,
     borderColor: '#E0E0E0',

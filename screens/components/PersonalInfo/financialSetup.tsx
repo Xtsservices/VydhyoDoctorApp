@@ -11,6 +11,7 @@ const FinancialSetupScreen = () => {
   const [accountNumber, setAccountNumber] = useState('');
   const [reenterAccountNumber, setReenterAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const navigation = useNavigation<any>();
