@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Dimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -11,8 +11,10 @@ interface Address {
   endTime: string;
 }
 
+const { width, height } = Dimensions.get('window');
+
 const PracticeScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [affiliation, setAffiliation] = useState<string | null>(null);
   const [opdAddresses, setOpdAddresses] = useState<Address[]>([
     { id: 1, address: '', startTime: '', endTime: '' },
@@ -48,6 +50,11 @@ const PracticeScreen = () => {
   };
 
   const handleNext = () => {
+    setTimeout(() => {
+      
+      navigation.navigate('ConsultationPreferences');
+    }, 3000);
+    
     if (!affiliation) {
       Alert.alert('Error', 'Please select a Clinic/Hospital Affiliation');
       return;
@@ -70,8 +77,11 @@ const PracticeScreen = () => {
       Alert.alert('Error', 'End time must be after Start time');
       return;
     }
+    // setTimeout(() => {
+      
+    //   navigation.navigate('ConsultationPreferences');
+    // }, 3000);
 
-    navigation.navigate('ConsultationPreferences' as never); // Replace with your next screen
   };
 
   const handleBack = () => {
@@ -79,159 +89,280 @@ const PracticeScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-     
-      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <Icon name="arrow-left" size={20} color="#000" />
-      </TouchableOpacity>
-      <Text style={styles.title}>Step 3 - Practice</Text>
- <Text style={styles.label}>Clinic/Hospital Affiliation</Text>
-      <View style={styles.searchContainer}>
-        <Icon name="map-marker" size={20} color="#666" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search or select.."
-          placeholderTextColor="#999"
-          value={affiliation || ''}
-          onChangeText={(text) => setAffiliation(text)}
-        />
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Icon name="arrow-left" size={width * 0.06} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Practice</Text>
       </View>
 
-      <View style={styles.addressSection}>
-        <View style={styles.headerRow}>
-          <Text style={styles.label}>OPD Address(es)</Text>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
-            <Text style={styles.addButtonText}>+ Add Location</Text>
-          </TouchableOpacity>
+      {/* Form Content */}
+      <ScrollView style={styles.formContainer}>
+        <Text style={styles.label}>Clinic/Hospital Affiliation</Text>
+        <View style={styles.searchContainer}>
+          <Icon name="map-marker" size={width * 0.05} color="#00796B" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search or select..."
+            placeholderTextColor="#999"
+            value={affiliation || ''}
+            onChangeText={(text) => setAffiliation(text)}
+          />
         </View>
 
-        {opdAddresses.map((addr, index) => (
-          <View key={addr.id} style={styles.addressContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="OPD Address"
-              placeholderTextColor="#999"
-              value={addr.address}
-              onChangeText={(text) => {
-                const updatedAddresses = [...opdAddresses];
-                updatedAddresses[index].address = text;
-                setOpdAddresses(updatedAddresses);
-              }}
-            />
-            <View style={styles.timeContainer}>
-              <TouchableOpacity
-                style={styles.timeButton}
-                onPress={() => {
-                  setSelectedAddressIndex(index);
-                  setShowStartTimePicker(true);
-                }}
-              >
-                <View style={styles.timeButtonContent}>
-                  <Icon name="clock-outline" size={18} color="#333" style={styles.clockIcon} />
-                  <Text style={styles.timeText}>Start Time: {addr.startTime || 'Select'}</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.timeButton}
-                onPress={() => {
-                  setSelectedAddressIndex(index);
-                  setShowEndTimePicker(true);
-                }}
-              >
-                <View style={styles.timeButtonContent}>
-                  <Icon name="clock-outline" size={18} color="#333" style={styles.clockIcon} />
-                  <Text style={styles.timeText}>End Time: {addr.endTime || 'Select'}</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-            {showStartTimePicker && selectedAddressIndex === index && (
-              <DateTimePicker
-                value={new Date()}
-                mode="time"
-                display="default"
-                onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'startTime', index)}
-              />
-            )}
-            {showEndTimePicker && selectedAddressIndex === index && (
-              <DateTimePicker
-                value={new Date()}
-                mode="time"
-                display="default"
-                onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'endTime', index)}
-              />
-            )}
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={() => handleRemoveAddress(addr.id)}
-              disabled={opdAddresses.length === 1}
-            >
-              <Text style={styles.removeText}>×</Text>
+        <View style={styles.addressSection}>
+          <View style={styles.headerRow}>
+            <Text style={styles.label}>OPD Address(es)</Text>
+            <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
+              <Text style={styles.addButtonText}>+ Add Location</Text>
             </TouchableOpacity>
           </View>
-        ))}
-      </View>
 
+          {opdAddresses.map((addr, index) => (
+            <View key={addr.id} style={styles.addressContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="OPD Address"
+                placeholderTextColor="#999"
+                value={addr.address}
+                onChangeText={(text) => {
+                  const updatedAddresses = [...opdAddresses];
+                  updatedAddresses[index].address = text;
+                  setOpdAddresses(updatedAddresses);
+                }}
+              />
+              <View style={styles.timeContainer}>
+                <TouchableOpacity
+                  style={styles.timeButton}
+                  onPress={() => {
+                    setSelectedAddressIndex(index);
+                    setShowStartTimePicker(true);
+                  }}
+                >
+                  <View style={styles.timeButtonContent}>
+                    <Icon name="clock-outline" size={width * 0.045} color="#00796B" style={styles.clockIcon} />
+                    <Text style={styles.timeText}>Start Time: {addr.startTime || 'Select'}</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.timeButton}
+                  onPress={() => {
+                    setSelectedAddressIndex(index);
+                    setShowEndTimePicker(true);
+                  }}
+                >
+                  <View style={styles.timeButtonContent}>
+                    <Icon name="clock-outline" size={width * 0.045} color="#00796B" style={styles.clockIcon} />
+                    <Text style={styles.timeText}>End Time: {addr.endTime || 'Select'}</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+              {showStartTimePicker && selectedAddressIndex === index && (
+                <DateTimePicker
+                  value={new Date()}
+                  mode="time"
+                  display="default"
+                  onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'startTime', index)}
+                />
+              )}
+              {showEndTimePicker && selectedAddressIndex === index && (
+                <DateTimePicker
+                  value={new Date()}
+                  mode="time"
+                  display="default"
+                  onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'endTime', index)}
+                />
+              )}
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => handleRemoveAddress(addr.id)}
+                disabled={opdAddresses.length === 1}
+              >
+                <Text style={styles.removeText}>×</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
+        {/* Spacer to ensure content is not hidden by the Next button */}
+        <View style={styles.spacer} />
+      </ScrollView>
+
+      {/* Next Button */}
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-        <Text style={styles.nextButtonText}>Next →</Text>
+        <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#e6ffe6', padding: 20 },
-  contentContainer: { paddingBottom: 20 },
-  backButton: {
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.04,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
   },
-  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, color: 'black', textAlign: 'center' },
-  label: { fontSize: 16, marginBottom: 5, color: '#000', fontWeight: '500' },
+  backButton: {
+    padding: width * 0.02,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: width * 0.05,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    marginRight: width * 0.06,
+  },
+  formContainer: {
+    flex: 1,
+    paddingHorizontal: width * 0.05,
+    paddingVertical: height * 0.03,
+  },
+  label: {
+    fontSize: width * 0.04,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: height * 0.01,
+    marginTop: height * 0.015,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#ccc',
+    borderColor: '#E0E0E0',
     borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 15,
+    borderRadius: 8,
     backgroundColor: '#fff',
+    height: height * 0.06,
+    marginBottom: height * 0.02,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   searchIcon: {
-    padding: 10,
+    marginHorizontal: width * 0.03,
   },
   searchInput: {
     flex: 1,
-    height: 40,
-    paddingHorizontal: 10,
-    color: '#000',
+    fontSize: width * 0.04,
+    color: '#333',
+    paddingHorizontal: width * 0.03,
   },
-  addressSection: { marginTop: 10 },
+  addressSection: {
+    marginTop: height * 0.02,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: height * 0.015,
   },
-  addressContainer: { marginBottom: 15, position: 'relative', backgroundColor: '#fff', padding: 15, borderRadius: 15 },
-  input: { height: 40, borderColor: '#ccc', borderWidth: 1, borderRadius: 5, paddingHorizontal: 10, color: '#000', backgroundColor: '#fff' },
-  timeContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  timeButton: { height: 40, borderColor: '#ccc', borderWidth: 1, borderRadius: 5, padding: 10, flex: 1, marginRight: 5, justifyContent: 'center' },
-  removeButton: { position: 'absolute', top: 0, right: 0 },
-  removeText: { color: '#ccc', fontSize: 18, padding: 5 },
-  addButton: { marginVertical: 0 },
-  addButtonText: { color: '#007AFF', fontSize: 16, fontWeight: '500' },
-  nextButton: { backgroundColor: '#00203f', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 20 },
-  nextButtonText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  addressContainer: {
+    marginBottom: height * 0.02,
+    backgroundColor: '#fff',
+    padding: width * 0.04,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    position: 'relative',
+  },
+  input: {
+    height: height * 0.06,
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: width * 0.03,
+    color: '#333',
+    backgroundColor: '#fff',
+    fontSize: width * 0.04,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: height * 0.01,
+  },
+  timeButton: {
+    height: height * 0.06,
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: width * 0.02,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
   timeButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: width * 0.03,
   },
   clockIcon: {
-    marginRight: 5,
+    marginRight: width * 0.02,
   },
   timeText: {
-    color: '#333333',
+    color: '#333',
+    fontSize: width * 0.04,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: height * 0.01,
+    right: width * 0.02,
+  },
+  removeText: {
+    color: '#D32F2F',
+    fontSize: width * 0.05,
+    fontWeight: 'bold',
+  },
+  addButton: {
+    padding: width * 0.02,
+  },
+  addButtonText: {
+    color: '#00796B',
+    fontSize: width * 0.04,
+    fontWeight: '500',
+  },
+  nextButton: {
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: width * 0.05,
+    marginBottom: height * 0.03,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  nextButtonText: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+  spacer: {
+    height: height * 0.1,
   },
 });
 

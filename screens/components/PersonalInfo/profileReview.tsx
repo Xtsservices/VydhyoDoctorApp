@@ -1,35 +1,86 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
+
+const { width, height } = Dimensions.get('window');
 
 const ProfileReview: React.FC = () => {
-  const [hours, minutes, seconds] = [47, 59, 58];
+  const navigation = useNavigation<any>();
+  const initialTime = 48 * 60 * 60; // 48 hours in seconds
+  const [timeLeft, setTimeLeft] = useState(initialTime);
 
-  const validateTime = () => {
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  const validateTime = (hours: number, minutes: number, seconds: number) => {
     if (hours < 0 || minutes < 0 || seconds < 0) {
-    //   alert('Invalid time format!');
+      Alert.alert('Error', 'Invalid time format!');
       return false;
     }
     return true;
   };
 
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (!validateTime(h, m, s)) return '00:00:00';
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
+  const handleSupport = () => {
+    Alert.alert('Contact Support', 'Please email support@yourapp.com for assistance.');
+    // Alternatively, implement navigation or email intent:
+    // navigation.navigate('SupportScreen');
+    // Linking.openURL('mailto:support@yourapp.com');
+  };
+
   return (
     <View style={styles.container}>
-     <View style={styles.circle}>
-  <View style={styles.square}>
-    <Text style={styles.timer}>{`${hours}:${minutes}`}</Text>
-  </View>
-</View>
-      <Text style={styles.title}>Profile Under Review</Text>
-      <Text style={styles.subtitle}>
-        Thank you for submitting your profile. Our medical team will review your information and get back to you within   <Text style={{ color: '#3C91E6' }}>48 hours</Text> 
-      </Text>
-      <Text style={styles.estimatedTime}>Estimated Time Left</Text>
-      <Text style={styles.timerText}>{`${hours}:${minutes}:${seconds}`}</Text>
-      <TouchableOpacity 
-    //   onPress={() => alert('Contact support clicked!')}
-      >
-        <Text style={styles.helpText}>😊 Need help? Contact support</Text>
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Icon name="arrow-left" size={width * 0.06} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile Review</Text>
+      </View>
+
+      {/* Content */}
+      <ScrollView style={styles.formContainer}>
+        <View style={styles.card}>
+          <View style={styles.circle}>
+            <View style={styles.square}>
+              <Icon name="timer-outline" size={width * 0.08} color="#fff" />
+              <Text style={styles.timer}>{formatTime(timeLeft).slice(0, 5)}</Text>
+            </View>
+          </View>
+          <Text style={styles.title}>Profile Under Review</Text>
+          <Text style={styles.subtitle}>
+            Thank you for submitting your profile. Our medical team will review your information and get back to you within{' '}
+            <Text style={{ color: '#00796B', fontWeight: '600' }}>48 hours</Text>.
+          </Text>
+          <Text style={styles.estimatedTime}>Estimated Time Left</Text>
+          <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+          <TouchableOpacity onPress={handleSupport}>
+            <Text style={styles.helpText}>😊 Need help? Contact support</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Spacer to ensure content is not hidden */}
+        <View style={styles.spacer} />
+      </ScrollView>
     </View>
   );
 };
@@ -37,64 +88,111 @@ const ProfileReview: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E6F3E6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: '#F5F7FA',
   },
-circle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.04,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  backButton: {
+    padding: width * 0.02,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: width * 0.05,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    marginRight: width * 0.06,
+  },
+  formContainer: {
+    flex: 1,
+    paddingHorizontal: width * 0.05,
+    paddingVertical: height * 0.03,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: width * 0.04,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    alignItems: 'center',
+  },
+  circle: {
+    width: width * 0.25,
+    height: width * 0.25,
+    borderRadius: width * 0.125,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: height * 0.02,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
   },
   square: {
-    width: 70,
-    height: 70,
-    backgroundColor: '#4A90E2',
+    width: width * 0.18,
+    height: width * 0.18,
+    backgroundColor: '#00796B',
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 8,
   },
   timer: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+    marginTop: height * 0.005,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#17406D',
+    fontSize: width * 0.05,
+    fontWeight: '600',
+    color: '#333',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: height * 0.01,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#57606F',
+    fontSize: width * 0.04,
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: height * 0.02,
     fontWeight: '500',
+    paddingHorizontal: width * 0.02,
   },
   estimatedTime: {
-    fontSize: 14,
-    color: '#8D99AE',
-    fontWeight: 'bold',
-    marginBottom: 10,
-    marginTop: 40,
+    fontSize: width * 0.035,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: height * 0.01,
+    marginTop: height * 0.03,
   },
   timerText: {
-    fontSize: 24,
-    color: '#4A90E2',
-    fontWeight: 'bold',
-    marginBottom: 20,
+    fontSize: width * 0.06,
+    color: '#00796B',
+    fontWeight: '600',
+    marginBottom: height * 0.03,
   },
   helpText: {
-    fontSize: 14,
-    color: '#4A90E2',
+    fontSize: width * 0.035,
+    color: '#00796B',
     textAlign: 'center',
     fontWeight: '500',
+  },
+  spacer: {
+    height: height * 0.1,
   },
 });
 

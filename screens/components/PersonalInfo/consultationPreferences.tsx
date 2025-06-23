@@ -1,26 +1,47 @@
-import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import IoIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Dimensions,
+  ScrollView,
+} from "react-native";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useNavigation } from "@react-navigation/native";
 
-
+const { width, height } = Dimensions.get("window");
 
 const ConsultationPreferences = () => {
-  const [consultationMode, setConsultationMode] = useState('In-Person');
-  const [fees, setFees] = useState({ inPerson: '', video: '', homeVisit: '' });
+  const [selectedModes, setSelectedModes] = useState({
+    inPerson: false,
+    video: false,
+    homeVisit: false,
+  });
+  const [fees, setFees] = useState({ inPerson: "", video: "", homeVisit: "" });
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+
+  const handleModeToggle = (mode: keyof typeof selectedModes) => {
+    setSelectedModes((prev: typeof selectedModes) => ({ ...prev, [mode]: !prev[mode] }));
+  };
 
   const handleFeeChange = (mode: string, value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, '');
-    if (numericValue === '' || (parseInt(numericValue) >= 0 && numericValue.length <= 5)) {
+    const numericValue = value.replace(/[^0-9]/g, "");
+    if (numericValue === "" || (parseInt(numericValue) >= 0 && numericValue.length <= 5)) {
       setFees({ ...fees, [mode]: numericValue });
     }
   };
 
   const isFormValid = () => {
-    return fees.inPerson !== '' && fees.video !== '' && fees.homeVisit !== '';
+    const hasSelectedMode = selectedModes.inPerson || selectedModes.video || selectedModes.homeVisit;
+    if (!hasSelectedMode) return false;
+    return (
+      (!selectedModes.inPerson || fees.inPerson !== "") &&
+      (!selectedModes.video || fees.video !== "") &&
+      (!selectedModes.homeVisit || fees.homeVisit !== "")
+    );
   };
 
   const handleBack = () => {
@@ -29,115 +50,237 @@ const ConsultationPreferences = () => {
 
   return (
     <View style={styles.container}>
-           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <IoIcon name="arrow-left" size={20} color="#000" />
-              </TouchableOpacity>
-      <Text style={styles.header}>Step 4 - Consultation Preferences</Text>
-      <View style={styles.card}>
-        <Text style={styles.label}>Choose Consultation Mode</Text>
-        <View style={styles.modeContainer}>
-          <TouchableOpacity
-            style={[styles.modeButton, consultationMode === 'In-Person' && styles.selectedMode]}
-            onPress={() => setConsultationMode('In-Person')}
-          >
-            <Icon name="person" size={20} color={consultationMode === 'In-Person' ? '#fff' : '#6b7280'} />
-            <Text style={[styles.modeText, consultationMode === 'In-Person' && styles.selectedText]}>In-Person</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeButton, consultationMode === 'Video' && styles.selectedMode]}
-            onPress={() => setConsultationMode('Video')}
-          >
-            <Icon name="videocam" size={20} color={consultationMode === 'Video' ? '#fff' : '#6b7280'} />
-            <Text style={[styles.modeText, consultationMode === 'Video' && styles.selectedText]}>Video</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeButton, consultationMode === 'Home Visit' && styles.selectedMode]}
-            onPress={() => setConsultationMode('Home Visit')}
-          >
-            <Icon name="home" size={20} color={consultationMode === 'Home Visit' ? '#fff' : '#6b7280'} />
-            <Text style={[styles.modeText, consultationMode === 'Home Visit' && styles.selectedText]}>Home Visit</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.label}>Set Fees (in ₹)</Text>
-        <View style={styles.feeContainer}>
-          <View style={styles.feeRow}>
-            <Icon name="person" size={20} color="#007bff" style={styles.feeIcon} />
-            <Text style={styles.feeLabel}>In-Person</Text>
-            <TextInput
-              style={styles.input}
-              value={fees.inPerson}
-              onChangeText={(value) => handleFeeChange('inPerson', value)}
-              keyboardType="numeric"
-              maxLength={5}
-              placeholder="₹XX"
-          placeholderTextColor="#999"
-
-            />
-          </View>
-          <View style={styles.feeRow}>
-            <Icon name="videocam" size={20} color="#6b7280" style={styles.feeIcon} />
-            <Text style={styles.feeLabel}>Video</Text>
-            <TextInput
-              style={styles.input}
-              value={fees.video}
-              onChangeText={(value) => handleFeeChange('video', value)}
-              keyboardType="numeric"
-              maxLength={5}
-              placeholder="₹YY"
-          placeholderTextColor="#999"
-
-            />
-          </View>
-          <View style={styles.feeRow}>
-            <Icon name="home" size={20} color="#10b981" style={styles.feeIcon} />
-            <Text style={styles.feeLabel}>Home Visit</Text>
-            <TextInput
-              style={styles.input}
-              value={fees.homeVisit}
-              onChangeText={(value) => handleFeeChange('homeVisit', value)}
-              keyboardType="numeric"
-              maxLength={5}
-              placeholder="₹ZZ"
-          placeholderTextColor="#999"
-
-            />
-          </View>
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Icon name="arrow-left" size={width * 0.06} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Consultation Preferences</Text>
       </View>
+
+      {/* Form Content */}
+      <ScrollView style={styles.formContainer}>
+        <View style={styles.card}>
+          <Text style={styles.label}>Set Consultation Fees (in ₹)</Text>
+          <View style={styles.feeContainer}>
+            <View style={styles.feeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.checkbox,
+                  selectedModes.inPerson && styles.checkboxSelected,
+                ]}
+                onPress={() => handleModeToggle("inPerson")}
+              >
+                {selectedModes.inPerson && (
+                  <Icon name="check" size={width * 0.04} color="#fff" />
+                )}
+              </TouchableOpacity>
+              <Icon name="account" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Text style={styles.feeLabel}>In-Person</Text>
+              <TextInput
+                style={[styles.input, !selectedModes.inPerson && styles.inputDisabled]}
+                value={fees.inPerson}
+                onChangeText={(value) => handleFeeChange("inPerson", value)}
+                keyboardType="numeric"
+                maxLength={5}
+                placeholder="₹0"
+                placeholderTextColor="#999"
+                editable={selectedModes.inPerson}
+              />
+            </View>
+            <View style={styles.feeRow}>
+              <TouchableOpacity
+                style={[styles.checkbox, selectedModes.video && styles.checkboxSelected]}
+                onPress={() => handleModeToggle("video")}
+              >
+                {selectedModes.video && (
+                  <Icon name="check" size={width * 0.04} color="#fff" />
+                )}
+              </TouchableOpacity>
+              <Icon name="video" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Text style={styles.feeLabel}>Video</Text>
+              <TextInput
+                style={[styles.input, !selectedModes.video && styles.inputDisabled]}
+                value={fees.video}
+                onChangeText={(value) => handleFeeChange("video", value)}
+                keyboardType="numeric"
+                maxLength={5}
+                placeholder="₹0"
+                placeholderTextColor="#999"
+                editable={selectedModes.video}
+              />
+            </View>
+            <View style={styles.feeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.checkbox,
+                  selectedModes.homeVisit && styles.checkboxSelected,
+                ]}
+                onPress={() => handleModeToggle("homeVisit")}
+              >
+                {selectedModes.homeVisit && (
+                  <Icon name="check" size={width * 0.04} color="#fff" />
+                )}
+              </TouchableOpacity>
+              <Icon name="home" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Text style={styles.feeLabel}>Home Visit</Text>
+              <TextInput
+                style={[styles.input, !selectedModes.homeVisit && styles.inputDisabled]}
+                value={fees.homeVisit}
+                onChangeText={(value) => handleFeeChange("homeVisit", value)}
+                keyboardType="numeric"
+                maxLength={5}
+                placeholder="₹0"
+                placeholderTextColor="#999"
+                editable={selectedModes.homeVisit}
+              />
+            </View>
+          </View>
+        </View>
+        {/* Spacer to ensure content is not hidden by the Next button */}
+        <View style={styles.spacer} />
+      </ScrollView>
+
+      {/* Next Button */}
       <TouchableOpacity
         style={[styles.nextButton, !isFormValid() && styles.disabledButton]}
         disabled={!isFormValid()}
-        onPress={() => (navigation as any).navigate('FinancialSetupScreen')}
+        onPress={() => {
+          setTimeout(() => {
+            navigation.navigate("FinancialSetupScreen");
+          }, 3000);
+        }}
       >
-        <Text style={styles.nextText}>Next →</Text>
+        <Text style={styles.nextText}>Next</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#e0f7e0', padding: 20 },
-    backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F7FA",
   },
-  header: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#1f2937', textAlign: 'center' },
-  card: { backgroundColor: '#fff', padding: 15, borderRadius: 10, elevation: 2 , top:'10%'},
-  label: { fontSize: 16, marginBottom: 10, color: '#1f2937' },
-  modeContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  modeButton: { padding: 10, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 5, width: '30%', alignItems: 'center' },
-  selectedMode: { backgroundColor: '#007bff', borderColor: '#007bff' },
-  modeText: { textAlign: 'center', color: '#1f2937', marginTop: 5 },
-  selectedText: { color: '#fff' },
-  feeContainer: { marginBottom: 20 },
-  feeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  feeIcon: { marginRight: 10 },
-  feeLabel: { flex: 1, fontSize: 16, color: '#1f2937' },
-  input: { flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 5, padding: 5, textAlign: 'center', color: '#6b7280' },
-  nextButton: { backgroundColor: '#00203f', padding: 15, borderRadius: 8, alignItems: 'center',position: 'absolute', bottom: 20, left: 20, right: 20 },
-  disabledButton: { backgroundColor: '#a3bffa' },
-  nextText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#00796B",
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.04,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  backButton: {
+    padding: width * 0.02,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: width * 0.05,
+    fontWeight: "600",
+    color: "#fff",
+    textAlign: "center",
+    marginRight: width * 0.06,
+  },
+  formContainer: {
+    flex: 1,
+    paddingHorizontal: width * 0.05,
+    paddingVertical: height * 0.03,
+  },
+  card: {
+    backgroundColor: "#fff",
+    padding: width * 0.04,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  label: {
+    fontSize: width * 0.04,
+    fontWeight: "500",
+    color: "#333",
+    marginBottom: height * 0.015,
+    marginTop: height * 0.015,
+  },
+  feeContainer: {
+    marginBottom: height * 0.02,
+  },
+  feeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: height * 0.015,
+  },
+  checkbox: {
+    width: width * 0.06,
+    height: width * 0.06,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: width * 0.03,
+  },
+  checkboxSelected: {
+    backgroundColor: "#00796B",
+    borderColor: "#00796B",
+  },
+  feeIcon: {
+    marginRight: width * 0.03,
+  },
+  feeLabel: {
+    flex: 1,
+    fontSize: width * 0.04,
+    color: "#333",
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 8,
+    padding: width * 0.03,
+    textAlign: "center",
+    color: "#333",
+    fontSize: width * 0.04,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  inputDisabled: {
+    backgroundColor: "#F5F5F5",
+    color: "#999",
+  },
+  nextButton: {
+    backgroundColor: "#00796B",
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
+    alignItems: "center",
+    marginHorizontal: width * 0.05,
+    marginBottom: height * 0.03,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  disabledButton: {
+    backgroundColor: "#B0BEC5",
+  },
+  nextText: {
+    color: "#fff",
+    fontSize: width * 0.045,
+    fontWeight: "600",
+  },
+  spacer: {
+    height: height * 0.1,
+  },
 });
 
 export default ConsultationPreferences;

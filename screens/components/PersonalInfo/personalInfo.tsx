@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -25,7 +25,7 @@ import axios from 'axios';
 // Placeholder image for profile photo
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); // Replace with your asset path
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const PersonalInfoScreen: React.FC = () => {
   const dispatch = useDispatch();
@@ -38,7 +38,7 @@ const PersonalInfoScreen: React.FC = () => {
     dateOfBirth: undefined as Date | undefined,
     spokenLanguages: [] as string[],
     profilePhoto: PLACEHOLDER_IMAGE,
-    appLanguage: 'en', // Default to 'en' and will be disabled
+    appLanguage: 'en',
     relationship: 'self',
     bloodGroup: 'O+',
     maritalStatus: 'single',
@@ -58,7 +58,7 @@ const PersonalInfoScreen: React.FC = () => {
     bloodGroup: '',
     maritalStatus: '',
   });
-  const navigation = useNavigation<any>(); // Adjust type as needed for your navigation prop
+  const navigation = useNavigation<any>();
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -173,6 +173,8 @@ const PersonalInfoScreen: React.FC = () => {
   };
 
   const handleNext = async () => {
+          navigation.navigate('Specialization', { userId:'10' });
+
     if (validateForm()) {
       try {
         const token = await AsyncStorage.getItem('authToken');
@@ -202,10 +204,8 @@ const PersonalInfoScreen: React.FC = () => {
                 .toString()
                 .padStart(2, '0')}-${formData.dateOfBirth.getFullYear()}`
             : '',
-
           bloodgroup: formData.bloodGroup,
           maritalStatus: formData.maritalStatus,
-
           spokenLanguage: formData.spokenLanguages,
         };
 
@@ -217,7 +217,7 @@ const PersonalInfoScreen: React.FC = () => {
           body,
           {
             headers: {
-              Authorization: `Bearer ${token}`
+              Authorization: `Bearer ${token}`,
             },
           },
         );
@@ -232,8 +232,8 @@ const PersonalInfoScreen: React.FC = () => {
             visibilityTime: 3000,
           });
           const userId = response.data.data.userId;
-          dispatch({type: 'currentUserID', payload: userId});
-         navigation.navigate('Specialization', { userId });
+          dispatch({ type: 'currentUserID', payload: userId });
+          navigation.navigate('Specialization', { userId });
         } else {
           Toast.show({
             type: 'error',
@@ -248,7 +248,6 @@ const PersonalInfoScreen: React.FC = () => {
         }
       } catch (error) {
         console.error('Error updating profile:', error);
-
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -256,401 +255,456 @@ const PersonalInfoScreen: React.FC = () => {
           position: 'top',
           visibilityTime: 3000,
         });
-        console.error('Error updating profile:', error);
       }
     }
   };
 
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.stepTitle}>Step 1 – Personal Info</Text>
-
-      <View style={styles.photoContainer}>
-        <TouchableOpacity onPress={handleImagePick}>
-          <View style={styles.profilePhotoWrapper}>
-            <Image source={formData.profilePhoto} style={styles.profilePhoto} />
-            <Icon
-              name="camera"
-              size={20}
-              color="#1E90FF"
-              style={styles.cameraIcon}
-            />
-          </View>
-          <Text style={styles.changePhotoText}>Tap to change photo</Text>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Icon name="arrow-left" size={width * 0.06} color="#fff" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Personal Info</Text>
       </View>
 
-      <Text style={styles.label}>First Name</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.firstName}
-        onChangeText={text => {
-          setFormData(prev => ({ ...prev, firstName: text }));
-          setErrors(prev => ({ ...prev, firstName: '' }));
-        }}
-        placeholder="Enter first name"
-        placeholderTextColor="#999"
-      />
-      {errors.firstName ? (
-        <Text style={styles.errorText}>{errors.firstName}</Text>
-      ) : null}
+      {/* Form Content */}
+      <ScrollView style={styles.formContainer}>
+        <View style={styles.photoContainer}>
+          <TouchableOpacity onPress={handleImagePick}>
+            <View style={styles.profilePhotoWrapper}>
+              <Image source={formData.profilePhoto} style={styles.profilePhoto} />
+              <Icon
+                name="camera"
+                size={20}
+                color="#00796B"
+                style={styles.cameraIcon}
+              />
+            </View>
+            <Text style={styles.changePhotoText}>Tap to change photo</Text>
+          </TouchableOpacity>
+        </View>
 
-      <Text style={styles.label}>Last Name</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.lastName}
-        onChangeText={text => {
-          setFormData(prev => ({ ...prev, lastName: text }));
-          setErrors(prev => ({ ...prev, lastName: '' }));
-        }}
-        placeholder="Enter last name"
-        placeholderTextColor="#999"
-      />
-      {errors.lastName ? (
-        <Text style={styles.errorText}>{errors.lastName}</Text>
-      ) : null}
-
-      <Text style={styles.label}>Medical Registration Number</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.medicalRegNumber}
-        onChangeText={text => {
-          setFormData(prev => ({ ...prev, medicalRegNumber: text }));
-          setErrors(prev => ({ ...prev, medicalRegNumber: '' }));
-        }}
-        placeholder="Enter registration number"
-        placeholderTextColor="#999"
-        keyboardType="numeric"
-        maxLength={10}
-      />
-      {errors.medicalRegNumber ? (
-        <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
-      ) : null}
-
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.email}
-        onChangeText={text => {
-          setFormData(prev => ({ ...prev, email: text }));
-          setErrors(prev => ({ ...prev, email: '' }));
-        }}
-        placeholder="Enter email"
-        placeholderTextColor="#999"
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      {errors.email ? (
-        <Text style={styles.errorText}>{errors.email}</Text>
-      ) : null}
-
-      <Text style={styles.label}>Gender</Text>
-      <View style={styles.input}>
-        <Picker
-          selectedValue={formData.gender}
-          onValueChange={itemValue => {
-            setFormData(prev => ({ ...prev, gender: itemValue as string }));
-            setErrors(prev => ({ ...prev, gender: '' }));
+        <Text style={styles.label}>First Name</Text>
+        <TextInput
+          style={styles.input}
+          value={formData.firstName}
+          onChangeText={text => {
+            setFormData(prev => ({ ...prev, firstName: text }));
+            setErrors(prev => ({ ...prev, firstName: '' }));
           }}
-          style={styles.picker}
-          dropdownIconColor="#000"
-        >
-          <Picker.Item label="Select gender" value="" />
-          <Picker.Item label="Male" value="male" />
-          <Picker.Item label="Female" value="female" />
-          <Picker.Item label="Other" value="other" />
-        </Picker>
-      </View>
-      {errors.gender ? (
-        <Text style={styles.errorText}>{errors.gender}</Text>
-      ) : null}
-
-      <Text style={styles.label}>Date of Birth</Text>
-      <TouchableOpacity
-        onPress={() => setShowDatePicker(true)}
-        style={styles.input}
-      >
-        <Text style={styles.dateText}>
-          {formData.dateOfBirth
-            ? formData.dateOfBirth.toLocaleDateString('en-US', {
-                month: '2-digit',
-                day: '2-digit',
-                year: 'numeric',
-              })
-            : 'mm/dd/yyyy'}
-        </Text>
-        <Icon
-          name="calendar"
-          size={20}
-          color="#000"
-          style={styles.calendarIcon}
+          placeholder="Enter first name"
+          placeholderTextColor="#999"
         />
-      </TouchableOpacity>
-      {errors.dateOfBirth ? (
-        <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
-      ) : null}
+        {errors.firstName ? (
+          <Text style={styles.errorText}>{errors.firstName}</Text>
+        ) : null}
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={formData.dateOfBirth || new Date()} // Ensure a valid date is provided
-          mode="date"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'} // Use 'inline' for iOS, 'default' for Android
-          onChange={handleDateChange}
-          minimumDate={new Date(1900, 0, 1)} // Optional: Set a minimum date
-          maximumDate={new Date()} // Optional: Set maximum to today
+        <Text style={styles.label}>Last Name</Text>
+        <TextInput
+          style={styles.input}
+          value={formData.lastName}
+          onChangeText={text => {
+            setFormData(prev => ({ ...prev, lastName: text }));
+            setErrors(prev => ({ ...prev, lastName: '' }));
+          }}
+          placeholder="Enter last name"
+          placeholderTextColor="#999"
         />
-      )}
+        {errors.lastName ? (
+          <Text style={styles.errorText}>{errors.lastName}</Text>
+        ) : null}
 
-      <Text style={styles.label}>App Language</Text>
-      <View style={styles.input}>
-        <Picker
-          selectedValue={formData.appLanguage}
-          onValueChange={itemValue => {
-            setFormData(prev => ({
-              ...prev,
-              appLanguage: itemValue as string,
-            }));
-            setErrors(prev => ({ ...prev, appLanguage: '' }));
+        <Text style={styles.label}>Medical Registration Number</Text>
+        <TextInput
+          style={styles.input}
+          value={formData.medicalRegNumber}
+          onChangeText={text => {
+            setFormData(prev => ({ ...prev, medicalRegNumber: text }));
+            setErrors(prev => ({ ...prev, medicalRegNumber: '' }));
           }}
-          style={styles.picker}
-          dropdownIconColor="#000"
-          enabled={false} // Disabled to keep it as 'en' by default
-        >
-          <Picker.Item label="English" value="en" />
-        </Picker>
-      </View>
-      {errors.appLanguage ? (
-        <Text style={styles.errorText}>{errors.appLanguage}</Text>
-      ) : null}
+          placeholder="Enter registration number"
+          placeholderTextColor="#999"
+          keyboardType="numeric"
+          maxLength={10}
+        />
+        {errors.medicalRegNumber ? (
+          <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
+        ) : null}
 
-      <Text style={styles.label}>Relationship</Text>
-      <View style={styles.input}>
-        <Picker
-          selectedValue={formData.relationship}
-          onValueChange={itemValue => {
-            setFormData(prev => ({
-              ...prev,
-              relationship: itemValue as string,
-            }));
-            setErrors(prev => ({ ...prev, relationship: '' }));
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          value={formData.email}
+          onChangeText={text => {
+            setFormData(prev => ({ ...prev, email: text }));
+            setErrors(prev => ({ ...prev, email: '' }));
           }}
-          style={styles.picker}
-          dropdownIconColor="#000"
+          placeholder="Enter email"
+          placeholderTextColor="#999"
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        {errors.email ? (
+          <Text style={styles.errorText}>{errors.email}</Text>
+        ) : null}
+
+        <Text style={styles.label}>Gender</Text>
+        <View style={styles.input}>
+          <Picker
+            selectedValue={formData.gender}
+            onValueChange={itemValue => {
+              setFormData(prev => ({ ...prev, gender: itemValue as string }));
+              setErrors(prev => ({ ...prev, gender: '' }));
+            }}
+            style={styles.picker}
+            dropdownIconColor="#333"
+          >
+            <Picker.Item label="Select gender" value="" />
+            <Picker.Item label="Male" value="male" />
+            <Picker.Item label="Female" value="female" />
+            <Picker.Item label="Other" value="other" />
+          </Picker>
+        </View>
+        {errors.gender ? (
+          <Text style={styles.errorText}>{errors.gender}</Text>
+        ) : null}
+
+        <Text style={styles.label}>Date of Birth</Text>
+        <TouchableOpacity
+          onPress={() => setShowDatePicker(true)}
+          style={styles.input}
         >
-          <Picker.Item label="Select relationship" value="" />
-          <Picker.Item label="Self" value="self" />
-          <Picker.Item label="Other" value="other" />
-        </Picker>
-      </View>
-      {errors.relationship ? (
-        <Text style={styles.errorText}>{errors.relationship}</Text>
-      ) : null}
+          <Text style={styles.dateText}>
+            {formData.dateOfBirth
+              ? formData.dateOfBirth.toLocaleDateString('en-US', {
+                  month: '2-digit',
+                  day: '2-digit',
+                  year: 'numeric',
+                })
+              : 'mm/dd/yyyy'}
+          </Text>
+          <Icon
+            name="calendar"
+            size={20}
+            color="#00796B"
+            style={styles.calendarIcon}
+          />
+        </TouchableOpacity>
+        {errors.dateOfBirth ? (
+          <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
+        ) : null}
 
-      <Text style={styles.label}>Blood Group</Text>
-      <View style={styles.input}>
-        <Picker
-          selectedValue={formData.bloodGroup}
-          onValueChange={itemValue => {
-            setFormData(prev => ({ ...prev, bloodGroup: itemValue as string }));
-            setErrors(prev => ({ ...prev, bloodGroup: '' }));
-          }}
-          style={styles.picker}
-          dropdownIconColor="#000"
-        >
-          <Picker.Item label="Select blood group" value="" />
-          <Picker.Item label="O+" value="O+" />
-          <Picker.Item label="O-" value="O-" />
-          <Picker.Item label="A+" value="A+" />
-          <Picker.Item label="A-" value="A-" />
-          <Picker.Item label="B+" value="B+" />
-          <Picker.Item label="B-" value="B-" />
-          <Picker.Item label="AB+" value="AB+" />
-          <Picker.Item label="AB-" value="AB-" />
-        </Picker>
-      </View>
-      {errors.bloodGroup ? (
-        <Text style={styles.errorText}>{errors.bloodGroup}</Text>
-      ) : null}
+        {showDatePicker && (
+          <DateTimePicker
+            value={formData.dateOfBirth || new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            onChange={handleDateChange}
+            minimumDate={new Date(1900, 0, 1)}
+            maximumDate={new Date()}
+          />
+        )}
 
-      <Text style={styles.label}>Marital Status</Text>
-      <View style={styles.input}>
-        <Picker
-          selectedValue={formData.maritalStatus}
-          onValueChange={itemValue => {
-            setFormData(prev => ({
-              ...prev,
-              maritalStatus: itemValue as string,
-            }));
-            setErrors(prev => ({ ...prev, maritalStatus: '' }));
-          }}
-          style={styles.picker}
-          dropdownIconColor="#000"
-        >
-          <Picker.Item label="Select marital status" value="" />
-          <Picker.Item label="Single" value="single" />
-          <Picker.Item label="Married" value="married" />
-          <Picker.Item label="Divorced" value="divorced" />
-          <Picker.Item label="Widowed" value="widowed" />
-        </Picker>
-      </View>
-      {errors.maritalStatus ? (
-        <Text style={styles.errorText}>{errors.maritalStatus}</Text>
-      ) : null}
+        <Text style={styles.label}>App Language</Text>
+        <View style={styles.input}>
+          <Picker
+            selectedValue={formData.appLanguage}
+            onValueChange={itemValue => {
+              setFormData(prev => ({
+                ...prev,
+                appLanguage: itemValue as string,
+              }));
+              setErrors(prev => ({ ...prev, appLanguage: '' }));
+            }}
+            style={styles.picker}
+            dropdownIconColor="#333"
+            enabled={false}
+          >
+            <Picker.Item label="English" value="en" />
+          </Picker>
+        </View>
+        {errors.appLanguage ? (
+          <Text style={styles.errorText}>{errors.appLanguage}</Text>
+        ) : null}
 
-      <Text style={styles.label}>Languages Spoken</Text>
-      <View style={styles.languagesContainer}>
-        {formData.spokenLanguages.map((lang, index) => (
-          <View key={index} style={styles.languageChip}>
-            <Text style={styles.languageText}>{lang}</Text>
-            <TouchableOpacity
-              onPress={() => handleRemoveLanguage(lang)}
-              style={styles.removeButton}
-            >
-              <Text style={styles.removeText}>x</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-      </View>
-      <TextInput
-        style={[styles.input, styles.addLanguageInput]}
-        value={newLanguage}
-        onChangeText={setNewLanguage}
-        onSubmitEditing={handleAddLanguage}
-        placeholder="Add a language..."
-        placeholderTextColor="#999"
-      />
-      {errors.spokenLanguages ? (
-        <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
-      ) : null}
+        <Text style={styles.label}>Relationship</Text>
+        <View style={styles.input}>
+          <Picker
+            selectedValue={formData.relationship}
+            onValueChange={itemValue => {
+              setFormData(prev => ({
+                ...prev,
+                relationship: itemValue as string,
+              }));
+              setErrors(prev => ({ ...prev, relationship: '' }));
+            }}
+            style={styles.picker}
+            dropdownIconColor="#333"
+          >
+            <Picker.Item label="Select relationship" value="" />
+            <Picker.Item label="Self" value="self" />
+            <Picker.Item label="Other" value="other" />
+          </Picker>
+        </View>
+        {errors.relationship ? (
+          <Text style={styles.errorText}>{errors.relationship}</Text>
+        ) : null}
 
+        <Text style={styles.label}>Blood Group</Text>
+        <View style={styles.input}>
+          <Picker
+            selectedValue={formData.bloodGroup}
+            onValueChange={itemValue => {
+              setFormData(prev => ({ ...prev, bloodGroup: itemValue as string }));
+              setErrors(prev => ({ ...prev, bloodGroup: '' }));
+            }}
+            style={styles.picker}
+            dropdownIconColor="#333"
+          >
+            <Picker.Item label="Select blood group" value="" />
+            <Picker.Item label="O+" value="O+" />
+            <Picker.Item label="O-" value="O-" />
+            <Picker.Item label="A+" value="A+" />
+            <Picker.Item label="A-" value="A-" />
+            <Picker.Item label="B+" value="B+" />
+            <Picker.Item label="B-" value="B-" />
+            <Picker.Item label="AB+" value="AB+" />
+            <Picker.Item label="AB-" value="AB-" />
+          </Picker>
+        </View>
+        {errors.bloodGroup ? (
+          <Text style={styles.errorText}>{errors.bloodGroup}</Text>
+        ) : null}
+
+        <Text style={styles.label}>Marital Status</Text>
+        <View style={styles.input}>
+          <Picker
+            selectedValue={formData.maritalStatus}
+            onValueChange={itemValue => {
+              setFormData(prev => ({
+                ...prev,
+                maritalStatus: itemValue as string,
+              }));
+              setErrors(prev => ({ ...prev, maritalStatus: '' }));
+            }}
+            style={styles.picker}
+            dropdownIconColor="#333"
+          >
+            <Picker.Item label="Select marital status" value="" />
+            <Picker.Item label="Single" value="single" />
+            <Picker.Item label="Married" value="married" />
+            <Picker.Item label="Divorced" value="divorced" />
+            <Picker.Item label="Widowed" value="widowed" />
+          </Picker>
+        </View>
+        {errors.maritalStatus ? (
+          <Text style={styles.errorText}>{errors.maritalStatus}</Text>
+        ) : null}
+
+        <Text style={styles.label}>Languages Spoken</Text>
+        <View style={styles.languagesContainer}>
+          {formData.spokenLanguages.map((lang, index) => (
+            <View key={index} style={styles.languageChip}>
+              <Text style={styles.languageText}>{lang}</Text>
+              <TouchableOpacity
+                onPress={() => handleRemoveLanguage(lang)}
+                style={styles.removeButton}
+              >
+                <Text style={styles.removeText}>x</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+        <TextInput
+          style={[styles.input, styles.addLanguageInput]}
+          value={newLanguage}
+          onChangeText={setNewLanguage}
+          onSubmitEditing={handleAddLanguage}
+          placeholder="Add a language..."
+          placeholderTextColor="#999"
+        />
+        {errors.spokenLanguages ? (
+          <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
+        ) : null}
+
+        {/* Spacer to ensure content is not hidden by the Next button */}
+        <View style={styles.spacer} />
+      </ScrollView>
+
+      {/* Next Button */}
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-        <Text style={styles.nextText}>Next →</Text>
+        <Text style={styles.nextText}>Next</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 20,
-    paddingTop: 40,
+    backgroundColor: '#F5F7FA',
   },
-  stepTitle: {
-    fontSize: 18,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.04,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  backButton: {
+    padding: width * 0.02,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: width * 0.05,
     fontWeight: '600',
-    color: '#111827',
+    color: '#fff',
     textAlign: 'center',
-    marginBottom: 20,
+    marginRight: width * 0.06,
+  },
+  formContainer: {
+    flex: 1,
+    paddingHorizontal: width * 0.05,
+    paddingVertical: height * 0.03,
   },
   photoContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: height * 0.03,
   },
   profilePhotoWrapper: {
     position: 'relative',
   },
   profilePhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: width * 0.25,
+    height: width * 0.25,
+    borderRadius: width * 0.125,
     marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
   },
   cameraIcon: {
     position: 'absolute',
     bottom: 5,
     right: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 2,
+    padding: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   changePhotoText: {
-    color: '#1E90FF',
-    fontSize: 14,
+    color: '#00796B',
+    fontSize: width * 0.04,
+    fontWeight: '500',
     textDecorationLine: 'underline',
-    marginTop: 5,
   },
   label: {
-    fontSize: 14,
-    marginBottom: 6,
-    marginTop: 10,
-    color: '#000',
+    fontSize: width * 0.04,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: height * 0.01,
+    marginTop: height * 0.015,
   },
   input: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 50,
-    fontSize: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: width * 0.03,
+    height: height * 0.06,
+    fontSize: width * 0.04,
     color: '#333',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#E0E0E0',
     flexDirection: 'row',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   picker: {
-    height: 50,
+    height: height * 0.06,
     color: '#333',
     flex: 1,
   },
   dateText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: width * 0.04,
     color: '#333',
   },
   calendarIcon: {
-    marginLeft: 10,
+    marginLeft: width * 0.02,
   },
   languagesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 10,
+    marginBottom: height * 0.01,
   },
   languageChip: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#E0F2F1',
     borderRadius: 12,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    marginRight: 10,
-    marginBottom: 10,
+    paddingVertical: height * 0.005,
+    paddingHorizontal: width * 0.03,
+    marginRight: width * 0.02,
+    marginBottom: height * 0.01,
     flexDirection: 'row',
     alignItems: 'center',
   },
   languageText: {
-    color: '#1d4ed8',
-    fontSize: 14,
+    color: '#00796B',
+    fontSize: width * 0.035,
     fontWeight: '500',
   },
   removeButton: {
-    marginLeft: 5,
+    marginLeft: width * 0.02,
   },
   removeText: {
-    color: '#1d4ed8',
-    fontSize: 14,
+    color: '#00796B',
+    fontSize: width * 0.035,
     fontWeight: 'bold',
   },
   addLanguageInput: {
-    marginTop: 10,
+    marginTop: height * 0.01,
   },
   nextButton: {
-    backgroundColor: '#001F3F',
-    paddingVertical: 15,
-    borderRadius: 10,
+    backgroundColor: '#00796B',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 80,
+    marginHorizontal: width * 0.05,
+    marginBottom: height * 0.03,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
   },
   nextText: {
-    color: 'white',
-    fontSize: 20,
+    color: '#fff',
+    fontSize: width * 0.045,
     fontWeight: '600',
   },
   errorText: {
-    color: 'red',
-    fontSize: 12,
-    marginTop: 5,
-    marginBottom: 5,
+    color: '#D32F2F',
+    fontSize: width * 0.035,
+    marginTop: height * 0.005,
+    marginBottom: height * 0.005,
+  },
+  spacer: {
+    height: height * 0.1,
   },
 });
 
