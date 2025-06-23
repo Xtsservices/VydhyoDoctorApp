@@ -3,7 +3,9 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import IoIcon from 'react-native-vector-icons/MaterialCommunityIcons';
-
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
 
 const ConsultationPreferences = () => {
@@ -27,11 +29,63 @@ const ConsultationPreferences = () => {
     navigation.goBack();
   };
 
+  const handleNext = async () => {
+    if (!isFormValid()) return;
+
+    const payload = {
+      consultationModeFee: [
+        { type: 'In-Person', fee: parseInt(fees.inPerson) },
+        { type: 'Video', fee: parseInt(fees.video) },
+        { type: 'Home Visit', fee: parseInt(fees.homeVisit) },
+      ],
+    };
+
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Toast.show({
+          type: 'error',
+          text1: 'Authentication Error',
+          text2: 'Token not found',
+        });
+        return;
+      }
+
+      const response = await axios.post(
+        'http://216.10.251.239:3000/users/updateConsultationModes',
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log('API Response:', response);
+      if (response.status == 200) {
+        Toast.show({
+          type: 'success',
+          text1: 'Preferences saved successfully',
+        });
+        (navigation as any).navigate('FinancialSetupScreen')
+      }
+
+      // navigation.navigate('FinancialSetupScreen');
+    } catch (error: any) {
+      console.error('API Error:', error?.response?.data || error.message);
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to update preferences',
+        text2: error?.response?.data?.message || 'Something went wrong',
+      });
+    }
+  };
+
   return (
     <View style={styles.container}>
-           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <IoIcon name="arrow-left" size={20} color="#000" />
-              </TouchableOpacity>
+      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <IoIcon name="arrow-left" size={20} color="#000" />
+      </TouchableOpacity>
       <Text style={styles.header}>Step 4 - Consultation Preferences</Text>
       <View style={styles.card}>
         <Text style={styles.label}>Choose Consultation Mode</Text>
@@ -70,7 +124,7 @@ const ConsultationPreferences = () => {
               keyboardType="numeric"
               maxLength={5}
               placeholder="₹XX"
-          placeholderTextColor="#999"
+              placeholderTextColor="#999"
 
             />
           </View>
@@ -84,7 +138,7 @@ const ConsultationPreferences = () => {
               keyboardType="numeric"
               maxLength={5}
               placeholder="₹YY"
-          placeholderTextColor="#999"
+              placeholderTextColor="#999"
 
             />
           </View>
@@ -98,7 +152,7 @@ const ConsultationPreferences = () => {
               keyboardType="numeric"
               maxLength={5}
               placeholder="₹ZZ"
-          placeholderTextColor="#999"
+              placeholderTextColor="#999"
 
             />
           </View>
@@ -107,7 +161,8 @@ const ConsultationPreferences = () => {
       <TouchableOpacity
         style={[styles.nextButton, !isFormValid() && styles.disabledButton]}
         disabled={!isFormValid()}
-        onPress={() => (navigation as any).navigate('FinancialSetupScreen')}
+        onPress={handleNext}
+      // onPress={() => (navigation as any).navigate('FinancialSetupScreen')}
       >
         <Text style={styles.nextText}>Next →</Text>
       </TouchableOpacity>
@@ -117,13 +172,13 @@ const ConsultationPreferences = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#e0f7e0', padding: 20 },
-    backButton: {
+  backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
   },
   header: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#1f2937', textAlign: 'center' },
-  card: { backgroundColor: '#fff', padding: 15, borderRadius: 10, elevation: 2 , top:'10%'},
+  card: { backgroundColor: '#fff', padding: 15, borderRadius: 10, elevation: 2, top: '10%' },
   label: { fontSize: 16, marginBottom: 10, color: '#1f2937' },
   modeContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   modeButton: { padding: 10, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 5, width: '30%', alignItems: 'center' },
@@ -135,7 +190,7 @@ const styles = StyleSheet.create({
   feeIcon: { marginRight: 10 },
   feeLabel: { flex: 1, fontSize: 16, color: '#1f2937' },
   input: { flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 5, padding: 5, textAlign: 'center', color: '#6b7280' },
-  nextButton: { backgroundColor: '#00203f', padding: 15, borderRadius: 8, alignItems: 'center',position: 'absolute', bottom: 20, left: 20, right: 20 },
+  nextButton: { backgroundColor: '#00203f', padding: 15, borderRadius: 8, alignItems: 'center', position: 'absolute', bottom: 20, left: 20, right: 20 },
   disabledButton: { backgroundColor: '#a3bffa' },
   nextText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
 });

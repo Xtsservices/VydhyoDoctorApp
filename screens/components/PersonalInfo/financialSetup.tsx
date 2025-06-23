@@ -4,7 +4,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import Icon from 'react-native-vector-icons/FontAwesome'; // For the bank icon
 import IoIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Picker } from '@react-native-picker/picker';
-
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
 
 const FinancialSetupScreen = () => {
@@ -12,6 +14,7 @@ const FinancialSetupScreen = () => {
   const [accountNumber, setAccountNumber] = useState('');
   const [reenterAccountNumber, setReenterAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const navigation = useNavigation();
@@ -23,19 +26,87 @@ const FinancialSetupScreen = () => {
       tempErrors.accountNumber = 'Account number must be between 9 and 18 digits';
     if (accountNumber !== reenterAccountNumber) 
       tempErrors.reenterAccountNumber = 'Account numbers do not match';
-    if (!ifscCode || !/^[A-Za-z]{4}0[A-Z0-9a-z]{6}$/.test(ifscCode)) 
+    if (!ifscCode || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) 
       tempErrors.ifscCode = 'Invalid IFSC code';
+    if (!accountHolderName) tempErrors.accountHolderName = 'Please enter account holder name';
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validateForm()) {
-      // Handle form submission
-    //   alert('Form submitted successfully!');
-    }
-        navigation.navigate('KYCDetailsScreen' as never)
+ 
 
+  const handleSubmit = async () => {
+    if (validateForm()) {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) {
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Authentication token not found',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+          return;
+        }
+
+        const body = {
+          bankDetails: {
+            accountNumber,
+            ifscCode,
+            bankName: bank,
+            accountHolderName,
+          },
+        };
+
+        console.log('Form data to send:', body);
+
+        const response = await axios.post(
+          'http://216.10.251.239:3000/users/updateBankDetails',
+          body,
+          {
+            headers: {
+               'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log('Response from updateBankDetails:', response);
+
+        if (response.status === 200) {
+          Toast.show({
+            type: 'success',
+            text1: 'Success',
+            text2: 'Bank details updated successfully',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+           navigation.navigate('KYCDetailsScreen' as never)
+          // Navigate to KYCDetailsScreen with userId
+          // navigation.navigate('KYCDetailsScreen', { userId });
+        } else {
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2:
+              response.data && response.data.message
+                ? response.data.message
+                : 'Failed to update bank details',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+        }
+      } catch (error) {
+        console.error('Error updating bank details:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Network error. Please try again.',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
+    }
   };
 
    const handleBack = () => {
@@ -48,6 +119,7 @@ const FinancialSetupScreen = () => {
                         <IoIcon name="arrow-left" size={20} color="#000" />
                       </TouchableOpacity>
       <Text style={styles.stepText}> Step 5 - Financial Setup</Text>
+      
       <View style={styles.card}>
         <Icon name="bank" size={30} color="#007AFF" style={styles.icon} />
         <Text style={styles.title}>Add Bank Details</Text>
@@ -65,7 +137,7 @@ const FinancialSetupScreen = () => {
 
           >
             <Picker.Item label="Select your bank" value="" />
-            <Picker.Item label="Bank A" value="Bank A" />
+            <Picker.Item label="HDFC" value="HDFC" />
             <Picker.Item label="Bank B" value="Bank B" />
             <Picker.Item label="Bank C" value="Bank C" />
           </Picker>
@@ -103,6 +175,18 @@ const FinancialSetupScreen = () => {
           placeholderTextColor="#999"
         />
         {errors.ifscCode && <Text style={styles.errorText}>{errors.ifscCode}</Text>}
+        <Text style={styles.label}>Account Holder Name</Text>
+        <TextInput
+          style={[styles.input, errors.accountHolderName && styles.errorInput]}
+          value={accountHolderName}
+          onChangeText={setAccountHolderName}
+          placeholder="Enter account holder name"
+          placeholderTextColor="#999"
+        />
+        {errors.accountHolderName && <Text style={styles.errorText}>{errors.accountHolderName}</Text>}
+
+        {/* Submit Button */}
+
 
         <TouchableOpacity style={styles.button} onPress={handleSubmit}>
           <Text style={styles.buttonText}>Submit →</Text>

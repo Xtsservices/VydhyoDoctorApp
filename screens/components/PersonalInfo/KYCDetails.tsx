@@ -1,35 +1,205 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image , TextInput} from 'react-native';
 const aadhar_icon = require('../../assets/aadhar.png');
 const pancard_icon = require('../../assets/pan.png');
 import IoIcon from 'react-native-vector-icons/MaterialCommunityIcons';
-
+import { launchImageLibrary } from 'react-native-image-picker';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
 const KYCDetailsScreen = () => {
-  const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
-  const [pancardUploaded, setPancardUploaded] = useState(false);
+ const [aadhaarImage, setAadhaarImage] = useState<{ uri: string } | null>(null);
+  const [panImage, setPanImage] = useState<{ uri: string } | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [panNumber, setPanNumber] = useState('');
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const navigation = useNavigation();
 
+
+  const validateForm = () => {
+    let tempErrors: { [key: string]: string } = {};
+    if (!aadhaarNumber || !/^\d{12}$/.test(aadhaarNumber))
+      tempErrors.aadhaarNumber = 'Aadhaar number must be 12 digits';
+    if (!panNumber || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNumber))
+      tempErrors.panNumber = 'PAN number must be 10 alphanumeric characters (e.g., AWXPV7865F)';
+    if (!aadhaarImage) tempErrors.aadhaarImage = 'Please upload Aadhaar proof';
+    if (!panImage) tempErrors.panImage = 'Please upload Pancard proof';
+    if (!termsAccepted) tempErrors.termsAccepted = 'Please accept Terms & Conditions';
+    setErrors(tempErrors);
+    return Object.keys(tempErrors).length === 0;
+  };
+
+ 
+
+  
+  const handleNext2 = () => {
+    navigation.navigate('ConfirmationScreen' as never); 
+
+   
+  };
+
+
   const handleAadhaarUpload = () => {
-    // Simulate file upload
-    setAadhaarUploaded(true);
+    launchImageLibrary({ mediaType: 'photo' }, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled Aadhaar image picker');
+      } else if (response.errorCode) {
+        console.log('Aadhaar image picker error: ', response.errorMessage);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to pick Aadhaar image',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      } else if (
+        response.assets &&
+        response.assets[0] &&
+        typeof response.assets[0].uri === 'string'
+      ) {
+        setAadhaarImage({ uri: response.assets[0].uri });
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Aadhaar image uploaded successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
+    });
   };
 
   const handlePancardUpload = () => {
-    // Simulate file upload
-    setPancardUploaded(true);
+    launchImageLibrary({ mediaType: 'photo' }, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled PAN image picker');
+      } else if (response.errorCode) {
+        console.log('PAN image picker error: ', response.errorMessage);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to pick PAN image',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      } else if (
+        response.assets &&
+        response.assets[0] &&
+        typeof response.assets[0].uri === 'string'
+      ) {
+        setPanImage({ uri: response.assets[0].uri });
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'PAN image uploaded successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
+    });
   };
 
-  const handleNext = () => {
-    navigation.navigate('ConfirmationScreen' as never); 
+ const handleNext = async () => {
+  if (!validateForm()) {
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Please complete all fields and accept Terms & Conditions',
+      position: 'top',
+      visibilityTime: 3000,
+    });
+    return;
+  }
 
-    if (!aadhaarUploaded || !pancardUploaded || !termsAccepted) {
-    //   alert('Please upload both Aadhaar and Pancard proofs and accept the Terms & Conditions.');
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    console.log('Auth Token:', token);
+    if (!token) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Authentication token not found',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
-  };
+
+    // Construct FormData
+    const formData = new FormData();
+
+    formData.append('panNumber', panNumber); // Add plain text
+    formData.append('aadharNumber', aadhaarNumber); // Add plain text
+
+    // PAN image file
+    if (panImage?.uri) {
+      formData.append('panFile', {
+        uri: panImage.uri,
+        name: 'pan.jpg', // Adjust based on actual file
+        type: 'image/jpeg', // Or 'image/png'
+      });
+    }
+
+    // Aadhaar image file (if needed)
+    if (aadhaarImage?.uri) {
+      formData.append('aadharFile', {
+        uri: aadhaarImage.uri,
+        name: 'aadhaar.jpg', // Adjust name/type as needed
+        type: 'image/jpeg',
+      });
+    }
+
+    console.log('Sending FormData:', formData);
+
+    const response = await axios.post(
+      'http://216.10.251.239:3000/users/addKYCDetails',
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    console.log('Response from addKYCDetails:', response);
+
+    if (response.status === 200 || response.status === 201) {
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'KYC details submitted successfully',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      // navigation.navigate('ConfirmationScreen', { userId });
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2:
+          response.data?.message || 'Failed to submit KYC details',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    }
+  } catch (error: any) {
+    console.error('KYC Submission Error:', error);
+
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: error?.response?.data?.message?.message ||
+        error?.response?.data?.message ||
+        'Something went wrong. Please try again.',
+      position: 'top',
+      visibilityTime: 3000,
+    });
+  }
+};
 
    const handleBack = () => {
     navigation.goBack();
@@ -42,6 +212,32 @@ const KYCDetailsScreen = () => {
                               </TouchableOpacity>
       <Text style={styles.header}>Step 5 - KYC Details</Text>
       
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Aadhaar Number</Text>
+        <TextInput
+          style={[styles.input, errors.aadhaarNumber && styles.errorInput]}
+          value={aadhaarNumber}
+          onChangeText={setAadhaarNumber}
+          placeholder="Enter 12-digit Aadhaar number"
+          keyboardType="numeric"
+          maxLength={12}
+          placeholderTextColor="#999"
+        />
+        {errors.aadhaarNumber && <Text style={styles.errorText}>{errors.aadhaarNumber}</Text>}
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>PAN Number</Text>
+        <TextInput
+          style={[styles.input, errors.panNumber && styles.errorInput]}
+          value={panNumber}
+          onChangeText={setPanNumber}
+          placeholder="Enter PAN number (e.g., AWXPV7865F)"
+          maxLength={10}
+          placeholderTextColor="#999"
+        />
+        {errors.panNumber && <Text style={styles.errorText}>{errors.panNumber}</Text>}
+      </View>
       <View style={styles.uploadContainer}>
         <Text style={styles.label}>Upload Aadhaar ID Proof</Text>
         <TouchableOpacity style={styles.uploadBox} onPress={handleAadhaarUpload}>
@@ -49,7 +245,7 @@ const KYCDetailsScreen = () => {
           <Text style={styles.uploadText}>Drag & drop or click to upload</Text>
           <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
         </TouchableOpacity>
-        {aadhaarUploaded && <Text style={styles.successText}>Aadhaar uploaded successfully!</Text>}
+        {aadhaarImage && <Text style={styles.successText}>Aadhaar uploaded successfully!</Text>}
       </View>
 
       <View style={styles.uploadContainer}>
@@ -59,7 +255,7 @@ const KYCDetailsScreen = () => {
           <Text style={styles.uploadPanText}>Drag & drop or click to upload</Text>
           <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
         </TouchableOpacity>
-        {pancardUploaded && <Text style={styles.successText}>Pancard uploaded successfully!</Text>}
+        {panImage && <Text style={styles.successText}>Pancard uploaded successfully!</Text>}
       </View>
 
       <View style={styles.termsContainer}>
@@ -94,7 +290,7 @@ const styles = StyleSheet.create({
     color: '#000',
     textAlign: 'center',
   },
-  uploadContainer: {
+  inputContainer: {
     marginBottom: 20,
   },
   label: {
@@ -102,6 +298,29 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#000',
   },
+  input: {
+    width: '100%',
+    height: 40,
+    borderColor: '#CCC',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    backgroundColor: '#F9F9F9',
+    color: '#333',
+  },
+  errorInput: {
+    borderColor: 'red',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginBottom: 10,
+  },
+  uploadContainer: {
+    marginBottom: 20,
+  },
+ 
   uploadBox: {
     borderWidth: 2,
     borderColor: '#00bfff',

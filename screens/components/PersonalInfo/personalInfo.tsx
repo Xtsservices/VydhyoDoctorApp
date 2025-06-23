@@ -60,6 +60,14 @@ const PersonalInfoScreen: React.FC = () => {
   });
   const navigation = useNavigation<any>(); // Adjust type as needed for your navigation prop
 
+  //calcuate minimum date(20 years ago)
+  const getMinDate = () => {
+    const today = new Date();
+    const minDate = new Date(today.setFullYear(today.getFullYear() - 20));
+    return minDate;
+  };
+
+
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
@@ -156,8 +164,14 @@ const PersonalInfoScreen: React.FC = () => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Please enter a valid email address';
     if (!formData.gender) newErrors.gender = 'Gender is required';
-    if (!formData.dateOfBirth)
+  if (!formData.dateOfBirth)
       newErrors.dateOfBirth = 'Date of Birth is required';
+    else {
+      const minDate = getMinDate();
+      if (formData.dateOfBirth > minDate) {
+        newErrors.dateOfBirth = 'You must be at least 20 years old';
+      }
+    }
     if (formData.spokenLanguages.length === 0)
       newErrors.spokenLanguages = 'At least one language is required';
     if (!formData.appLanguage)
