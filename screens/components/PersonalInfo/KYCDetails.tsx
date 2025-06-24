@@ -11,6 +11,8 @@ const { width, height } = Dimensions.get('window');
 const KYCDetailsScreen = () => {
  const [aadhaarImage, setAadhaarImage] = useState<{ uri: string } | null>(null);
   const [panImage, setPanImage] = useState<{ uri: string } | null>(null);
+  const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
+  const [pancardUploaded, setPancardUploaded] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
   const [pancardUploaded, setPancardUploaded] = useState(false);
