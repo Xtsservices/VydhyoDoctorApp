@@ -200,11 +200,12 @@ const ConsultationPreferences = () => {
       <TouchableOpacity
         style={[styles.nextButton, !isFormValid() && styles.disabledButton]}
         disabled={!isFormValid()}
-        onPress={() => {
-          setTimeout(() => {
-            navigation.navigate("FinancialSetupScreen");
-          }, 3000);
-        }}
+        onPress={handleNext}
+        // onPress={() => {
+        //   setTimeout(() => {
+        //     navigation.navigate("FinancialSetupScreen");
+        //   }, 3000);
+        // }}
       >
         <Text style={styles.nextText}>Next</Text>
       </TouchableOpacity>

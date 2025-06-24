@@ -3,6 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Dimens
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
 const { width, height } = Dimensions.get('window');
 
@@ -71,7 +74,7 @@ const FinancialSetupScreen = () => {
     }
 
     // IFSC code validation
-    if (!ifscCode || !/^[A-Za-z]{4}0[A-Z0-9a-z]{6}$/.test(ifscCode)) {
+    if (!ifscCode || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
       tempErrors.ifscCode = 'Invalid IFSC code';
     }
 
@@ -79,16 +82,84 @@ const FinancialSetupScreen = () => {
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    navigation.navigate('KYCDetailsScreen');
+  const handleSubmit = async() => {
     if (validateForm()) {
-    navigation.navigate('KYCDetailsScreen');
+    try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) {
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Authentication token not found',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+          return;
+        }
+
+        const body = {
+          bankDetails: {
+            accountNumber,
+            ifscCode,
+            bankName: bank,
+            accountHolderName,
+          },
+        };
+
+        console.log('Form data to send:', body);
+
+        const response = await axios.post(
+          'http://216.10.251.239:3000/users/updateBankDetails',
+          body,
+          {
+            headers: {
+               'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log('Response from updateBankDetails:', response);
+
+        if (response.status === 200) {
+          Toast.show({
+            type: 'success',
+            text1: 'Success',
+            text2: 'Bank details updated successfully',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+           navigation.navigate('KYCDetailsScreen' as never)
+          // Navigate to KYCDetailsScreen with userId
+          // navigation.navigate('KYCDetailsScreen', { userId });
+        } else {
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2:
+              response.data && response.data.message
+                ? response.data.message
+                : 'Failed to update bank details',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+        }
+      } catch (error) {
+        console.error('Error updating bank details:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Network error. Please try again.',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
     }
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
+  
 
   return (
     <View style={styles.container}>
@@ -171,6 +242,17 @@ const FinancialSetupScreen = () => {
             maxLength={11}
           />
           {errors.ifscCode && <Text style={styles.errorText}>{errors.ifscCode}</Text>}
+
+          <Text style={styles.label}>Account Holder Name</Text>
+        <TextInput
+          style={[styles.input, errors.accountHolderName && styles.errorInput]}
+          value={accountHolderName}
+          onChangeText={setAccountHolderName}
+          placeholder="Enter account holder name"
+          placeholderTextColor="#999"
+        />
+        {errors.accountHolderName && <Text style={styles.errorText}>{errors.accountHolderName}</Text>}
+
         </View>
 
         {/* Spacer to ensure content is not hidden by the Next button */}

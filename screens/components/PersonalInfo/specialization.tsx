@@ -7,6 +7,7 @@ import { pick, types } from '@react-native-documents/picker';
 import AsyncStorage  from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import { useSelector } from 'react-redux';
 
 interface SpecializationDetailsProps {
   route: { params: { userId: string } };
@@ -20,7 +21,9 @@ type NavigationProp = {
 const { width, height } = Dimensions.get('window');
 
 const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
-  const { userId } = route.params;
+  const userId = useSelector((state: any) => state.currentUserID);
+
+  // const { userId } = route.params;
   console.log('Received userId:', userId);
 
   const [formData, setFormData] = useState({
@@ -74,51 +77,47 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
   };
 
   const handleNext = async () => {
-    setTimeout(() => {
+    // setTimeout(() => {
       
-      navigation.navigate('Practice');
-    }, 3000);
+    //   navigation.navigate('Practice');
+    // }, 3000);
 
     if (!validateForm()) return;
 
     const token = await AsyncStorage.getItem('authToken');
-    console.log('Token:=========', token);
-    const formDataObj = new FormData();
-
-    formDataObj.append('id', userId);
-    formDataObj.append('name', formData.specialization);
-    formDataObj.append('experience', formData.yearsExperience);
-
-    if (formData.degrees) {
-      formDataObj.append('drgreeCertificate', {
-        uri: Platform.OS === 'android'
-          ? formData.degrees.uri
-          : formData.degrees.uri.replace('file://', ''),
-        type: formData.degrees.type || 'application/pdf',
-        name: formData.degrees.name || 'degree.pdf',
-      });
-    }
-
-    if (formData.certifications) {
-      formDataObj.append('specializationCertificate', {
-        uri: Platform.OS === 'android'
-          ? formData.certifications.uri
-          : formData.certifications.uri.replace('file://', ''),
-        type: formData.certifications.type || 'application/pdf',
-        name: formData.certifications.name || 'certification.pdf',
-      });
-    }
+ 
 
     try {
       setIsLoading(true);
-      console.log('API response:', 100);
 
+         const formDataObj = new FormData();
+      formDataObj.append('id', userId);
+      formDataObj.append('name', formData.specialization);
+      formDataObj.append('experience', formData.yearsExperience);
+
+      if (formData.degrees) {
+        formDataObj.append('drgreeCertificate', {
+          uri: Platform.OS === 'android' ? formData.degrees.uri : formData.degrees.uri.replace('file://', ''),
+          type: formData.degrees.type || 'application/pdf',
+          name: formData.degrees.name || 'degree.pdf',
+        } as any);
+      }
+
+      if (formData.certifications) {
+        formDataObj.append('specializationCertificate', {
+          uri: Platform.OS === 'android' ? formData.certifications.uri : formData.certifications.uri.replace('file://', ''),
+          type: formData.certifications.type || 'application/pdf',
+          name: formData.certifications.name || 'certification.pdf',
+        } as any);
+      }
+console.log('Form data to be sent:', formDataObj);
       const response = await axios.post(
         'http://192.168.1.42:3000/users/updateSpecialization',
         formDataObj,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
           },
         }
       );
@@ -131,13 +130,23 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
         position: 'top',
         visibilityTime: 3000,
       });
-      navigation.navigate('Practice');
+      console.log('API response:', 100);
+
+    
+
+      console.log('API response:', response.data);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Specialization details updated successfully!',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      // navigation.navigate('Practice');
     } catch (err) {
       console.error('API error:', err);
       Alert.alert('Error', 'Failed to update specialization details.');
-    } finally {
-      setIsLoading(false);
-    }
+    } 
   };
 
   const handleBack = () => {
