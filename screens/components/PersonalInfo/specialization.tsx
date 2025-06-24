@@ -82,6 +82,7 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
     if (!validateForm()) return;
 
     const token = await AsyncStorage.getItem('authToken');
+    console.log('Token:=========', token);
     const formDataObj = new FormData();
 
     formDataObj.append('id', userId);
@@ -113,7 +114,7 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
       console.log('API response:', 100);
 
       const response = await axios.post(
-        'http://192.168.1.42:4002/users/updateSpecialization',
+        'http://192.168.1.42:3000/users/updateSpecialization',
         formDataObj,
         {
           headers: {

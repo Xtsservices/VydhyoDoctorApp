@@ -1,35 +1,150 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
+import { pick, types } from '@react-native-documents/picker';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
-const aadhar_icon = require('../../assets/aadhar.png');
+const voter_icon = require('../../assets/aadhar.png'); // Update with actual voter ID icon if available
 const pancard_icon = require('../../assets/pan.png');
 
 const { width, height } = Dimensions.get('window');
 
 const KYCDetailsScreen = () => {
- const [aadhaarImage, setAadhaarImage] = useState<{ uri: string } | null>(null);
-  const [panImage, setPanImage] = useState<{ uri: string } | null>(null);
-  const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
+  const [voterImage, setVoterImage] = useState<{ uri: string, name: string } | null>(null);
+  const [panImage, setPanImage] = useState<{ uri: string, name: string } | null>(null);
+  const [voterUploaded, setVoterUploaded] = useState(false);
   const [pancardUploaded, setPancardUploaded] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [voterNumber, setVoterNumber] = useState('');
+  const [panNumber, setPanNumber] = useState('');
   const navigation = useNavigation<any>();
 
-  const handleAadhaarUpload = () => {
-    setAadhaarUploaded(true);
+  const handleVoterUpload = async () => {
+    try {
+      const [result] = await pick({
+        mode: 'open',
+        type: [types.pdf, types.images],
+      });
+      if (result.uri && result.name) {
+        setVoterImage({ uri: result.uri, name: result.name });
+        setVoterUploaded(true);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick Voter ID document. Please try again.');
+      console.error('Voter ID upload error:', error);
+    }
   };
 
-  const handlePancardUpload = () => {
-    setPancardUploaded(true);
+  const handlePancardUpload = async () => {
+    try {
+      const [result] = await pick({
+        mode: 'open',
+        type: [types.pdf, types.images],
+      });
+      if (result.uri && result.name) {
+        setPanImage({ uri: result.uri, name: result.name });
+        setPancardUploaded(true);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick Pancard document. Please try again.');
+      console.error('Pancard upload error:', error);
+    }
   };
 
-  const handleNext = () => {
-    if (!aadhaarUploaded || !pancardUploaded || !termsAccepted) {
-      Alert.alert('Error', 'Please upload both Aadhaar and Pancard proofs and accept the Terms & Conditions.');
+  const validateVoterNumber = (number: string) => {
+    // Assuming Voter ID is 10 characters (e.g., ABC1234567)
+    const voterRegex = /^[A-Z]{3}[0-9]{7}$/;
+    return voterRegex.test(number);
+  };
+
+  const validatePanNumber = (number: string) => {
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    return panRegex.test(number);
+  };
+
+  const handleNext = async () => {
+    if (!voterUploaded) {
+      Alert.alert('Error', 'Please upload Voter ID document.');
       return;
     }
-    navigation.navigate('ConfirmationScreen');
+    if (!pancardUploaded) {
+      Alert.alert('Error', 'Please upload Pancard document.');
+      return;
+    }
+    if (!voterNumber || !validateVoterNumber(voterNumber)) {
+      Alert.alert('Error', 'Please enter a valid 10-character Voter ID number (e.g., ABC1234567).');
+      return;
+    }
+    if (!panNumber || !validatePanNumber(panNumber)) {
+      Alert.alert('Error', 'Please enter a valid 10-character PAN number (e.g., ABCDE1234F).');
+      return;
+    }
+    if (!termsAccepted) {
+      Alert.alert('Error', 'Please accept the Terms & Conditions.');
+      return;
+    }
+
+    // Prepare FormData for Axios POST request
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const userId = await AsyncStorage.getItem('userId');
+      console.log("userId", userId)
+      if (!token) {
+        Alert.alert('Error', 'Authentication token is missing. Please log in again.');
+        return;
+      }
+      if (!userId) {
+        Alert.alert('Error', 'User ID is missing. Please log in again.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('userId', userId);
+      formData.append('voterNumber', voterNumber);
+      formData.append('panNumber', panNumber);
+      if (voterImage?.uri) {
+        formData.append('voterFile', {
+          uri: voterImage.uri,
+          name: voterImage.name,
+          type: voterImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+        } as any);
+      }
+      if (panImage?.uri) {
+        formData.append('panFile', {
+          uri: panImage.uri,
+          name: panImage.name,
+          type: panImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+        } as any);
+      }
+
+      console.log('Submitting KYC data: addKYCDetails', formData);
+      const response = await axios.post('http://192.168.1.42:4002/users/addKYCDetails', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('KYC submission response:', response.data);
+      if (response.data.status === 'success') {
+
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Profile updated successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        setTimeout(() => {
+          navigation.navigate('ConfirmationScreen');
+        }, 2000);
+      } 
+    } catch (error) {
+      Alert.alert('Error', 'Failed to submit KYC details. Please try again.');
+      console.error('KYC submission error:', error);
+    }
   };
 
   const handleBack = () => {
@@ -49,21 +164,51 @@ const KYCDetailsScreen = () => {
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
-          <Text style={styles.label}>Upload Aadhaar ID Proof</Text>
-          <TouchableOpacity style={styles.uploadBox} onPress={handleAadhaarUpload}>
+          <Text style={styles.label}>Upload Voter ID Proof</Text>
+          <TouchableOpacity style={styles.uploadBox} onPress={handleVoterUpload}>
             <Icon name="card-account-details" size={width * 0.08} color="#00796B" style={styles.icon} />
-            <Text style={styles.uploadText}>Drag & drop or click to upload</Text>
+            <Text style={styles.uploadText}>Upload</Text>
             <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
           </TouchableOpacity>
-          {aadhaarUploaded && <Text style={styles.successText}>Aadhaar uploaded successfully!</Text>}
+          {voterUploaded && (
+            <Text style={styles.successText}>
+              File uploaded: {voterImage?.name || 'Voter ID uploaded successfully!'}
+            </Text>
+          )}
+
+          <Text style={styles.label}>Enter Voter ID Number *</Text>
+          <TextInput
+            style={styles.input}
+            value={voterNumber}
+            onChangeText={setVoterNumber}
+            placeholder="Enter 10-character Voter ID Number"
+            keyboardType="default"
+            maxLength={10}
+            autoCapitalize="characters"
+          />
 
           <Text style={styles.label}>Upload Pancard Proof</Text>
           <TouchableOpacity style={styles.uploadBox} onPress={handlePancardUpload}>
             <Icon name="card" size={width * 0.08} color="#00796B" style={styles.icon} />
-            <Text style={styles.uploadText}>Drag & drop or click to upload</Text>
+            <Text style={styles.uploadText}>Upload</Text>
             <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
           </TouchableOpacity>
-          {pancardUploaded && <Text style={styles.successText}>Pancard uploaded successfully!</Text>}
+          {pancardUploaded && (
+            <Text style={styles.successText}>
+              File uploaded: {panImage?.name || 'Pancard uploaded successfully!'}
+            </Text>
+          )}
+
+          <Text style={styles.label}>Enter PAN Number *</Text>
+          <TextInput
+            style={styles.input}
+            value={panNumber}
+            onChangeText={setPanNumber}
+            placeholder="Enter 10-character PAN Number"
+            keyboardType="default"
+            maxLength={10}
+            autoCapitalize="characters"
+          />
 
           <View style={styles.termsContainer}>
             <TouchableOpacity onPress={() => setTermsAccepted(!termsAccepted)}>
@@ -135,7 +280,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#000',
   },
- 
+  input: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: width * 0.03,
+    fontSize: width * 0.035,
+    marginBottom: height * 0.02,
+    color: '#333',
+  },
   uploadBox: {
     borderWidth: 2,
     borderColor: '#E0E0E0',
