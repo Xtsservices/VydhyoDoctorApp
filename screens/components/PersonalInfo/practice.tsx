@@ -44,8 +44,8 @@ const PracticeScreen = () => {
     if (!timeStr) return -1;
     const [time, period] = timeStr.split(' ');
     let [hours, minutes] = time.split(':').map(Number);
-    if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-    if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+    if (period?.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+    if (period?.toLowerCase() === 'am' && hours === 12) hours = 0;
     return hours * 60 + minutes;
   };
 

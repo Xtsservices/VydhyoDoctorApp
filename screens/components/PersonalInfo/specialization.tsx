@@ -62,7 +62,7 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
         type: [types.allFiles],
       });
       setFormData({ ...formData, [field]: result });
-      Alert.alert('Success', `File "${result.name}" selected for ${field}.`);
+      // Alert.alert('Success', `File "${result.name}" selected for ${field}.`);
     } catch (err) {
       if (err instanceof Error && err.message.includes('cancel')) {
         console.log('File selection cancelled');
@@ -113,7 +113,7 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
       console.log('API response:', 100);
 
       const response = await axios.post(
-        'http://216.10.251.239:3000/users/updateSpecialization',
+        'http://192.168.1.42:4002/users/updateSpecialization',
         formDataObj,
         {
           headers: {

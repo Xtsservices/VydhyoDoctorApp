@@ -12,6 +12,8 @@ const KYCDetailsScreen = () => {
  const [aadhaarImage, setAadhaarImage] = useState<{ uri: string } | null>(null);
   const [panImage, setPanImage] = useState<{ uri: string } | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [aadhaarUploaded, setAadhaarUploaded] = useState(false);
+  const [pancardUploaded, setPancardUploaded] = useState(false);
   const navigation = useNavigation<any>();
 
   const handleAadhaarUpload = () => {
