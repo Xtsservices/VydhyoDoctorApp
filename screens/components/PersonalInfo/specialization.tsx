@@ -77,10 +77,10 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
   };
 
   const handleNext = async () => {
-    // setTimeout(() => {
+    setTimeout(() => {
       
-    //   navigation.navigate('Practice');
-    // }, 3000);
+      navigation.navigate('Practice');
+    }, 3000);
 
     if (!validateForm()) return;
 

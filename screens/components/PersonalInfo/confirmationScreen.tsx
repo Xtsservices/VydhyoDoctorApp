@@ -107,9 +107,9 @@ console.log('User data fetched successfully:', response?.data?.data);
           phone: formattedPhone,
           specialization: userData.medicalRegistrationNumber || '',
           practice: userData.addresses.length > 0 ? userData.addresses[0] : '',
-          consultationPreferences: userData.consultationModeFee.length > 0 ? JSON.stringify(userData.consultationModeFee) : '',
+          consultationPreferences: userData.consultationModeFee.length > 0 ? JSON.stringify(userData.consultationModeFee?.map((mode: any) => mode.type).join(', ')) : '',
           bank: userData.bankDetails.bankName || '',
-          accountNumber: userData.bankDetails.accountNumber || '',
+          accountNumber: userData.bankDetails?.ifscCode  || '',
         });
 
       } catch (error: any) {
