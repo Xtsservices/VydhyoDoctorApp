@@ -226,7 +226,7 @@ const PersonalInfoScreen: React.FC = () => {
         console.log('Form data to send:', body);
 
         const response = await axios.put(
-          'http://216.10.251.239:3000/users/updateUser',
+          'http://192.168.1.42:3000/users/updateUser',
           body,
           {
             headers: {
@@ -247,6 +247,8 @@ const PersonalInfoScreen: React.FC = () => {
           });
           const userId = response.data.data.userId;
           dispatch({ type: 'currentUserID', payload: userId });
+          console.log('User ID from response:', userId);
+          AsyncStorage.setItem('userId',  userId)
           navigation.navigate('Specialization');
         } else {
           Toast.show({

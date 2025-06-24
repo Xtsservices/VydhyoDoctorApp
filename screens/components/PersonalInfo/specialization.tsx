@@ -112,7 +112,7 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
       }
 console.log('Form data to be sent:', formDataObj);
       const response = await axios.post(
-        'http://216.10.251.239:3000/users/updateSpecialization',
+        'http://192.168.1.42:3000/users/updateSpecialization',
         formDataObj,
         {
           headers: {

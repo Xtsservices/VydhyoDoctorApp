@@ -74,7 +74,7 @@ const ConsultationPreferences = () => {
       }
 
       const response = await axios.post(
-        'http://216.10.251.239:3000/users/updateConsultationModes',
+        'http://192.168.1.42:3000/users/updateConsultationModes',
         payload,
         {
           headers: {
