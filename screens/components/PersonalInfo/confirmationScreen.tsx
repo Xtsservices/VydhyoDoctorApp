@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, Dimensions, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import Toast from 'react-native-toast-message';
+import { useSelector } from 'react-redux';
 
 interface FormData {
   name: string;
@@ -17,6 +21,8 @@ interface FormData {
 const { width, height } = Dimensions.get('window');
 
 const ConfirmationScreen: React.FC = () => {
+  const userId = useSelector((state: any) => state.currentUserID);
+  console.log('Current User ID:', userId);
   const navigation = useNavigation<any>();
   const [formData, setFormData] = useState<FormData>({
     name: 'Dr. Karthik',
@@ -60,6 +66,61 @@ const ConfirmationScreen: React.FC = () => {
   const handleBack = () => {
     navigation.goBack();
   };
+
+    useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // Retrieve token from AsyncStorage
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) {
+          throw new Error('Authentication token not found');
+        }
+
+       
+      
+
+        // Make API call
+        const response = await axios.get('http://216.10.251.239:3000/users/getUser', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            userid: userId, // Include userId in headers
+          },
+          params: {
+            userId, // Include userId in query params as well
+          },
+        });
+console.log('User data fetched successfully:', response?.data?.data);
+        // Check if response status is success
+        if (response.data.status !== 'success') {
+          throw new Error(response.data.message || 'Failed to fetch user data');
+        }
+
+        const userData = response.data.data;
+
+        // Format phone number to match +XX XXX XXX XXXX
+        const rawMobile = userData.mobile || '';
+        const formattedPhone = rawMobile.length === 10 ? `+91 ${rawMobile.slice(0, 3)} ${rawMobile.slice(3, 6)} ${rawMobile.slice(6, 10)}` : '';
+
+        setFormData({
+          name: `${userData.firstname || ''} ${userData.lastname || ''}`.trim(),
+          email: userData.email || '',
+          phone: formattedPhone,
+          specialization: userData.medicalRegistrationNumber || '',
+          practice: userData.addresses.length > 0 ? userData.addresses[0] : '',
+          consultationPreferences: userData.consultationModeFee.length > 0 ? JSON.stringify(userData.consultationModeFee) : '',
+          bank: userData.bankDetails.bankName || '',
+          accountNumber: userData.bankDetails.accountNumber || '',
+        });
+
+      } catch (error: any) {
+        console.error('Error fetching user data:', error.message);
+      
+       
+      } 
+    };
+
+    fetchUserData();
+  }, []);
 
   return (
     <View style={styles.container}>
