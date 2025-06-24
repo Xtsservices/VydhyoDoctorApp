@@ -19,6 +19,7 @@
     "@react-navigation/native-stack": "^7.3.18",
     "@types/redux": "^3.6.31",
     "axios": "^1.10.0",
+    "expo-document-picker": "~10.3.0",
     "nanoid": "^5.1.5",
     "react": "19.1.0",
     "react-native": "0.80.0",
