@@ -169,7 +169,7 @@ const PersonalInfoScreen: React.FC = () => {
     else {
       const minDate = getMinDate();
       if (formData.dateOfBirth > minDate) {
-        newErrors.dateOfBirth = 'You must be at least 20 years old';
+        newErrors.dateOfBirth = 'You must be at least 25 years old';
       }
     }
     if (formData.spokenLanguages.length === 0)
@@ -187,7 +187,6 @@ const PersonalInfoScreen: React.FC = () => {
   };
 
   const handleNext = async () => {
-          navigation.navigate('Specialization', { userId:'10' });
 
     if (validateForm()) {
       try {
@@ -232,6 +231,7 @@ const PersonalInfoScreen: React.FC = () => {
           {
             headers: {
               Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
             },
           },
         );
@@ -247,7 +247,7 @@ const PersonalInfoScreen: React.FC = () => {
           });
           const userId = response.data.data.userId;
           dispatch({ type: 'currentUserID', payload: userId });
-          navigation.navigate('Specialization', { userId });
+          navigation.navigate('Specialization');
         } else {
           Toast.show({
             type: 'error',
@@ -259,6 +259,7 @@ const PersonalInfoScreen: React.FC = () => {
             position: 'top',
             visibilityTime: 3000,
           });
+          console.log('Error response from updateUser:', response);
         }
       } catch (error) {
         console.error('Error updating profile:', error);

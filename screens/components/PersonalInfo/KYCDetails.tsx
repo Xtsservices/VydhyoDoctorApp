@@ -25,10 +25,10 @@ const KYCDetailsScreen = () => {
   };
 
   const handleNext = () => {
-    if (!aadhaarUploaded || !pancardUploaded || !termsAccepted) {
-      Alert.alert('Error', 'Please upload both Aadhaar and Pancard proofs and accept the Terms & Conditions.');
-      return;
-    }
+    // if (!aadhaarUploaded || !pancardUploaded || !termsAccepted) {
+    //   Alert.alert('Error', 'Please upload both Aadhaar and Pancard proofs and accept the Terms & Conditions.');
+    //   return;
+    // }
     navigation.navigate('ConfirmationScreen');
   };
 
