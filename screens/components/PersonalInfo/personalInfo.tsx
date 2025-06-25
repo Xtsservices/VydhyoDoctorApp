@@ -428,7 +428,7 @@ const PersonalInfoScreen: React.FC = () => {
           />
         )}
 
-        <Text style={styles.label}>App Language</Text>
+        {/* <Text style={styles.label}>App Language</Text>
         <View style={styles.input}>
           <Picker
             selectedValue={formData.appLanguage}
@@ -448,7 +448,7 @@ const PersonalInfoScreen: React.FC = () => {
         </View>
         {errors.appLanguage ? (
           <Text style={styles.errorText}>{errors.appLanguage}</Text>
-        ) : null}
+        ) : null} */}
 
         <Text style={styles.label}>Relationship</Text>
         <View style={styles.input}>

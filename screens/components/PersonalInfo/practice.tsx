@@ -77,10 +77,10 @@ const PracticeScreen = () => {
       Alert.alert('Error', 'End time must be after Start time');
       return;
     }
-    // setTimeout(() => {
+    setTimeout(() => {
       
-    //   navigation.navigate('ConsultationPreferences');
-    // }, 3000);
+      navigation.navigate('ConsultationPreferences');
+    }, 3000);
 
   };
 
