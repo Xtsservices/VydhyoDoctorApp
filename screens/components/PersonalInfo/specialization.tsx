@@ -4,7 +4,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { pick, types } from '@react-native-documents/picker';
-import AsyncStorage  from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
@@ -64,6 +64,16 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
         mode: 'open',
         type: [types.allFiles],
       });
+
+      // Check file size (<= 15 MB)
+      // result.size is in bytes
+      const maxSize = 15 * 1024 * 1024; // 15 MB in bytes
+      console.log("result.size",result.size)
+      if (result.size && result.size > maxSize) {
+        Alert.alert('File Too Large', 'Please select a file smaller than 15 MB.');
+        return;
+      }
+
       setFormData({ ...formData, [field]: result });
       // Alert.alert('Success', `File "${result.name}" selected for ${field}.`);
     } catch (err) {
@@ -77,20 +87,16 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
   };
 
   const handleNext = async () => {
-    setTimeout(() => {
-      
-      navigation.navigate('Practice');
-    }, 3000);
 
     if (!validateForm()) return;
 
     const token = await AsyncStorage.getItem('authToken');
- 
+
 
     try {
-      setIsLoading(true);
+      // setIsLoading(true);
 
-         const formDataObj = new FormData();
+      const formDataObj = new FormData();
       formDataObj.append('id', userId);
       formDataObj.append('name', formData.specialization);
       formDataObj.append('experience', formData.yearsExperience);
@@ -110,7 +116,7 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
           name: formData.certifications.name || 'certification.pdf',
         } as any);
       }
-console.log('Form data to be sent:', formDataObj);
+      console.log('Form data to be sent:', formDataObj);
       const response = await axios.post(
         'http://192.168.1.42:3000/users/updateSpecialization',
         formDataObj,
@@ -130,23 +136,12 @@ console.log('Form data to be sent:', formDataObj);
         position: 'top',
         visibilityTime: 3000,
       });
-      console.log('API response:', 100);
 
-    
-
-      console.log('API response:', response.data);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Specialization details updated successfully!',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      // navigation.navigate('Practice');
+      navigation.navigate('Practice');
     } catch (err) {
       console.error('API error:', err);
       Alert.alert('Error', 'Failed to update specialization details.');
-    } 
+    }
   };
 
   const handleBack = () => {

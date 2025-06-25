@@ -121,7 +121,7 @@ const KYCDetailsScreen = () => {
       }
 
       console.log('Submitting KYC data: addKYCDetails', formData);
-      const response = await axios.post('http://192.168.1.42:4002/users/addKYCDetails', formData, {
+      const response = await axios.post('http://192.168.1.42:3000/users/addKYCDetails', formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
