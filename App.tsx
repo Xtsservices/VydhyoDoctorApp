@@ -1,16 +1,12 @@
-
-
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Routing from './screens/Routing/routing';
 import Toast from 'react-native-toast-message';
 
 function App() {
-  
-
   return (
     <View style={styles.container}>
-    <Routing/>
-    <Toast/>
+      <Routing />
+      <Toast />
     </View>
   );
 }

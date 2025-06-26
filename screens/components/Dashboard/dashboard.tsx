@@ -1,10 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import Sidebar from '../Sidebar';
+import Header from '../Header';
+import VerificationScreen from '../VerificationScreen';
+import Footer from '../Footer';
+// import Sidebar from './Sidebar';
+// import Header from './Header';
+// import Footer from './Footer';
+// import VerificationScreen from './VerificationScreen';
 
-const Dashboard: React.FC = () => {
+const Dashboard = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Hello Dashboard</Text>
+      <Sidebar />
+      <View style={styles.mainContent}>
+        <Header />
+        <VerificationScreen />
+        <Footer />
+      </View>
     </View>
   );
 };
@@ -12,14 +25,11 @@ const Dashboard: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5', // light gray background
+    flexDirection: 'row',
   },
-  text: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#333',
+  mainContent: {
+    flex: 1,
+    marginLeft: 60, // Adjust based on sidebar width
   },
 });
 

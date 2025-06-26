@@ -9,4 +9,7 @@ export type RootStackParamList = {
   KYCDetailsScreen: undefined;
   ConfirmationScreen: undefined;
   ProfileReview: undefined;
+  VerificationScreen: undefined;
+  Dashboard: undefined; // Assuming you have a Dashboard screen
+  Profile: undefined; // Assuming you have a Profile screen
 };

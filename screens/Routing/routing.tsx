@@ -12,6 +12,8 @@ import FinancialSetupScreen from "../components/PersonalInfo/financialSetup";
 import KYCDetailsScreen from "../components/PersonalInfo/KYCDetails";
 import ConfirmationScreen from "../components/PersonalInfo/confirmationScreen";
 import ProfileReview from "../components/PersonalInfo/profileReview";
+import VerificationScreen from "../components/VerificationScreen";
+import Dashboard from "../components/Dashboard/dashboard";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -29,6 +31,8 @@ const Routing = () => {
         <Stack.Screen name="KYCDetailsScreen" component={KYCDetailsScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="ConfirmationScreen" component={ConfirmationScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="ProfileReview" component={ProfileReview} options={{ headerShown: false }}/>
+        <Stack.Screen name="VerificationScreen" component={VerificationScreen} options={{ headerShown: false }}/>
+        <Stack.Screen name="Dashboard" component={Dashboard} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );
