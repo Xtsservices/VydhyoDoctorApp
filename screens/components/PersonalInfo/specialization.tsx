@@ -77,10 +77,6 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
   };
 
   const handleNext = async () => {
-    setTimeout(() => {
-      
-      navigation.navigate('Practice');
-    }, 3000);
 
     if (!validateForm()) return;
 
@@ -134,15 +130,9 @@ console.log('Form data to be sent:', formDataObj);
 
     
 
-      console.log('API response:', response.data);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Specialization details updated successfully!',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      // navigation.navigate('Practice');
+           setIsLoading(false);
+
+      navigation.navigate('Practice');
     } catch (err) {
       console.error('API error:', err);
       Alert.alert('Error', 'Failed to update specialization details.');
