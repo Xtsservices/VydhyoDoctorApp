@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,8 @@ import { PersonalInfo } from '../../utility/formTypes';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
-import { UploadFiles } from '../../auth/auth';
 import axios from 'axios';
+import LoadingScreen from '../../utility/LoadingScreen';
 
 // Placeholder image for profile photo
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); // Replace with your asset path
@@ -44,6 +44,8 @@ const PersonalInfoScreen: React.FC = () => {
     maritalStatus: 'single',
   });
   const [newLanguage, setNewLanguage] = useState('');
+  const [loading, setLoading] = useState(true);
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState({
     firstName: '',
@@ -66,7 +68,6 @@ const PersonalInfoScreen: React.FC = () => {
     const minDate = new Date(today.setFullYear(today.getFullYear() - 20));
     return minDate;
   };
-
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -164,7 +165,7 @@ const PersonalInfoScreen: React.FC = () => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Please enter a valid email address';
     if (!formData.gender) newErrors.gender = 'Gender is required';
-  if (!formData.dateOfBirth)
+    if (!formData.dateOfBirth)
       newErrors.dateOfBirth = 'Date of Birth is required';
     else {
       const minDate = getMinDate();
@@ -187,10 +188,11 @@ const PersonalInfoScreen: React.FC = () => {
   };
 
   const handleNext = async () => {
-
+    setLoading(true);
     if (validateForm()) {
       try {
         const token = await AsyncStorage.getItem('authToken');
+        console.log('Token from AsyncStorage:================', token);
         if (!token) {
           Toast.show({
             type: 'error',
@@ -248,9 +250,14 @@ const PersonalInfoScreen: React.FC = () => {
           const userId = response.data.data.userId;
           dispatch({ type: 'currentUserID', payload: userId });
           console.log('User ID from response:', userId);
-          AsyncStorage.setItem('userId',  userId)
+          setLoading(false);
+
+          AsyncStorage.setItem('userId', userId);
+          AsyncStorage.setItem('stepNo', '2');
           navigation.navigate('Specialization');
         } else {
+          setLoading(false);
+
           Toast.show({
             type: 'error',
             text1: 'Error',
@@ -265,6 +272,8 @@ const PersonalInfoScreen: React.FC = () => {
         }
       } catch (error) {
         console.error('Error updating profile:', error);
+        setLoading(false);
+
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -279,6 +288,16 @@ const PersonalInfoScreen: React.FC = () => {
   const handleBack = () => {
     navigation.goBack();
   };
+
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+  }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <View style={styles.container}>
@@ -295,7 +314,10 @@ const PersonalInfoScreen: React.FC = () => {
         <View style={styles.photoContainer}>
           <TouchableOpacity onPress={handleImagePick}>
             <View style={styles.profilePhotoWrapper}>
-              <Image source={formData.profilePhoto} style={styles.profilePhoto} />
+              <Image
+                source={formData.profilePhoto}
+                style={styles.profilePhoto}
+              />
               <Icon
                 name="camera"
                 size={20}
@@ -478,7 +500,10 @@ const PersonalInfoScreen: React.FC = () => {
           <Picker
             selectedValue={formData.bloodGroup}
             onValueChange={itemValue => {
-              setFormData(prev => ({ ...prev, bloodGroup: itemValue as string }));
+              setFormData(prev => ({
+                ...prev,
+                bloodGroup: itemValue as string,
+              }));
               setErrors(prev => ({ ...prev, bloodGroup: '' }));
             }}
             style={styles.picker}

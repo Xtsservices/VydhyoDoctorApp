@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import LoadingScreen from '../../utility/LoadingScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,9 +47,11 @@ const FinancialSetupScreen = () => {
     { name: 'Bank of India (BOI)', accountLength: 15 },
   ];
 
+  const [loading, setLoading] = useState(true);
+
   const validateForm = () => {
     let tempErrors: { [key: string]: string } = {};
-    
+
     // Bank validation
     if (!bank) {
       tempErrors.bank = 'Please select a bank';
@@ -50,7 +61,7 @@ const FinancialSetupScreen = () => {
     if (!accountNumber) {
       tempErrors.accountNumber = 'Account number is required';
     } else {
-      const selectedBank = banks.find((b) => b.name === bank);
+      const selectedBank = banks.find(b => b.name === bank);
       if (selectedBank) {
         const validLength = Array.isArray(selectedBank.accountLength)
           ? selectedBank.accountLength.includes(accountNumber.length)
@@ -64,7 +75,8 @@ const FinancialSetupScreen = () => {
           tempErrors.accountNumber = 'Account number must contain only digits';
         }
       } else if (accountNumber.length < 9 || accountNumber.length > 18) {
-        tempErrors.accountNumber = 'Account number must be between 9 and 18 digits';
+        tempErrors.accountNumber =
+          'Account number must be between 9 and 18 digits';
       }
     }
 
@@ -82,9 +94,9 @@ const FinancialSetupScreen = () => {
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = async() => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-    try {
+      try {
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
           Toast.show({
@@ -113,10 +125,10 @@ const FinancialSetupScreen = () => {
           body,
           {
             headers: {
-               'Content-Type': 'application/json',
+              'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
         console.log('Response from updateBankDetails:', response);
 
@@ -128,7 +140,9 @@ const FinancialSetupScreen = () => {
             position: 'top',
             visibilityTime: 3000,
           });
-           navigation.navigate('KYCDetailsScreen' as never)
+          AsyncStorage.setItem('stepNo', '6');
+
+          navigation.navigate('KYCDetailsScreen' as never);
           // Navigate to KYCDetailsScreen with userId
           // navigation.navigate('KYCDetailsScreen', { userId });
         } else {
@@ -159,7 +173,16 @@ const FinancialSetupScreen = () => {
   const handleBack = () => {
     navigation.goBack();
   };
-  
+
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+  }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <View style={styles.container}>
@@ -174,24 +197,31 @@ const FinancialSetupScreen = () => {
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
-          <Icon name="bank" size={width * 0.08} color="#00796B" style={styles.icon} />
+          <Icon
+            name="bank"
+            size={width * 0.08}
+            color="#00796B"
+            style={styles.icon}
+          />
           <Text style={styles.title}>Add Bank Details</Text>
-          <Text style={styles.subtitle}>Please enter your bank account details to proceed.</Text>
+          <Text style={styles.subtitle}>
+            Please enter your bank account details to proceed.
+          </Text>
 
           <Text style={styles.label}>Select Bank</Text>
           <View style={[styles.input, errors.bank && styles.errorInput]}>
             <Picker
               selectedValue={bank}
-              onValueChange={(itemValue) => {
+              onValueChange={itemValue => {
                 setBank(itemValue);
-                setErrors((prev) => ({ ...prev, bank: '' }));
+                setErrors(prev => ({ ...prev, bank: '' }));
               }}
               style={styles.picker}
               mode="dropdown"
               dropdownIconColor="#333"
             >
               <Picker.Item label="Select your bank" value="" />
-              {banks.map((b) => (
+              {banks.map(b => (
                 <Picker.Item key={b.name} label={b.name} value={b.name} />
               ))}
             </Picker>
@@ -202,57 +232,70 @@ const FinancialSetupScreen = () => {
           <TextInput
             style={[styles.input, errors.accountNumber && styles.errorInput]}
             value={accountNumber}
-            onChangeText={(text) => {
+            onChangeText={text => {
               setAccountNumber(text);
-              setErrors((prev) => ({ ...prev, accountNumber: '' }));
+              setErrors(prev => ({ ...prev, accountNumber: '' }));
             }}
             placeholder="Enter account number"
             keyboardType="numeric"
             placeholderTextColor="#999"
             maxLength={18}
           />
-          {errors.accountNumber && <Text style={styles.errorText}>{errors.accountNumber}</Text>}
+          {errors.accountNumber && (
+            <Text style={styles.errorText}>{errors.accountNumber}</Text>
+          )}
 
           <Text style={styles.label}>Re-enter Account Number</Text>
           <TextInput
-            style={[styles.input, errors.reenterAccountNumber && styles.errorInput]}
+            style={[
+              styles.input,
+              errors.reenterAccountNumber && styles.errorInput,
+            ]}
             value={reenterAccountNumber}
-            onChangeText={(text) => {
+            onChangeText={text => {
               setReenterAccountNumber(text);
-              setErrors((prev) => ({ ...prev, reenterAccountNumber: '' }));
+              setErrors(prev => ({ ...prev, reenterAccountNumber: '' }));
             }}
             placeholder="Re-enter account number"
             keyboardType="numeric"
             placeholderTextColor="#999"
             maxLength={18}
           />
-          {errors.reenterAccountNumber && <Text style={styles.errorText}>{errors.reenterAccountNumber}</Text>}
+          {errors.reenterAccountNumber && (
+            <Text style={styles.errorText}>{errors.reenterAccountNumber}</Text>
+          )}
 
           <Text style={styles.label}>IFSC Code</Text>
           <TextInput
             style={[styles.input, errors.ifscCode && styles.errorInput]}
             value={ifscCode}
-            onChangeText={(text) => {
+            onChangeText={text => {
               setIfscCode(text.toUpperCase());
-              setErrors((prev) => ({ ...prev, ifscCode: '' }));
+              setErrors(prev => ({ ...prev, ifscCode: '' }));
             }}
             placeholder="Enter IFSC code"
             placeholderTextColor="#999"
             autoCapitalize="characters"
             maxLength={11}
           />
-          {errors.ifscCode && <Text style={styles.errorText}>{errors.ifscCode}</Text>}
+          {errors.ifscCode && (
+            <Text style={styles.errorText}>{errors.ifscCode}</Text>
+          )}
 
           <Text style={styles.label}>Account Holder Name</Text>
-        <TextInput
-          style={[styles.input, errors.accountHolderName && styles.errorInput]}
-          value={accountHolderName}
-          onChangeText={setAccountHolderName}
-          placeholder="Enter account holder name"
-          placeholderTextColor="#999"
-        />
-        {errors.accountHolderName && <Text style={styles.errorText}>{errors.accountHolderName}</Text>}
-
+          <TextInput
+            style={[
+              styles.input,
+              errors.accountHolderName && styles.errorInput,
+            ]}
+            value={accountHolderName}
+            onChangeText={setAccountHolderName}
+            placeholder="Enter account holder name"
+            placeholderTextColor="#999"
+          />
+          {errors.accountHolderName && (
+            <Text style={styles.errorText}>{errors.accountHolderName}</Text>
+          )}
         </View>
 
         {/* Spacer to ensure content is not hidden by the Next button */}

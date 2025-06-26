@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import LoadingScreen from '../../utility/LoadingScreen';
 
 interface Address {
   id: number;
@@ -19,24 +30,39 @@ const PracticeScreen = () => {
   const [opdAddresses, setOpdAddresses] = useState<Address[]>([
     { id: 1, address: '', startTime: '', endTime: '' },
   ]);
+  const [loading, setLoading] = useState(true);
+
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<
+    number | null
+  >(null);
 
   const handleAddAddress = () => {
-    setOpdAddresses([...opdAddresses, { id: opdAddresses.length + 1, address: '', startTime: '', endTime: '' }]);
+    setOpdAddresses([
+      ...opdAddresses,
+      { id: opdAddresses.length + 1, address: '', startTime: '', endTime: '' },
+    ]);
   };
 
   const handleRemoveAddress = (id: number) => {
-    setOpdAddresses(opdAddresses.filter((addr) => addr.id !== id));
+    setOpdAddresses(opdAddresses.filter(addr => addr.id !== id));
   };
 
-  const handleTimeChange = (event: any, selectedTime: Date | undefined, type: 'startTime' | 'endTime', index: number) => {
+  const handleTimeChange = (
+    event: any,
+    selectedTime: Date | undefined,
+    type: 'startTime' | 'endTime',
+    index: number,
+  ) => {
     const currentTime = selectedTime || new Date();
     setShowStartTimePicker(false);
     setShowEndTimePicker(false);
     const updatedAddresses = [...opdAddresses];
-    updatedAddresses[index][type] = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    updatedAddresses[index][type] = currentTime.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     setOpdAddresses(updatedAddresses);
   };
 
@@ -51,42 +77,56 @@ const PracticeScreen = () => {
 
   const handleNext = () => {
     setTimeout(() => {
-      
+      AsyncStorage.setItem('stepNo', '4');
+
       navigation.navigate('ConsultationPreferences');
     }, 3000);
-    
+
     if (!affiliation) {
       Alert.alert('Error', 'Please select a Clinic/Hospital Affiliation');
       return;
     }
 
     const hasInvalidAddress = opdAddresses.some(
-      (addr) => !addr.address || !addr.startTime || !addr.endTime
+      addr => !addr.address || !addr.startTime || !addr.endTime,
     );
     if (hasInvalidAddress) {
       Alert.alert('Error', 'Please fill all OPD Address fields and times');
       return;
     }
+    // after api success
+    AsyncStorage.setItem('stepNo', '3');
 
-    const hasInvalidTime = opdAddresses.some((addr) => {
+    const hasInvalidTime = opdAddresses.some(addr => {
       const startMinutes = parseTimeToMinutes(addr.startTime);
       const endMinutes = parseTimeToMinutes(addr.endTime);
-      return startMinutes >= endMinutes || startMinutes === -1 || endMinutes === -1;
+      return (
+        startMinutes >= endMinutes || startMinutes === -1 || endMinutes === -1
+      );
     });
     if (hasInvalidTime) {
       Alert.alert('Error', 'End time must be after Start time');
       return;
     }
     // setTimeout(() => {
-      
+
     //   navigation.navigate('ConsultationPreferences');
     // }, 3000);
-
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
+
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+  }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <View style={styles.container}>
@@ -102,20 +142,28 @@ const PracticeScreen = () => {
       <ScrollView style={styles.formContainer}>
         <Text style={styles.label}>Clinic/Hospital Affiliation</Text>
         <View style={styles.searchContainer}>
-          <Icon name="map-marker" size={width * 0.05} color="#00796B" style={styles.searchIcon} />
+          <Icon
+            name="map-marker"
+            size={width * 0.05}
+            color="#00796B"
+            style={styles.searchIcon}
+          />
           <TextInput
             style={styles.searchInput}
             placeholder="Search or select..."
             placeholderTextColor="#999"
             value={affiliation || ''}
-            onChangeText={(text) => setAffiliation(text)}
+            onChangeText={text => setAffiliation(text)}
           />
         </View>
 
         <View style={styles.addressSection}>
           <View style={styles.headerRow}>
             <Text style={styles.label}>OPD Address(es)</Text>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddAddress}
+            >
               <Text style={styles.addButtonText}>+ Add Location</Text>
             </TouchableOpacity>
           </View>
@@ -127,7 +175,7 @@ const PracticeScreen = () => {
                 placeholder="OPD Address"
                 placeholderTextColor="#999"
                 value={addr.address}
-                onChangeText={(text) => {
+                onChangeText={text => {
                   const updatedAddresses = [...opdAddresses];
                   updatedAddresses[index].address = text;
                   setOpdAddresses(updatedAddresses);
@@ -142,8 +190,15 @@ const PracticeScreen = () => {
                   }}
                 >
                   <View style={styles.timeButtonContent}>
-                    <Icon name="clock-outline" size={width * 0.045} color="#00796B" style={styles.clockIcon} />
-                    <Text style={styles.timeText}>Start Time: {addr.startTime || 'Select'}</Text>
+                    <Icon
+                      name="clock-outline"
+                      size={width * 0.045}
+                      color="#00796B"
+                      style={styles.clockIcon}
+                    />
+                    <Text style={styles.timeText}>
+                      Start Time: {addr.startTime || 'Select'}
+                    </Text>
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -154,8 +209,15 @@ const PracticeScreen = () => {
                   }}
                 >
                   <View style={styles.timeButtonContent}>
-                    <Icon name="clock-outline" size={width * 0.045} color="#00796B" style={styles.clockIcon} />
-                    <Text style={styles.timeText}>End Time: {addr.endTime || 'Select'}</Text>
+                    <Icon
+                      name="clock-outline"
+                      size={width * 0.045}
+                      color="#00796B"
+                      style={styles.clockIcon}
+                    />
+                    <Text style={styles.timeText}>
+                      End Time: {addr.endTime || 'Select'}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -164,7 +226,9 @@ const PracticeScreen = () => {
                   value={new Date()}
                   mode="time"
                   display="default"
-                  onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'startTime', index)}
+                  onChange={(event, selectedTime) =>
+                    handleTimeChange(event, selectedTime, 'startTime', index)
+                  }
                 />
               )}
               {showEndTimePicker && selectedAddressIndex === index && (
@@ -172,7 +236,9 @@ const PracticeScreen = () => {
                   value={new Date()}
                   mode="time"
                   display="default"
-                  onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'endTime', index)}
+                  onChange={(event, selectedTime) =>
+                    handleTimeChange(event, selectedTime, 'endTime', index)
+                  }
                 />
               )}
               <TouchableOpacity

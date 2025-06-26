@@ -1,17 +1,23 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Dimensions, Platform } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Dimensions,
+  Platform,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { pick, types } from '@react-native-documents/picker';
-import AsyncStorage  from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
-
-interface SpecializationDetailsProps {
-  route: { params: { userId: string } };
-}
+import LoadingScreen from '../../utility/LoadingScreen';
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -20,8 +26,9 @@ type NavigationProp = {
 
 const { width, height } = Dimensions.get('window');
 
-const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
+const SpecializationDetails = () => {
   const userId = useSelector((state: any) => state.currentUserID);
+  const [loading, setLoading] = useState(true);
 
   // const { userId } = route.params;
   console.log('Received userId:', userId);
@@ -44,7 +51,10 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
       return false;
     }
     if (!formData.yearsExperience || isNaN(Number(formData.yearsExperience))) {
-      Alert.alert('Error', 'Please enter a valid number for years of experience.');
+      Alert.alert(
+        'Error',
+        'Please enter a valid number for years of experience.',
+      );
       return false;
     }
     if (!formData.degrees) {
@@ -77,23 +87,24 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
   };
 
   const handleNext = async () => {
-
     if (!validateForm()) return;
 
     const token = await AsyncStorage.getItem('authToken');
- 
 
     try {
       setIsLoading(true);
 
-         const formDataObj = new FormData();
+      const formDataObj = new FormData();
       formDataObj.append('id', userId);
       formDataObj.append('name', formData.specialization);
       formDataObj.append('experience', formData.yearsExperience);
 
       if (formData.degrees) {
         formDataObj.append('drgreeCertificate', {
-          uri: Platform.OS === 'android' ? formData.degrees.uri : formData.degrees.uri.replace('file://', ''),
+          uri:
+            Platform.OS === 'android'
+              ? formData.degrees.uri
+              : formData.degrees.uri.replace('file://', ''),
           type: formData.degrees.type || 'application/pdf',
           name: formData.degrees.name || 'degree.pdf',
         } as any);
@@ -101,12 +112,15 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
 
       if (formData.certifications) {
         formDataObj.append('specializationCertificate', {
-          uri: Platform.OS === 'android' ? formData.certifications.uri : formData.certifications.uri.replace('file://', ''),
+          uri:
+            Platform.OS === 'android'
+              ? formData.certifications.uri
+              : formData.certifications.uri.replace('file://', ''),
           type: formData.certifications.type || 'application/pdf',
           name: formData.certifications.name || 'certification.pdf',
         } as any);
       }
-console.log('Form data to be sent:', formDataObj);
+      console.log('Form data to be sent:', formDataObj);
       const response = await axios.post(
         'http://192.168.1.42:3000/users/updateSpecialization',
         formDataObj,
@@ -115,7 +129,7 @@ console.log('Form data to be sent:', formDataObj);
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data',
           },
-        }
+        },
       );
 
       console.log('API response:', response.data);
@@ -128,26 +142,39 @@ console.log('Form data to be sent:', formDataObj);
       });
       console.log('API response:', 100);
 
-    
-
-           setIsLoading(false);
+      setIsLoading(false);
+      AsyncStorage.setItem('stepNo', '3');
 
       navigation.navigate('Practice');
     } catch (err) {
       console.error('API error:', err);
       Alert.alert('Error', 'Failed to update specialization details.');
-    } 
+    }
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
+  useEffect(() => {
+  setTimeout(() => {
+    setLoading(false);
+  }, 2000);
+}, []);
+
+if (loading) {
+  return <LoadingScreen />;
+}
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack} disabled={isLoading}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          disabled={isLoading}
+        >
           <Icon name="arrow-left" size={width * 0.06} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Specialization Details</Text>
@@ -160,7 +187,9 @@ console.log('Form data to be sent:', formDataObj);
           <View style={styles.input}>
             <Picker
               selectedValue={formData.specialization}
-              onValueChange={(itemValue) => setFormData({ ...formData, specialization: itemValue })}
+              onValueChange={itemValue =>
+                setFormData({ ...formData, specialization: itemValue })
+              }
               style={styles.picker}
               enabled={!isLoading}
             >
@@ -178,7 +207,9 @@ console.log('Form data to be sent:', formDataObj);
           <TextInput
             style={styles.input}
             value={formData.yearsExperience}
-            onChangeText={(text) => setFormData({ ...formData, yearsExperience: text })}
+            onChangeText={text =>
+              setFormData({ ...formData, yearsExperience: text })
+            }
             keyboardType="numeric"
             placeholder="e.g. 5"
             placeholderTextColor="#999"
@@ -194,9 +225,16 @@ console.log('Form data to be sent:', formDataObj);
             disabled={isLoading}
           >
             <View style={styles.uploadField}>
-              <Icon name="upload" size={width * 0.05} color="#00796B" style={styles.uploadIcon} />
+              <Icon
+                name="upload"
+                size={width * 0.05}
+                color="#00796B"
+                style={styles.uploadIcon}
+              />
               <Text style={styles.uploadText}>
-                {formData.degrees ? formData.degrees.name : 'Upload Degree Certificate(s)'}
+                {formData.degrees
+                  ? formData.degrees.name
+                  : 'Upload Degree Certificate(s)'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -210,9 +248,16 @@ console.log('Form data to be sent:', formDataObj);
             disabled={isLoading}
           >
             <View style={styles.uploadField}>
-              <Icon name="upload" size={width * 0.05} color="#00796B" style={styles.uploadIcon} />
+              <Icon
+                name="upload"
+                size={width * 0.05}
+                color="#00796B"
+                style={styles.uploadIcon}
+              />
               <Text style={styles.uploadText}>
-                {formData.certifications ? formData.certifications.name : 'Upload Certificate(s)'}
+                {formData.certifications
+                  ? formData.certifications.name
+                  : 'Upload Certificate(s)'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -225,7 +270,9 @@ console.log('Form data to be sent:', formDataObj);
         onPress={handleNext}
         disabled={isLoading}
       >
-        <Text style={styles.nextText}>{isLoading ? 'Submitting...' : 'Next'}</Text>
+        <Text style={styles.nextText}>
+          {isLoading ? 'Submitting...' : 'Next'}
+        </Text>
       </TouchableOpacity>
     </View>
   );

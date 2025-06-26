@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,43 +7,53 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
-} from "react-native";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { useNavigation } from "@react-navigation/native";
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import LoadingScreen from '../../utility/LoadingScreen';
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = Dimensions.get('window');
 
 const ConsultationPreferences = () => {
+  const [loading, setLoading] = useState(true);
+
   const [selectedModes, setSelectedModes] = useState({
     inPerson: false,
     video: false,
     homeVisit: false,
   });
-  const [fees, setFees] = useState({ inPerson: "", video: "", homeVisit: "" });
+  const [fees, setFees] = useState({ inPerson: '', video: '', homeVisit: '' });
 
   const navigation = useNavigation<any>();
 
   const handleModeToggle = (mode: keyof typeof selectedModes) => {
-    setSelectedModes((prev: typeof selectedModes) => ({ ...prev, [mode]: !prev[mode] }));
+    setSelectedModes((prev: typeof selectedModes) => ({
+      ...prev,
+      [mode]: !prev[mode],
+    }));
   };
 
   const handleFeeChange = (mode: string, value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, "");
-    if (numericValue === "" || (parseInt(numericValue) >= 0 && numericValue.length <= 5)) {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    if (
+      numericValue === '' ||
+      (parseInt(numericValue) >= 0 && numericValue.length <= 5)
+    ) {
       setFees({ ...fees, [mode]: numericValue });
     }
   };
 
   const isFormValid = () => {
-    const hasSelectedMode = selectedModes.inPerson || selectedModes.video || selectedModes.homeVisit;
+    const hasSelectedMode =
+      selectedModes.inPerson || selectedModes.video || selectedModes.homeVisit;
     if (!hasSelectedMode) return false;
     return (
-      (!selectedModes.inPerson || fees.inPerson !== "") &&
-      (!selectedModes.video || fees.video !== "") &&
-      (!selectedModes.homeVisit || fees.homeVisit !== "")
+      (!selectedModes.inPerson || fees.inPerson !== '') &&
+      (!selectedModes.video || fees.video !== '') &&
+      (!selectedModes.homeVisit || fees.homeVisit !== '')
     );
   };
 
@@ -81,7 +91,7 @@ const ConsultationPreferences = () => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
       console.log('API Response:', response);
       if (response.status == 200) {
@@ -89,7 +99,9 @@ const ConsultationPreferences = () => {
           type: 'success',
           text1: 'Preferences saved successfully',
         });
-        (navigation as any).navigate('FinancialSetupScreen')
+        AsyncStorage.setItem('stepNo', '5');
+
+        (navigation as any).navigate('FinancialSetupScreen');
       }
 
       // navigation.navigate('FinancialSetupScreen');
@@ -102,6 +114,16 @@ const ConsultationPreferences = () => {
       });
     }
   };
+
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+  }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <View style={styles.container}>
@@ -124,18 +146,26 @@ const ConsultationPreferences = () => {
                   styles.checkbox,
                   selectedModes.inPerson && styles.checkboxSelected,
                 ]}
-                onPress={() => handleModeToggle("inPerson")}
+                onPress={() => handleModeToggle('inPerson')}
               >
                 {selectedModes.inPerson && (
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="account" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon
+                name="account"
+                size={width * 0.05}
+                color="#00796B"
+                style={styles.feeIcon}
+              />
               <Text style={styles.feeLabel}>In-Person</Text>
               <TextInput
-                style={[styles.input, !selectedModes.inPerson && styles.inputDisabled]}
+                style={[
+                  styles.input,
+                  !selectedModes.inPerson && styles.inputDisabled,
+                ]}
                 value={fees.inPerson}
-                onChangeText={(value) => handleFeeChange("inPerson", value)}
+                onChangeText={value => handleFeeChange('inPerson', value)}
                 keyboardType="numeric"
                 maxLength={5}
                 placeholder="₹0"
@@ -145,19 +175,30 @@ const ConsultationPreferences = () => {
             </View>
             <View style={styles.feeRow}>
               <TouchableOpacity
-                style={[styles.checkbox, selectedModes.video && styles.checkboxSelected]}
-                onPress={() => handleModeToggle("video")}
+                style={[
+                  styles.checkbox,
+                  selectedModes.video && styles.checkboxSelected,
+                ]}
+                onPress={() => handleModeToggle('video')}
               >
                 {selectedModes.video && (
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="video" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon
+                name="video"
+                size={width * 0.05}
+                color="#00796B"
+                style={styles.feeIcon}
+              />
               <Text style={styles.feeLabel}>Video</Text>
               <TextInput
-                style={[styles.input, !selectedModes.video && styles.inputDisabled]}
+                style={[
+                  styles.input,
+                  !selectedModes.video && styles.inputDisabled,
+                ]}
                 value={fees.video}
-                onChangeText={(value) => handleFeeChange("video", value)}
+                onChangeText={value => handleFeeChange('video', value)}
                 keyboardType="numeric"
                 maxLength={5}
                 placeholder="₹0"
@@ -171,18 +212,26 @@ const ConsultationPreferences = () => {
                   styles.checkbox,
                   selectedModes.homeVisit && styles.checkboxSelected,
                 ]}
-                onPress={() => handleModeToggle("homeVisit")}
+                onPress={() => handleModeToggle('homeVisit')}
               >
                 {selectedModes.homeVisit && (
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="home" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon
+                name="home"
+                size={width * 0.05}
+                color="#00796B"
+                style={styles.feeIcon}
+              />
               <Text style={styles.feeLabel}>Home Visit</Text>
               <TextInput
-                style={[styles.input, !selectedModes.homeVisit && styles.inputDisabled]}
+                style={[
+                  styles.input,
+                  !selectedModes.homeVisit && styles.inputDisabled,
+                ]}
                 value={fees.homeVisit}
-                onChangeText={(value) => handleFeeChange("homeVisit", value)}
+                onChangeText={value => handleFeeChange('homeVisit', value)}
                 keyboardType="numeric"
                 maxLength={5}
                 placeholder="₹0"
@@ -216,15 +265,15 @@ const ConsultationPreferences = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: '#F5F7FA',
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#00796B",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00796B',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
@@ -236,9 +285,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     fontSize: width * 0.05,
-    fontWeight: "600",
-    color: "#fff",
-    textAlign: "center",
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
     marginRight: width * 0.06,
   },
   formContainer: {
@@ -247,10 +296,10 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.03,
   },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     padding: width * 0.04,
     borderRadius: 8,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -258,8 +307,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: width * 0.04,
-    fontWeight: "500",
-    color: "#333",
+    fontWeight: '500',
+    color: '#333',
     marginBottom: height * 0.015,
     marginTop: height * 0.015,
   },
@@ -267,23 +316,23 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.02,
   },
   feeRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: height * 0.015,
   },
   checkbox: {
     width: width * 0.06,
     height: width * 0.06,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: '#E0E0E0',
     borderRadius: 4,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: width * 0.03,
   },
   checkboxSelected: {
-    backgroundColor: "#00796B",
-    borderColor: "#00796B",
+    backgroundColor: '#00796B',
+    borderColor: '#00796B',
   },
   feeIcon: {
     marginRight: width * 0.03,
@@ -291,48 +340,48 @@ const styles = StyleSheet.create({
   feeLabel: {
     flex: 1,
     fontSize: width * 0.04,
-    color: "#333",
+    color: '#333',
   },
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: '#E0E0E0',
     borderRadius: 8,
     padding: width * 0.03,
-    textAlign: "center",
-    color: "#333",
+    textAlign: 'center',
+    color: '#333',
     fontSize: width * 0.04,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
+    backgroundColor: '#fff',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   inputDisabled: {
-    backgroundColor: "#F5F5F5",
-    color: "#999",
+    backgroundColor: '#F5F5F5',
+    color: '#999',
   },
   nextButton: {
-    backgroundColor: "#00796B",
+    backgroundColor: '#00796B',
     paddingVertical: height * 0.02,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
     marginHorizontal: width * 0.05,
     marginBottom: height * 0.03,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 5,
   },
   disabledButton: {
-    backgroundColor: "#B0BEC5",
+    backgroundColor: '#B0BEC5',
   },
   nextText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: width * 0.045,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   spacer: {
     height: height * 0.1,
