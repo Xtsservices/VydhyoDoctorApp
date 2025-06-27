@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, Dimensions, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  Dimensions,
+  Alert,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
 
 interface FormData {
@@ -35,40 +43,54 @@ const ConfirmationScreen: React.FC = () => {
     accountNumber: '**** 1234',
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
-
+  // const [loading, setLoading] = useState(true);
   const validateForm = () => {
     let tempErrors: Partial<FormData> = {};
     if (!formData.name.trim()) tempErrors.name = 'Name is required';
-    if (!formData.email.trim() || !/^\S+@\S+\.\S+$/.test(formData.email)) tempErrors.email = 'Valid email is required';
-    if (!formData.phone.trim() || !/^\+\d{2}\s\d{3}\s\d{3}\s\d{4}$/.test(formData.phone)) tempErrors.phone = 'Valid phone is required';
-    if (!formData.specialization.trim()) tempErrors.specialization = 'Specialization is required';
-    if (!formData.practice.trim()) tempErrors.practice = 'Practice details are required';
-    if (!formData.consultationPreferences.trim()) tempErrors.consultationPreferences = 'Preferences are required';
+    if (!formData.email.trim() || !/^\S+@\S+\.\S+$/.test(formData.email))
+      tempErrors.email = 'Valid email is required';
+    if (
+      !formData.phone.trim() ||
+      !/^\+\d{2}\s\d{3}\s\d{3}\s\d{4}$/.test(formData.phone)
+    )
+      tempErrors.phone = 'Valid phone is required';
+    if (!formData.specialization.trim())
+      tempErrors.specialization = 'Specialization is required';
+    if (!formData.practice.trim())
+      tempErrors.practice = 'Practice details are required';
+    if (!formData.consultationPreferences.trim())
+      tempErrors.consultationPreferences = 'Preferences are required';
     if (!formData.bank.trim()) tempErrors.bank = 'Bank is required';
-    if (!formData.accountNumber.trim()) tempErrors.accountNumber = 'Account number is required';
+    if (!formData.accountNumber.trim())
+      tempErrors.accountNumber = 'Account number is required';
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
 
   const handleSubmit = () => {
-    navigation.navigate('ProfileReview');
     if (!validateForm()) {
-      Alert.alert('Error', 'Please correct the errors in the form before submitting.');
+      Alert.alert(
+        'Error',
+        'Please correct the errors in the form before submitting.',
+      );
       return;
     }
+    navigation.navigate('ProfileReview');
   };
 
   const handleChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
-    useEffect(() => {
+  useEffect(() => {
     const fetchUserData = async () => {
+      // setLoading(true);
+
       try {
         // Retrieve token from AsyncStorage
         const token = await AsyncStorage.getItem('authToken');
@@ -76,51 +98,77 @@ const ConfirmationScreen: React.FC = () => {
           throw new Error('Authentication token not found');
         }
 
-       
-      
+        AsyncStorage.setItem('stepNo', '7');
 
         // Make API call
-        const response = await axios.get('http://216.10.251.239:3000/users/getUser', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            userid: userId, // Include userId in headers
+        const response = await axios.get(
+          'http://216.10.251.239:3000/users/getUser',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              userid: userId, // Include userId in headers
+            },
+            params: {
+              userId, // Include userId in query params as well
+            },
           },
-          params: {
-            userId, // Include userId in query params as well
-          },
-        });
-console.log('User data fetched successfully:', response?.data?.data);
+        );
+        console.log('User data fetched successfully:', response?.data?.data);
         // Check if response status is success
         if (response.data.status !== 'success') {
           throw new Error(response.data.message || 'Failed to fetch user data');
         }
 
         const userData = response.data.data;
-
         // Format phone number to match +XX XXX XXX XXXX
         const rawMobile = userData.mobile || '';
-        const formattedPhone = rawMobile.length === 10 ? `+91 ${rawMobile.slice(0, 3)} ${rawMobile.slice(3, 6)} ${rawMobile.slice(6, 10)}` : '';
+        const formattedPhone =
+          rawMobile.length === 10
+            ? `+91 ${rawMobile.slice(0, 3)} ${rawMobile.slice(
+                3,
+                6,
+              )} ${rawMobile.slice(6, 10)}`
+            : '';
+
+        // Helper function to mask account number
+        const maskAccountNumber = (accountNumber: string) => {
+          if (!accountNumber) return '';
+          // Show only last 4 characters, mask the rest with '*'
+          const visible = accountNumber.slice(-4);
+          const masked = '*'.repeat(accountNumber.length - 4);
+          return `${masked}${visible}`;
+        };
 
         setFormData({
           name: `${userData.firstname || ''} ${userData.lastname || ''}`.trim(),
           email: userData.email || '',
           phone: formattedPhone,
-          specialization: userData.medicalRegistrationNumber || '',
+          specialization: userData.specialization.name || '',
           practice: userData.addresses.length > 0 ? userData.addresses[0] : '',
-          consultationPreferences: userData.consultationModeFee.length > 0 ? JSON.stringify(userData.consultationModeFee?.map((mode: any) => mode.type).join(', ')) : '',
+          consultationPreferences:
+            userData.consultationModeFee.length > 0
+              ? userData.consultationModeFee
+                  .map((mode: any) => mode.type)
+                  .join(', ')
+              : '',
           bank: userData.bankDetails.bankName || '',
-          accountNumber: userData.bankDetails?.ifscCode  || '',
+          accountNumber: maskAccountNumber(
+            userData.bankDetails?.accountNumber || '',
+          ),
         });
-
+        // setLoading(false);
       } catch (error: any) {
-        console.error('Error fetching user data:', error.message);
-      
-       
-      } 
-    };
+        // setLoading(false);
 
+        console.error('Error fetching user data:', error.message);
+      }
+    };
     fetchUserData();
   }, []);
+
+  // if (loading) {
+  //   return <LoadingScreen />;
+  // }
 
   return (
     <View style={styles.container}>
@@ -147,7 +195,7 @@ console.log('User data fetched successfully:', response?.data?.data);
           </View>
           <TextInput
             value={formData.name}
-            onChangeText={(text) => handleChange('name', text)}
+            onChangeText={text => handleChange('name', text)}
             style={[styles.input, errors.name && styles.errorInput]}
             placeholder="Enter Name"
             placeholderTextColor="#999"
@@ -156,7 +204,7 @@ console.log('User data fetched successfully:', response?.data?.data);
           {errors.name && <Text style={styles.error}>{errors.name}</Text>}
           <TextInput
             value={formData.email}
-            onChangeText={(text) => handleChange('email', text)}
+            onChangeText={text => handleChange('email', text)}
             style={[styles.input, errors.email && styles.errorInput]}
             placeholder="Enter Email"
             placeholderTextColor="#999"
@@ -166,7 +214,7 @@ console.log('User data fetched successfully:', response?.data?.data);
           {errors.email && <Text style={styles.error}>{errors.email}</Text>}
           <TextInput
             value={formData.phone}
-            onChangeText={(text) => handleChange('phone', text)}
+            onChangeText={text => handleChange('phone', text)}
             style={[styles.input, errors.phone && styles.errorInput]}
             placeholder="Enter Phone (e.g., +91 234 567 8901)"
             placeholderTextColor="#999"
@@ -178,18 +226,22 @@ console.log('User data fetched successfully:', response?.data?.data);
           <View style={styles.row}>
             <Icon name="briefcase" size={width * 0.05} color="#00796B" />
             <Text style={styles.label}>Specialization</Text>
-            <TouchableOpacity onPress={() => handleChange('specialization', '')}>
+            <TouchableOpacity
+              onPress={() => handleChange('specialization', '')}
+            >
               <Icon name="pencil" size={width * 0.05} color="#00796B" />
             </TouchableOpacity>
           </View>
           <TextInput
             value={formData.specialization}
-            onChangeText={(text) => handleChange('specialization', text)}
+            onChangeText={text => handleChange('specialization', text)}
             style={[styles.input, errors.specialization && styles.errorInput]}
             placeholder="Enter Specialization"
             placeholderTextColor="#999"
           />
-          {errors.specialization && <Text style={styles.error}>{errors.specialization}</Text>}
+          {errors.specialization && (
+            <Text style={styles.error}>{errors.specialization}</Text>
+          )}
 
           {/* Practice Section */}
           <View style={styles.row}>
@@ -201,29 +253,38 @@ console.log('User data fetched successfully:', response?.data?.data);
           </View>
           <TextInput
             value={formData.practice}
-            onChangeText={(text) => handleChange('practice', text)}
+            onChangeText={text => handleChange('practice', text)}
             style={[styles.input, errors.practice && styles.errorInput]}
             placeholder="Enter Practice"
             placeholderTextColor="#999"
           />
-          {errors.practice && <Text style={styles.error}>{errors.practice}</Text>}
+          {errors.practice && (
+            <Text style={styles.error}>{errors.practice}</Text>
+          )}
 
           {/* Consultation Preferences Section */}
           <View style={styles.row}>
             <Icon name="calendar" size={width * 0.05} color="#00796B" />
             <Text style={styles.label}>Consultation Preferences</Text>
-            <TouchableOpacity onPress={() => handleChange('consultationPreferences', '')}>
+            <TouchableOpacity
+              onPress={() => handleChange('consultationPreferences', '')}
+            >
               <Icon name="pencil" size={width * 0.05} color="#00796B" />
             </TouchableOpacity>
           </View>
           <TextInput
             value={formData.consultationPreferences}
-            onChangeText={(text) => handleChange('consultationPreferences', text)}
-            style={[styles.input, errors.consultationPreferences && styles.errorInput]}
+            onChangeText={text => handleChange('consultationPreferences', text)}
+            style={[
+              styles.input,
+              errors.consultationPreferences && styles.errorInput,
+            ]}
             placeholder="Enter Preferences"
             placeholderTextColor="#999"
           />
-          {errors.consultationPreferences && <Text style={styles.error}>{errors.consultationPreferences}</Text>}
+          {errors.consultationPreferences && (
+            <Text style={styles.error}>{errors.consultationPreferences}</Text>
+          )}
 
           {/* Financial Setup Section */}
           <View style={styles.row}>
@@ -235,7 +296,7 @@ console.log('User data fetched successfully:', response?.data?.data);
           </View>
           <TextInput
             value={formData.bank}
-            onChangeText={(text) => handleChange('bank', text)}
+            onChangeText={text => handleChange('bank', text)}
             style={[styles.input, errors.bank && styles.errorInput]}
             placeholder="Enter Bank"
             placeholderTextColor="#999"
@@ -243,13 +304,15 @@ console.log('User data fetched successfully:', response?.data?.data);
           {errors.bank && <Text style={styles.error}>{errors.bank}</Text>}
           <TextInput
             value={formData.accountNumber}
-            onChangeText={(text) => handleChange('accountNumber', text)}
+            onChangeText={text => handleChange('accountNumber', text)}
             style={[styles.input, errors.accountNumber && styles.errorInput]}
             placeholder="Enter Account Number"
             placeholderTextColor="#999"
             keyboardType="number-pad"
           />
-          {errors.accountNumber && <Text style={styles.error}>{errors.accountNumber}</Text>}
+          {errors.accountNumber && (
+            <Text style={styles.error}>{errors.accountNumber}</Text>
+          )}
         </View>
 
         {/* Spacer to ensure content is not hidden by the Next button */}
