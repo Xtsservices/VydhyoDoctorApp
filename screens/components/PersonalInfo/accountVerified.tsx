@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 const { width, height } = Dimensions.get('window');
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); // Replace with your asset path
@@ -12,6 +12,23 @@ type RootStackParamList = {
 
 const AccountVerified = () => {
     const navigation = useNavigation();
+     const [loading, setLoading] = useState(false);
+
+      const handleGoToDashboard = () => {
+    setLoading(true);
+    setTimeout(() => {
+      navigation.navigate('DoctorDashboard' as never);
+      setLoading(false);
+    }, 1500); // simulate loading delay
+  };
+
+  const handleViewProfile = () => {
+    setLoading(true);
+    setTimeout(() => {
+      // Add real navigation or functionality here
+      setLoading(false);
+    }, 1500);
+  };
   return (
     <View style={styles.container}>
       <Image
@@ -29,10 +46,20 @@ const AccountVerified = () => {
         Congratulations! Your account has been successfully verified. You now have full access to all features.
       </Text>
       <TouchableOpacity style={styles.viewProfileButton}>
-        <Text style={styles.buttonText}>View Profile</Text>
+         {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>View Profile</Text>
+        )}
+        {/* <Text style={styles.buttonText}>View Profile</Text> */}
       </TouchableOpacity>
       <TouchableOpacity style={styles.goToDashboardButton} onPress={() => navigation.navigate('DoctorDashboard' as never)}>
-        <Text style={styles.buttonText2}>Go to Dashboard</Text>
+        {/* <Text style={styles.buttonText2}>Go to Dashboard</Text> */}
+         {loading ? (
+          <ActivityIndicator color="#00203F" />
+        ) : (
+          <Text style={styles.buttonText2}>Go to Dashboard</Text>
+        )}
       </TouchableOpacity>
     </View>
   );

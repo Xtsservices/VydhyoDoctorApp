@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput,ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { pick, types } from '@react-native-documents/picker';
@@ -24,6 +24,8 @@ const KYCDetailsScreen = () => {
   const [voterNumber, setVoterNumber] = useState('');
   const [panNumber, setPanNumber] = useState('');
   const navigation = useNavigation<any>();
+  const [loading, setLoading] = useState(false);
+
 
   const handleVoterUpload = async () => {
     try {
@@ -92,6 +94,7 @@ const KYCDetailsScreen = () => {
 
     // Prepare FormData for Axios POST request
     try {
+       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       const userId = await AsyncStorage.getItem('userId');
       console.log("userId", userId)
@@ -136,10 +139,15 @@ const KYCDetailsScreen = () => {
           visibilityTime: 3000,
         });
         setTimeout(() => {
+          setLoading(false)
           navigation.navigate('ConfirmationScreen');
         }, 2000);
-      } 
+      } else {
+      setLoading(false); // 👉 Hide loader on failure
+      
+    }
     } catch (error) {
+        setLoading(false);
       Alert.alert('Error', 'Failed to submit KYC details. Please try again.');
       console.error('KYC submission error:', error);
     }
@@ -151,6 +159,13 @@ const KYCDetailsScreen = () => {
 
   return (
     <View style={styles.container}>
+
+         {loading && (
+                                <View style={styles.loaderOverlay}>
+                                  <ActivityIndicator size="large" color="#00796B" />
+                                  <Text style={styles.loaderText}>Processing...</Text>
+                                </View>
+                              )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -370,6 +385,19 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+  
+ loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 

@@ -9,6 +9,7 @@ import {
   Image,
   ScrollView,
   Platform,
+   ActivityIndicator
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -57,6 +58,7 @@ const PersonalInfoScreen: React.FC = () => {
   });
   const [newLanguage, setNewLanguage] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({
     firstName: '',
     lastName: '',
@@ -201,6 +203,7 @@ const PersonalInfoScreen: React.FC = () => {
   const handleNext = async () => {
 
     if (validateForm()) {
+       setLoading(true);
       try {
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
@@ -211,6 +214,7 @@ const PersonalInfoScreen: React.FC = () => {
             position: 'top',
             visibilityTime: 3000,
           });
+            setLoading(false);
           return;
         }
 
@@ -234,23 +238,7 @@ const PersonalInfoScreen: React.FC = () => {
           spokenLanguage: formData.spokenLanguages,
         };
 
-        console.log('Form data to send:', token);
-        console.log('Form data to send:', body);
-
-        // const response = await axios.put(
-        //   'http://192.168.1.44:3000/users/updateUser',
-        //   body,
-        //   {
-        //     headers: {
-        //       Authorization: `Bearer ${token}`,
-        //       'Content-Type': 'application/json',
-        //     },
-        //   },
-        // );
         const response = await AuthPut('users/updateUser', body, token);
-      console.log('Response from updateUser:', response);
-        console.log('Response from updateUser:', response);
-
         if (response.status === 'success') {
           Toast.show({
             type: 'success',
@@ -259,7 +247,7 @@ const PersonalInfoScreen: React.FC = () => {
             position: 'top',
             visibilityTime: 3000,
           });
-        
+         setLoading(false);
           
           navigation.navigate('Specialization');
         } else {
@@ -274,6 +262,7 @@ const PersonalInfoScreen: React.FC = () => {
             visibilityTime: 3000,
           });
           console.log('Error response from updateUser:', response);
+           setLoading(false);
         }
         } catch (error) {
         console.error('Error updating profile:', error);
@@ -284,6 +273,7 @@ const PersonalInfoScreen: React.FC = () => {
           position: 'top',
           visibilityTime: 3000,
         });
+         setLoading(false);
       }
     }
   };
@@ -305,6 +295,13 @@ const PersonalInfoScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+
+      {loading && (
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#00796B" />
+          <Text style={styles.loaderText}>Processing...</Text>
+        </View>
+      )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -786,6 +783,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+  loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 

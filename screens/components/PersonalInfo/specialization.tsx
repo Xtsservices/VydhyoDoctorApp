@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Dimensions, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Dimensions, Platform,ActivityIndicator  } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -134,6 +134,13 @@ console.log('Form data to be sent:', formDataObj);
 
   return (
     <View style={styles.container}>
+
+       {isLoading && (
+              <View style={styles.loaderOverlay}>
+                <ActivityIndicator size="large" color="#00796B" />
+                <Text style={styles.loaderText}>Processing...</Text>
+              </View>
+            )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack} disabled={isLoading}>
@@ -218,7 +225,10 @@ console.log('Form data to be sent:', formDataObj);
         onPress={handleNext}
         disabled={isLoading}
       >
-        <Text style={styles.nextText}>{isLoading ? 'Submitting...' : 'Next'}</Text>
+      
+        
+   <Text style={styles.nextText}>Next</Text>
+        {/* <Text style={styles.nextText}>{isLoading ? 'Submitting...' : 'Next'}</Text> */}
       </TouchableOpacity>
     </View>
   );
@@ -333,6 +343,20 @@ const styles = StyleSheet.create({
     fontSize: width * 0.045,
     fontWeight: '600',
   },
+ 
+ loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
+  },
+
 });
 
 export default SpecializationDetails;

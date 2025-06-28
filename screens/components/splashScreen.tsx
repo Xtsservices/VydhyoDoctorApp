@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React, {useCallback, useEffect} from 'react';
 import { Image, TouchableOpacity , StyleSheet, Dimensions, View } from 'react-native';
 import { useNavigation} from '@react-navigation/native';
 
@@ -11,7 +11,13 @@ const SplashScreen = () => {
     navigation.navigate('Login');
   };
 
+useEffect(() => {
+    const timeout = setTimeout(() => {
+      handleLogin();
+    }, 2500); // 2.5 seconds
 
+    return () => clearTimeout(timeout); // cleanup if component unmounts
+  }, []);
 
   return (
     <TouchableOpacity style={styles.container} onPress={handleLogin} >

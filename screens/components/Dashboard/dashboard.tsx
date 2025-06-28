@@ -197,13 +197,12 @@ const DoctorDashboard = () => {
             <Text style={styles.statValue}>₹2,500</Text>
             <Text style={styles.statLabel}>Today</Text>
           </View>
-          <View style={styles.statItem}>
-            {/* <Ionicons name="calendar" size={24} color="#4CAF50" /> */}
+          {/* <View style={styles.statItem}>
             <Image source={total} style={{ width: 24, height: 24 }} />
 
             <Text style={styles.statValue}>₹12,600</Text>
             <Text style={styles.statLabel}>Total</Text>
-          </View>
+          </View> */}
         </View>
       <ScrollView style={styles.scrollView}>
 
@@ -353,7 +352,7 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', justifyContent: 'space-around', padding: 5,  margin: 5 },
    statItem: {
     alignItems: 'center',
-    width: width / 3.7, // Adjust the divisor as needed
+    width: '45%', // Adjust the divisor as needed
     paddingVertical: 20,
     backgroundColor: '#FFF',
     borderRadius: 10,

@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -45,7 +46,7 @@ const ConfirmationScreen: React.FC = () => {
     accountNumber: '**** 1234',
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
-  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const validateForm = () => {
     let tempErrors: Partial<FormData> = {};
     if (!formData.name.trim()) tempErrors.name = 'Name is required';
@@ -174,6 +175,13 @@ const ConfirmationScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+
+       {loading && (
+                    <View style={styles.loaderOverlay}>
+                      <ActivityIndicator size="large" color="#00796B" />
+                      <Text style={styles.loaderText}>Processing...</Text>
+                    </View>
+                  )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -437,6 +445,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+   loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 

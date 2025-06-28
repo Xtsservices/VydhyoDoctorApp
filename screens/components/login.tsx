@@ -35,6 +35,8 @@ const DoctorLoginScreen = () => {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Added for auto-login loading state
 
+  const [sendingOtp, setSendingOtp] = useState(false);
+const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   const otpRefs = useRef<(TextInput | null)[]>(Array(6).fill(null));
 
@@ -115,6 +117,7 @@ useEffect(() => {
       return;
     }
     setMobileError('');
+    setSendingOtp(true);
     setIsOtpSent(true);
     try {
       const response = await UsePost('auth/login', {
@@ -188,6 +191,7 @@ useEffect(() => {
       return;
     }
     setOtpError('');
+    setVerifyingOtp(true);
 
     if (!userId) {
       setOtpError('User ID is required');
@@ -259,7 +263,9 @@ useEffect(() => {
       console.log('Error validating OTP:', error);
       setOtpError('Network error. Please try again.');
       console.error('Error validating OTP:', error);
-    }
+    }finally {
+    setVerifyingOtp(false);
+  }
   };
 
   if (isLoading) {
@@ -285,9 +291,9 @@ useEffect(() => {
             <Image source={require('../assets/logo.png')} style={styles.logo} />
           </View>
           <Text style={styles.portalTitle}>VYDHYO Doctor Portal</Text>
-          <TouchableOpacity onPress={() => Linking.openURL('#')}>
+          {/* <TouchableOpacity onPress={() => Linking.openURL('#')}>
             <Text style={styles.signInLink}>Sign in to your account</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         <Text style={styles.label}>Mobile Number*</Text>
@@ -342,11 +348,21 @@ useEffect(() => {
           onPress={handleSendOtp}
           disabled={isOtpSent}
         >
-          <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text>
+          {/* <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text> */}
+           {sendingOtp ? (
+      <ActivityIndicator color="#fff" />
+    ) : (
+      <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text>
+    )}
         </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
+           {verifyingOtp ? (
+      <ActivityIndicator color="#fff" />
+    ) : (
+      <Text style={styles.buttonText}>Login</Text>
+    )}
+          {/* <Text style={styles.buttonText}>Login</Text> */}
         </TouchableOpacity>
       )}
     </View>

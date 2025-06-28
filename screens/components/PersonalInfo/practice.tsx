@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  ActivityIndicator
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
@@ -48,6 +49,7 @@ const PracticeScreen = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showAffiliationSuggestions, setShowAffiliationSuggestions] = useState(false);
   const [currentOpdIndex, setCurrentOpdIndex] = useState(0); // Track which OPD address to fill
+  const [loading, setLoading] = useState(false);
 
   // Initialize currentOpdIndex when opdAddresses changes
   useEffect(() => {
@@ -136,10 +138,7 @@ const PracticeScreen = () => {
   };
 
   const handleNext = () => {
-    if (!affiliation) {
-      Alert.alert('Error', 'Please select a Clinic/Hospital Affiliation');
-      return;
-    }
+  
 
     const hasInvalidAddress = opdAddresses.some(
       (addr) => !addr.address || !addr.startTime || !addr.endTime
@@ -158,8 +157,9 @@ const PracticeScreen = () => {
       Alert.alert('Error', 'End time must be after Start time');
       return;
     }
-
+ setLoading(true);
     setTimeout(() => {
+       setLoading(false);
       navigation.navigate('ConsultationPreferences');
     }, 3000);
   };
@@ -175,6 +175,13 @@ const PracticeScreen = () => {
 
   return (
     <View style={styles.container}>
+
+        {loading && (
+              <View style={styles.loaderOverlay}>
+                <ActivityIndicator size="large" color="#00796B" />
+                <Text style={styles.loaderText}>Processing...</Text>
+              </View>
+            )}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Icon name="arrow-left" size={width * 0.06} color="#fff" />
@@ -517,6 +524,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+   loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 
