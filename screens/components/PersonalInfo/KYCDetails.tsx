@@ -6,6 +6,9 @@ import { pick, types } from '@react-native-documents/picker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import { UploadFiles } from '../../auth/auth';
 
 const voter_icon = require('../../assets/aadhar.png'); // Update with actual voter ID icon if available
 const pancard_icon = require('../../assets/pan.png');
@@ -121,14 +124,9 @@ const KYCDetailsScreen = () => {
       }
 
       console.log('Submitting KYC data: addKYCDetails', formData);
-      const response = await axios.post('http://192.168.1.42:4002/users/addKYCDetails', formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      console.log('KYC submission response:', response.data);
-      if (response.data.status === 'success') {
+       const response = await UploadFiles('users/addKYCDetails', formData, token);
+      
+      if (response.status === 'success') {
 
         Toast.show({
           type: 'success',
@@ -160,6 +158,7 @@ const KYCDetailsScreen = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>KYC Details</Text>
       </View>
+      <ProgressBar currentStep={getCurrentStepIndex('KYCDetailsScreen')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>

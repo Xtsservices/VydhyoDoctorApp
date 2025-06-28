@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,21 @@ import {
   Linking,
   Image,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Toast from 'react-native-toast-message';
-import { UsePost } from '../auth/auth';
+import { AuthFetch, UsePost } from '../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import { REGISTRATION_STEPS } from '../utility/registrationSteps';
 
 const { width, height } = Dimensions.get('window');
 
 const DoctorLoginScreen = () => {
+  const dispatch = useDispatch();
+
   const navigation = useNavigation<any>();
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -28,6 +33,8 @@ const DoctorLoginScreen = () => {
   const [userId, setUserId] = useState('');
   const [token, setToken] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Added for auto-login loading state
+
 
   const otpRefs = useRef<(TextInput | null)[]>(Array(6).fill(null));
 
@@ -48,6 +55,55 @@ const DoctorLoginScreen = () => {
     const mobileRegex = /^[6-9]\d{9}$/;
     return mobileRegex.test(number);
   };
+
+  // Check for existing token on mount
+useEffect(() => {
+  const checkAuthToken = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('authToken');
+      const storedUserId = await AsyncStorage.getItem('userId');
+      // const storedStep = await AsyncStorage.getItem('currentStep');
+
+      if (storedToken && storedUserId) {
+        const profileResponse = await AuthFetch('users/getUser', storedToken);
+        console.log('Profile response:', profileResponse);
+
+        if (
+          profileResponse.status === 'success' &&
+          'data' in profileResponse &&
+          profileResponse.data
+        ) {
+          const userData = profileResponse.data.data;
+          dispatch({ type: 'currentUserID', payload: storedUserId });
+          const { screen, params } = determineNextScreen(userData);
+          await AsyncStorage.setItem('currentStep', screen);
+
+          Toast.show({
+            type: 'success',
+            text1: 'Success',
+            text2: 'Auto-login successful',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+
+          navigation.navigate(screen, params || {});
+        } 
+        else {
+        setIsLoading(false);
+      }
+      } else {
+        setIsLoading(false);
+      }
+      
+    } catch (error) {
+      console.error('Error checking auth token:', error);
+     setIsLoading(false);
+    }
+  };
+
+  checkAuthToken();
+}, []);
+
 
   const handleSendOtp = async () => {
     if (!mobile) {
@@ -88,6 +144,43 @@ const DoctorLoginScreen = () => {
     }
   };
 
+  
+
+  const determineNextScreen = (userData: any): { screen: string; params?: any } => {
+   console.log('User Data:======', userData);
+    if (!userData.firstname || !userData.lastname || !userData.email || !userData.medicalRegistrationNumber) {
+      return { screen: 'PersonalInfo', params: undefined };
+    }
+    if (!userData.specialization || !userData.specialization.name) {
+      return { screen: 'Specialization', params: undefined };
+    }
+    // if (!userData.addresses || userData.addresses.length === 0) {
+    if (!userData.consultationModeFee || userData.consultationModeFee.length === 0) {
+
+      return { screen: 'Practice', params: undefined };
+    }
+    if (!userData.consultationModeFee || userData.consultationModeFee.length === 0) {
+      return { screen: 'ConsultationPreferences', params: undefined };
+    }
+    if (!userData.bankDetails || !userData.bankDetails.bankName) {
+      return { screen: 'FinancialSetupScreen', params: undefined };
+    }
+    // Assuming KYC fields are part of the schema (e.g., pan, aadhar)
+    if (!userData.kycDetails) {
+      return { screen: 'KYCDetailsScreen', params: undefined };
+    }
+    if (userData.status === 'pending') {
+      return { screen: 'ConfirmationScreen', params: undefined };
+    }
+     if (userData.status === 'inActive') {
+      return { screen: 'ProfileReview', params: undefined };
+    }
+     if (userData.status === 'approved') {
+      return { screen: 'AccountVerified', params: undefined };
+    }
+    return { screen: 'ProfileReview', params: undefined }; // Default or final step
+  };
+
   const handleLogin = async () => {
     const otpString = otp.join('');
     if (otpString.length !== 6 || !/^\d{6}$/.test(otpString)) {
@@ -115,26 +208,68 @@ const DoctorLoginScreen = () => {
       console.log('validateOtp response', response);
       if (response.status === 'success' && 'data' in response && response.data) {
         const { accessToken } = response.data;
+        const userId = response.data.userData.userId;
+        console.log('userid:', userId);
         if (accessToken) {
           await AsyncStorage.setItem('authToken', accessToken);
+          await AsyncStorage.setItem('userId', userId);
+          dispatch({ type: 'currentUserID', payload: userId });
+
           setToken(accessToken);
         }
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: response.data.message ? response.data.message : 'Login successful',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-        navigation.navigate('PersonalInfo');
-      } else {
+
+        const profileResponse = await AuthFetch('users/getUser', accessToken);
+          console.log('Profile response:', profileResponse);
+
+          if (
+            profileResponse.status === 'success' &&
+            'data' in profileResponse &&
+            profileResponse.data
+          ) {
+            const userData = profileResponse.data.data;
+            const { screen, params } = determineNextScreen(userData);
+            await AsyncStorage.setItem('currentStep', screen);
+
+            Toast.show({
+              type: 'success',
+              text1: 'Success',
+              text2: response.data.message ? response.data.message : 'Login successful',
+              position: 'top',
+              visibilityTime: 3000,
+            });
+
+            navigation.navigate(screen, params || {});
+          } else {
+            // Fallback to PersonalInfo if profile fetch fails
+            await AsyncStorage.setItem('currentStep', 'PersonalInfo');
+            Toast.show({
+              type: 'success',
+              text1: 'Success',
+              text2: 'Login successful, starting from Personal Info',
+              position: 'top',
+              visibilityTime: 3000,
+            });
+            navigation.navigate('PersonalInfo');
+          }
+        }
+        else {
         setOtpError('message' in response ? response.message : 'Invalid OTP');
       }
     } catch (error) {
+      console.log('Error validating OTP:', error);
       setOtpError('Network error. Please try again.');
       console.error('Error validating OTP:', error);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00796B" />
+        <Text style={styles.loadingText}>Checking login status...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -364,6 +499,17 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+  },
+  loadingText: {
+    marginTop: height * 0.02,
+    fontSize: width * 0.04,
+    color: '#333',
   },
 });
 

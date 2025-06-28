@@ -13,6 +13,9 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import { AuthPost } from '../../auth/auth';
 
 const { width, height } = Dimensions.get("window");
 
@@ -73,18 +76,20 @@ const ConsultationPreferences = () => {
         return;
       }
 
-      const response = await axios.post(
-        'http://192.168.1.42:3000/users/updateConsultationModes',
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // const response = await axios.post(
+      //   'http://192.168.1.42:3000/users/updateConsultationModes',
+      //   payload,
+      //   {
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   }
+      // );
+      const response = await AuthPost('users/updateConsultationModes', payload, token);
+      
       console.log('API Response:', response);
-      if (response.status == 200) {
+      if (response.status == 'success') {
         Toast.show({
           type: 'success',
           text1: 'Preferences saved successfully',
@@ -112,6 +117,8 @@ const ConsultationPreferences = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Consultation Preferences</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('ConsultationPreferences')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>

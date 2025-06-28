@@ -19,13 +19,25 @@ import { PersonalInfo } from '../../utility/formTypes';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
-import { UploadFiles } from '../../auth/auth';
+import { AuthPut, UploadFiles } from '../../auth/auth';
 import axios from 'axios';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+
+import { MultiSelect } from 'react-native-element-dropdown';
+
+const languageOptions = [
+  { label: 'Telugu', value: 'Telugu' },
+  { label: 'Hindi', value: 'Hindi' },
+  { label: 'English', value: 'English' },
+  { label: 'Urdu', value: 'Urdu' },
+];
 
 // Placeholder image for profile photo
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); // Replace with your asset path
 
 const { width, height } = Dimensions.get('window');
+
 
 const PersonalInfoScreen: React.FC = () => {
   const dispatch = useDispatch();
@@ -158,8 +170,8 @@ const PersonalInfoScreen: React.FC = () => {
       newErrors.lastName = 'Last Name must be at least 3 letters';
     if (!formData.medicalRegNumber.trim())
       newErrors.medicalRegNumber = 'Medical Registration Number is required';
-    else if (!/^[0-9]{10}$/.test(formData.medicalRegNumber))
-      newErrors.medicalRegNumber = 'Must be exactly 10 digits';
+    else if (!/^[0-9]{5}$/.test(formData.medicalRegNumber))
+      newErrors.medicalRegNumber = 'Must be exactly 5 digits';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Please enter a valid email address';
@@ -225,19 +237,21 @@ const PersonalInfoScreen: React.FC = () => {
         console.log('Form data to send:', token);
         console.log('Form data to send:', body);
 
-        const response = await axios.put(
-          'http://192.168.1.42:3000/users/updateUser',
-          body,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        );
+        // const response = await axios.put(
+        //   'http://192.168.1.44:3000/users/updateUser',
+        //   body,
+        //   {
+        //     headers: {
+        //       Authorization: `Bearer ${token}`,
+        //       'Content-Type': 'application/json',
+        //     },
+        //   },
+        // );
+        const response = await AuthPut('users/updateUser', body, token);
+      console.log('Response from updateUser:', response);
         console.log('Response from updateUser:', response);
 
-        if (response.status === 200) {
+        if (response.status === 'success') {
           Toast.show({
             type: 'success',
             text1: 'Success',
@@ -245,25 +259,23 @@ const PersonalInfoScreen: React.FC = () => {
             position: 'top',
             visibilityTime: 3000,
           });
-          const userId = response.data.data.userId;
-          dispatch({ type: 'currentUserID', payload: userId });
-          console.log('User ID from response:', userId);
-          AsyncStorage.setItem('userId',  userId)
+        
+          
           navigation.navigate('Specialization');
         } else {
           Toast.show({
             type: 'error',
             text1: 'Error',
             text2:
-              response.data && response.data.message
-                ? response.data.message
+              'message' in response && response.message && typeof response.message === 'object' && 'message' in response.message
+                ? response.message.message
                 : 'Failed to update profile',
             position: 'top',
             visibilityTime: 3000,
           });
           console.log('Error response from updateUser:', response);
         }
-      } catch (error) {
+        } catch (error) {
         console.error('Error updating profile:', error);
         Toast.show({
           type: 'error',
@@ -280,6 +292,17 @@ const PersonalInfoScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  const handleLanguageChange = (selectedLanguages: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      spokenLanguages: selectedLanguages,
+    }));
+    setErrors(prev => ({
+      ...prev,
+      spokenLanguages: selectedLanguages.length === 0 ? 'At least one language is required' : '',
+    }));
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -289,6 +312,8 @@ const PersonalInfoScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Personal Info</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('PersonalInfo')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
@@ -348,7 +373,7 @@ const PersonalInfoScreen: React.FC = () => {
           placeholder="Enter registration number"
           placeholderTextColor="#999"
           keyboardType="numeric"
-          maxLength={10}
+          maxLength={5}
         />
         {errors.medicalRegNumber ? (
           <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
@@ -428,7 +453,7 @@ const PersonalInfoScreen: React.FC = () => {
           />
         )}
 
-        <Text style={styles.label}>App Language</Text>
+        {/* <Text style={styles.label}>App Language</Text>
         <View style={styles.input}>
           <Picker
             selectedValue={formData.appLanguage}
@@ -448,9 +473,9 @@ const PersonalInfoScreen: React.FC = () => {
         </View>
         {errors.appLanguage ? (
           <Text style={styles.errorText}>{errors.appLanguage}</Text>
-        ) : null}
+        ) : null} */}
 
-        <Text style={styles.label}>Relationship</Text>
+        {/* <Text style={styles.label}>Relationship</Text>
         <View style={styles.input}>
           <Picker
             selectedValue={formData.relationship}
@@ -471,7 +496,7 @@ const PersonalInfoScreen: React.FC = () => {
         </View>
         {errors.relationship ? (
           <Text style={styles.errorText}>{errors.relationship}</Text>
-        ) : null}
+        ) : null} */}
 
         <Text style={styles.label}>Blood Group</Text>
         <View style={styles.input}>
@@ -525,7 +550,7 @@ const PersonalInfoScreen: React.FC = () => {
         ) : null}
 
         <Text style={styles.label}>Languages Spoken</Text>
-        <View style={styles.languagesContainer}>
+        {/* <View style={styles.languagesContainer}>
           {formData.spokenLanguages.map((lang, index) => (
             <View key={index} style={styles.languageChip}>
               <Text style={styles.languageText}>{lang}</Text>
@@ -545,6 +570,22 @@ const PersonalInfoScreen: React.FC = () => {
           onSubmitEditing={handleAddLanguage}
           placeholder="Add a language..."
           placeholderTextColor="#999"
+        /> */}
+
+         <MultiSelect
+          style={styles.input}
+          data={languageOptions}
+          labelField="label"
+          valueField="value"
+          placeholder="Select languages"
+          value={formData.spokenLanguages}
+          onChange={handleLanguageChange}
+          selectedStyle={styles.selectedStyle}
+          selectedTextStyle={styles.selectedTextStyle}
+          containerStyle={styles.multiSelectContainer}
+          placeholderStyle={styles.placeholderStyle}
+          itemTextStyle={styles.itemTextStyle}
+          activeColor="#E0F2F1"
         />
         {errors.spokenLanguages ? (
           <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
@@ -695,6 +736,29 @@ const styles = StyleSheet.create({
   },
   addLanguageInput: {
     marginTop: height * 0.01,
+  },
+  multiSelectContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  selectedStyle: {
+    borderRadius: 12,
+    backgroundColor: '#E0F2F1',
+  },
+  selectedTextStyle: {
+    color: '#00796B',
+    fontSize: width * 0.035,
+    fontWeight: '500',
+  },
+  placeholderStyle: {
+    fontSize: width * 0.04,
+    color: '#999',
+  },
+  itemTextStyle: {
+    fontSize: width * 0.04,
+    color: '#333',
   },
   nextButton: {
     backgroundColor: '#00796B',

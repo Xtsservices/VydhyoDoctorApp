@@ -8,10 +8,10 @@ import AsyncStorage  from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
+import ProgressBar from '../progressBar/progressBar';
+import { UploadFiles } from '../../auth/auth';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
-interface SpecializationDetailsProps {
-  route: { params: { userId: string } };
-}
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -20,12 +20,10 @@ type NavigationProp = {
 
 const { width, height } = Dimensions.get('window');
 
-const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
+const SpecializationDetails = () => {
   const userId = useSelector((state: any) => state.currentUserID);
 
-  // const { userId } = route.params;
-  console.log('Received userId:', userId);
-
+  //
   const [formData, setFormData] = useState({
     specialization: '',
     subSpecialization: '',
@@ -107,18 +105,9 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
         } as any);
       }
 console.log('Form data to be sent:', formDataObj);
-      const response = await axios.post(
-        'http://192.168.1.42:3000/users/updateSpecialization',
-        formDataObj,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      console.log('API response:', response.data);
+    
+      const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
+      console.log('API response:', response);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -152,6 +141,10 @@ console.log('Form data to be sent:', formDataObj);
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Specialization Details</Text>
       </View>
+
+
+      <ProgressBar currentStep={getCurrentStepIndex('Specialization')} totalSteps={TOTAL_STEPS} />
+
 
       {/* Form Content */}
       <View style={styles.formContainer}>

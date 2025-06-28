@@ -14,6 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
 interface FormData {
   name: string;
@@ -179,6 +181,8 @@ const ConfirmationScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirmation</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('ConfirmationScreen')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>

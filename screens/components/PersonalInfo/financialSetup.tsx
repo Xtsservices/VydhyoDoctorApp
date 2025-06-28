@@ -6,6 +6,8 @@ import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -170,6 +172,8 @@ const FinancialSetupScreen = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Financial Setup</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('FinancialSetupScreen')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
