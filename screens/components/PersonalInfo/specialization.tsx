@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Dimensions, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Dimensions, Platform,ActivityIndicator  } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -8,10 +8,10 @@ import AsyncStorage  from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
+import ProgressBar from '../progressBar/progressBar';
+import { UploadFiles } from '../../auth/auth';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
-interface SpecializationDetailsProps {
-  route: { params: { userId: string } };
-}
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -20,12 +20,10 @@ type NavigationProp = {
 
 const { width, height } = Dimensions.get('window');
 
-const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
+const SpecializationDetails = () => {
   const userId = useSelector((state: any) => state.currentUserID);
 
-  // const { userId } = route.params;
-  console.log('Received userId:', userId);
-
+  //
   const [formData, setFormData] = useState({
     specialization: '',
     subSpecialization: '',
@@ -107,18 +105,9 @@ const SpecializationDetails = ({ route }: SpecializationDetailsProps) => {
         } as any);
       }
 console.log('Form data to be sent:', formDataObj);
-      const response = await axios.post(
-        'http://192.168.1.42:3000/users/updateSpecialization',
-        formDataObj,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      console.log('API response:', response.data);
+    
+      const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
+      console.log('API response:', response);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -145,6 +134,13 @@ console.log('Form data to be sent:', formDataObj);
 
   return (
     <View style={styles.container}>
+
+       {isLoading && (
+              <View style={styles.loaderOverlay}>
+                <ActivityIndicator size="large" color="#00796B" />
+                <Text style={styles.loaderText}>Processing...</Text>
+              </View>
+            )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack} disabled={isLoading}>
@@ -152,6 +148,10 @@ console.log('Form data to be sent:', formDataObj);
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Specialization Details</Text>
       </View>
+
+
+      <ProgressBar currentStep={getCurrentStepIndex('Specialization')} totalSteps={TOTAL_STEPS} />
+
 
       {/* Form Content */}
       <View style={styles.formContainer}>
@@ -225,7 +225,10 @@ console.log('Form data to be sent:', formDataObj);
         onPress={handleNext}
         disabled={isLoading}
       >
-        <Text style={styles.nextText}>{isLoading ? 'Submitting...' : 'Next'}</Text>
+      
+        
+   <Text style={styles.nextText}>Next</Text>
+        {/* <Text style={styles.nextText}>{isLoading ? 'Submitting...' : 'Next'}</Text> */}
       </TouchableOpacity>
     </View>
   );
@@ -340,6 +343,20 @@ const styles = StyleSheet.create({
     fontSize: width * 0.045,
     fontWeight: '600',
   },
+ 
+ loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
+  },
+
 });
 
 export default SpecializationDetails;

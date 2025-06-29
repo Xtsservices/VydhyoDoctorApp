@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Dimensions ,ActivityIndicator} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,6 +18,8 @@ const FinancialSetupScreen = () => {
   const [ifscCode, setIfscCode] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [loading, setLoading] = useState(false);
+
 
   const navigation = useNavigation<any>();
 
@@ -85,8 +89,11 @@ const FinancialSetupScreen = () => {
   const handleSubmit = async() => {
     if (validateForm()) {
     try {
+       setLoading(true); // Show loader
+
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
+           setLoading(false);
           Toast.show({
             type: 'error',
             text1: 'Error',
@@ -152,7 +159,9 @@ const FinancialSetupScreen = () => {
           position: 'top',
           visibilityTime: 3000,
         });
-      }
+      }finally {
+      setLoading(false); // Always hide loader
+    }
     }
   };
 
@@ -163,6 +172,13 @@ const FinancialSetupScreen = () => {
 
   return (
     <View style={styles.container}>
+
+       {loading && (
+                          <View style={styles.loaderOverlay}>
+                            <ActivityIndicator size="large" color="#00796B" />
+                            <Text style={styles.loaderText}>Processing...</Text>
+                          </View>
+                        )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -170,6 +186,8 @@ const FinancialSetupScreen = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Financial Setup</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('FinancialSetupScreen')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
@@ -386,6 +404,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+   loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 

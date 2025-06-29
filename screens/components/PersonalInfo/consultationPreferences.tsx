@@ -7,12 +7,16 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
+  ActivityIndicator
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import { AuthPost } from '../../auth/auth';
 
 const { width, height } = Dimensions.get("window");
 
@@ -23,6 +27,8 @@ const ConsultationPreferences = () => {
     homeVisit: false,
   });
   const [fees, setFees] = useState({ inPerson: "", video: "", homeVisit: "" });
+ const [loading, setLoading] = useState(false);
+
 
   const navigation = useNavigation<any>();
 
@@ -63,8 +69,10 @@ const ConsultationPreferences = () => {
     };
 
     try {
+       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
+         setLoading(false);
         Toast.show({
           type: 'error',
           text1: 'Authentication Error',
@@ -73,18 +81,20 @@ const ConsultationPreferences = () => {
         return;
       }
 
-      const response = await axios.post(
-        'http://192.168.1.42:3000/users/updateConsultationModes',
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // const response = await axios.post(
+      //   'http://192.168.1.42:3000/users/updateConsultationModes',
+      //   payload,
+      //   {
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   }
+      // );
+      const response = await AuthPost('users/updateConsultationModes', payload, token);
+      
       console.log('API Response:', response);
-      if (response.status == 200) {
+      if (response.status == 'success') {
         Toast.show({
           type: 'success',
           text1: 'Preferences saved successfully',
@@ -100,11 +110,21 @@ const ConsultationPreferences = () => {
         text1: 'Failed to update preferences',
         text2: error?.response?.data?.message || 'Something went wrong',
       });
-    }
+    } finally {
+    setLoading(false); // Always hide loader after request
+  }
+
   };
 
   return (
     <View style={styles.container}>
+
+        {loading && (
+                    <View style={styles.loaderOverlay}>
+                      <ActivityIndicator size="large" color="#00796B" />
+                      <Text style={styles.loaderText}>Processing...</Text>
+                    </View>
+                  )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -112,6 +132,8 @@ const ConsultationPreferences = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Consultation Preferences</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('ConsultationPreferences')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
@@ -336,6 +358,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+    loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 

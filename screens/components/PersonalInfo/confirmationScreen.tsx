@@ -8,12 +8,15 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
 interface FormData {
   name: string;
@@ -33,17 +36,17 @@ const ConfirmationScreen: React.FC = () => {
   console.log('Current User ID:', userId);
   const navigation = useNavigation<any>();
   const [formData, setFormData] = useState<FormData>({
-    name: 'Dr. Karthik',
-    email: 'karthik@email.com',
-    phone: '+91 234 567 8901',
-    specialization: 'Family Medicine, Pediatrics',
-    practice: 'Sunrise Clinic, 123 Wellness Ave, NY',
-    consultationPreferences: 'Online & In-person, Mon-Fri: 10am-5pm',
-    bank: 'Bank of America',
-    accountNumber: '**** 1234',
+    name: '',
+    email: '',
+    phone: '',
+    specialization: '',
+    practice: '',
+    consultationPreferences: '',
+    bank: '',
+    accountNumber: '',
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
-  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const validateForm = () => {
     let tempErrors: Partial<FormData> = {};
     if (!formData.name.trim()) tempErrors.name = 'Name is required';
@@ -89,7 +92,7 @@ const ConfirmationScreen: React.FC = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      // setLoading(true);
+      setLoading(true);
 
       try {
         // Retrieve token from AsyncStorage
@@ -161,6 +164,8 @@ const ConfirmationScreen: React.FC = () => {
         // setLoading(false);
 
         console.error('Error fetching user data:', error.message);
+      }finally {
+        setLoading(false); // Stop loading regardless of success or failure
       }
     };
     fetchUserData();
@@ -172,6 +177,13 @@ const ConfirmationScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+
+       {loading && (
+                    <View style={styles.loaderOverlay}>
+                      <ActivityIndicator size="large" color="#00796B" />
+                      <Text style={styles.loaderText}>Processing...</Text>
+                    </View>
+                  )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -179,6 +191,8 @@ const ConfirmationScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirmation</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('ConfirmationScreen')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
@@ -433,6 +447,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+   loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 

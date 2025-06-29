@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -56,6 +58,9 @@ const ProfileReview: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile Review</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('ConfirmationScreen')} totalSteps={TOTAL_STEPS} />
+
 
       {/* Content */}
       <ScrollView style={styles.formContainer}>

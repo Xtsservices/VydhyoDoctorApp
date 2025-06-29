@@ -9,4 +9,7 @@ export type RootStackParamList = {
   KYCDetailsScreen: undefined;
   ConfirmationScreen: undefined;
   ProfileReview: undefined;
+  AccountVerified: undefined;
+  DoctorDashboard: undefined;
+  Sidebar: undefined;
 };

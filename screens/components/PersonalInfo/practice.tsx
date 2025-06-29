@@ -1,14 +1,38 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Dimensions,
+  FlatList,
+  ActivityIndicator
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Address {
   id: number;
   address: string;
   startTime: string;
   endTime: string;
+}
+
+interface Suggestion {
+  description: string;
+  place_id: string;
+  structured_formatting?: {
+    main_text: string;
+    secondary_text: string;
+  };
 }
 
 const { width, height } = Dimensions.get('window');
@@ -22,9 +46,55 @@ const PracticeScreen = () => {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showAffiliationSuggestions, setShowAffiliationSuggestions] = useState(false);
+  const [currentOpdIndex, setCurrentOpdIndex] = useState(0); // Track which OPD address to fill
+  const [loading, setLoading] = useState(false);
+
+  // Initialize currentOpdIndex when opdAddresses changes
+  useEffect(() => {
+    setCurrentOpdIndex(opdAddresses.length - 1);
+  }, [opdAddresses.length]);
+
+  // Function to fetch address suggestions from the API
+  const fetchAddressSuggestions = async (query: string) => {
+    if (!query || query.length < 3) {
+      setSuggestions([]);
+      setShowAffiliationSuggestions(false);
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axios.get(
+        `http://216.10.251.239:3000/address/googleAddressSuggession?input=${encodeURIComponent(query)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log('Address suggestions response:', response.data);
+
+      if (response.data.status === 'success') {
+        setSuggestions(response.data.data.prediction || []);
+        setShowAffiliationSuggestions(true);
+      } else {
+        setSuggestions([]);
+        setShowAffiliationSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching address suggestions:', error);
+      Alert.alert('Error', 'Failed to fetch address suggestions');
+      setSuggestions([]);
+      setShowAffiliationSuggestions(false);
+    }
+  };
 
   const handleAddAddress = () => {
-    setOpdAddresses([...opdAddresses, { id: opdAddresses.length + 1, address: '', startTime: '', endTime: '' }]);
+    const newAddress = { id: opdAddresses.length + 1, address: '', startTime: '', endTime: '' };
+    setOpdAddresses([...opdAddresses, newAddress]);
   };
 
   const handleRemoveAddress = (id: number) => {
@@ -49,16 +119,26 @@ const PracticeScreen = () => {
     return hours * 60 + minutes;
   };
 
+  const handleSelectAffiliation = (suggestion: Suggestion) => {
+    const selectedAddress = suggestion.structured_formatting?.main_text || suggestion.description;
+    setAffiliation(selectedAddress); // Set affiliation
+    setSuggestions([]);
+    setShowAffiliationSuggestions(false);
+    setAffiliation(null); // Clear the search bar
+
+    // Update the current OPD address
+    setOpdAddresses((prev) => {
+      const updated = [...prev];
+      updated[currentOpdIndex] = {
+        ...updated[currentOpdIndex],
+        address: selectedAddress,
+      };
+      return updated;
+    });
+  };
+
   const handleNext = () => {
-    setTimeout(() => {
-      
-      navigation.navigate('ConsultationPreferences');
-    }, 3000);
-    
-    if (!affiliation) {
-      Alert.alert('Error', 'Please select a Clinic/Hospital Affiliation');
-      return;
-    }
+  
 
     const hasInvalidAddress = opdAddresses.some(
       (addr) => !addr.address || !addr.startTime || !addr.endTime
@@ -77,29 +157,43 @@ const PracticeScreen = () => {
       Alert.alert('Error', 'End time must be after Start time');
       return;
     }
-    // setTimeout(() => {
-      
-    //   navigation.navigate('ConsultationPreferences');
-    // }, 3000);
-
+ setLoading(true);
+    setTimeout(() => {
+       setLoading(false);
+      navigation.navigate('ConsultationPreferences');
+    }, 3000);
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
+  console.log('OPD Addresses:', opdAddresses);
+  console.log('Affiliation:', affiliation);
+  console.log('Suggestions:', suggestions);
+  console.log('Current OPD Index:', currentOpdIndex);
+
   return (
     <View style={styles.container}>
-      {/* Header */}
+
+        {loading && (
+              <View style={styles.loaderOverlay}>
+                <ActivityIndicator size="large" color="#00796B" />
+                <Text style={styles.loaderText}>Processing...</Text>
+              </View>
+            )}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Icon name="arrow-left" size={width * 0.06} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Practice</Text>
       </View>
-
-      {/* Form Content */}
-      <ScrollView style={styles.formContainer}>
+      <ProgressBar currentStep={getCurrentStepIndex('Practice')} totalSteps={TOTAL_STEPS} />
+      <ScrollView
+        style={styles.formContainer}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+      >
         <Text style={styles.label}>Clinic/Hospital Affiliation</Text>
         <View style={styles.searchContainer}>
           <Icon name="map-marker" size={width * 0.05} color="#00796B" style={styles.searchIcon} />
@@ -108,9 +202,37 @@ const PracticeScreen = () => {
             placeholder="Search or select..."
             placeholderTextColor="#999"
             value={affiliation || ''}
-            onChangeText={(text) => setAffiliation(text)}
+            onChangeText={(text) => {
+              setAffiliation(text);
+              fetchAddressSuggestions(text);
+            }}
           />
         </View>
+        {showAffiliationSuggestions && suggestions.length > 0 && (
+          <View style={styles.affiliationSuggestionsContainer}>
+            <FlatList
+              data={suggestions}
+              keyExtractor={(item) => item.place_id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectAffiliation(item)}
+                >
+                  <Text style={styles.suggestionMainText}>
+                    {item.structured_formatting?.main_text || item.description}
+                  </Text>
+                  {item.structured_formatting?.secondary_text && (
+                    <Text style={styles.suggestionSecondaryText}>
+                      {item.structured_formatting.secondary_text}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              style={styles.suggestionsList}
+              nestedScrollEnabled={true}
+            />
+          </View>
+        )}
 
         <View style={styles.addressSection}>
           <View style={styles.headerRow}>
@@ -122,17 +244,15 @@ const PracticeScreen = () => {
 
           {opdAddresses.map((addr, index) => (
             <View key={addr.id} style={styles.addressContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="OPD Address"
-                placeholderTextColor="#999"
-                value={addr.address}
-                onChangeText={(text) => {
-                  const updatedAddresses = [...opdAddresses];
-                  updatedAddresses[index].address = text;
-                  setOpdAddresses(updatedAddresses);
-                }}
-              />
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="OPD Address"
+                  placeholderTextColor="#999"
+                  value={addr.address}
+                  editable={false} // Make OPD address fields read-only
+                />
+              </View>
               <View style={styles.timeContainer}>
                 <TouchableOpacity
                   style={styles.timeButton}
@@ -185,12 +305,8 @@ const PracticeScreen = () => {
             </View>
           ))}
         </View>
-
-        {/* Spacer to ensure content is not hidden by the Next button */}
         <View style={styles.spacer} />
       </ScrollView>
-
-      {/* Next Button */}
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
@@ -262,6 +378,20 @@ const styles = StyleSheet.create({
     color: '#333',
     paddingHorizontal: width * 0.03,
   },
+  affiliationSuggestionsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    maxHeight: height * 0.25,
+    marginBottom: height * 0.02,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6,
+  },
   addressSection: {
     marginTop: height * 0.02,
   },
@@ -272,7 +402,7 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.015,
   },
   addressContainer: {
-    marginBottom: height * 0.02,
+    marginBottom: height * 0.03,
     backgroundColor: '#fff',
     padding: width * 0.04,
     borderRadius: 8,
@@ -282,6 +412,12 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
     position: 'relative',
+    zIndex: 1,
+  },
+  inputContainer: {
+    position: 'relative',
+    zIndex: 1,
+    marginBottom: height * 0.015,
   },
   input: {
     height: height * 0.06,
@@ -293,10 +429,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     fontSize: width * 0.04,
   },
+  suggestionsList: {
+    maxHeight: height * 0.25,
+  },
+  suggestionItem: {
+    paddingVertical: height * 0.015,
+    paddingHorizontal: width * 0.04,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    minHeight: height * 0.05,
+  },
+  suggestionMainText: {
+    fontSize: width * 0.04,
+    color: '#333',
+    fontWeight: '600',
+    flexWrap: 'wrap',
+    lineHeight: width * 0.05,
+  },
+  suggestionSecondaryText: {
+    fontSize: width * 0.035,
+    color: '#666',
+    flexWrap: 'wrap',
+    lineHeight: width * 0.045,
+    marginTop: 2,
+  },
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: height * 0.01,
+    zIndex: 0,
   },
   timeButton: {
     height: height * 0.06,
@@ -327,8 +487,9 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     position: 'absolute',
-    top: height * 0.01,
+    top: height * 0.0001,
     right: width * 0.02,
+    zIndex: 10,
   },
   removeText: {
     color: '#D32F2F',
@@ -363,6 +524,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+   loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 
