@@ -36,17 +36,17 @@ const ConfirmationScreen: React.FC = () => {
   console.log('Current User ID:', userId);
   const navigation = useNavigation<any>();
   const [formData, setFormData] = useState<FormData>({
-    name: 'Dr. Karthik',
-    email: 'karthik@email.com',
-    phone: '+91 234 567 8901',
-    specialization: 'Family Medicine, Pediatrics',
-    practice: 'Sunrise Clinic, 123 Wellness Ave, NY',
-    consultationPreferences: 'Online & In-person, Mon-Fri: 10am-5pm',
-    bank: 'Bank of America',
-    accountNumber: '**** 1234',
+    name: '',
+    email: '',
+    phone: '',
+    specialization: '',
+    practice: '',
+    consultationPreferences: '',
+    bank: '',
+    accountNumber: '',
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const validateForm = () => {
     let tempErrors: Partial<FormData> = {};
     if (!formData.name.trim()) tempErrors.name = 'Name is required';
@@ -92,7 +92,7 @@ const ConfirmationScreen: React.FC = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      // setLoading(true);
+      setLoading(true);
 
       try {
         // Retrieve token from AsyncStorage
@@ -164,6 +164,8 @@ const ConfirmationScreen: React.FC = () => {
         // setLoading(false);
 
         console.error('Error fetching user data:', error.message);
+      }finally {
+        setLoading(false); // Stop loading regardless of success or failure
       }
     };
     fetchUserData();

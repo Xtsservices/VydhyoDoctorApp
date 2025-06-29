@@ -304,6 +304,7 @@ useEffect(() => {
             placeholder="+91 9876543210"
             placeholderTextColor="#999"
             keyboardType="phone-pad"
+            editable={!isOtpSent}
             value={mobile}
             onChangeText={(text) => {
               setMobile(text);
@@ -403,21 +404,21 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.04,
   },
   logoWrapper: {
-    width: width * 0.2,
-    height: width * 0.2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: width * 0.1,
+    // width: width * 0.4,
+    // height: width * 0.4,
+    // backgroundColor: '#FFFFFF',
+    // borderRadius: width * 0.2,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 5,
+    // elevation: 5,
   },
   logo: {
-    width: width * 0.2,
-    height: width * 0.2,
+    width: width * 0.5,
+    height: width * 0.5,
   },
   portalTitle: {
     fontSize: width * 0.05,

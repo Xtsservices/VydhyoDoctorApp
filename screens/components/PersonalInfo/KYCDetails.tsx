@@ -71,18 +71,18 @@ const KYCDetailsScreen = () => {
   };
 
   const handleNext = async () => {
-    if (!voterUploaded) {
-      Alert.alert('Error', 'Please upload Voter ID document.');
-      return;
-    }
+    // if (!voterUploaded) {
+    //   Alert.alert('Error', 'Please upload Voter ID document.');
+    //   return;
+    // }
     if (!pancardUploaded) {
       Alert.alert('Error', 'Please upload Pancard document.');
       return;
     }
-    if (!voterNumber || !validateVoterNumber(voterNumber)) {
-      Alert.alert('Error', 'Please enter a valid 10-character Voter ID number (e.g., ABC1234567).');
-      return;
-    }
+    // if (!voterNumber || !validateVoterNumber(voterNumber)) {
+    //   Alert.alert('Error', 'Please enter a valid 10-character Voter ID number (e.g., ABC1234567).');
+    //   return;
+    // }
     if (!panNumber || !validatePanNumber(panNumber)) {
       Alert.alert('Error', 'Please enter a valid 10-character PAN number (e.g., ABCDE1234F).');
       return;
@@ -109,15 +109,15 @@ const KYCDetailsScreen = () => {
 
       const formData = new FormData();
       formData.append('userId', userId);
-      formData.append('voterNumber', voterNumber);
+      // formData.append('voterNumber', voterNumber);
       formData.append('panNumber', panNumber);
-      if (voterImage?.uri) {
-        formData.append('voterFile', {
-          uri: voterImage.uri,
-          name: voterImage.name,
-          type: voterImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
-        } as any);
-      }
+      // if (voterImage?.uri) {
+      //   formData.append('voterFile', {
+      //     uri: voterImage.uri,
+      //     name: voterImage.name,
+      //     type: voterImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+      //   } as any);
+      // }
       if (panImage?.uri) {
         formData.append('panFile', {
           uri: panImage.uri,
@@ -178,7 +178,7 @@ const KYCDetailsScreen = () => {
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
-          <Text style={styles.label}>Upload Voter ID Proof</Text>
+          {/* <Text style={styles.label}>Upload Voter ID Proof</Text>
           <TouchableOpacity style={styles.uploadBox} onPress={handleVoterUpload}>
             <Icon name="card-account-details" size={width * 0.08} color="#00796B" style={styles.icon} />
             <Text style={styles.uploadText}>Upload</Text>
@@ -188,9 +188,9 @@ const KYCDetailsScreen = () => {
             <Text style={styles.successText}>
               File uploaded: {voterImage?.name || 'Voter ID uploaded successfully!'}
             </Text>
-          )}
+          )} */}
 
-          <Text style={styles.label}>Enter Voter ID Number *</Text>
+          {/* <Text style={styles.label}>Enter Voter ID Number *</Text>
           <TextInput
             style={styles.input}
             value={voterNumber}
@@ -199,7 +199,7 @@ const KYCDetailsScreen = () => {
             keyboardType="default"
             maxLength={10}
             autoCapitalize="characters"
-          />
+          /> */}
 
           <Text style={styles.label}>Upload Pancard Proof</Text>
           <TouchableOpacity style={styles.uploadBox} onPress={handlePancardUpload}>

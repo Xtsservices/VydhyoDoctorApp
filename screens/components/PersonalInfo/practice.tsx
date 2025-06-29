@@ -67,7 +67,7 @@ const PracticeScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await axios.get(
-        `http://192.168.1.44:3000/address/googleAddressSuggession?input=${encodeURIComponent(query)}`,
+        `http://216.10.251.239:3000/address/googleAddressSuggession?input=${encodeURIComponent(query)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

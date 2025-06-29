@@ -521,7 +521,7 @@ const PersonalInfoScreen: React.FC = () => {
           <Text style={styles.errorText}>{errors.bloodGroup}</Text>
         ) : null}
 
-        <Text style={styles.label}>Marital Status</Text>
+        {/* <Text style={styles.label}>Marital Status</Text>
         <View style={styles.input}>
           <Picker
             selectedValue={formData.maritalStatus}
@@ -544,7 +544,7 @@ const PersonalInfoScreen: React.FC = () => {
         </View>
         {errors.maritalStatus ? (
           <Text style={styles.errorText}>{errors.maritalStatus}</Text>
-        ) : null}
+        ) : null} */}
 
         <Text style={styles.label}>Languages Spoken</Text>
         {/* <View style={styles.languagesContainer}>
