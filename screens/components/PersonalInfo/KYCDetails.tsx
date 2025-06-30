@@ -75,6 +75,35 @@ const KYCDetailsScreen = () => {
     //   Alert.alert('Error', 'Please upload Voter ID document.');
     //   return;
     // }
+
+    // If no PAN number or PAN image is provided, skip API call and navigate to ConfirmationScreen
+    if (!panNumber && !pancardUploaded) {
+      try {
+        setLoading(true);
+        await AsyncStorage.setItem('currentStep', 'ConfirmationScreen');
+        Toast.show({
+          type: 'info',
+          text1: 'Skipped',
+          text2: 'KYC details skipped',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        navigation.navigate('ConfirmationScreen');
+      } catch (error) {
+        console.error('Error skipping KYC details:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to skip. Please try again.',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    
     if (!pancardUploaded) {
       Alert.alert('Error', 'Please upload Pancard document.');
       return;
@@ -162,7 +191,7 @@ const KYCDetailsScreen = () => {
 
          {loading && (
                                 <View style={styles.loaderOverlay}>
-                                  <ActivityIndicator size="large" color="#00796B" />
+                                  <ActivityIndicator size="large" color="#00203F" />
                                   <Text style={styles.loaderText}>Processing...</Text>
                                 </View>
                               )}
@@ -180,7 +209,7 @@ const KYCDetailsScreen = () => {
         <View style={styles.card}>
           {/* <Text style={styles.label}>Upload Voter ID Proof</Text>
           <TouchableOpacity style={styles.uploadBox} onPress={handleVoterUpload}>
-            <Icon name="card-account-details" size={width * 0.08} color="#00796B" style={styles.icon} />
+            <Icon name="card-account-details" size={width * 0.08} color="#00203F" style={styles.icon} />
             <Text style={styles.uploadText}>Upload</Text>
             <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
           </TouchableOpacity>
@@ -203,7 +232,7 @@ const KYCDetailsScreen = () => {
 
           <Text style={styles.label}>Upload Pancard Proof</Text>
           <TouchableOpacity style={styles.uploadBox} onPress={handlePancardUpload}>
-            <Icon name="card" size={width * 0.08} color="#00796B" style={styles.icon} />
+            <Icon name="card" size={width * 0.08} color="#00203F" style={styles.icon} />
             <Text style={styles.uploadText}>Upload</Text>
             <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
           </TouchableOpacity>
@@ -249,12 +278,12 @@ const KYCDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -323,7 +352,7 @@ const styles = StyleSheet.create({
   },
   uploadText: {
     fontSize: width * 0.035,
-    color: '#00796B',
+    color: '#00203F',
     textAlign: 'center',
     fontWeight: '500',
   },
@@ -334,7 +363,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   successText: {
-    color: '#00796B',
+    color: '#00203F',
     fontSize: width * 0.035,
     marginTop: height * 0.005,
     marginBottom: height * 0.01,
@@ -357,8 +386,8 @@ const styles = StyleSheet.create({
     marginRight: width * 0.03,
   },
   checkboxChecked: {
-    backgroundColor: '#00796B',
-    borderColor: '#00796B',
+    backgroundColor: '#00203F',
+    borderColor: '#00203F',
   },
   termsText: {
     fontSize: width * 0.035,
@@ -366,7 +395,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   nextButton: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',

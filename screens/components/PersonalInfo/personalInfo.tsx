@@ -298,7 +298,7 @@ const PersonalInfoScreen: React.FC = () => {
 
       {loading && (
         <View style={styles.loaderOverlay}>
-          <ActivityIndicator size="large" color="#00796B" />
+          <ActivityIndicator size="large" color="#00203F" />
           <Text style={styles.loaderText}>Processing...</Text>
         </View>
       )}
@@ -321,7 +321,7 @@ const PersonalInfoScreen: React.FC = () => {
               <Icon
                 name="camera"
                 size={20}
-                color="#00796B"
+                color="#00203F"
                 style={styles.cameraIcon}
               />
             </View>
@@ -431,7 +431,7 @@ const PersonalInfoScreen: React.FC = () => {
           <Icon
             name="calendar"
             size={20}
-            color="#00796B"
+            color="#00203F"
             style={styles.calendarIcon}
           />
         </TouchableOpacity>
@@ -569,6 +569,22 @@ const PersonalInfoScreen: React.FC = () => {
           placeholderTextColor="#999"
         /> */}
 
+         {/* <MultiSelect
+          style={styles.input}
+          data={languageOptions}
+          labelField="label"
+          valueField="value"
+          placeholder="Select languages"
+          value={formData.spokenLanguages}
+          onChange={handleLanguageChange}
+          selectedStyle={styles.selectedStyle}
+          selectedTextStyle={styles.selectedTextStyle}
+          containerStyle={styles.multiSelectContainer}
+          placeholderStyle={styles.placeholderStyle}
+          itemTextStyle={styles.itemTextStyle}
+          activeColor="#E0F2F1"
+        /> */}
+
          <MultiSelect
           style={styles.input}
           data={languageOptions}
@@ -583,6 +599,20 @@ const PersonalInfoScreen: React.FC = () => {
           placeholderStyle={styles.placeholderStyle}
           itemTextStyle={styles.itemTextStyle}
           activeColor="#E0F2F1"
+          renderSelectedItem={(item, unSelect) => (
+            <View style={styles.selectedItemContainer}>
+              <Text style={styles.selectedItemText}>{item.label}</Text>
+              <TouchableOpacity onPress={() => unSelect && unSelect(item)} accessibilityLabel={`Remove ${item.label}`}>
+                <Icon name="times" size={16} color="#D32F2F" style={styles.removeIcon} />
+              </TouchableOpacity>
+            </View>
+          )}
+          renderItem={(item, selected) => (
+            <View style={styles.dropdownItemContainer}>
+              <Text style={styles.dropdownItemText}>{item.label}</Text>
+              {selected && <Icon name="check" size={16} color="#00796B" style={styles.dropdownTickIcon} />}
+            </View>
+          )}
         />
         {errors.spokenLanguages ? (
           <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
@@ -603,12 +633,12 @@ const PersonalInfoScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -661,7 +691,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   changePhotoText: {
-    color: '#00796B',
+    color: '#00203F',
     fontSize: width * 0.04,
     fontWeight: '500',
     textDecorationLine: 'underline',
@@ -719,7 +749,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   languageText: {
-    color: '#00796B',
+    color: '#00203F',
     fontSize: width * 0.035,
     fontWeight: '500',
   },
@@ -727,7 +757,7 @@ const styles = StyleSheet.create({
     marginLeft: width * 0.02,
   },
   removeText: {
-    color: '#00796B',
+    color: '#00203F',
     fontSize: width * 0.035,
     fontWeight: 'bold',
   },
@@ -745,7 +775,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0F2F1',
   },
   selectedTextStyle: {
-    color: '#00796B',
+    color: '#00203F',
     fontSize: width * 0.035,
     fontWeight: '500',
   },
@@ -758,7 +788,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   nextButton: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
@@ -795,6 +825,42 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: width * 0.04,
     marginTop: height * 0.02,
+  },
+  selectedItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F2F1',
+    borderRadius: 12,
+    paddingHorizontal: width * 0.03,
+    paddingVertical: height * 0.005,
+    marginRight: width * 0.02,
+    marginBottom: height * 0.01,
+    marginTop:5,
+  },
+  selectedItemText: {
+    color: '#00203F',
+    fontSize: width * 0.035,
+    fontWeight: '500',
+  },
+  tickIcon: {
+    marginLeft: width * 0.02,
+  },
+  dropdownItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: width * 0.03,
+    paddingVertical: height * 0.01,
+  },
+  dropdownItemText: {
+    flex: 1,
+    fontSize: width * 0.04,
+    color: '#333',
+  },
+  dropdownTickIcon: {
+    marginLeft: width * 0.02,
+  },
+  removeIcon: {
+    marginLeft: width * 0.02,
   },
 });
 

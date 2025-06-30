@@ -10,6 +10,8 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Toast from 'react-native-toast-message';
@@ -77,7 +79,7 @@ useEffect(() => {
         ) {
           const userData = profileResponse.data.data;
           dispatch({ type: 'currentUserID', payload: storedUserId });
-          const { screen, params } = determineNextScreen(userData);
+          const { screen, params } = await determineNextScreen(userData);
           await AsyncStorage.setItem('currentStep', screen);
 
           Toast.show({
@@ -129,6 +131,10 @@ useEffect(() => {
       if (response.status === 'success' && 'data' in response && response.data) {
         setUserId(response.data.userId);
         setShowOtp(true);
+        // Focus on the first OTP field after showing OTP inputs
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 100); // Small delay to ensure the UI has rendered
         Toast.show({
           type: 'success',
           text1: 'Success',
@@ -149,8 +155,15 @@ useEffect(() => {
 
   
 
-  const determineNextScreen = (userData: any): { screen: string; params?: any } => {
+  const determineNextScreen = async(userData: any): Promise<{ screen: string; params?: any }> => {
    console.log('User Data:======', userData);
+
+   // Check stored step in AsyncStorage
+  const storedStep = await AsyncStorage.getItem('currentStep');
+  if (storedStep === 'ProfileReview') {
+    return { screen: 'ProfileReview' };
+  }
+   
     if (!userData.firstname || !userData.lastname || !userData.email || !userData.medicalRegistrationNumber) {
       return { screen: 'PersonalInfo', params: undefined };
     }
@@ -231,7 +244,7 @@ useEffect(() => {
             profileResponse.data
           ) {
             const userData = profileResponse.data.data;
-            const { screen, params } = determineNextScreen(userData);
+            const { screen, params } = await determineNextScreen(userData);
             await AsyncStorage.setItem('currentStep', screen);
 
             Toast.show({
@@ -271,14 +284,20 @@ useEffect(() => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00796B" />
+        <ActivityIndicator size="large" color="#00203F" />
         <Text style={styles.loadingText}>Checking login status...</Text>
       </View>
     );
   }
 
+
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Doctor Login</Text>
@@ -298,7 +317,7 @@ useEffect(() => {
 
         <Text style={styles.label}>Mobile Number*</Text>
         <View style={[styles.inputContainer, mobileError ? styles.inputError : null]}>
-          <Icon name="phone" size={20} color="#00796B" style={styles.icon} />
+          <Icon name="phone" size={20} color="#00203F" style={styles.icon} />
           <TextInput
             style={styles.input}
             placeholder="+91 9876543210"
@@ -366,19 +385,19 @@ useEffect(() => {
           {/* <Text style={styles.buttonText}>Login</Text> */}
         </TouchableOpacity>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -404,21 +423,12 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.04,
   },
   logoWrapper: {
-    // width: width * 0.4,
-    // height: width * 0.4,
-    // backgroundColor: '#FFFFFF',
-    // borderRadius: width * 0.2,
     justifyContent: 'center',
     alignItems: 'center',
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 2 },
-    // shadowOpacity: 0.2,
-    // shadowRadius: 5,
-    // elevation: 5,
   },
   logo: {
-    width: width * 0.5,
-    height: width * 0.5,
+    width: width * 0.7,
+    height: width * 0.7,
   },
   portalTitle: {
     fontSize: width * 0.05,
@@ -427,7 +437,7 @@ const styles = StyleSheet.create({
     marginVertical: height * 0.01,
   },
   signInLink: {
-    color: '#00796B',
+    color: '#00203F',
     fontSize: width * 0.04,
     fontWeight: '500',
     textDecorationLine: 'underline',
@@ -488,7 +498,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   button: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
@@ -521,7 +531,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   loadingText: {
     marginTop: height * 0.02,

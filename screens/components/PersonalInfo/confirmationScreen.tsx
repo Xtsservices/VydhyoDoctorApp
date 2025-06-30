@@ -17,6 +17,8 @@ import axios from 'axios';
 import { useSelector } from 'react-redux';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import Toast from 'react-native-toast-message';
+
 
 interface FormData {
   name: string;
@@ -59,18 +61,18 @@ const ConfirmationScreen: React.FC = () => {
       tempErrors.phone = 'Valid phone is required';
     if (!formData.specialization.trim())
       tempErrors.specialization = 'Specialization is required';
-    if (!formData.practice.trim())
-      tempErrors.practice = 'Practice details are required';
+    // if (!formData.practice.trim())
+    //   tempErrors.practice = 'Practice details are required';
     if (!formData.consultationPreferences.trim())
       tempErrors.consultationPreferences = 'Preferences are required';
-    if (!formData.bank.trim()) tempErrors.bank = 'Bank is required';
-    if (!formData.accountNumber.trim())
-      tempErrors.accountNumber = 'Account number is required';
+    // if (!formData.bank.trim()) tempErrors.bank = 'Bank is required';
+    // if (!formData.accountNumber.trim())
+    //   tempErrors.accountNumber = 'Account number is required';
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async() => {
     if (!validateForm()) {
       Alert.alert(
         'Error',
@@ -78,6 +80,14 @@ const ConfirmationScreen: React.FC = () => {
       );
       return;
     }
+    await AsyncStorage.setItem('currentStep', 'ProfileReview');
+    Toast.show({
+      type: 'success',
+      text1: 'Success',
+      text2: 'Profile submitted successfully',
+      position: 'top',
+      visibilityTime: 3000,
+    });
     navigation.navigate('ProfileReview');
   };
 
@@ -105,7 +115,7 @@ const ConfirmationScreen: React.FC = () => {
 
         // Make API call
         const response = await axios.get(
-          'http://216.10.251.239:3000/users/getUser',
+          'http://192.168.1.44:3000/users/getUser',
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -180,7 +190,7 @@ const ConfirmationScreen: React.FC = () => {
 
        {loading && (
                     <View style={styles.loaderOverlay}>
-                      <ActivityIndicator size="large" color="#00796B" />
+                      <ActivityIndicator size="large" color="#00203F" />
                       <Text style={styles.loaderText}>Processing...</Text>
                     </View>
                   )}
@@ -201,10 +211,10 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Personal Info Section */}
           <View style={styles.row}>
-            <Icon name="account" size={width * 0.05} color="#00796B" />
+            <Icon name="account" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Personal Info</Text>
             <TouchableOpacity onPress={() => handleChange('name', '')}>
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -238,12 +248,12 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Specialization Section */}
           <View style={styles.row}>
-            <Icon name="briefcase" size={width * 0.05} color="#00796B" />
+            <Icon name="briefcase" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Specialization</Text>
             <TouchableOpacity
               onPress={() => handleChange('specialization', '')}
             >
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -259,10 +269,10 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Practice Section */}
           <View style={styles.row}>
-            <Icon name="office-building" size={width * 0.05} color="#00796B" />
+            <Icon name="office-building" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Practice</Text>
             <TouchableOpacity onPress={() => handleChange('practice', '')}>
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -278,12 +288,12 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Consultation Preferences Section */}
           <View style={styles.row}>
-            <Icon name="calendar" size={width * 0.05} color="#00796B" />
+            <Icon name="calendar" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Consultation Preferences</Text>
             <TouchableOpacity
               onPress={() => handleChange('consultationPreferences', '')}
             >
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -302,10 +312,10 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Financial Setup Section */}
           <View style={styles.row}>
-            <Icon name="bank" size={width * 0.05} color="#00796B" />
+            <Icon name="bank" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Financial Setup</Text>
             <TouchableOpacity onPress={() => handleChange('bank', '')}>
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -344,12 +354,12 @@ const ConfirmationScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -428,7 +438,7 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.01,
   },
   submitButton: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',

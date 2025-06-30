@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     borderRadius: 5,
   },
 });

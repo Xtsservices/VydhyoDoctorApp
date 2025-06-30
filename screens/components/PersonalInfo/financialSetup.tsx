@@ -116,7 +116,7 @@ const FinancialSetupScreen = () => {
         console.log('Form data to send:', body);
 
         const response = await axios.post(
-          'http://216.10.251.239:3000/users/updateBankDetails',
+          'http://192.168.1.44:3000/users/updateBankDetails',
           body,
           {
             headers: {
@@ -170,12 +170,38 @@ const FinancialSetupScreen = () => {
   };
   
 
+   const handleSkip = async () => {
+      try {
+        setLoading(true); // Show loader
+        await AsyncStorage.setItem('currentStep', 'KYCDetailsScreen'); // Update current step
+        Toast.show({
+          type: 'info',
+          text1: 'Skipped',
+          text2: 'Financial setup skipped',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        navigation.navigate('KYCDetailsScreen');
+      } catch (error) {
+        console.error('Error skipping financial setup:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to skip. Please try again.',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      } finally {
+        setLoading(false); // Always hide loader
+      }
+    };
+
   return (
     <View style={styles.container}>
 
        {loading && (
                           <View style={styles.loaderOverlay}>
-                            <ActivityIndicator size="large" color="#00796B" />
+                            <ActivityIndicator size="large" color="#00203F" />
                             <Text style={styles.loaderText}>Processing...</Text>
                           </View>
                         )}
@@ -192,7 +218,7 @@ const FinancialSetupScreen = () => {
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
-          <Icon name="bank" size={width * 0.08} color="#00796B" style={styles.icon} />
+          <Icon name="bank" size={width * 0.08} color="#00203F" style={styles.icon} />
           <Text style={styles.title}>Add Bank Details</Text>
           <Text style={styles.subtitle}>Please enter your bank account details to proceed.</Text>
 
@@ -277,10 +303,18 @@ const FinancialSetupScreen = () => {
         <View style={styles.spacer} />
       </ScrollView>
 
+<View style={styles.buttonsContainer}>
+        <TouchableOpacity style={[styles.button2, styles.skipButton]} onPress={handleSkip}>
+          <Text style={[styles.buttonText2, styles.skipButtonText]}>Skip</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button2} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Next</Text>
+        </TouchableOpacity>
+      </View>
       {/* Next Button */}
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+      {/* <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>Next</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };
@@ -288,12 +322,12 @@ const FinancialSetupScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -385,7 +419,7 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.01,
   },
   button: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
@@ -404,6 +438,38 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+  buttonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: width * 0.05,
+    marginBottom: height * 0.03,
+  },
+  button2: {
+    backgroundColor: '#00203F',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: width * 0.02,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  skipButton: {
+    backgroundColor: '#fff',
+    // borderWidth: 1,
+    borderColor: '#00203F',
+  },
+  buttonText2: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+  skipButtonText: {
+    color: '#00203F',
   },
    loaderOverlay: {
     ...StyleSheet.absoluteFillObject,

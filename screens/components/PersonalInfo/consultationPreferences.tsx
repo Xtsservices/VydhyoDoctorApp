@@ -121,7 +121,7 @@ const ConsultationPreferences = () => {
 
         {loading && (
                     <View style={styles.loaderOverlay}>
-                      <ActivityIndicator size="large" color="#00796B" />
+                      <ActivityIndicator size="large" color="#00203F" />
                       <Text style={styles.loaderText}>Processing...</Text>
                     </View>
                   )}
@@ -152,7 +152,7 @@ const ConsultationPreferences = () => {
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="account" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon name="account" size={width * 0.05} color="#00203F" style={styles.feeIcon} />
               <Text style={styles.feeLabel}>In-Person</Text>
               <TextInput
                 style={[styles.input, !selectedModes.inPerson && styles.inputDisabled]}
@@ -174,7 +174,7 @@ const ConsultationPreferences = () => {
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="video" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon name="video" size={width * 0.05} color="#00203F" style={styles.feeIcon} />
               <Text style={styles.feeLabel}>Video</Text>
               <TextInput
                 style={[styles.input, !selectedModes.video && styles.inputDisabled]}
@@ -199,7 +199,7 @@ const ConsultationPreferences = () => {
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="home" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon name="home" size={width * 0.05} color="#00203F" style={styles.feeIcon} />
               <Text style={styles.feeLabel}>Home Visit</Text>
               <TextInput
                 style={[styles.input, !selectedModes.homeVisit && styles.inputDisabled]}
@@ -238,12 +238,12 @@ const ConsultationPreferences = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#DCFCE7",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#00796B",
+    backgroundColor: "#00203F",
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: "#000",
@@ -304,8 +304,8 @@ const styles = StyleSheet.create({
     marginRight: width * 0.03,
   },
   checkboxSelected: {
-    backgroundColor: "#00796B",
-    borderColor: "#00796B",
+    backgroundColor: "#00203F",
+    borderColor: "#00203F",
   },
   feeIcon: {
     marginRight: width * 0.03,
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     color: "#999",
   },
   nextButton: {
-    backgroundColor: "#00796B",
+    backgroundColor: "#00203F",
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: "center",

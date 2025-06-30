@@ -1,17 +1,28 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Dimensions, Platform,ActivityIndicator  } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Dimensions,
+  Platform,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  SafeAreaView,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { pick, types } from '@react-native-documents/picker';
-import AsyncStorage  from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
 import ProgressBar from '../progressBar/progressBar';
 import { UploadFiles } from '../../auth/auth';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
-
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -23,11 +34,12 @@ const { width, height } = Dimensions.get('window');
 const SpecializationDetails = () => {
   const userId = useSelector((state: any) => state.currentUserID);
 
-  //
   const [formData, setFormData] = useState({
+    degree: '',
     specialization: '',
-    subSpecialization: '',
     yearsExperience: '',
+    services: '',
+    bio: '',
     degrees: null as { uri: string; type: string; name: string } | null,
     certifications: null as { uri: string; type: string; name: string } | null,
   });
@@ -37,20 +49,16 @@ const SpecializationDetails = () => {
   const navigation = useNavigation<NavigationProp>();
 
   const validateForm = () => {
+    if (!formData.degree) {
+      Alert.alert('Error', 'Please select a degree.');
+      return false;
+    }
     if (!formData.specialization) {
-      Alert.alert('Error', 'Please select a specialization.');
+      Alert.alert('Error', 'Please enter a specialization.');
       return false;
     }
     if (!formData.yearsExperience || isNaN(Number(formData.yearsExperience))) {
       Alert.alert('Error', 'Please enter a valid number for years of experience.');
-      return false;
-    }
-    if (!formData.degrees) {
-      Alert.alert('Error', 'Please upload a degree certificate.');
-      return false;
-    }
-    if (!formData.certifications) {
-      Alert.alert('Error', 'Please upload a specialization certificate.');
       return false;
     }
     return true;
@@ -63,7 +71,6 @@ const SpecializationDetails = () => {
         type: [types.allFiles],
       });
       setFormData({ ...formData, [field]: result });
-      // Alert.alert('Success', `File "${result.name}" selected for ${field}.`);
     } catch (err) {
       if (err instanceof Error && err.message.includes('cancel')) {
         console.log('File selection cancelled');
@@ -75,19 +82,20 @@ const SpecializationDetails = () => {
   };
 
   const handleNext = async () => {
-
     if (!validateForm()) return;
 
     const token = await AsyncStorage.getItem('authToken');
- 
 
     try {
       setIsLoading(true);
 
-         const formDataObj = new FormData();
+      const formDataObj = new FormData();
       formDataObj.append('id', userId);
       formDataObj.append('name', formData.specialization);
       formDataObj.append('experience', formData.yearsExperience);
+      formDataObj.append('degree', formData.degree);
+      formDataObj.append('services', formData.services);
+      formDataObj.append('bio', formData.bio);
 
       if (formData.degrees) {
         formDataObj.append('drgreeCertificate', {
@@ -104,10 +112,12 @@ const SpecializationDetails = () => {
           name: formData.certifications.name || 'certification.pdf',
         } as any);
       }
-console.log('Form data to be sent:', formDataObj);
-    
+
+      console.log('Form data to be sent:', formDataObj);
+
       const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
       console.log('API response:', response);
+    if (response.status === 'success') {
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -115,17 +125,24 @@ console.log('Form data to be sent:', formDataObj);
         position: 'top',
         visibilityTime: 3000,
       });
-      console.log('API response:', 100);
+      navigation.navigate('Practice');
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'message' in response && response.message ? response.message.message : 'Failed to update specialization details.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    }
 
-    
-
-           setIsLoading(false);
-
+      setIsLoading(false);
       navigation.navigate('Practice');
     } catch (err) {
+      setIsLoading(false);
       console.error('API error:', err);
       Alert.alert('Error', 'Failed to update specialization details.');
-    } 
+    }
   };
 
   const handleBack = () => {
@@ -133,116 +150,166 @@ console.log('Form data to be sent:', formDataObj);
   };
 
   return (
-    <View style={styles.container}>
-
-       {isLoading && (
-              <View style={styles.loaderOverlay}>
-                <ActivityIndicator size="large" color="#00796B" />
-                <Text style={styles.loaderText}>Processing...</Text>
-              </View>
-            )}
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack} disabled={isLoading}>
-          <Icon name="arrow-left" size={width * 0.06} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Specialization Details</Text>
-      </View>
-
-
-      <ProgressBar currentStep={getCurrentStepIndex('Specialization')} totalSteps={TOTAL_STEPS} />
-
-
-      {/* Form Content */}
-      <View style={styles.formContainer}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Specialization(s)</Text>
-          <View style={styles.input}>
-            <Picker
-              selectedValue={formData.specialization}
-              onValueChange={(itemValue) => setFormData({ ...formData, specialization: itemValue })}
-              style={styles.picker}
-              enabled={!isLoading}
-            >
-              <Picker.Item label="Select or add specialization" value="" />
-              <Picker.Item label="Cardiology" value="Cardiology" />
-              <Picker.Item label="Neurology" value="Neurology" />
-              <Picker.Item label="Orthopedics" value="Orthopedics" />
-              <Picker.Item label="Dermatologist" value="Dermatologist" />
-            </Picker>
-          </View>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Years of Experience</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.yearsExperience}
-            onChangeText={(text) => setFormData({ ...formData, yearsExperience: text })}
-            keyboardType="numeric"
-            placeholder="e.g. 5"
-            placeholderTextColor="#999"
-            editable={!isLoading}
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Degrees</Text>
-          <TouchableOpacity
-            onPress={() => handleFileUpload('degrees')}
-            style={styles.uploadContainer}
-            disabled={isLoading}
-          >
-            <View style={styles.uploadField}>
-              <Icon name="upload" size={width * 0.05} color="#00796B" style={styles.uploadIcon} />
-              <Text style={styles.uploadText}>
-                {formData.degrees ? formData.degrees.name : 'Upload Degree Certificate(s)'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Certifications</Text>
-          <TouchableOpacity
-            onPress={() => handleFileUpload('certifications')}
-            style={styles.uploadContainer}
-            disabled={isLoading}
-          >
-            <View style={styles.uploadField}>
-              <Icon name="upload" size={width * 0.05} color="#00796B" style={styles.uploadIcon} />
-              <Text style={styles.uploadText}>
-                {formData.certifications ? formData.certifications.name : 'Upload Certificate(s)'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Next Button */}
-      <TouchableOpacity
-        style={[styles.nextButton, isLoading && styles.disabledButton]}
-        onPress={handleNext}
-        disabled={isLoading}
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-      
-        
-   <Text style={styles.nextText}>Next</Text>
-        {/* <Text style={styles.nextText}>{isLoading ? 'Submitting...' : 'Next'}</Text> */}
-      </TouchableOpacity>
-    </View>
+       
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack} disabled={isLoading}>
+              <Icon name="arrow-left" size={width * 0.06} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Specialization Details</Text>
+          </View>
+
+          <ProgressBar currentStep={getCurrentStepIndex('Specialization')} totalSteps={TOTAL_STEPS} />
+ <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {/* Form Content */}
+          <View style={styles.formContainer}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Degree*</Text>
+              <View style={styles.input}>
+                <Picker
+                  selectedValue={formData.degree}
+                  onValueChange={(itemValue) => setFormData({ ...formData, degree: itemValue })}
+                  style={styles.picker}
+                  enabled={!isLoading}
+                >
+                  <Picker.Item label="Select degree" value="" />
+                  <Picker.Item label="MBBS" value="MBBS" />
+                  <Picker.Item label="MD" value="MD" />
+                  <Picker.Item label="FAAP" value="FAAP" />
+                  <Picker.Item label="FACC" value="FACC" />
+                </Picker>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Specialization(s)*</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.specialization}
+                onChangeText={(text) => setFormData({ ...formData, specialization: text })}
+                placeholder="e.g. Cardiology, Neurology"
+                placeholderTextColor="#999"
+                editable={!isLoading}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Years of Experience *</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.yearsExperience}
+                onChangeText={(text) => setFormData({ ...formData, yearsExperience: text })}
+                keyboardType="numeric"
+                placeholder="e.g. 5"
+                placeholderTextColor="#999"
+                editable={!isLoading}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Services Provided*</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.services}
+                onChangeText={(text) => setFormData({ ...formData, services: text })}
+                placeholder="e.g. Consultations, Diagnostics, Surgeries"
+                placeholderTextColor="#999"
+                editable={!isLoading}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Bio/Profile Info*</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={formData.bio}
+                onChangeText={(text) => setFormData({ ...formData, bio: text })}
+                placeholder="Enter your professional bio"
+                placeholderTextColor="#999"
+                multiline
+                numberOfLines={4}
+                editable={!isLoading}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Degree Certificate(s) (Optional)</Text>
+              <TouchableOpacity
+                onPress={() => handleFileUpload('degrees')}
+                style={styles.uploadContainer}
+                disabled={isLoading}
+              >
+                <View style={styles.uploadField}>
+                  <Icon name="upload" size={width * 0.05} color="#00203F" style={styles.uploadIcon} />
+                  <Text style={styles.uploadText}>
+                    {formData.degrees ? formData.degrees.name : 'Upload Degree Certificate(s)'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Specialization Certificate(s) (Optional)</Text>
+              <TouchableOpacity
+                onPress={() => handleFileUpload('certifications')}
+                style={styles.uploadContainer}
+                disabled={isLoading}
+              >
+                <View style={styles.uploadField}>
+                  <Icon name="upload" size={width * 0.05} color="#00203F" style={styles.uploadIcon} />
+                  <Text style={styles.uploadText}>
+                    {formData.certifications ? formData.certifications.name : 'Upload Certificate(s)'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Next Button */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.nextButton, isLoading && styles.disabledButton]}
+            onPress={handleNext}
+            disabled={isLoading}
+          >
+            <Text style={styles.nextText}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+
+      {isLoading && (
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#00203F" />
+          <Text style={styles.loaderText}>Processing...</Text>
+        </View>
+      )}
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
+  },
+  keyboardAvoidingContainer: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: height * 0.1, // Extra padding to ensure content is not cut off
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -260,7 +327,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     textAlign: 'center',
-    marginRight: width * 0.06, // Offset to center title
+    marginRight: width * 0.06,
   },
   formContainer: {
     flex: 1,
@@ -290,6 +357,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+  },
+  textArea: {
+    height: height * 0.15,
+    textAlignVertical: 'top',
+    paddingVertical: height * 0.015,
   },
   picker: {
     height: height * 0.06,
@@ -322,13 +394,16 @@ const styles = StyleSheet.create({
   uploadIcon: {
     marginHorizontal: width * 0.02,
   },
+  buttonContainer: {
+    paddingHorizontal: width * 0.05,
+    paddingVertical: height * 0.02,
+    backgroundColor: '#DCFCE7',
+  },
   nextButton: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: width * 0.05,
-    marginBottom: height * 0.03,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -343,10 +418,9 @@ const styles = StyleSheet.create({
     fontSize: width * 0.045,
     fontWeight: '600',
   },
- 
- loaderOverlay: {
+  loaderOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -356,7 +430,6 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     marginTop: height * 0.02,
   },
-
 });
 
 export default SpecializationDetails;
