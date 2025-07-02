@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // const BASE_URL = "http://vitals-backend-app-env.eba-2zkpksar.ap-south-1.elasticbeanstalk.com/api/v1";
-// const BASE_URL = 'http://216.10.251.239:3000';
-const BASE_URL = 'http://192.168.1.42:3000';
+// const BASE_URL = 'http://192.168.1.44:3000';
+const BASE_URL = 'http://192.168.1.44:3000';
 
 
 // Common error handling function
@@ -60,6 +60,10 @@ export async function AuthFetch(url: string, token: string | null | undefined) {
 
 export async function AuthPost(url: string, body: any, token: string | null | undefined) {
   return apiRequest({ url, method: 'post', data: body, token });
+}
+
+export async function AuthPut(url: string, body: any, token: string | null | undefined) {
+  return apiRequest({ url, method: 'put', data: body, token });
 }
 
 export async function UploadFiles(url: string, body: any, token: string | null | undefined) {

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,6 +59,9 @@ const ProfileReview: React.FC = () => {
         <Text style={styles.headerTitle}>Profile Review</Text>
       </View>
 
+      <ProgressBar currentStep={getCurrentStepIndex('ConfirmationScreen')} totalSteps={TOTAL_STEPS} />
+
+
       {/* Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
@@ -69,7 +74,7 @@ const ProfileReview: React.FC = () => {
           <Text style={styles.title}>Profile Under Review</Text>
           <Text style={styles.subtitle}>
             Thank you for submitting your profile. Our medical team will review your information and get back to you within{' '}
-            <Text style={{ color: '#00796B', fontWeight: '600' }}>48 hours</Text>.
+            <Text style={{ color: '#00203F', fontWeight: '600' }}>48 hours</Text>.
           </Text>
           <Text style={styles.estimatedTime}>Estimated Time Left</Text>
           <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
@@ -88,12 +93,12 @@ const ProfileReview: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -146,7 +151,7 @@ const styles = StyleSheet.create({
   square: {
     width: width * 0.18,
     height: width * 0.18,
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 8,
@@ -181,13 +186,13 @@ const styles = StyleSheet.create({
   },
   timerText: {
     fontSize: width * 0.06,
-    color: '#00796B',
+    color: '#00203F',
     fontWeight: '600',
     marginBottom: height * 0.03,
   },
   helpText: {
     fontSize: width * 0.035,
-    color: '#00796B',
+    color: '#00203F',
     textAlign: 'center',
     fontWeight: '500',
   },

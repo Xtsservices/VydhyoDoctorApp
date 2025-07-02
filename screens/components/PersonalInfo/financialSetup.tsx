@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Dimensions ,ActivityIndicator} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,6 +18,8 @@ const FinancialSetupScreen = () => {
   const [ifscCode, setIfscCode] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [loading, setLoading] = useState(false);
+
 
   const navigation = useNavigation<any>();
 
@@ -85,8 +89,11 @@ const FinancialSetupScreen = () => {
   const handleSubmit = async() => {
     if (validateForm()) {
     try {
+       setLoading(true); // Show loader
+
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
+           setLoading(false);
           Toast.show({
             type: 'error',
             text1: 'Error',
@@ -109,7 +116,7 @@ const FinancialSetupScreen = () => {
         console.log('Form data to send:', body);
 
         const response = await axios.post(
-          'http://216.10.251.239:3000/users/updateBankDetails',
+          'http://192.168.1.44:3000/users/updateBankDetails',
           body,
           {
             headers: {
@@ -152,7 +159,9 @@ const FinancialSetupScreen = () => {
           position: 'top',
           visibilityTime: 3000,
         });
-      }
+      }finally {
+      setLoading(false); // Always hide loader
+    }
     }
   };
 
@@ -161,8 +170,41 @@ const FinancialSetupScreen = () => {
   };
   
 
+   const handleSkip = async () => {
+      try {
+        setLoading(true); // Show loader
+        await AsyncStorage.setItem('currentStep', 'KYCDetailsScreen'); // Update current step
+        Toast.show({
+          type: 'info',
+          text1: 'Skipped',
+          text2: 'Financial setup skipped',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        navigation.navigate('KYCDetailsScreen');
+      } catch (error) {
+        console.error('Error skipping financial setup:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to skip. Please try again.',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      } finally {
+        setLoading(false); // Always hide loader
+      }
+    };
+
   return (
     <View style={styles.container}>
+
+       {loading && (
+                          <View style={styles.loaderOverlay}>
+                            <ActivityIndicator size="large" color="#00203F" />
+                            <Text style={styles.loaderText}>Processing...</Text>
+                          </View>
+                        )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -171,10 +213,12 @@ const FinancialSetupScreen = () => {
         <Text style={styles.headerTitle}>Financial Setup</Text>
       </View>
 
+      <ProgressBar currentStep={getCurrentStepIndex('FinancialSetupScreen')} totalSteps={TOTAL_STEPS} />
+
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
-          <Icon name="bank" size={width * 0.08} color="#00796B" style={styles.icon} />
+          <Icon name="bank" size={width * 0.08} color="#00203F" style={styles.icon} />
           <Text style={styles.title}>Add Bank Details</Text>
           <Text style={styles.subtitle}>Please enter your bank account details to proceed.</Text>
 
@@ -259,10 +303,18 @@ const FinancialSetupScreen = () => {
         <View style={styles.spacer} />
       </ScrollView>
 
+<View style={styles.buttonsContainer}>
+        <TouchableOpacity style={[styles.button2, styles.skipButton]} onPress={handleSkip}>
+          <Text style={[styles.buttonText2, styles.skipButtonText]}>Skip</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button2} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Next</Text>
+        </TouchableOpacity>
+      </View>
       {/* Next Button */}
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+      {/* <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>Next</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };
@@ -270,12 +322,12 @@ const FinancialSetupScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -367,7 +419,7 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.01,
   },
   button: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
@@ -386,6 +438,50 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+  buttonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: width * 0.05,
+    marginBottom: height * 0.03,
+  },
+  button2: {
+    backgroundColor: '#00203F',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: width * 0.02,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  skipButton: {
+    backgroundColor: '#fff',
+    // borderWidth: 1,
+    borderColor: '#00203F',
+  },
+  buttonText2: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+  skipButtonText: {
+    color: '#00203F',
+  },
+   loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 

@@ -7,12 +7,16 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
+  ActivityIndicator
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import { AuthPost } from '../../auth/auth';
 
 const { width, height } = Dimensions.get("window");
 
@@ -23,6 +27,8 @@ const ConsultationPreferences = () => {
     homeVisit: false,
   });
   const [fees, setFees] = useState({ inPerson: "", video: "", homeVisit: "" });
+ const [loading, setLoading] = useState(false);
+
 
   const navigation = useNavigation<any>();
 
@@ -63,8 +69,10 @@ const ConsultationPreferences = () => {
     };
 
     try {
+       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
+         setLoading(false);
         Toast.show({
           type: 'error',
           text1: 'Authentication Error',
@@ -73,18 +81,20 @@ const ConsultationPreferences = () => {
         return;
       }
 
-      const response = await axios.post(
-        'http://192.168.1.42:3000/users/updateConsultationModes',
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // const response = await axios.post(
+      //   'http://192.168.1.42:3000/users/updateConsultationModes',
+      //   payload,
+      //   {
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   }
+      // );
+      const response = await AuthPost('users/updateConsultationModes', payload, token);
+      
       console.log('API Response:', response);
-      if (response.status == 200) {
+      if (response.status == 'success') {
         Toast.show({
           type: 'success',
           text1: 'Preferences saved successfully',
@@ -100,11 +110,21 @@ const ConsultationPreferences = () => {
         text1: 'Failed to update preferences',
         text2: error?.response?.data?.message || 'Something went wrong',
       });
-    }
+    } finally {
+    setLoading(false); // Always hide loader after request
+  }
+
   };
 
   return (
     <View style={styles.container}>
+
+        {loading && (
+                    <View style={styles.loaderOverlay}>
+                      <ActivityIndicator size="large" color="#00203F" />
+                      <Text style={styles.loaderText}>Processing...</Text>
+                    </View>
+                  )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -112,6 +132,8 @@ const ConsultationPreferences = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Consultation Preferences</Text>
       </View>
+
+      <ProgressBar currentStep={getCurrentStepIndex('ConsultationPreferences')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
@@ -130,7 +152,7 @@ const ConsultationPreferences = () => {
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="account" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon name="account" size={width * 0.05} color="#00203F" style={styles.feeIcon} />
               <Text style={styles.feeLabel}>In-Person</Text>
               <TextInput
                 style={[styles.input, !selectedModes.inPerson && styles.inputDisabled]}
@@ -152,7 +174,7 @@ const ConsultationPreferences = () => {
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="video" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon name="video" size={width * 0.05} color="#00203F" style={styles.feeIcon} />
               <Text style={styles.feeLabel}>Video</Text>
               <TextInput
                 style={[styles.input, !selectedModes.video && styles.inputDisabled]}
@@ -177,7 +199,7 @@ const ConsultationPreferences = () => {
                   <Icon name="check" size={width * 0.04} color="#fff" />
                 )}
               </TouchableOpacity>
-              <Icon name="home" size={width * 0.05} color="#00796B" style={styles.feeIcon} />
+              <Icon name="home" size={width * 0.05} color="#00203F" style={styles.feeIcon} />
               <Text style={styles.feeLabel}>Home Visit</Text>
               <TextInput
                 style={[styles.input, !selectedModes.homeVisit && styles.inputDisabled]}
@@ -216,12 +238,12 @@ const ConsultationPreferences = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#DCFCE7",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#00796B",
+    backgroundColor: "#00203F",
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: "#000",
@@ -282,8 +304,8 @@ const styles = StyleSheet.create({
     marginRight: width * 0.03,
   },
   checkboxSelected: {
-    backgroundColor: "#00796B",
-    borderColor: "#00796B",
+    backgroundColor: "#00203F",
+    borderColor: "#00203F",
   },
   feeIcon: {
     marginRight: width * 0.03,
@@ -314,7 +336,7 @@ const styles = StyleSheet.create({
     color: "#999",
   },
   nextButton: {
-    backgroundColor: "#00796B",
+    backgroundColor: "#00203F",
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: "center",
@@ -336,6 +358,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+    loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 

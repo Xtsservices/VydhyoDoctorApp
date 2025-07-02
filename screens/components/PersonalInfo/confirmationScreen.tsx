@@ -8,12 +8,17 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
+import ProgressBar from '../progressBar/progressBar';
+import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import Toast from 'react-native-toast-message';
+
 
 interface FormData {
   name: string;
@@ -33,17 +38,17 @@ const ConfirmationScreen: React.FC = () => {
   console.log('Current User ID:', userId);
   const navigation = useNavigation<any>();
   const [formData, setFormData] = useState<FormData>({
-    name: 'Dr. Karthik',
-    email: 'karthik@email.com',
-    phone: '+91 234 567 8901',
-    specialization: 'Family Medicine, Pediatrics',
-    practice: 'Sunrise Clinic, 123 Wellness Ave, NY',
-    consultationPreferences: 'Online & In-person, Mon-Fri: 10am-5pm',
-    bank: 'Bank of America',
-    accountNumber: '**** 1234',
+    name: '',
+    email: '',
+    phone: '',
+    specialization: '',
+    practice: '',
+    consultationPreferences: '',
+    bank: '',
+    accountNumber: '',
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
-  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const validateForm = () => {
     let tempErrors: Partial<FormData> = {};
     if (!formData.name.trim()) tempErrors.name = 'Name is required';
@@ -56,18 +61,18 @@ const ConfirmationScreen: React.FC = () => {
       tempErrors.phone = 'Valid phone is required';
     if (!formData.specialization.trim())
       tempErrors.specialization = 'Specialization is required';
-    if (!formData.practice.trim())
-      tempErrors.practice = 'Practice details are required';
+    // if (!formData.practice.trim())
+    //   tempErrors.practice = 'Practice details are required';
     if (!formData.consultationPreferences.trim())
       tempErrors.consultationPreferences = 'Preferences are required';
-    if (!formData.bank.trim()) tempErrors.bank = 'Bank is required';
-    if (!formData.accountNumber.trim())
-      tempErrors.accountNumber = 'Account number is required';
+    // if (!formData.bank.trim()) tempErrors.bank = 'Bank is required';
+    // if (!formData.accountNumber.trim())
+    //   tempErrors.accountNumber = 'Account number is required';
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async() => {
     if (!validateForm()) {
       Alert.alert(
         'Error',
@@ -75,6 +80,14 @@ const ConfirmationScreen: React.FC = () => {
       );
       return;
     }
+    await AsyncStorage.setItem('currentStep', 'ProfileReview');
+    Toast.show({
+      type: 'success',
+      text1: 'Success',
+      text2: 'Profile submitted successfully',
+      position: 'top',
+      visibilityTime: 3000,
+    });
     navigation.navigate('ProfileReview');
   };
 
@@ -89,7 +102,7 @@ const ConfirmationScreen: React.FC = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      // setLoading(true);
+      setLoading(true);
 
       try {
         // Retrieve token from AsyncStorage
@@ -102,7 +115,7 @@ const ConfirmationScreen: React.FC = () => {
 
         // Make API call
         const response = await axios.get(
-          'http://216.10.251.239:3000/users/getUser',
+          'http://192.168.1.44:3000/users/getUser',
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -161,6 +174,8 @@ const ConfirmationScreen: React.FC = () => {
         // setLoading(false);
 
         console.error('Error fetching user data:', error.message);
+      }finally {
+        setLoading(false); // Stop loading regardless of success or failure
       }
     };
     fetchUserData();
@@ -172,6 +187,13 @@ const ConfirmationScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+
+       {loading && (
+                    <View style={styles.loaderOverlay}>
+                      <ActivityIndicator size="large" color="#00203F" />
+                      <Text style={styles.loaderText}>Processing...</Text>
+                    </View>
+                  )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -180,6 +202,8 @@ const ConfirmationScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Confirmation</Text>
       </View>
 
+      <ProgressBar currentStep={getCurrentStepIndex('ConfirmationScreen')} totalSteps={TOTAL_STEPS} />
+
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
@@ -187,10 +211,10 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Personal Info Section */}
           <View style={styles.row}>
-            <Icon name="account" size={width * 0.05} color="#00796B" />
+            <Icon name="account" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Personal Info</Text>
             <TouchableOpacity onPress={() => handleChange('name', '')}>
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -224,12 +248,12 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Specialization Section */}
           <View style={styles.row}>
-            <Icon name="briefcase" size={width * 0.05} color="#00796B" />
+            <Icon name="briefcase" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Specialization</Text>
             <TouchableOpacity
               onPress={() => handleChange('specialization', '')}
             >
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -245,10 +269,10 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Practice Section */}
           <View style={styles.row}>
-            <Icon name="office-building" size={width * 0.05} color="#00796B" />
+            <Icon name="office-building" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Practice</Text>
             <TouchableOpacity onPress={() => handleChange('practice', '')}>
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -264,12 +288,12 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Consultation Preferences Section */}
           <View style={styles.row}>
-            <Icon name="calendar" size={width * 0.05} color="#00796B" />
+            <Icon name="calendar" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Consultation Preferences</Text>
             <TouchableOpacity
               onPress={() => handleChange('consultationPreferences', '')}
             >
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -288,10 +312,10 @@ const ConfirmationScreen: React.FC = () => {
 
           {/* Financial Setup Section */}
           <View style={styles.row}>
-            <Icon name="bank" size={width * 0.05} color="#00796B" />
+            <Icon name="bank" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Financial Setup</Text>
             <TouchableOpacity onPress={() => handleChange('bank', '')}>
-              <Icon name="pencil" size={width * 0.05} color="#00796B" />
+              <Icon name="pencil" size={width * 0.05} color="#00203F" />
             </TouchableOpacity>
           </View>
           <TextInput
@@ -330,12 +354,12 @@ const ConfirmationScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#DCFCE7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     paddingHorizontal: width * 0.04,
     shadowColor: '#000',
@@ -414,7 +438,7 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.01,
   },
   submitButton: {
-    backgroundColor: '#00796B',
+    backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
@@ -433,6 +457,18 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+   loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loaderText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    marginTop: height * 0.02,
   },
 });
 
