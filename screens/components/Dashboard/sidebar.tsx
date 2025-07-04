@@ -85,9 +85,18 @@ const Sidebar = () => {
       {/* Menu Items */}
       <MenuItem
         icon="group"
-        label="Staff Members"
-        description="Update Staff members"
+        label="Staff Management"
+        description="Update Staff Management"
         iconColor="#3B82F6"
+        onPress={() => navigation.navigate('StaffManagement')}
+
+      />
+      <MenuItem
+        icon="clock"
+        label="Availability"
+        description="Update Availability"
+        iconColor="#3B82F6"
+        onPress={() => navigation.navigate('Availability')}
       />
       <MenuItem
         icon="event-available"

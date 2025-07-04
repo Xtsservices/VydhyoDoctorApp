@@ -15,11 +15,12 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Toast from 'react-native-toast-message';
-import { AuthFetch, UsePost } from '../auth/auth';
+// import { AuthFetch, UsePost } from '../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { REGISTRATION_STEPS } from '../utility/registrationSteps';
+import { AuthFetch } from '../auth/auth';
 
 const { width, height } = Dimensions.get('window');
 
@@ -158,12 +159,15 @@ useEffect(() => {
   const determineNextScreen = async(userData: any): Promise<{ screen: string; params?: any }> => {
    console.log('User Data:======', userData);
 
+    if (userData.status === 'approved') {
+      return { screen: 'AccountVerified', params: undefined };
+    }
    // Check stored step in AsyncStorage
   const storedStep = await AsyncStorage.getItem('currentStep');
   if (storedStep === 'ProfileReview') {
     return { screen: 'ProfileReview' };
   }
-   
+    
     if (!userData.firstname || !userData.lastname || !userData.email || !userData.medicalRegistrationNumber) {
       return { screen: 'PersonalInfo', params: undefined };
     }
@@ -191,9 +195,7 @@ useEffect(() => {
      if (userData.status === 'inActive') {
       return { screen: 'ProfileReview', params: undefined };
     }
-     if (userData.status === 'approved') {
-      return { screen: 'AccountVerified', params: undefined };
-    }
+   
     return { screen: 'ProfileReview', params: undefined }; // Default or final step
   };
 

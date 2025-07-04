@@ -15,6 +15,10 @@ import ProfileReview from "../components/PersonalInfo/profileReview";
 import AccountVerified from "../components/PersonalInfo/accountVerified";
 import DoctorDashboard from "../components/Dashboard/dashboard";
 import Sidebar from "../components/Dashboard/sidebar";
+import AddAppointment from "../components/appointments/AddAppointment";
+import Availability from "../components/Dashboard/Availability";
+import StaffManagement from "../components/Dashboard/StaffManagement";
+import AddStaffScreen from "../components/Dashboard/AddStaff";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -35,6 +39,11 @@ const Routing = () => {
         <Stack.Screen name="AccountVerified" component={AccountVerified} options={{ headerShown: false }}/>
         <Stack.Screen name="DoctorDashboard" component={DoctorDashboard} options={{ headerShown: false }}/>
         <Stack.Screen name="Sidebar" component={Sidebar} options={{ headerShown: false }}/>
+        <Stack.Screen name="AddAppointment" component={AddAppointment} options={{ headerShown: false }} />
+        <Stack.Screen name="Availability" component={Availability} />
+        <Stack.Screen name="StaffManagement" component={StaffManagement} />
+        <Stack.Screen name="AddStaff" component={AddStaffScreen} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );

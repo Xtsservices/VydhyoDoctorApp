@@ -12,4 +12,8 @@ export type RootStackParamList = {
   AccountVerified: undefined;
   DoctorDashboard: undefined;
   Sidebar: undefined;
+  AddAppointment: undefined;
+  Availability: undefined;
+  StaffManagement: undefined;
+  AddStaff: undefined;
 };
