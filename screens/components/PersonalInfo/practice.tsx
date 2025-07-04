@@ -173,6 +173,8 @@ const PracticeScreen = () => {
     const hasInvalidAddress = opdAddresses.some(
       (addr) => !addr.address || !addr.pincode || !addr.city || !addr.state || !addr.startTime || !addr.endTime
     );
+
+    
     if (hasInvalidAddress) {
       Toast.show({
         type: 'error',
