@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput,ActivityIndicator } from 'react-native';
+import { View, Text,Modal, Pressable ,TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput,ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { pick, types } from '@react-native-documents/picker';
@@ -14,6 +14,7 @@ const voter_icon = require('../../assets/aadhar.png'); // Update with actual vot
 const pancard_icon = require('../../assets/pan.png');
 
 const { width, height } = Dimensions.get('window');
+import TermsAndConditionsModal from './TermsAndConditionsModal';
 
 const KYCDetailsScreen = () => {
   const [voterImage, setVoterImage] = useState<{ uri: string, name: string } | null>(null);
@@ -25,7 +26,7 @@ const KYCDetailsScreen = () => {
   const [panNumber, setPanNumber] = useState('');
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
-
+const [modalVisible, setModalVisible] = useState(false);
 
   const handleVoterUpload = async () => {
     try {
@@ -259,7 +260,10 @@ const KYCDetailsScreen = () => {
                 {termsAccepted && <Icon name="check" size={width * 0.04} color="#fff" />}
               </View>
             </TouchableOpacity>
-            <Text style={styles.termsText}>I agree to Terms & Conditions</Text>
+            <Text style={styles.linkText} onPress={() => setModalVisible(true)}>
+          Terms & Conditions
+        </Text>
+        <TermsAndConditionsModal modalVisible={modalVisible} setModalVisible={setModalVisible} />
           </View>
         </View>
 
@@ -279,6 +283,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#DCFCE7',
+  },
+   linkText: {
+    color: '#007BFF', // blue link color
+    textDecorationLine: 'underline',
+  },
+  termsText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  modalBody: {
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+    padding: 10,
+    backgroundColor: '#007BFF',
+    borderRadius: 5,
+  },
+  closeButtonText: {
+    color: 'white',
   },
   header: {
     flexDirection: 'row',
@@ -389,11 +432,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#00203F',
     borderColor: '#00203F',
   },
-  termsText: {
-    fontSize: width * 0.035,
-    color: '#333',
-    fontWeight: '500',
-  },
+  
   nextButton: {
     backgroundColor: '#00203F',
     paddingVertical: height * 0.02,

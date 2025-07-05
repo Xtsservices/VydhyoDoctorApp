@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // const BASE_URL = "http://vitals-backend-app-env.eba-2zkpksar.ap-south-1.elasticbeanstalk.com/api/v1";
-// const BASE_URL = 'http://192.168.1.42:3000';
 const BASE_URL = 'http://192.168.1.42:3000';
+// const BASE_URL = 'http://216.10.251.239:3000';
 
 
 // Common error handling function
