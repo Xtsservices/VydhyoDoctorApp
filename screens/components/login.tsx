@@ -20,7 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { REGISTRATION_STEPS } from '../utility/registrationSteps';
-import { AuthFetch } from '../auth/auth';
+import { AuthFetch , UsePost} from '../auth/auth';
 
 const { width, height } = Dimensions.get('window');
 

@@ -178,6 +178,8 @@ const AddStaffScreen = () => {
   { label: 'Dashboard', value: 'dashboard' },
   { label: 'Labs', value: 'labs' },
   { label: 'Appointments', value: 'appointments' },
+  { label: ' New Appointments', value: 'New appointments' },
+
 ].map((item) => (
   <TouchableOpacity
     key={item.value}

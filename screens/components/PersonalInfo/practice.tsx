@@ -20,6 +20,12 @@ import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthPost, AuthFetch } from '../../auth/auth';
+import Geolocation from '@react-native-community/geolocation';
+import MapView, { MapPressEvent, Marker, Region } from 'react-native-maps';
+
+
+
 
 interface Address {
   id: number;
@@ -41,6 +47,23 @@ interface Suggestion {
   };
 }
 
+const initialData = {
+  type: 'Clinic',
+  clinicName: 'sindhu clinic',
+  address:
+    '1/2/50/135, Jai Bharat Nagar, Hyder Nagar, Brindavan Colony, Nizampet, Hyderabad, Telangana 500090, India',
+  city: 'Hyderabad',
+  state: 'Telangana',
+  country: 'India',
+  mobile: '9403850934',
+  pincode: '500090',
+  startTime: '09:00',
+  endTime: '17:00',
+  latitude: '17.5020946',
+  longitude: '78.3856337',
+  userId: 'VYDUSER39',
+};
+
 const { width, height } = Dimensions.get('window');
 
 const PracticeScreen = () => {
@@ -56,6 +79,19 @@ const PracticeScreen = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentOpdIndex, setCurrentOpdIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState({
+    latitude: '17.5020946',
+    longitude: '78.3856337',
+    clinicName: 'Sindhu Clinic',
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    pincode: '',
+  })
+
+  const GOOGLE_API_KEY = 'AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo'; 
+  
 
   useEffect(() => {
     setCurrentOpdIndex(opdAddresses.length - 1);
@@ -71,7 +107,7 @@ const PracticeScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await axios.get(
-        `http://192.168.1.44:3000/address/googleAddressSuggession?input=${encodeURIComponent(query)}`,
+        `http://192.168.1.42:3000/address/googleAddressSuggession?input=${encodeURIComponent(query)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -207,6 +243,22 @@ const PracticeScreen = () => {
       const token = await AsyncStorage.getItem('authToken');
       const userId = await AsyncStorage.getItem('userId');
 
+    const data = {
+  type: 'Clinic',
+  clinicName: 'sindhu clinic',
+  address: '1/2/50/135, Jai Bharat Nagar, Hyder Nagar, Brindavan Colony, Nizampet, Hyderabad, Telangana 500090, India',
+  city: 'Hyderabad',
+  state: 'Telangana',
+  country: 'India',
+  mobile: '9403850934',
+  pincode: '500090',
+  startTime: '09:00',
+  endTime: '17:00',
+  latitude: '17.5020946',
+  longitude: '78.3856337',
+  userId: 'VYDUSER39'
+}
+    const res = await AuthPost('users/addAddress', data, token);
     
 
      
@@ -247,6 +299,57 @@ const PracticeScreen = () => {
   console.log('Affiliation:', affiliation);
   console.log('Suggestions:', suggestions);
   console.log('Current OPD Index:', currentOpdIndex);
+
+
+  const handleMapPress = async (event: MapPressEvent) => {
+
+    console.log('Map pressed at:', event.nativeEvent.coordinate);
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
+      );
+
+      if (response.data.status === 'OK') {
+        const result = response.data.results[0];
+        const address = result.formatted_address;
+
+        // Parse parts (city, state, etc.)
+        let city = '', state = '', country = '', postalCode = '';
+        result.address_components.forEach((component: any) => {
+          const types = component.types;
+          if (types.includes('locality')) city = component.long_name;
+          if (types.includes('administrative_area_level_1')) state = component.long_name;
+          if (types.includes('country')) country = component.long_name;
+          if (types.includes('postal_code')) postalCode = component.long_name;
+        });
+
+        setSelectedLocation({
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          clinicName: 'Selected Clinic',
+          address,
+          city,
+          state,
+          country,
+          pincode: postalCode,
+        });
+      } else {
+        // Alert.alert('Failed to fetch address from Google Maps');
+      }
+    } catch (err) {
+      console.error(err);
+      // Alert.alert('Error fetching location data');
+    }
+  };
+
+  const region = {
+    latitude: parseFloat(selectedLocation.latitude),
+    longitude: parseFloat(selectedLocation.longitude),
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  };
 
   return (
     <KeyboardAvoidingView
@@ -314,144 +417,28 @@ const PracticeScreen = () => {
           </View>
         )} */}
 
-        <View style={styles.addressSection}>
-          <View style={styles.headerRow}>
-            <Text style={styles.label}>OPD Address(es)</Text>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
-              <Text style={styles.addButtonText}>+ Add Location</Text>
-            </TouchableOpacity>
-          </View>
+         <View style={{ flex: 1 }}>
+      <MapView style={styles.map} region={region} onPress={handleMapPress}>
+        <Marker
+          coordinate={{
+            latitude: parseFloat(selectedLocation.latitude),
+            longitude: parseFloat(selectedLocation.longitude),
+          }}
+          title={selectedLocation.clinicName}
+          description={selectedLocation.address}
+        />
+      </MapView>
 
-          {opdAddresses.map((addr, index) => (
-            <View key={addr.id} style={styles.addressContainer}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Address *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Search OPD Address"
-                  placeholderTextColor="#999"
-                  value={addr.address}
-                  onChangeText={(text) => handleInputChange(index, 'address', text)}
-                />
-              </View>
-              {showSuggestions && suggestions.length > 0 && selectedAddressIndex === index && (
-                <View style={styles.suggestionsContainer}>
-                  <FlatList
-                    data={suggestions}
-                    keyExtractor={(item) => item.place_id}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.suggestionItem}
-                        onPress={() => handleSelectAddress(item, false, index)}
-                      >
-                        <Text style={styles.suggestionMainText}>
-                          {item.structured_formatting?.main_text || item.description}
-                        </Text>
-                        {item.structured_formatting?.secondary_text && (
-                          <Text style={styles.suggestionSecondaryText}>
-                            {item.structured_formatting.secondary_text}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                    style={styles.suggestionsList}
-                    nestedScrollEnabled={true}
-                  />
-                </View>
-              )}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Landmark</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Landmark"
-                  placeholderTextColor="#999"
-                  value={addr.landmark}
-                  onChangeText={(text) => handleInputChange(index, 'landmark', text)}
-                />
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Pincode *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Pincode"
-                  placeholderTextColor="#999"
-                  value={addr.pincode}
-                  onChangeText={(text) => handleInputChange(index, 'pincode', text)}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>City *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter City"
-                  placeholderTextColor="#999"
-                  value={addr.city}
-                  onChangeText={(text) => handleInputChange(index, 'city', text)}
-                />
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>State *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter State"
-                  placeholderTextColor="#999"
-                  value={addr.state}
-                  onChangeText={(text) => handleInputChange(index, 'state', text)}
-                />
-              </View>
-              <View style={styles.timeContainer}>
-                <TouchableOpacity
-                  style={styles.timeButton}
-                  onPress={() => {
-                    setSelectedAddressIndex(index);
-                    setShowStartTimePicker(true);
-                  }}
-                >
-                  <View style={styles.timeButtonContent}>
-                    <Icon name="clock-outline" size={width * 0.045} color="#00203F" style={styles.clockIcon} />
-                    <Text style={styles.timeText}>Start Time: {addr.startTime || 'Select'}</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.timeButton}
-                  onPress={() => {
-                    setSelectedAddressIndex(index);
-                    setShowEndTimePicker(true);
-                  }}
-                >
-                  <View style={styles.timeButtonContent}>
-                    <Icon name="clock-outline" size={width * 0.045} color="#00203F" style={styles.clockIcon} />
-                    <Text style={styles.timeText}>End Time: {addr.endTime || 'Select'}</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-              {showStartTimePicker && selectedAddressIndex === index && (
-                <DateTimePicker
-                  value={new Date()}
-                  mode="time"
-                  display="default"
-                  onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'startTime', index)}
-                />
-              )}
-              {showEndTimePicker && selectedAddressIndex === index && (
-                <DateTimePicker
-                  value={new Date()}
-                  mode="time"
-                  display="default"
-                  onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'endTime', index)}
-                />
-              )}
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => handleRemoveAddress(addr.id)}
-                disabled={opdAddresses.length === 1}
-              >
-                <Text style={styles.removeText}>×</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+      <View style={styles.infoBox}>
+        <Text>Address: {selectedLocation.address}</Text>
+        <Text>City: {selectedLocation.city}</Text>
+        <Text>State: {selectedLocation.state}</Text>
+        <Text>Country: {selectedLocation.country}</Text>
+        <Text>Pincode: {selectedLocation.pincode}</Text>
+        <Text>Latitude: {selectedLocation.latitude}</Text>
+        <Text>Longitude: {selectedLocation.longitude}</Text>
+      </View>
+    </View>
         <View style={styles.spacer} />
       </ScrollView>
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
@@ -461,7 +448,29 @@ const PracticeScreen = () => {
   );
 };
 
+const InfoRow = ({ label, value }: { label: string; value: string }) => (
+  <View style={styles.row}>
+    <Text style={styles.label}>{label}:</Text>
+    <Text style={styles.value}>{value}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
+  map: {
+    width: '100%',
+    height: height * 0.25,
+    borderRadius: 8,
+    marginBottom: height * 0.02,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: height * 0.01,
+  },
+  value: {
+    fontSize: width * 0.04,
+    color: '#333',
+  },
   container: {
     flex: 1,
     backgroundColor: '#DCFCE7',
@@ -686,6 +695,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: width * 0.04,
     marginTop: height * 0.02,
+  },
+  infoBox: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: width * 0.04,
+    marginTop: height * 0.02,
+    marginBottom: height * 0.02,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });
 

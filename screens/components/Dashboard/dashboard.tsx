@@ -53,7 +53,7 @@ const DoctorDashboard = () => {
 //    const [date, setDate] = useState(new Date()); // today's date by default
 // const [showPicker, setShowPicker] = useState(false);
 
-const [filteredAppointments, setFilteredAppointments] = useState([]);
+const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
    const [formData, setFormData] = useState<FormData>({
        name: '',
        email: '',
@@ -74,7 +74,7 @@ const [filteredAppointments, setFilteredAppointments] = useState([]);
   const slideAnim = useRef(new Animated.Value(width)).current;
     const userId = useSelector((state: any) => state.currentUserID);
     console.log('User ID:', userId);
-  const API_BASE_URL = "http://192.168.1.44:3000";
+  const API_BASE_URL = "http://192.168.1.42:3000";
   const [appointments, setAppointments] = useState<any[]>([]);
     const [dashboardData, setDashboardData] = useState({
     success: true,
@@ -198,7 +198,7 @@ console.log(revenue, 'Response from getTodayRevenuebyDoctorId');
 
         // Make API call
         const response = await axios.get(
-          'http://192.168.1.44:3000/users/getUser',
+          'http://192.168.1.42:3000/users/getUser',
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -327,34 +327,8 @@ console.log(revenue, 'Response from getTodayRevenuebyDoctorId');
     return validStatuses.includes(status) ? status : 'Unknown';
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Confirmed': return '#DCFCE7'; // Green
-      case 'Pending': return '#FEF9C3'; // Yellow
-      case 'In Progress': return '#DBEAFE'; // Blue
-      case 'Scheduled': return '#F3F4F6'; // Purple
-      default: return '#757575'; // Grey
-    }
-  };
+ 
 
-  const getIconColor = (icon: string) => {
-    switch (icon) {
-      case 'videocam': return '#2563EB'; // Video color
-      case 'person': return '#E5E7EB'; // Contact color
-      case 'call': return '#22C55E'; // Call color
-      default: return '#4CAF50'; // Default color
-    }
-  };
-
-  const getStatusTextColor = (status: string) => {
-    switch (status) {
-      case 'Confirmed': return '#15803D'; // White for #15803D
-      case 'Pending': return '#A16207'; // White for #A16207
-      case 'In Progress': return '#1D4ED8'; // White for #1D4ED8
-      case 'Scheduled': return '#374151'; // White for #374151
-      default: return '#FFFFFF'; // Default white
-    }
-  };
 
  type FollowUpItem = {
    id: string;

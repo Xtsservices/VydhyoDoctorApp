@@ -1,5 +1,5 @@
 // Sidebar.js
-import React from 'react';
+import React, { use, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,14 +15,154 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
+import { AuthFetch } from '../../auth/auth';
 
 
 
 const Sidebar = () => {
   const navigation = useNavigation<any>();
+const [access, setAccess] = useState<string[]>([]); // ← You’ll receive this from backend
+
+const menuItems = [
+  {
+    key: 'dashboard',
+    label: ' Dashboard',
+    description: 'Ratings, milestones, trust metrics',
+    icon: 'dashboard',
+    onPress: () => navigation.navigate('dashboard'),
+  },
+  {
+    key: 'appointments',
+    label: 'Appointments',
+    description: 'Manage your appointments',
+    icon: 'dashboard',
+    onPress: () => navigation.navigate('Appointments'),
+  },
+  {
+    key: 'viewPatient',
+    label: 'My Patient',
+    description: 'Total patient',
+    icon: 'folder',
+    onPress: () => navigation.navigate('MyPatient'),
+  },
+  {
+    key: 'prescription',
+    label: 'E Prescription',
+    description: 'Patient Prescription',
+    icon: 'folder',
+  },
+  {
+    key: 'labs',
+    label: 'Labs',
+    description: 'Labs',
+    icon: 'folder',
+  },
+  {
+    key: 'pharmacy',
+    label: 'Pharmacy',
+    description: 'Pharmacy',
+    icon: 'folder',
+  },
+  {
+    key: 'staff',
+    label: 'Staff Management',
+    description: 'Update Staff Management',
+    icon: 'group',
+    onPress: () => navigation.navigate('StaffManagement'),
+  },
+  {
+    key: 'clinic',
+    label: 'Clinic Management',
+    description: 'Manage clinic settings and information',
+    icon: 'folder',
+    onPress: () => navigation.navigate('Clinic'),
+  },
+  {
+    key: 'availability',
+    label: 'Availability',
+    description: 'Update Availability',
+    icon: 'clock',
+    onPress: () => navigation.navigate('Availability'),
+  },
+  {
+    key: 'accounts',
+    label: 'Accounts',
+    description: 'Accounts and Billing',
+    icon: 'event-available',
+    onPress: () => navigation.navigate('Accounts'),
+  },
+  {
+    key: 'reviews',
+    label: 'Reviews',
+    description: 'Manage reviews and ratings',
+    icon: 'support-agent',
+    onPress: () => navigation.navigate('Reviews'),
+  },
+  {
+    key: 'Logout',
+    label: 'Logout',
+    description: 'Sign out of your account',
+    icon: 'support-agent',
+    onPress: () => navigation.navigate('Logout'),
+  },
+];
+
+
   const dispatch = useDispatch();
+      const userId = useSelector((state: any) => state.currentUser);
+  console.log('Current User ID:', userId);
+
+  const fetchUserData = async () => {
+    try {
+       const storedToken = await AsyncStorage.getItem('authToken');
+            const storedUserId = await AsyncStorage.getItem('userId');
+            // const storedStep = await AsyncStorage.getItem('currentStep');
+      
+            if (storedToken && storedUserId) {
+              const profileResponse = await AuthFetch('users/getUser', storedToken);
+              console.log('Profile response:', profileResponse.data.data);
+              if (profileResponse.status === 'success') {
+                if (profileResponse.data.data.access && Array.isArray(profileResponse.data.data.access)) {
+                  setAccess(profileResponse.data.data.access);
+                }
+              }
+                
+              
+              console.log('Access:', access);
+
+              setAccess(access);
+      
+              if (
+                profileResponse.status === 'success' &&
+                'data' in profileResponse &&
+                profileResponse.data
+              ) {
+                const userData = profileResponse.data.data;
+                dispatch({ type: 'currentUserID', payload: storedUserId });
+          
+      
+                Toast.show({
+                  type: 'success',
+                  text1: 'Success',
+                  text2: 'Auto-login successful',
+                  position: 'top',
+                  visibilityTime: 3000,
+                });
+      
+              } 
+             
+            } 
+     
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -82,71 +222,21 @@ const Sidebar = () => {
         <Text style={styles.profileButtonText}>View Public Profile</Text>
       </TouchableOpacity>
 
-      {/* Menu Items */}
+       {(access.length === 0 ? menuItems : menuItems.filter(item => access.includes(item.key))).map(
+    (item, index) => (
       <MenuItem
-        icon="group"
-        label="Staff Management"
-        description="Update Staff Management"
-        iconColor="#3B82F6"
-        onPress={() => navigation.navigate('StaffManagement')}
-
-      />
-      <MenuItem
-        icon="clock"
-        label="Availability"
-        description="Update Availability"
-        iconColor="#3B82F6"
-        onPress={() => navigation.navigate('Availability')}
-      />
-      <MenuItem
-        icon="event-available"
-        label="Manage Availability"
-        description="Time slots, consultation modes, OPD hours"
-        iconColor="#10B981"
-      />
-      <MenuItem
-        icon="notifications"
-        label="Notification Preferences"
-        description="Email, SMS, push toggle controls"
-        iconColor="#FBBF24"
-      />
-      <MenuItem
-        icon="folder"
-        label="Patient records"
-        description="Total patient records"
+        key={index}
+        icon={item.icon}
+        label={item.label}
+        description={item.description}
         iconColor="#8B5CF6"
+        onPress={item.onPress}
       />
-      <MenuItem
-        icon="support-agent"
-        label="Support & Help"
-        description="In-app chat with VYDY0 support"
-        iconColor="#06B6D4"
-      />
-      <MenuItem
-        icon="bug-report"
-        label="Report a Bug / Feedback"
-        description="Submit issue or feedback"
-        iconColor="#EF4444"
-      />
-      <MenuItem
-        icon="dashboard"
-        label="My Performance Dashboard"
-        description="Ratings, milestones, trust metrics"
-        iconColor="#6366F1"
-      />
-      <MenuItem
-        icon="account-balance-wallet"
-        label="Earnings & Wallet"
-        description="Shortcut to wallet and reports"
-        iconColor="#0EA5E9"
-      />
-       <MenuItem
-        icon="logout"
-        label="Logout"
-        description="Sign out of your account"
-        iconColor="#EF4444"
-         onPress={handleLogout}
-      />
+    )
+  )}
+
+      {/* Menu Items */}
+     
     </ScrollView>
   );
 };

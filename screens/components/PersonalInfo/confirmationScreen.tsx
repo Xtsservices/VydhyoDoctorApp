@@ -115,7 +115,7 @@ const ConfirmationScreen: React.FC = () => {
 
         // Make API call
         const response = await axios.get(
-          'http://192.168.1.44:3000/users/getUser',
+          'http://192.168.1.42:3000/users/getUser',
           {
             headers: {
               Authorization: `Bearer ${token}`,
