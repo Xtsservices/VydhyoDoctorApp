@@ -80,8 +80,20 @@ useEffect(() => {
         ) {
           const userData = profileResponse.data.data;
           dispatch({ type: 'currentUserID', payload: storedUserId });
-          const { screen, params } = await determineNextScreen(userData);
-          await AsyncStorage.setItem('currentStep', screen);
+
+          const savedStep = await AsyncStorage.getItem('currentStep');
+
+if (savedStep) {
+  navigation.navigate(savedStep);
+} else {
+  const { screen, params } = await determineNextScreen(userData);
+  await AsyncStorage.setItem('currentStep', screen);
+  navigation.navigate(screen, params || {});
+}
+
+          // const { screen, params } = await determineNextScreen(userData);
+          // await AsyncStorage.setItem('currentStep', screen);
+          // console.log('Current Step:', screen);
 
           Toast.show({
             type: 'success',
@@ -91,7 +103,7 @@ useEffect(() => {
             visibilityTime: 3000,
           });
 
-          navigation.navigate(screen, params || {});
+         
         } 
         else {
         setIsLoading(false);

@@ -237,18 +237,8 @@ const handleBack = () => {
         AsyncStorage.setItem('stepNo', '7');
 
         // Make API call
-        const response = await axios.get(
-          'http://192.168.1.42:3000/users/getUser',
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              userid: userId, // Include userId in headers
-            },
-            params: {
-              userId, // Include userId in query params as well
-            },
-          },
-        );
+         const response = await AuthFetch('users/getUser', token);
+        
         console.log('User data fetched successfully:', response?.data?.data);
         // Check if response status is success
         if (response.data.status !== 'success') {

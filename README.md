@@ -163,7 +163,7 @@ Step1: In generating the release AAB( above the link) run this below cmds
 
 Step 1.1:===> npx react-native build-android --mode=release
 Step 1.2:===> cd .\android/
-./gradlew assembleRelease
+Step 1.3: ./gradlew assembleRelease
 
 Step2: finally open this below path in ur code
 

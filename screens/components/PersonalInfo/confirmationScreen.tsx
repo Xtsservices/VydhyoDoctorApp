@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
+import { AuthPost, AuthFetch } from '../../auth/auth';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import Toast from 'react-native-toast-message';
@@ -80,7 +81,14 @@ const ConfirmationScreen: React.FC = () => {
       );
       return;
     }
+    const userdata = {
+    "userId" : userId
+  }
+     const token = await AsyncStorage.getItem('authToken');
     await AsyncStorage.setItem('currentStep', 'ProfileReview');
+ const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
+
+ console.log('Email sent successfully:', response);
     Toast.show({
       type: 'success',
       text1: 'Success',
@@ -111,21 +119,11 @@ const ConfirmationScreen: React.FC = () => {
           throw new Error('Authentication token not found');
         }
 
-        AsyncStorage.setItem('stepNo', '7');
 
+        AsyncStorage.setItem('stepNo', '7');
+  const response = await AuthFetch('users/getUser', token);
         // Make API call
-        const response = await axios.get(
-          'http://192.168.1.42:3000/users/getUser',
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              userid: userId, // Include userId in headers
-            },
-            params: {
-              userId, // Include userId in query params as well
-            },
-          },
-        );
+        
         console.log('User data fetched successfully:', response?.data?.data);
         // Check if response status is success
         if (response.data.status !== 'success') {

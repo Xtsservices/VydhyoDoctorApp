@@ -74,7 +74,7 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
   const slideAnim = useRef(new Animated.Value(width)).current;
     const userId = useSelector((state: any) => state.currentUserID);
     console.log('User ID:', userId);
-  const API_BASE_URL = "http://192.168.1.42:3000";
+  const API_BASE_URL = "http://192.168.1.44:3000";
   const [appointments, setAppointments] = useState<any[]>([]);
     const [dashboardData, setDashboardData] = useState({
     success: true,
@@ -174,6 +174,7 @@ const response = await AuthFetch(
   'finance/getTodayRevenuebyDoctorId',
   storedToken
 );
+console.log('Response from getTodayRevenuebyDoctorId:', response);
 
 const revenue = (response && 'data' in response && response.data && 'data' in response.data)
   ? response.data.data
@@ -197,18 +198,9 @@ console.log(revenue, 'Response from getTodayRevenuebyDoctorId');
         AsyncStorage.setItem('stepNo', '7');
 
         // Make API call
-        const response = await axios.get(
-          'http://192.168.1.42:3000/users/getUser',
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              userid: userId, // Include userId in headers
-            },
-            params: {
-              userId, // Include userId in query params as well
-            },
-          },
-        );
+                 const response = await AuthFetch('users/getUser', token);
+        
+        
         console.log('User data fetched successfully:', response?.data?.data);
         // Check if response status is success
         if (response.data.status !== 'success') {

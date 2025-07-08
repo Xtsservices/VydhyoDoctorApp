@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
+import { useSelector } from 'react-redux';
 
 interface Appointment {
   label: ReactNode;
@@ -55,15 +56,17 @@ const AppointmentsScreen = () => {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
 const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+    const userId = useSelector((state: any) => state.currentUserID);
 
 
-    const fetchAppointments = async () => {
+
+const fetchAppointments = async () => {
      
       try {
         const token = await AsyncStorage.getItem('authToken');
         console.log('Auth Token:', token);
-        const res = await AuthFetch(`appointment/getAppointmentsByDoctorID/appointment`, token);
-  
+        const res = await AuthFetch(`appointment/getAppointmentsCountByDoctorID?doctorId=${userId}`, token);
+
         console.log('Response from API:', res);
   
         const data = res.data.data;

@@ -105,10 +105,10 @@ const [modalVisible, setModalVisible] = useState(false);
       return;
     }
     
-    if (!pancardUploaded) {
-      Alert.alert('Error', 'Please upload Pancard document.');
-      return;
-    }
+    // if (!pancardUploaded) {
+    //   Alert.alert('Error', 'Please upload Pancard document.');
+    //   return;
+    // }
     // if (!voterNumber || !validateVoterNumber(voterNumber)) {
     //   Alert.alert('Error', 'Please enter a valid 10-character Voter ID number (e.g., ABC1234567).');
     //   return;
@@ -243,7 +243,7 @@ const [modalVisible, setModalVisible] = useState(false);
             </Text>
           )}
 
-          <Text style={styles.label}>Enter PAN Number *</Text>
+          <Text style={styles.label}>Enter PAN Number </Text>
           <TextInput
             style={styles.input}
             value={panNumber}
@@ -272,6 +272,7 @@ const [modalVisible, setModalVisible] = useState(false);
       </ScrollView>
 
       {/* Next Button */}
+      
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextText}>Next</Text>
       </TouchableOpacity>
@@ -466,6 +467,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: width * 0.04,
     marginTop: height * 0.02,
+  },
+   skipButton: {
+    backgroundColor: '#fff',
+    // borderWidth: 1,
+    borderColor: '#00203F',
+  },
+  buttonText2: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+  skipButtonText: {
+    color: '#00203F',
+  },
+   button2: {
+    backgroundColor: '#00203F',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: width * 0.02,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
   },
 });
 

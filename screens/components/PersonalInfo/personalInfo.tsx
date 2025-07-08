@@ -241,6 +241,8 @@ const PersonalInfoScreen: React.FC = () => {
         console.log('Form data to be sent:', body);
 
         const response = await AuthPut('users/updateUser', body, token);
+
+        console.log('Response from updateUser:', response);
         if (response.status === 'success') {
           Toast.show({
             type: 'success',

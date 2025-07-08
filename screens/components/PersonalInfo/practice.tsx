@@ -23,16 +23,25 @@ import {
 } from '../../utility/registrationSteps';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthPost } from '../../auth/auth';
 
 interface Address {
-  id: number;
+  
   address: string;
-  landmark: string;
+  
   pincode: string;
   city: string;
   state: string;
   startTime: string;
   endTime: string;
+  clinicName: string;
+  mobile: string;
+ 
+  type: 'Clinic';
+  country: 'India';
+  latitude: string;
+  longitude: string;
+
 }
 
 interface Suggestion {
@@ -51,16 +60,25 @@ const PracticeScreen = () => {
   const [affiliation, setAffiliation] = useState<string | null>(null);
   const [opdAddresses, setOpdAddresses] = useState<Address[]>([
     {
-      id: 1,
+     
       address: '',
-      landmark: '',
+      
       pincode: '',
       city: '',
       state: '',
       startTime: '',
       endTime: '',
+      clinicName: '',
+      mobile: '',
+    
+      type: 'Clinic',
+      country: 'India',
+      latitude: '56.1304',
+      longitude: '-106.3468',
     },
   ]);
+
+    
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [selectedAddressIndex, setSelectedAddressIndex] = useState<
@@ -121,15 +139,22 @@ const PracticeScreen = () => {
   };
 
   const handleAddAddress = () => {
-    const newAddress = {
-      id: opdAddresses.length + 1,
+    const newAddress: Address = {
+      
       address: '',
-      landmark: '',
+      
       pincode: '',
       city: '',
       state: '',
       startTime: '',
       endTime: '',
+      clinicName: '',
+      mobile: '',
+
+      type: 'Clinic',
+      country: 'India',
+      latitude: '56.1304',
+      longitude: '-106.3468',
     };
     setOpdAddresses([...opdAddresses, newAddress]);
   };
@@ -199,6 +224,8 @@ const PracticeScreen = () => {
   };
 
   const handleNext = async () => {
+
+    const token = await AsyncStorage.getItem('authToken');
     const hasInvalidAddress = opdAddresses.some(
       addr =>
         !addr.address ||
@@ -208,6 +235,30 @@ const PracticeScreen = () => {
         !addr.startTime ||
         !addr.endTime,
     );
+
+    function convertTo24HourFormat(timeStr: string): string {
+  const [time, modifier] = timeStr.trim().toLowerCase().split(' ');
+
+  let [hours, minutes] = time.split(':');
+  minutes = minutes || '00';
+
+  let hrs = parseInt(hours, 10);
+  if (modifier === 'pm' && hrs !== 12) hrs += 12;
+  if (modifier === 'am' && hrs === 12) hrs = 0;
+
+  return `${hrs.toString().padStart(2, '0')}:${minutes}`;
+}
+
+    const payload = opdAddresses.map(addr => ({
+      ...addr,
+      startTime: convertTo24HourFormat(addr.startTime),
+      endTime: convertTo24HourFormat(addr.endTime),
+    }));
+
+    const firstAddress = payload[0];
+    const response = await AuthPost('users/addAddress', firstAddress, token);
+
+     console.log('API Response:', response);
 
     if (hasInvalidAddress) {
       Toast.show({
@@ -246,6 +297,7 @@ const PracticeScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const userId = await AsyncStorage.getItem('userId');
+       const response = await AuthPost('users/addAddress', payload, token);
 
       Toast.show({
         type: 'success',
@@ -364,6 +416,35 @@ const PracticeScreen = () => {
 
           {opdAddresses.map((addr, index) => (
             <View key={addr.id} style={styles.addressContainer}>
+               <View style={styles.inputContainer}>
+                <Text style={styles.label}>Clinic Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter Clinic Name"
+                  placeholderTextColor="#999"
+                  value={addr.clinicName}
+                  onChangeText={text =>
+                    handleInputChange(index, 'clinicName', text)
+                  }
+                />
+              </View>
+
+                             <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter Mobile Number"
+                  placeholderTextColor="#999"
+                  value={addr.mobile}
+                  onChangeText={text =>
+                    handleInputChange(index, 'mobile', text)
+                  }
+                   keyboardType="numeric"
+                  maxLength={10}
+                />
+              </View>
+
+                             
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Address *</Text>
                 <TextInput
@@ -406,18 +487,7 @@ const PracticeScreen = () => {
                     />
                   </View>
                 )}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Landmark</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Landmark"
-                  placeholderTextColor="#999"
-                  value={addr.landmark}
-                  onChangeText={text =>
-                    handleInputChange(index, 'landmark', text)
-                  }
-                />
-              </View>
+              
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Pincode *</Text>
                 <TextInput
@@ -452,6 +522,44 @@ const PracticeScreen = () => {
                   onChangeText={text => handleInputChange(index, 'state', text)}
                 />
               </View>
+
+              
+
+              
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Country *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter Country"
+                  placeholderTextColor="#999"
+                  value={addr.country}
+                  onChangeText={text => handleInputChange(index, 'country', text)}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Latitude </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter Latitude"
+                  placeholderTextColor="#999"
+                  value={addr.latitude}
+                  onChangeText={text => handleInputChange(index, 'latitude', text)}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Longitude </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter Longitude"
+                  placeholderTextColor="#999"
+                  value={addr.longitude}
+                  onChangeText={text => handleInputChange(index, 'longitude', text)}
+                />
+              </View>
+
               <View style={styles.timeContainer}>
                 <TouchableOpacity
                   style={styles.timeButton}
