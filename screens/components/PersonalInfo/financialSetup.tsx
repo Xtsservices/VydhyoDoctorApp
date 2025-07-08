@@ -116,7 +116,7 @@ const FinancialSetupScreen = () => {
         console.log('Form data to send:', body);
 
         const response = await axios.post(
-          'http://192.168.1.44:3000/users/updateBankDetails',
+          'http://192.168.1.42:3000/users/updateBankDetails',
           body,
           {
             headers: {

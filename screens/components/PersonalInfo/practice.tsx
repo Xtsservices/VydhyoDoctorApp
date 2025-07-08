@@ -17,7 +17,10 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
-import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import {
+  getCurrentStepIndex,
+  TOTAL_STEPS,
+} from '../../utility/registrationSteps';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -47,11 +50,22 @@ const PracticeScreen = () => {
   const navigation = useNavigation<any>();
   const [affiliation, setAffiliation] = useState<string | null>(null);
   const [opdAddresses, setOpdAddresses] = useState<Address[]>([
-    { id: 1, address: '', landmark: '', pincode: '', city: '', state: '', startTime: '', endTime: '' },
+    {
+      id: 1,
+      address: '',
+      landmark: '',
+      pincode: '',
+      city: '',
+      state: '',
+      startTime: '',
+      endTime: '',
+    },
   ]);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<
+    number | null
+  >(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentOpdIndex, setCurrentOpdIndex] = useState(0);
@@ -61,7 +75,11 @@ const PracticeScreen = () => {
     setCurrentOpdIndex(opdAddresses.length - 1);
   }, [opdAddresses.length]);
 
-  const fetchAddressSuggestions = async (query: string, isAffiliation: boolean, index?: number) => {
+  const fetchAddressSuggestions = async (
+    query: string,
+    isAffiliation: boolean,
+    index?: number,
+  ) => {
     if (!query || query.length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -71,10 +89,12 @@ const PracticeScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await axios.get(
-        `http://192.168.1.44:3000/address/googleAddressSuggession?input=${encodeURIComponent(query)}`,
+        `http://192.168.1.44:3000/address/googleAddressSuggession?input=${encodeURIComponent(
+          query,
+        )}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       console.log('Address suggestions response:', response.data);
@@ -115,15 +135,22 @@ const PracticeScreen = () => {
   };
 
   const handleRemoveAddress = (id: number) => {
-    setOpdAddresses(opdAddresses.filter((addr) => addr.id !== id));
+    setOpdAddresses(opdAddresses.filter(addr => addr.id !== id));
   };
 
-  const handleTimeChange = (event: any, selectedTime: Date | undefined, type: 'startTime' | 'endTime', index: number) => {
+  const handleTimeChange = (
+    event: any,
+    selectedTime: Date | undefined,
+    type: 'startTime' | 'endTime',
+    index: number,
+  ) => {
     const currentTime = selectedTime || new Date();
     setShowStartTimePicker(false);
     setShowEndTimePicker(false);
     const updatedAddresses = [...opdAddresses];
-    updatedAddresses[index][type] = currentTime.toLocaleTimeString([], { hour: 'numeric', hour12: true }).replace(':00', '');
+    updatedAddresses[index][type] = currentTime
+      .toLocaleTimeString([], { hour: 'numeric', hour12: true })
+      .replace(':00', '');
     setOpdAddresses(updatedAddresses);
   };
 
@@ -136,60 +163,73 @@ const PracticeScreen = () => {
     return hours * 60;
   };
 
-  const handleSelectAddress = (suggestion: Suggestion, isAffiliation: boolean, index?: number) => {
-    const selectedAddress = suggestion.structured_formatting?.main_text || suggestion.description;
+  const handleSelectAddress = (
+    suggestion: Suggestion,
+    isAffiliation: boolean,
+    index?: number,
+  ) => {
+    const selectedAddress =
+      suggestion.structured_formatting?.main_text || suggestion.description;
     if (isAffiliation) {
       setAffiliation(selectedAddress);
     } else if (index !== undefined) {
       const updatedAddresses = [...opdAddresses];
-      updatedAddresses[index] = { ...updatedAddresses[index], address: selectedAddress };
+      updatedAddresses[index] = {
+        ...updatedAddresses[index],
+        address: selectedAddress,
+      };
       setOpdAddresses(updatedAddresses);
     }
     setSuggestions([]);
     setShowSuggestions(false);
   };
 
-  const handleInputChange = (index: number, field: keyof Address, value: string) => {
-     if (field === 'pincode' && value && !/^\d{6}$/.test(value)) {
-      if (value.length > 6) return; // Prevent typing beyond 6 digits
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Pincode',
-        text2: 'Pincode must be exactly 6 digits',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      return;
-    }
+  const handleInputChange = (
+    index: number,
+    field: keyof Address,
+    value: string,
+  ) => {
     const updatedAddresses = [...opdAddresses];
     (updatedAddresses[index][field] as string) = value;
     setOpdAddresses(updatedAddresses);
-    if (field === 'address') {
-      fetchAddressSuggestions(value, false, index);
+
+    if (field === 'address' || field === 'pincode') {
+      // fetchAddressSuggestions(value, false, index);
     }
   };
 
   const handleNext = async () => {
     const hasInvalidAddress = opdAddresses.some(
-      (addr) => !addr.address || !addr.pincode || !addr.city || !addr.state || !addr.startTime || !addr.endTime
+      addr =>
+        !addr.address ||
+        !addr.pincode ||
+        !addr.city ||
+        !addr.state ||
+        !addr.startTime ||
+        !addr.endTime,
     );
 
-    
     if (hasInvalidAddress) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Please fill all required OPD Address fields (address, pincode, city, state, and times)',
+        text2:
+          'Please fill all required OPD Address fields (address, pincode, city, state, and times)',
         position: 'top',
         visibilityTime: 4000,
       });
       return;
     }
 
-    const hasInvalidTime = opdAddresses.some((addr) => {
+    navigation.navigate('ConsultationPreferences');
+    return;
+
+    const hasInvalidTime = opdAddresses.some(addr => {
       const startMinutes = parseTimeToMinutes(addr.startTime);
       const endMinutes = parseTimeToMinutes(addr.endTime);
-      return startMinutes >= endMinutes || startMinutes === -1 || endMinutes === -1;
+      return (
+        startMinutes >= endMinutes || startMinutes === -1 || endMinutes === -1
+      );
     });
     if (hasInvalidTime) {
       Toast.show({
@@ -207,20 +247,14 @@ const PracticeScreen = () => {
       const token = await AsyncStorage.getItem('authToken');
       const userId = await AsyncStorage.getItem('userId');
 
-    
-
-     
-
-       Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'Practice details updated successfully!',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-        navigation.navigate('ConsultationPreferences');
-
-     
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Practice details updated successfully!',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      navigation.navigate('ConsultationPreferences');
     } catch (err) {
       console.error('API error:', err);
       let errorMessage = 'Failed to update practice details.';
@@ -266,7 +300,10 @@ const PracticeScreen = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Practice</Text>
       </View>
-      <ProgressBar currentStep={getCurrentStepIndex('Practice')} totalSteps={TOTAL_STEPS} />
+      <ProgressBar
+        currentStep={getCurrentStepIndex('Practice')}
+        totalSteps={TOTAL_STEPS}
+      />
       <ScrollView
         style={styles.formContainer}
         keyboardShouldPersistTaps="handled"
@@ -317,7 +354,10 @@ const PracticeScreen = () => {
         <View style={styles.addressSection}>
           <View style={styles.headerRow}>
             <Text style={styles.label}>OPD Address(es)</Text>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddAddress}
+            >
               <Text style={styles.addButtonText}>+ Add Location</Text>
             </TouchableOpacity>
           </View>
@@ -331,34 +371,41 @@ const PracticeScreen = () => {
                   placeholder="Search OPD Address"
                   placeholderTextColor="#999"
                   value={addr.address}
-                  onChangeText={(text) => handleInputChange(index, 'address', text)}
+                  onChangeText={text =>
+                    handleInputChange(index, 'address', text)
+                  }
                 />
               </View>
-              {showSuggestions && suggestions.length > 0 && selectedAddressIndex === index && (
-                <View style={styles.suggestionsContainer}>
-                  <FlatList
-                    data={suggestions}
-                    keyExtractor={(item) => item.place_id}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.suggestionItem}
-                        onPress={() => handleSelectAddress(item, false, index)}
-                      >
-                        <Text style={styles.suggestionMainText}>
-                          {item.structured_formatting?.main_text || item.description}
-                        </Text>
-                        {item.structured_formatting?.secondary_text && (
-                          <Text style={styles.suggestionSecondaryText}>
-                            {item.structured_formatting.secondary_text}
+              {showSuggestions &&
+                suggestions.length > 0 &&
+                selectedAddressIndex === index && (
+                  <View style={styles.suggestionsContainer}>
+                    <FlatList
+                      data={suggestions}
+                      keyExtractor={item => item.place_id}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={styles.suggestionItem}
+                          onPress={() =>
+                            handleSelectAddress(item, false, index)
+                          }
+                        >
+                          <Text style={styles.suggestionMainText}>
+                            {item.structured_formatting?.main_text ||
+                              item.description}
                           </Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                    style={styles.suggestionsList}
-                    nestedScrollEnabled={true}
-                  />
-                </View>
-              )}
+                          {item.structured_formatting?.secondary_text && (
+                            <Text style={styles.suggestionSecondaryText}>
+                              {item.structured_formatting.secondary_text}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
+                      style={styles.suggestionsList}
+                      nestedScrollEnabled={true}
+                    />
+                  </View>
+                )}
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Landmark</Text>
                 <TextInput
@@ -366,7 +413,9 @@ const PracticeScreen = () => {
                   placeholder="Enter Landmark"
                   placeholderTextColor="#999"
                   value={addr.landmark}
-                  onChangeText={(text) => handleInputChange(index, 'landmark', text)}
+                  onChangeText={text =>
+                    handleInputChange(index, 'landmark', text)
+                  }
                 />
               </View>
               <View style={styles.inputContainer}>
@@ -376,7 +425,10 @@ const PracticeScreen = () => {
                   placeholder="Enter Pincode"
                   placeholderTextColor="#999"
                   value={addr.pincode}
-                  onChangeText={(text) => handleInputChange(index, 'pincode', text)}
+                  maxLength={6}
+                  onChangeText={text =>
+                    handleInputChange(index, 'pincode', text)
+                  }
                   keyboardType="numeric"
                 />
               </View>
@@ -387,7 +439,7 @@ const PracticeScreen = () => {
                   placeholder="Enter City"
                   placeholderTextColor="#999"
                   value={addr.city}
-                  onChangeText={(text) => handleInputChange(index, 'city', text)}
+                  onChangeText={text => handleInputChange(index, 'city', text)}
                 />
               </View>
               <View style={styles.inputContainer}>
@@ -397,7 +449,7 @@ const PracticeScreen = () => {
                   placeholder="Enter State"
                   placeholderTextColor="#999"
                   value={addr.state}
-                  onChangeText={(text) => handleInputChange(index, 'state', text)}
+                  onChangeText={text => handleInputChange(index, 'state', text)}
                 />
               </View>
               <View style={styles.timeContainer}>
@@ -409,8 +461,15 @@ const PracticeScreen = () => {
                   }}
                 >
                   <View style={styles.timeButtonContent}>
-                    <Icon name="clock-outline" size={width * 0.045} color="#00203F" style={styles.clockIcon} />
-                    <Text style={styles.timeText}>Start Time: {addr.startTime || 'Select'}</Text>
+                    <Icon
+                      name="clock-outline"
+                      size={width * 0.045}
+                      color="#00203F"
+                      style={styles.clockIcon}
+                    />
+                    <Text style={styles.timeText}>
+                      Start Time: {addr.startTime || 'Select'}
+                    </Text>
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -421,8 +480,15 @@ const PracticeScreen = () => {
                   }}
                 >
                   <View style={styles.timeButtonContent}>
-                    <Icon name="clock-outline" size={width * 0.045} color="#00203F" style={styles.clockIcon} />
-                    <Text style={styles.timeText}>End Time: {addr.endTime || 'Select'}</Text>
+                    <Icon
+                      name="clock-outline"
+                      size={width * 0.045}
+                      color="#00203F"
+                      style={styles.clockIcon}
+                    />
+                    <Text style={styles.timeText}>
+                      End Time: {addr.endTime || 'Select'}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -431,7 +497,9 @@ const PracticeScreen = () => {
                   value={new Date()}
                   mode="time"
                   display="default"
-                  onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'startTime', index)}
+                  onChange={(event, selectedTime) =>
+                    handleTimeChange(event, selectedTime, 'startTime', index)
+                  }
                 />
               )}
               {showEndTimePicker && selectedAddressIndex === index && (
@@ -439,7 +507,9 @@ const PracticeScreen = () => {
                   value={new Date()}
                   mode="time"
                   display="default"
-                  onChange={(event, selectedTime) => handleTimeChange(event, selectedTime, 'endTime', index)}
+                  onChange={(event, selectedTime) =>
+                    handleTimeChange(event, selectedTime, 'endTime', index)
+                  }
                 />
               )}
               <TouchableOpacity

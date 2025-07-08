@@ -160,10 +160,8 @@ const handleCreateAppointment = async () => {
       Alert.alert('Authentication Error', 'Please login again.');
       return;
     }
-
-   
     const discount = 0;
-    const discountType = 'none';
+    const discountType = 'percentage';
     const paymentStatus = 'paid';
 
     // Combine form data
@@ -176,10 +174,17 @@ const handleCreateAppointment = async () => {
     //   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     // };
 
-    const formatTimeForAPI = (time: string) => {
-      // Ensure proper 12-hour format with AM/PM
-      return time; // assuming already in correct format
-    };
+  const formatTimeForAPI = (time: string): string => {
+  const [rawTime, period] = time.trim().split(' ');
+  let [hours, minutes] = rawTime.split(':').map(Number);
+
+  if (period.toUpperCase() === 'PM' && hours < 12) hours += 12;
+  if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+
+  return `${hours.toString().padStart(2, '0')}:${(minutes || 0)
+    .toString()
+    .padStart(2, '0')}`;
+};
 
     const appointmentRequest = {
       userId: patientId,
@@ -188,7 +193,7 @@ const handleCreateAppointment = async () => {
       appointmentType: patientData.appointmentType,
       appointmentDepartment: patientData.department,
       appointmentDate: patientData.appointmentDate,
-      appointmentTime: formatTimeForAPI(patientData.selectedTime),
+    appointmentTime: formatTimeForAPI(patientData.selectedTime),
       appointmentStatus: 'scheduled',
       appointmentReason: patientData.visitReason || 'Not specified',
       amount: patientData.fee,
@@ -233,7 +238,7 @@ const handleBack = () => {
 
         // Make API call
         const response = await axios.get(
-          'http://192.168.1.44:3000/users/getUser',
+          'http://192.168.1.42:3000/users/getUser',
           {
             headers: {
               Authorization: `Bearer ${token}`,

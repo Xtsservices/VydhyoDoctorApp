@@ -122,7 +122,7 @@ const handleDelete = async () => {
     const token = await AsyncStorage.getItem('authToken');
     console.log('Deleting staff with ID:', selectedStaff?.userId);
     const res = await AuthFetch(`users/deleteMyAccount?userId=${selectedStaff?.userId}`, token);
-if (res.data.status === 'success') {
+if (res?.data?.status === 'success') {
   fetchStaff(); // Refresh staff list after deletion
 Toast.show({
            type: 'success',

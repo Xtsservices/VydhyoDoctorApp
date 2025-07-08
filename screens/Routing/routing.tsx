@@ -19,6 +19,15 @@ import AddAppointment from "../components/appointments/AddAppointment";
 import Availability from "../components/Dashboard/Availability";
 import StaffManagement from "../components/Dashboard/StaffManagement";
 import AddStaffScreen from "../components/Dashboard/AddStaff";
+import MyPatient from "../components/Dashboard/MyPatient";
+import Appointments from "../components/Dashboard/Appointments";
+import dashboard from "../components/Dashboard/dashboard";
+import Accounts from "../components/Dashboard/Accounts";
+import Clinic from "../components/Dashboard/Clinic";
+import AddClinic from "../components/Dashboard/AddClinic";
+import Reviews from "../components/Dashboard/Reviews";
+// import Appointments from "../components/appointments/appointments";
+// import MyPatient from "../components/Dashboard/MyPatient";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -43,6 +52,19 @@ const Routing = () => {
         <Stack.Screen name="Availability" component={Availability} />
         <Stack.Screen name="StaffManagement" component={StaffManagement} />
         <Stack.Screen name="AddStaff" component={AddStaffScreen} />
+        <Stack.Screen name="MyPatient" component={MyPatient} />
+        <Stack.Screen name="Appointments" component={Appointments} />
+        <Stack.Screen name="Dashboard" component={dashboard} />
+        <Stack.Screen name="Accounts" component={Accounts} />
+        <Stack.Screen name="Clinic" component={Clinic} />
+        <Stack.Screen name="AddClinic" component={AddClinic} />
+        <Stack.Screen name="Reviews" component={Reviews} options={{ headerShown: false }}/>
+
+
+
+
+
+
 
       </Stack.Navigator>
     </NavigationContainer>
