@@ -238,6 +238,8 @@ const PersonalInfoScreen: React.FC = () => {
           spokenLanguage: formData.spokenLanguages,
         };
 
+        console.log('Form data to be sent:', body);
+
         const response = await AuthPut('users/updateUser', body, token);
         if (response.status === 'success') {
           Toast.show({
@@ -248,7 +250,7 @@ const PersonalInfoScreen: React.FC = () => {
             visibilityTime: 3000,
           });
          setLoading(false);
-          
+          console.log('Form data sent successfully:', body);
           navigation.navigate('Specialization');
         } else {
           Toast.show({
