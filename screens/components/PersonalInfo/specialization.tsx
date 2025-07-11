@@ -23,6 +23,8 @@ import { useSelector } from 'react-redux';
 import ProgressBar from '../progressBar/progressBar';
 import { UploadFiles } from '../../auth/auth';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -38,7 +40,7 @@ const SpecializationDetails = () => {
     degree: '',
     specialization: '',
     yearsExperience: '',
-    services: '',
+    // services: '',
     bio: '',
     degrees: null as { uri: string; type: string; name: string } | null,
     certifications: null as { uri: string; type: string; name: string } | null,
@@ -65,20 +67,99 @@ const SpecializationDetails = () => {
   };
 
   const handleFileUpload = async (field: 'degrees' | 'certifications') => {
-    try {
-      const [result] = await pick({
-        mode: 'open',
-        type: [types.allFiles],
-      });
-      setFormData({ ...formData, [field]: result });
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('cancel')) {
-        console.log('File selection cancelled');
-      } else {
-        Alert.alert('Error', 'Failed to pick file.');
-        console.error('File picker error:', err);
-      }
-    }
+Alert.alert(
+    'Upload PAN Card',
+    'Choose an option',
+    [
+      {
+        text: 'Camera',
+        onPress: async () => {
+          try {
+            const result = await launchCamera({
+              mediaType: 'photo',
+              includeBase64: false,
+            });
+            console.log('Camera result:', result);
+
+            if (result.assets && result.assets.length > 0) {
+              const asset = result.assets[0];
+
+
+               setFormData({ ...formData, [field]: result })
+              // setPancardUploaded(true);
+            } else {
+              Alert.alert('No image selected from camera');
+            }
+          } catch (error) {
+            Alert.alert('Error', 'Camera access failed.');
+            console.error('Camera error:', error);
+          }
+        },
+      },
+      {
+        text: 'Gallery',
+        onPress: async () => {
+          try {
+            const result = await launchImageLibrary({
+              mediaType: 'photo',
+              includeBase64: false,
+            });
+
+            if (result.assets && result.assets.length > 0) {
+              const asset = result.assets[0];
+
+             setFormData({ ...formData, [field]: result })
+              // setPancardUploaded(true);
+            } else {
+              Alert.alert('No image selected from gallery');
+            }
+          } catch (error) {
+            Alert.alert('Error', 'Gallery access failed.');
+            console.error('Gallery error:', error);
+          }
+        },
+      },
+      {
+        text: 'Upload PDF',
+        onPress: async () => {
+          try {
+            const [result] = await pick({
+              type: [types.pdf, types.images],
+            });
+
+            if (result) {
+              setFormData({ ...formData, [field]: result });
+            } else {
+              Alert.alert('Error', 'Invalid file selected. Please try again.');
+            }
+          } catch (error) {
+            Alert.alert('Error', 'PDF selection failed.');
+            console.error('PDF error:', error);
+          }
+        },
+      },
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+    ],
+    { cancelable: true }
+  );
+
+  // try {
+  //   const [result] = await pick({
+  //     mode: 'open',
+  //     type: [types.allFiles],
+  //     });
+  //     setFormData({ ...formData, [field]: result });
+  //   } catch (err) {
+  //     if (err instanceof Error && err.message.includes('cancel')) {
+  //       console.log('File selection cancelled');
+  //     } else {
+  //       Alert.alert('Error', 'Failed to pick file.');
+  //       console.error('File picker error:', err);
+  //     }
+  //   }
   };
 
   const handleNext = async () => {
@@ -94,7 +175,7 @@ const SpecializationDetails = () => {
       formDataObj.append('name', formData.specialization);
       formDataObj.append('experience', formData.yearsExperience);
       formDataObj.append('degree', formData.degree);
-      formDataObj.append('services', formData.services);
+      // formDataObj.append('services', formData.services);
       formDataObj.append('bio', formData.bio);
 
       if (formData.degrees) {
@@ -148,6 +229,8 @@ const SpecializationDetails = () => {
   const handleBack = () => {
     navigation.goBack();
   };
+
+  console.log('Current form data:', formData);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -212,7 +295,7 @@ const SpecializationDetails = () => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
+            {/* <View style={styles.inputGroup}>
               <Text style={styles.label}>Services Provided*</Text>
               <TextInput
                 style={styles.input}
@@ -222,10 +305,10 @@ const SpecializationDetails = () => {
                 placeholderTextColor="#999"
                 editable={!isLoading}
               />
-            </View>
+            </View> */}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Bio/Profile Info*</Text>
+              <Text style={styles.label}>Bio/Profile Info</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={formData.bio}
@@ -248,7 +331,7 @@ const SpecializationDetails = () => {
                 <View style={styles.uploadField}>
                   <Icon name="upload" size={width * 0.05} color="#00203F" style={styles.uploadIcon} />
                   <Text style={styles.uploadText}>
-                    {formData.degrees ? formData.degrees.name : 'Upload Degree Certificate(s)'}
+                    {formData.degrees ? 'uploaded Successfully' : 'Upload Degree Certificate(s)'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -264,7 +347,7 @@ const SpecializationDetails = () => {
                 <View style={styles.uploadField}>
                   <Icon name="upload" size={width * 0.05} color="#00203F" style={styles.uploadIcon} />
                   <Text style={styles.uploadText}>
-                    {formData.certifications ? formData.certifications.name : 'Upload Certificate(s)'}
+                    {formData.certifications ? 'uploaded Successfully' : 'Upload Certificate(s)'}
                   </Text>
                 </View>
               </TouchableOpacity>

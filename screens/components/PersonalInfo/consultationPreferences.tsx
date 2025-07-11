@@ -58,7 +58,7 @@ const ConsultationPreferences = () => {
   };
 
   const handleNext = async () => {
-    if (!isFormValid()) return;
+    // if (!isFormValid()) return;
 
     const payload = {
       consultationModeFee: [
@@ -210,8 +210,8 @@ const ConsultationPreferences = () => {
 
       {/* Next Button */}
       <TouchableOpacity
-        style={[styles.nextButton, !isFormValid() && styles.disabledButton]}
-        disabled={!isFormValid()}
+        style={[styles.nextButton]}
+        // disabled={!isFormValid()}
         onPress={handleNext}
         // onPress={() => {
         //   setTimeout(() => {

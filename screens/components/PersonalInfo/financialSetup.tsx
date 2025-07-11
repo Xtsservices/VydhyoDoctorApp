@@ -57,6 +57,7 @@ const FinancialSetupScreen = () => {
     } else {
       const selectedBank = banks.find((b) => b.name === bank);
       if (selectedBank) {
+        
         const validLength = Array.isArray(selectedBank.accountLength)
           ? selectedBank.accountLength.includes(accountNumber.length)
           : selectedBank.accountLength === accountNumber.length;
@@ -68,8 +69,8 @@ const FinancialSetupScreen = () => {
         } else if (!/^\d+$/.test(accountNumber)) {
           tempErrors.accountNumber = 'Account number must contain only digits';
         }
-      } else if (accountNumber.length < 9 || accountNumber.length > 18) {
-        tempErrors.accountNumber = 'Account number must be between 9 and 18 digits';
+      } else if (accountNumber.length < 7 || accountNumber.length > 18) {
+        tempErrors.accountNumber = 'Account number must be between 7 to 18 digits';
       }
     }
 
@@ -129,7 +130,7 @@ const FinancialSetupScreen = () => {
           (response as any).message ??
           'Failed to update bank details';
 
-        if (status === 200) {
+        if (status === "success") {
           Toast.show({
             type: 'success',
             text1: 'Success',

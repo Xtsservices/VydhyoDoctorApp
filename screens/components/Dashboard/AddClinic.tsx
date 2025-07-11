@@ -100,12 +100,11 @@ console.log(payload, 'Payload to be sent');
        const token = await AsyncStorage.getItem('authToken');
        const response = await AuthPost('users/addAddress', payload, token);
       console.log('Response from API:', response);
-if (!response || !('data' in response) || response.data.status === 'success') {
-
+if ( response.status === 'success') {
    Toast.show({
           type: 'success',
           text1: 'Success',
-          text2: 'Appointment cancelled successfully',
+          text2: 'Clinic added successfully',
           position: 'top',
           visibilityTime: 3000,
         });

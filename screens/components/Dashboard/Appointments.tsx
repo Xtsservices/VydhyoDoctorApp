@@ -13,12 +13,15 @@ import {
    FlatList,
   Modal,
   Pressable,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
 
 interface Appointment {
+  doctorId: string;
+  patientId: string;
   label: ReactNode;
   value: Key | null | undefined;
   _id: string;
@@ -26,7 +29,7 @@ interface Appointment {
   appointmentType: ReactNode;
   patientName: ReactNode;
   id: string;
-  name: string;
+  // name: string;
   phone: string;
   clinic: string;
   type: string;
@@ -56,7 +59,34 @@ const AppointmentsScreen = () => {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
 const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+
     const userId = useSelector((state: any) => state.currentUserID);
+    const [actionModalVisible, setActionModalVisible] = useState(false);
+const [selectedAction, setSelectedAction] = useState('');
+// const [selectedAppointmentId, setSelectedAppointmentId] = useState('');
+const [selected_Id, setSelected_Id] = useState('');
+const [reason, setReason] = useState('');
+const [newDate, setNewDate] = useState('');
+const [newTime, setNewTime] = useState('');
+const [medicineName, setMedicineName] = useState('');
+const [medicineQty, setMedicineQty] = useState('');
+const [medicines, setMedicines] = useState<{ medName: string; quantity: string }[]>([]);
+
+const [testName, setTestName] = useState('');
+const [testQty, setTestQty] = useState('');
+const [tests, setTests] = useState<{ testName: string;  }[]>([]);
+const [selectedName, setSelectedName] = useState<string | null>(null);
+
+
+
+const openActionModal = (action: string, id: string, _id: string) => {
+  setSelectedAction(action);
+  setSelectedAppointmentId(id);
+  setSelected_Id(_id);
+  setActionModalVisible(true);
+};
+
+
 
 
 
@@ -68,8 +98,14 @@ const fetchAppointments = async () => {
         const res = await AuthFetch(`appointment/getAppointmentsCountByDoctorID?doctorId=${userId}`, token);
 
         console.log('Response from API:', res);
-  
-        const data = res.data.data;
+
+        let data: any[] = [];
+        if ('data' in res && Array.isArray(res.data.data)) {
+          data = res.data.data;
+        } else {
+          console.error('API response does not contain data array:', res);
+        }
+
         console.log('Data fetched:', data);
         if (data && Array.isArray(data)) {
           const formattedAppointments = data.map((appt: any) => ({
@@ -80,11 +116,14 @@ const fetchAppointments = async () => {
             appointmentType: appt.appointmentType || '',
             patientName: appt.patientName || '',
             id: appt.appointmentId || '',
-            name: appt.patientName || '',
+            doctorId: appt.doctorId || '',
+            // name: appt.patientName || '',
             phone: appt.phone || '',
             clinic: appt.clinic || 'Unknown Clinic',
             type: appt.appointmentType || 'General',
-            date: appt.appointmentDate || 'Unknown Date',
+            date: appt.appointmentDate
+              ? appt.appointmentDate.slice(0, 10)
+              : 'Unknown Date',
             status: appt.appointmentStatus || '',
             statusColor: appt.appointmentStatus === 'Completed' ? '#E0E7FF' : '#D1FAE5',
             typeIcon: 'video-outline',
@@ -122,7 +161,7 @@ const fetchAppointments = async () => {
     }, []);
 
     useEffect(() => {
-      console.log('selectedType:', Appointments);
+      console.log('selectedType:', allAppointments);
 
        let filtered = allAppointments;
 
@@ -133,14 +172,17 @@ const fetchAppointments = async () => {
     );
   }
 
+
   if (search.trim() !== '') {
+    console.log(search, 'searching for keyword');
     const keyword = search.toLowerCase();
     filtered = filtered.filter(
       (appt) =>
-        appt.name.toLowerCase().includes(keyword) ||
+        appt.patientName.toLowerCase().includes(keyword) ||
         appt.id.toLowerCase().includes(keyword)
     );
   }
+  console.log('Filtered Appointments:', filtered);
 
   setAppointments(filtered);
 
@@ -149,26 +191,31 @@ const fetchAppointments = async () => {
         console.log('Filtered Appointments:', filtered);
         setAppointments(filtered);
       } else {
-        setAppointments(Appointments);
+        setAppointments(filtered);
       }
 
 
-    }, [selectedType, allAppointments,  search]);
+    }, [selectedType, search,]);
 
+console.log('Appointments:', Appointments);
 
-
-    const handleStatusChange = async (id: string, status: string, _id: string) => {
+    const handleStatusChange = async (id: string, status: string, _id: string, patientName: string, patientId: string, p0: any) => {
 
 const body = {
   appointmentId: id,
   reason:"jhfj"
 }
+
+
       console.log('Changing status for appointment ID:', _id, 'to', status, body);
   try {
     const token = await AsyncStorage.getItem('authToken');
 
+
+
     if (status === 'Cancel') {
-      console.log('Cancelling appointment with ID:', id);
+
+
 
       const response = await AuthPost('appointment/cancelAppointment', body, token);
 if (!response || !('data' in response) || response.data.status === 'success') {
@@ -183,26 +230,47 @@ if (!response || !('data' in response) || response.data.status === 'success') {
   fetchAppointments();
         return;
       }
-
 console.log('Response from cancelAppointment:', response);
     }else if (status === 'Reschedule') {
-
       console.log('Rescheduling appointment with ID:', id);
-      const response = await AuthPost('appointment/rescheduleAppointment', body, token);
+
+      const Recheduledata = {
+        appointmentId: id,
+        newDate: newDate,
+        newTime: newTime,
+        reason: reason,
+      }
+      console.log('Recheduledata:', Recheduledata);
+      const response = await AuthPost('appointment/rescheduleAppointment', Recheduledata, token);
       console.log('Response from rescheduleAppointment:', response);
       if (!response || !('data' in response) || response.data.status === 'success') {
         Toast.show({
-          type: 'Success',
+          type: 'success',
           text1: 'Success',
-          text2: 'Successfully reschedule appointment',
+          text2: 'Successfully rescheduled appointment',
           position: 'top',
           visibilityTime: 3000,
         });
         fetchAppointments();
         return;
+      }else{
+        Alert.alert('Error', response.data.message || 'Failed to reschedule appointment');
       }
-    }else if(status === 'Mark as Complete' ){
+      // if (!response || !('data' in response) || response.data.status === 'success') {
+      //   Toast.show({
+      //     type: 'Success',
+      //     text1: 'Success',
+      //     text2: 'Successfully reschedule appointment',
+      //     position: 'top',
+      //     visibilityTime: 3000,
+      //   });
+      //   fetchAppointments();
+      //   return;
+      // }
+    }else if(status === 'Mark as Completed' ){
+      console.log('Completing appointment with ID:', id);
         const response = await AuthPost('appointment/completeAppointment', body, token);
+        console.log('Response from completeAppointment:', response);
     if (!response || !('data' in response) || response.data.status === 'success') {
         Toast.show({
           type: 'success',
@@ -216,99 +284,537 @@ console.log('Response from cancelAppointment:', response);
       }
 
 
-    }
+    }else if (status === 'Prescription') {
+      console.log('Opening prescription modal for appointment ID:1', id);
+      const body = {
+        patientId: patientId,
+        medicines,
+        tests,
+        doctorId: userId,
+      };
+
+      console.log('Adding prescription for appointment ID:', id, body);
+     
+      const response = await AuthPost('pharmacy/addPrescription', body, token);
+      if (response.status === 'success') {
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Prescription added successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      fetchAppointments();
+       setActionModalVisible(false);
+      }
+      console.log('Response from completeAppointment:', response);
+      setSelectedAppointmentId(id);
+      setActionModalVisible(true);
+      return;
+  }
 
   } catch (err) {
     console.error('Update Failed:', err);
   }
 };
 
+const handleAddMedicine = () => {
+  if (medicineName && medicineQty) {
+    setMedicines([...medicines, { medName: medicineName, quantity: medicineQty }]);
+    setMedicineName('');
+    setMedicineQty('');
+  }
+};
 
-    
+const handleDeleteMedicine = (index: number) => {
+  const updated = [...medicines];
+  updated.splice(index, 1);
+  setMedicines(updated);
+};
 
-    const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
-      return (
-        <View style={styles.apptCard}>
-          <View style={styles.row}>
-            <Image source={{ uri: appt.avatar }} style={styles.avatar} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{appt.name}</Text>
-              <Text style={styles.phone}>{appt.phone}</Text>
-            </View>
-            <TouchableOpacity
-  onPress={() => {
-    setSelectedAppointmentId(appt.id);
-    setActionMenuVisible(true);
-  }}
->
-  <Icon name="dots-vertical" size={20} color="#999" />
-</TouchableOpacity>
+const handleAddTest = () => {
+  if (testName ) {
+    setTests([...tests, { testName: testName, }]);
+    setTestName('');
+    setTestQty('');
+  }
+};
 
-          </View>
+const handleDeleteTest = (index: number) => {
+  const updated = [...tests]
+  updated.splice(index, 1);
+  setTests(updated);
+};
 
-          <Text style={styles.id}>ID: {appt.id}</Text>
-          <Text style={styles.clinic}>{appt.clinic}</Text>
-
-          <View style={styles.row}>
-            <View style={styles.tag}>
-              <Icon name={appt.typeIcon} size={14} color="#3B82F6" />
-              <Text style={styles.tagText}>{appt.type}</Text>
-            </View>
-
-            <Text style={styles.date}>{appt.date}</Text>
-            <View
-              style={[
-                styles.status,
-                {
-                  backgroundColor:
-                    appt.status === 'Upcoming' ? '#DCFCE7' : '#E0E7FF',
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: appt.status === 'Upcoming' ? '#16A34A' : '#4338CA',
-                }}
-              >
-                {appt.status}
-              </Text>
-            </View>
-          </View>
-          <Modal
-  visible={actionMenuVisible}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setActionMenuVisible(false)}
->
-  <Pressable
-    style={styles.modalOverlay}
-    onPress={() => setActionMenuVisible(false)}
-  >
-    <View style={styles.dropdown}>
-      {['Prescription', 'Mark as Completed', 'Reschedule', 'Cancel'].map((status) => (
-        <Pressable
-          key={status}
-          style={styles.option}
+   
+const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
+  return (
+    <View style={styles.apptCard}>
+      <View style={styles.row}>
+        <Image source={{ uri: appt.avatar }} style={styles.avatar} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>{appt.patientName}</Text>
+          <Text style={styles.phone}>{appt.phone}</Text>
+        </View>
+        <TouchableOpacity
           onPress={() => {
-            if (selectedAppointmentId) {
-              // ✅ Send to API
-              handleStatusChange(selectedAppointmentId, status, appt._id);
-            }
-            setActionMenuVisible(false);
+            setSelectedAppointmentId(appt.id);
+            setSelectedName(String(appt.patientName ?? '')); // Set name immediately
+            setSelected_Id(appt._id); // Set _id if needed
+            setActionMenuVisible(true); // Open dropdown
           }}
         >
-          <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
-        </Pressable>
-      ))}
-    </View>
-  </Pressable>
-</Modal>
+          <Icon name="dots-vertical" size={20} color="#999" />
+        </TouchableOpacity>
+      </View>
 
+      <Text style={styles.id}>ID: {appt.id}</Text>
+      <Text style={styles.clinic}>{appt.clinic}</Text>
+
+      <View style={styles.row}>
+        <View style={styles.tag}>
+          <Icon name={appt.typeIcon} size={14} color="#3B82F6" />
+          <Text style={styles.tagText}>{appt.type}</Text>
         </View>
-      );
-    }
+        <Text style={styles.date}>{appt.date}</Text>
+        <View
+          style={[
+            styles.status,
+            {
+              backgroundColor:
+                appt.status === 'Upcoming' ? '#DCFCE7' : '#E0E7FF',
+            },
+          ]}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              color: appt.status === 'Upcoming' ? '#16A34A' : '#4338CA',
+            }}
+          >
+            {appt.status}
+          </Text>
+        </View>
+      </View>
 
+      {/* Action Menu Modal */}
+    
+
+   
+
+      {/* Action Modal */}
+      <Modal
+        visible={actionModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>{selectedAction}</Text>
+
+            {selectedAction === 'Cancel' && (
+              <TextInput
+                placeholder="Enter reason for cancellation"
+                style={styles.input}
+                value={reason}
+                onChangeText={setReason}
+                multiline
+              />
+            )}
+
+            {selectedAction === 'Reschedule' && (
+              <>
+                <TextInput
+                  placeholder="Enter new date (YYYY-MM-DD)"
+                  style={styles.input}
+                  value={newDate}
+                  onChangeText={setNewDate}
+                />
+                <TextInput
+                  placeholder="Enter new time (HH:mm)"
+                  style={styles.input}
+                  value={newTime}
+                  onChangeText={setNewTime}
+                />
+              </>
+            )}
+
+            {selectedAction === 'Mark as Completed' && (
+              <Text style={styles.infoText}>
+                Are you sure you want to mark this appointment as completed?
+              </Text>
+            )}
+
+            {selectedAction === 'Prescription' && (
+              <View>
+                {/* Patient Info */}
+                <Text style={styles.sectionTitle}>Patient Details</Text>
+                <Text style={styles.infoText}>Name: {selectedName}</Text>
+                {/* Add other patient details if available */}
+                {/* <Text style={styles.infoText}>Age: {appt.patientAge}</Text>
+                <Text style={styles.infoText}>Gender: {appt.patientGender}</Text> */}
+
+                {/* Medicine Input */}
+                <Text style={styles.sectionTitle}>Medicines</Text>
+                <View style={styles.row}>
+                  <TextInput
+                    placeholder="Medicine name"
+                    value={medicineName}
+                    onChangeText={setMedicineName}
+                    style={[styles.input, { flex: 2 }]}
+                  />
+                  <TextInput
+                    placeholder="Qty"
+                    value={medicineQty}
+                    onChangeText={setMedicineQty}
+                    keyboardType="number-pad"
+                    style={[styles.input, { flex: 1, marginLeft: 8 }]}
+                  />
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={handleAddMedicine}
+                  >
+                    <Text style={styles.addButtonText}>Add</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Added Medicines */}
+                {medicines.map((item, index) => (
+                  <View key={index} style={styles.itemRow}>
+                    <Text style={styles.itemText}>
+                      {item.medName} ({item.quantity})
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteMedicine(index)}
+                    >
+                      <Text style={styles.deleteText}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {/* Test Input */}
+                <Text style={styles.sectionTitle}>Tests</Text>
+                <View style={styles.row}>
+                  <TextInput
+                    placeholder="Test name"
+                    value={testName}
+                    onChangeText={setTestName}
+                    style={[styles.input, { flex: 2 }]}
+                  />
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={handleAddTest}
+                  >
+                    <Text style={styles.addButtonText}>Add</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Added Tests */}
+                {tests.map((item, index) => (
+                  <View key={index} style={styles.itemRow}>
+                    <Text style={styles.itemText}>{item.testName}</Text>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteTest(index)}
+                    >
+                      <Text style={styles.deleteText}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={() => {
+                  setActionModalVisible(false);
+                  if (selectedAppointmentId) {
+                    handleStatusChange(
+                      selectedAppointmentId,
+                      selectedAction,
+                      selected_Id,
+                      selectedName ?? '',
+                      appt.patientId ?? '',
+                      appt.doctorId ?? ''
+                    ); // Call API with updated data
+                  }
+                }}
+              >
+                <Text style={styles.buttonText}>Confirm</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setActionModalVisible(false);
+                  setMedicineName('');
+                  setMedicineQty('');
+                  setTestName('');
+                  setTestQty('');
+                  setMedicines([]);
+                  setTests([]);
+                }}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+//     const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
+//       return (
+//         <View style={styles.apptCard}>
+//           <View style={styles.row}>
+//             <Image source={{ uri: appt.avatar }} style={styles.avatar} />
+//             <View style={{ flex: 1 }}>
+//               <Text style={styles.name}>{appt.patientName}</Text>
+//               <Text style={styles.phone}>{appt.phone}</Text>
+//             </View>
+//             <TouchableOpacity
+//   onPress={() => {
+//     setSelectedAppointmentId(appt.id);
+//     setActionMenuVisible(true);
+//   }}
+// >
+//   <Icon name="dots-vertical" size={20} color="#999" />
+// </TouchableOpacity>
+
+//           </View>
+
+//           <Text style={styles.id}>ID: {appt.id}</Text>
+//           <Text style={styles.clinic}>{appt.clinic}</Text>
+
+//           <View style={styles.row}>
+//             <View style={styles.tag}>
+//               <Icon name={appt.typeIcon} size={14} color="#3B82F6" />
+//               <Text style={styles.tagText}>{appt.type}</Text>
+//             </View>
+
+//             <Text style={styles.date}>{appt.date}</Text>
+//             <View
+//               style={[
+//                 styles.status,
+//                 {
+//                   backgroundColor:
+//                     appt.status === 'Upcoming' ? '#DCFCE7' : '#E0E7FF',
+//                 },
+//               ]}
+//             >
+//               <Text
+//                 style={{
+//                   fontSize: 12,
+//                   color: appt.status === 'Upcoming' ? '#16A34A' : '#4338CA',
+//                 }}
+//               >
+//                 {appt.status}
+//               </Text>
+//             </View>
+//           </View>
+//           <Modal
+//   visible={actionMenuVisible}
+//   transparent
+//   animationType="fade"
+//   onRequestClose={() => setActionMenuVisible(false)}
+// >
+//   <Pressable
+//     style={styles.modalOverlay}
+//     onPress={() => setActionMenuVisible(false)}
+//   >
+//     {/* <View style={styles.dropdown}>
+//       {['Prescription', 'Mark as Completed', 'Reschedule', 'Cancel'].map((status) => (
+//         <Pressable
+//           key={status}
+//           style={styles.option}
+//           onPress={() => {
+//             if (selectedAppointmentId) {
+//               // ✅ Send to API
+//               handleStatusChange(selectedAppointmentId, status, appt._id);
+//             }
+//             setActionMenuVisible(false);
+//           }}
+//         >
+//           <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+//         </Pressable>
+//       ))}
+//     </View> */}
+//     <View style={styles.dropdown}>
+//   {['Prescription', 'Mark as Completed', 'Reschedule', 'Cancel'].map((status,) => (
+//     <Pressable
+//       key={status}
+//       style={styles.option}
+//       onPress={() => {
+//         setActionMenuVisible(false); // close dropdown
+
+//         if (selectedAppointmentId) {
+//           if (status === '') {
+//             // Direct API or navigation logic
+//             // handleStatusChange(selectedAppointmentId, status, appt._id);
+//           } else {
+//             // Show modal for other actions
+//             setSelectedAction(status);
+//             console.log('Selected Action:', status);
+//             setSelectedAppointmentId(selectedAppointmentId);
+//             setSelected_Id(appt._id);
+//             setActionModalVisible(true);
+//             setSelectedName(String(appt.patientName ?? ''));
+//               handleStatusChange(selectedAppointmentId, status, appt._id, String(appt.patientName ?? ''));
+//               // setSelectedAppointment(appt); 
+//           }
+//         }
+//       }}
+//     >
+//       <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+//     </Pressable>
+//   ))}
+// </View>
+
+//   </Pressable>
+// </Modal>
+
+// <Modal
+//   visible={actionModalVisible}
+//   transparent
+//   animationType="fade"
+//   onRequestClose={() => setActionModalVisible(false)}
+// >
+//   <View style={styles.modalOverlay}>
+//     <View style={styles.modalContainer}>
+//       <Text style={styles.modalTitle}>{selectedAction}</Text>
+
+//       {selectedAction === 'Cancel' && (
+//         <TextInput
+//           placeholder="Enter reason for cancellation"
+//           style={styles.input}
+//           value={reason}
+//           onChangeText={setReason}
+//           multiline
+//         />
+//       )}
+
+//       {selectedAction === 'Reschedule' && (
+//         <>
+//           <TextInput
+//             placeholder="Enter new date (YYYY-MM-DD)"
+//             style={styles.input}
+//             value={newDate}
+//             onChangeText={setNewDate}
+//           />
+//           <TextInput
+//             placeholder="Enter new time (HH:mm)"
+//             style={styles.input}
+//             value={newTime}
+//             onChangeText={setNewTime}
+//           />
+//         </>
+//       )}
+
+//       {selectedAction === 'Mark as Completed' && (
+//         console.log('Selected Appointment ID:', ),
+//         <Text style={styles.infoText}>Are you sure you want to mark this appointment as completed?</Text>
+//       )}
+
+//       {selectedAction === 'Prescription' && (
+//         console.log('Selected Appointment ID:', selectedName),
+//   <View>
+//     {/* Patient Info */}
+//     <Text style={styles.sectionTitle}>Patient Details</Text>
+//     <Text style={styles.infoText}>Name: {selectedName}</Text>
+//     {/* <Text style={styles.infoText}>Age: {appt.patientAge}</Text>
+//     <Text style={styles.infoText}>Gender: {appt.patientGender}</Text> */}
+
+//     {/* Medicine Input */}
+//     <Text style={styles.sectionTitle}>Medicines</Text>
+//     <View style={styles.row}>
+//       <TextInput
+//         placeholder="Medicine name"
+//         value={medicineName}
+//         onChangeText={setMedicineName}
+//         style={[styles.input, { flex: 2 }]}
+//       />
+//       <TextInput
+//         placeholder="Qty"
+//         value={medicineQty}
+//         onChangeText={setMedicineQty}
+//         keyboardType="number-pad"
+//         style={[styles.input, { flex: 1, marginLeft: 8 }]}
+//       />
+//       <TouchableOpacity style={styles.addButton} onPress={handleAddMedicine}>
+//         <Text style={styles.addButtonText}>Add</Text>
+//       </TouchableOpacity>
+//     </View>
+
+//     {/* Added Medicines */}
+//     {medicines.map((item, index) => (
+//       <View key={index} style={styles.itemRow}>
+//         <Text style={styles.itemText}>{item.name} ({item.qty})</Text>
+//         <TouchableOpacity onPress={() => handleDeleteMedicine(index)}>
+//           <Text style={styles.deleteText}>🗑️</Text>
+//         </TouchableOpacity>
+//       </View>
+//     ))}
+
+//     {/* Test Input */}
+//     <Text style={styles.sectionTitle}>Tests</Text>
+//     <View style={styles.row}>
+//       <TextInput
+//         placeholder="Test name"
+//         value={testName}
+//         onChangeText={setTestName}
+//         style={[styles.input, { flex: 2 }]}
+//       />
+     
+//       <TouchableOpacity style={styles.addButton} onPress={handleAddTest}>
+//         <Text style={styles.addButtonText}>Add</Text>
+//       </TouchableOpacity>
+//     </View>
+
+//     {/* Added Tests */}
+//     {tests.map((item, index) => (
+//       <View key={index} style={styles.itemRow}>
+//         <Text style={styles.itemText}>{item.name} ({item.qty})</Text>
+//         <TouchableOpacity onPress={() => handleDeleteTest(index)}>
+//           <Text style={styles.deleteText}>🗑️</Text>
+//         </TouchableOpacity>
+//       </View>
+//     ))}
+//   </View>
+// )}
+
+
+//       <View style={styles.modalButtons}>
+//         <Pressable
+//           style={[styles.modalButton, styles.confirmButton]}
+//           onPress={() => {
+//             setActionModalVisible(false);
+//             if (selectedAppointmentId) {
+//               handleStatusChange(selectedAppointmentId, selectedAction, selected_Id);
+//             }
+//           }}
+//         >
+//           <Text style={styles.buttonText}>Confirm</Text>
+//         </Pressable>
+
+//         <Pressable
+//           style={[styles.modalButton, styles.cancelButton]}
+//           onPress={() => setActionModalVisible(false)}
+//         >
+//           <Text style={styles.buttonText}>Cancel</Text>
+//         </Pressable>
+//       </View>
+//     </View>
+//   </View>
+// </Modal>
+
+
+
+//         </View>
+//       );
+//     }
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#F0FDF4' }}>
@@ -410,6 +916,40 @@ console.log('Response from cancelAppointment:', response);
             </Pressable>
           </View>
         
+        </Pressable>
+      </Modal>
+
+
+         <Modal
+        visible={actionMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setActionMenuVisible(false)}
+        >
+          <View style={styles.dropdown}>
+            {['Prescription', 'Mark as Completed', 'Reschedule', 'Cancel'].map(
+              (status) => (
+                <Pressable
+                  key={status}
+                  style={styles.option}
+                  onPress={() => {
+                    setActionMenuVisible(false); // Close dropdown
+                    setSelectedAction(status); // Set selected action
+                    setActionModalVisible(true); // Open action modal
+                    // Call handleStatusChange only when confirming in the action modal
+                  }}
+                >
+                  <Text>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </Text>
+                </Pressable>
+              )
+            )}
+          </View>
         </Pressable>
       </Modal>
 
@@ -579,5 +1119,97 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
+  // modalOverlay: {
+  //   flex: 1,
+  //   backgroundColor: 'rgba(0,0,0,0.4)',
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  // },
+  modalContainer: {
+    backgroundColor: '#fff',
+    width: '85%',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+    color: '#333',
+  },
+  input: {
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    fontSize: 16,
+    color: '#333',
+  },
+  infoText: {
+    fontSize: 16,
+    color: '#555',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  confirmButton: {
+    backgroundColor: '#10B981', // green
+  },
+  cancelButton: {
+    backgroundColor: '#EF4444', // red
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  sectionTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginTop: 20,
+  marginBottom: 6,
+  color: '#333',
+},
+
+addButton: {
+  backgroundColor: '#10B981',
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+  marginLeft: 8,
+},
+addButtonText: {
+  color: '#fff',
+  fontWeight: 'bold',
+},
+itemRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  paddingVertical: 6,
+  borderBottomColor: '#eee',
+  borderBottomWidth: 1,
+},
+itemText: {
+  fontSize: 14,
+  color: '#333',
+},
+deleteText: {
+  fontSize: 18,
+  color: '#EF4444',
+}
+
   
 });

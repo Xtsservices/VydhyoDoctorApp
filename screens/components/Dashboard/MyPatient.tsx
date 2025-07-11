@@ -19,7 +19,7 @@ type Patient = {
   age: number;
   phone: string;
   lastVisit: string;
-  status: 'New Patient' | 'Follow-up';
+  status:'New Walkin' | 'New HomeCare' | 'New Patient Walkthrough' | 'Followup Walkin' | 'Followup Video' | 'Followup Homecare';
   avatar: any;
 };
 
@@ -27,6 +27,23 @@ type Patient = {
 
 const MyPatients: React.FC = () => {
   const [patients , setPatients] = useState<Patient[]>([]);
+  const [totalPatients, setTotalPatients] = useState<Patient[]>([]);
+    const [dropdownVisible, setDropdownVisible] = useState(false);
+    const [searchText, setSearchText] = useState('');
+
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'New Walkin' | 'New HomeCare' | 'New Patient Walkthrough' | 'Followup Walkin' | 'Followup Video' | 'Followup Homecare'>('all');
+
+  const options = [
+    { label: 'All', value: 'all' },
+    { label: 'New Walkin', value: 'new-walkin' },
+    { label: 'New HomeCare', value: 'new-homecare' },
+    { label: 'New Patient Walkthrough', value: 'new-patient-walkthrough' },
+    { label: 'Followup Walkin', value: 'followup-walkin' },
+    { label: 'Followup Video', value: 'followup-video' },
+    { label: 'Followup Homecare', value: 'followup-homecare' },
+
+  ];
+
   const fetchPatients = async () => {
    
     try {
@@ -56,6 +73,9 @@ const MyPatients: React.FC = () => {
          
         }));
         setPatients(formattedPatients);
+        setTotalPatients(formattedPatients)
+
+
       }
 
       // Simulate fetching data from an API
@@ -68,7 +88,55 @@ const MyPatients: React.FC = () => {
   useEffect(() => {
     fetchPatients();
   }, []);
-  
+
+  useEffect(() => {
+    if (selectedStatus === 'all') {
+      setPatients(totalPatients);
+    } else {
+      console.log(selectedStatus, 'selectedStatus in useEffect');
+      const filteredPatients = totalPatients.filter(
+        (patient) => patient.status === selectedStatus
+      );
+      console.log('Filtered Patients:', filteredPatients);
+      console.log('Total Patients:', totalPatients);
+      setPatients(filteredPatients);
+    }
+
+     if (searchText.trim() !== '') {
+    console.log(searchText, 'searching for keyword');
+    const keyword = searchText.toLowerCase();
+    // The following lines reference 'filtered' and 'appt', which are not defined in this scope.
+    // If you want to filter patients by searchText, you should filter totalPatients or patients.
+    const filteredPatients = patients.filter(
+      (patient) =>
+        patient.name.toLowerCase().includes(keyword) ||
+        patient.id.toLowerCase().includes(keyword)
+    );
+    setPatients(filteredPatients);
+  }
+  }, [selectedStatus, totalPatients, searchText]);
+
+
+//   const handleSearch = () => {
+//   const query = searchText.trim().toLowerCase();
+//   console.log('Search Query:', query);
+
+//   if (!query) {
+//     setPatients(patients); // show all if search is empty
+//     return;
+//   }
+
+//   const filtered = patients.filter((patient) =>
+//     patient.id.toLowerCase().includes(query) ||
+//     patient.name.toLowerCase().includes(query)
+//   );
+
+//   setPatients(filtered);
+// };
+
+
+  console.log(selectedStatus, 'selectedStatus');
+
 
   return (
     <View style={styles.container}>
@@ -85,13 +153,20 @@ const MyPatients: React.FC = () => {
       <View style={styles.searchContainer}>
         <Icon name="magnify" size={20} color="#999" style={styles.searchIcon} />
         <TextInput
-          placeholder="Search by Patient ID or Name"
-          placeholderTextColor="#999"
-          style={styles.searchInput}
-        />
+  placeholder="Search by Patient ID or Name"
+  placeholderTextColor="#999"
+  style={styles.searchInput}
+  value={searchText}
+  onChangeText={(text) => setSearchText(text)}
+  //  onPress={handleSearch}
+/>
+
+       
         <TouchableOpacity>
-          <Icon name="filter-variant" size={24} color="#007AFF" />
+          <Icon name="filter-variant" size={24} color="#007AFF" onPress={() => setDropdownVisible((prev) => !prev)} />
+           
         </TouchableOpacity>
+       
       </View>
 
       <FlatList
@@ -113,7 +188,9 @@ const MyPatients: React.FC = () => {
             <View
               style={[
                 styles.statusTag,
-                item.status === 'New Patient'
+                item.status === 'New Walkin' ||
+                item.status === 'New HomeCare' ||
+                item.status === 'New Patient Walkthrough'
                   ? styles.newTag
                   : styles.followUpTag,
               ]}
@@ -121,7 +198,9 @@ const MyPatients: React.FC = () => {
               <Text
                 style={[
                   styles.statusText,
-                  item.status === 'New Patient'
+                  item.status === 'New Walkin' ||
+                  item.status === 'New HomeCare' ||
+                  item.status === 'New Patient Walkthrough'
                     ? styles.newText
                     : styles.followUpText,
                 ]}
@@ -132,6 +211,24 @@ const MyPatients: React.FC = () => {
           </View>
         )}
       />
+     
+       {dropdownVisible && (
+          <View style={styles.dropdown}>
+            {options.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                onPress={() => {
+                  setSelectedStatus(option.value as typeof selectedStatus);
+                  setDropdownVisible(false);
+                }}
+                style={styles.dropdownOption}
+              >
+                <Text style={styles.dropdownText}>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      
     </View>
   );
 };
@@ -245,5 +342,46 @@ const styles = StyleSheet.create({
   followUpText: {
     color: '#B45309',
   },
+  dropdownWrapper: {
+  // position: 'relative',
+  marginLeft: 10,
+},
+
+filterButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#E8F0FE',
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 8,
+},
+
+filterButtonText: {
+  color: '#007AFF',
+  marginRight: 6,
+},
+
+dropdown: {
+  position: 'absolute',
+  top: 100,
+  right: 0,
+  backgroundColor: '#fff',
+  borderRadius: 8,
+  elevation: 5,
+  zIndex: 999,
+  width: 150,
+  paddingVertical: 8,
+},
+
+dropdownOption: {
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+},
+
+dropdownText: {
+  fontSize: 14,
+  color: '#1E293B',
+},
+
 });
 

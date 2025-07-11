@@ -239,15 +239,17 @@ const handleBack = () => {
         // Make API call
          const response = await AuthFetch('users/getUser', token);
         
-        console.log('User data fetched successfully:', response?.data?.data);
-        // Check if response status is success
-        if (response.data.status !== 'success') {
-          throw new Error(response.data.message || 'Failed to fetch user data');
+        if ('data' in response) {
+          console.log('User data fetched successfully:', response.data.data);
+          if (response.data.status !== 'success') {
+            throw new Error(response.data.message || 'Failed to fetch user data');
+          }
+          const userData = response.data.data;
+          console.log('User Data:', userData);
+          setUserDate(userData)
+        } else {
+          throw new Error(response.message || 'Failed to fetch user data');
         }
-
-        const userData = response.data.data;
-        console.log('User Data:', userData);
-        setUserDate(userData)
     
       } catch (error: any) {
         // setLoading(false);

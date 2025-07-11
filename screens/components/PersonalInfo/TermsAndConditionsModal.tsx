@@ -6,7 +6,7 @@ type TermsAndConditionsModalProps = {
   setModalVisible: (visible: boolean) => void;
 };
 
-const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = ({ modalVisible, setModalVisible }) => {
+const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = ({ modalVisible, setModalVisible, setTermsAccepted }) => {
   return (
     <Modal
       visible={modalVisible}
@@ -484,6 +484,16 @@ const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = ({ modal
           <Pressable style={styles.closeButton} onPress={() => setModalVisible(false)}>
             <Text style={styles.closeButtonText}>Close</Text>
           </Pressable>
+
+         <Pressable
+  style={styles.closeButton}
+  onPress={() => {
+    setModalVisible(false);
+    setTermsAccepted(true); // ✅ check the box when "Agree" is pressed
+  }}
+>
+  <Text style={styles.closeButtonText}>Agree</Text>
+</Pressable>
         </View>
       </View>
     </Modal>

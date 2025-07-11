@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthPost, AuthFetch } from '../../auth/auth';
+import { AuthPost, AuthFetch, AuthPut } from '../../auth/auth';
 import dayjs from 'dayjs';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -21,6 +21,10 @@ import Toast from 'react-native-toast-message';
 
 
 interface Staff {
+  profilepic: string;
+  DOB: any;
+  gender: string;
+  mobile: string;
   userId: string;
   id: string;
   name: string;
@@ -62,9 +66,22 @@ const [form, setForm] = useState({
   mobile: '',
   gender:'',
   DOB: '',
-  profilepic: '',
-  access:[]
+  profilepic: {},
+  access:[],
+  role:''
 });
+    const [dropdownVisible, setDropdownVisible] = useState(false);
+      const [selectedStatus, setSelectedStatus] = useState<'all' | 'Lab Assistant' | 'Pharmacy Assistant' | 'Assistant' | 'Receptionist' >('all');
+
+     const options = [
+    { label: 'All', value: 'all' },
+    { label: 'Lab Assistant', value: 'lab_assistant' },
+    { label: 'Pharmacy Assistant', value: 'pharmacy_assistant' },
+    { label: 'Assistant', value: 'assistant' },
+    { label: 'Receptionist', value: 'receptionist' },
+
+
+  ];
 
 const [searchText, setSearchText] = useState('');
 const [originalStaffData, setOriginalStaffData] = useState<Staff[]>([]); // Unfiltered data
@@ -77,11 +94,12 @@ const [originalStaffData, setOriginalStaffData] = useState<Staff[]>([]); // Unfi
     firstName: staff.name.split(' ')[0],
     lastName: staff.name.split(' ')[1] || '',
     email: staff.email,
-    mobile:  '',
-    gender:  '',
-    DOB:  '',
-    profilepic: '',
+    mobile:  staff.mobile || '',
+    gender:  staff.gender || '',
+    DOB:  staff.DOB ? dayjs(staff.DOB).format('YYYY-MM-DD') : 'N/A',
+    profilepic: staff.profilepic || {},
     access: [],
+    role: staff.role || '',
   });
   setMode(type);
   setModalVisible(true);
@@ -98,9 +116,28 @@ const closeModal = () => {
 const handleEditSubmit = async () => {
   try {
      const token = await AsyncStorage.getItem('authToken');
-    const res = await AuthPost('doctor/editReceptionist', form, token);
+     const formatDOBToDDMMYYYY = (dobString: string): string => {
+  const date = new Date(dobString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+  const year = date.getFullYear();
+
+  return `${day}-${month}-${year}`;
+};
+    const { firstName, lastName,  ...restForm } = form;
+
+const payload = {
+  ...restForm,
+  stafftype: form.role,
+  userId: userId,
+  DOB: formatDOBToDDMMYYYY(form.DOB),
+  // : `${firstName} ${lastName}`, // using before removal
+};
+
+     console.log('Editing staff with ID:', selectedStaff?.userId, payload);
+    const res = await AuthPut('doctor/editReceptionist', payload, token);
     console.log(res, 'Edit response');
-    if (res.data.status === 'success') {
+    if (res.status === 'success') {
      fetchStaff(); // Refresh staff list after edit
       Toast.show({type: 'success',
            text1: 'Success',
@@ -108,6 +145,7 @@ const handleEditSubmit = async () => {
            position: 'top',
            visibilityTime: 3000,
          });
+         closeModal();
       return;
     }
     Alert.alert('Success', 'Staff updated successfully');
@@ -122,6 +160,7 @@ const handleDelete = async () => {
     const token = await AsyncStorage.getItem('authToken');
     console.log('Deleting staff with ID:', selectedStaff?.userId);
     const res = await AuthFetch(`users/deleteMyAccount?userId=${selectedStaff?.userId}`, token);
+    console.log('Delete response:', res);
 if (res?.data?.status === 'success') {
   fetchStaff(); // Refresh staff list after deletion
 Toast.show({
@@ -187,7 +226,10 @@ const clearSearch = () => {
         ? dayjs(staff.lastLogout).format('YYYY-MM-DD HH:mm:ss')
         : 'N/A',
       isBlocked: staff.status?.toLowerCase() === 'blocked',
-      userId:staff.userId
+      userId: staff.userId,
+      gender: staff.gender || 'Unknown',
+      DOB: staff.DOB ? dayjs(staff.DOB).format('YYYY-MM-DD') : 'N/A',
+      mobile: staff.mobile || 'N/A',
     }));
 
 setOriginalStaffData(formattedData); // Store unfiltered data
@@ -274,13 +316,29 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
     style={styles.searchInput}
     value={searchText}
     onChangeText={handleSearch}
-    placeholder="Search staff members..."
+    placeholder="Search by email"
     placeholderTextColor="#999"
   />
    <TouchableOpacity style={styles.filterButton}>
-          <Icon name="filter-list" size={24} color="#fff" />
+          <Icon name="filter-list" size={24} color="#fff" onPress={() => setDropdownVisible((prev) => !prev)}  />
         </TouchableOpacity>
 </View>
+ {dropdownVisible && (
+          <View style={styles.dropdown}>
+            {options.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                onPress={() => {
+                  setSelectedStatus(option.value as typeof selectedStatus);
+                  setDropdownVisible(false);
+                }}
+                style={styles.dropdownOption}
+              >
+                <Text style={styles.dropdownText}>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         
       </View>
@@ -308,7 +366,11 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
             <Text style={styles.value}>{form[field as keyof typeof form]}</Text>
           ) : (
             <TextInput
-              value={form[field as keyof typeof form]}
+              value={
+                Array.isArray(form[field as keyof typeof form])
+                  ? ''
+                  : String(form[field as keyof typeof form] ?? '')
+              }
               onChangeText={(text) => setForm({ ...form, [field]: text })}
               style={styles.input}
               editable={mode === 'edit'}
@@ -618,6 +680,28 @@ searchContainer: {
 
 searchIcon: {
   marginLeft: 0
+},
+
+
+dropdown: {
+  position: 'absolute',
+  top: 55,
+  right: 0,
+  backgroundColor: '#fff',
+  borderRadius: 8,
+  elevation: 5,
+  zIndex: 999,
+  width: 150,
+  paddingVertical: 8,
+},
+
+dropdownOption: {
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+},
+dropdownText: {
+  fontSize: 14,
+  color: '#1E293B',
 },
 
 

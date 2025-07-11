@@ -16,6 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
+import MapView, { Marker, Region, LongPressEvent,  } from 'react-native-maps';
 import ProgressBar from '../progressBar/progressBar';
 import {
   getCurrentStepIndex,
@@ -26,9 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthPost } from '../../auth/auth';
 
 interface Address {
-  
   address: string;
-  
   pincode: string;
   city: string;
   state: string;
@@ -36,12 +35,10 @@ interface Address {
   endTime: string;
   clinicName: string;
   mobile: string;
- 
   type: 'Clinic';
   country: 'India';
   latitude: string;
   longitude: string;
-
 }
 
 interface Suggestion {
@@ -60,9 +57,7 @@ const PracticeScreen = () => {
   const [affiliation, setAffiliation] = useState<string | null>(null);
   const [opdAddresses, setOpdAddresses] = useState<Address[]>([
     {
-     
       address: '',
-      
       pincode: '',
       city: '',
       state: '',
@@ -70,20 +65,15 @@ const PracticeScreen = () => {
       endTime: '',
       clinicName: '',
       mobile: '',
-    
       type: 'Clinic',
       country: 'India',
       latitude: '56.1304',
       longitude: '-106.3468',
     },
   ]);
-
-    
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [selectedAddressIndex, setSelectedAddressIndex] = useState<
-    number | null
-  >(null);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentOpdIndex, setCurrentOpdIndex] = useState(0);
@@ -107,7 +97,7 @@ const PracticeScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await axios.get(
-        `http://192.168.1.44:3000/address/googleAddressSuggession?input=${encodeURIComponent(
+        `http://192.168.1.14:3000/address/googleAddressSuggession?input=${encodeURIComponent(
           query,
         )}`,
         {
@@ -138,11 +128,127 @@ const PracticeScreen = () => {
     }
   };
 
+  const fetchAddressDetails = async (latitude: number, longitude: number, index: number) => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axios.get(
+        `http://192.168.1.14:3000/address/reverseGeocode?lat=${latitude}&lng=${longitude}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      console.log('Reverse geocode response:', response.data);
+
+      if (response.data.status === 'success' && response.data.data.results.length > 0) {
+        const result = response.data.data.results[0];
+        const addressComponents = result.address_components;
+
+        let address = '';
+        let city = '';
+        let state = '';
+        let pincode = '';
+        let country = 'India';
+
+        addressComponents.forEach((component: any) => {
+          if (component.types.includes('street_number') || component.types.includes('route')) {
+            address += component.long_name + ' ';
+          }
+          if (component.types.includes('locality')) {
+            city = component.long_name;
+          }
+          if (component.types.includes('administrative_area_level_1')) {
+            state = component.long_name;
+          }
+          if (component.types.includes('postal_code')) {
+            pincode = component.long_name;
+          }
+          if (component.types.includes('country')) {
+            country = component.long_name;
+          }
+        });
+
+        address = address.trim() || result.formatted_address;
+
+        const updatedAddresses = [...opdAddresses];
+        updatedAddresses[index] = {
+          ...updatedAddresses[index],
+          address: address,
+          pincode: pincode,
+          city: city,
+          state: state,
+          country: country,
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+        };
+        setOpdAddresses(updatedAddresses);
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to fetch address details',
+          position: 'top',
+          visibilityTime: 4000,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching address details:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch address details',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    }
+  };
+
+  const fetchCoordinatesFromPlaceId = async (placeId: string, index: number) => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axios.get(
+        `http://192.168.1.14:3000/address/placeDetails?place_id=${placeId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      console.log('Place details response:', response.data);
+
+      if (response.data.status === 'success' && response.data.data.result) {
+        const { lat, lng } = response.data.data.result.geometry.location;
+        const updatedAddresses = [...opdAddresses];
+        updatedAddresses[index] = {
+          ...updatedAddresses[index],
+          latitude: lat.toString(),
+          longitude: lng.toString(),
+        };
+        setOpdAddresses(updatedAddresses);
+        fetchAddressDetails(lat, lng, index);
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to fetch place coordinates',
+          position: 'top',
+          visibilityTime: 4000,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching place coordinates:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch place coordinates',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    }
+  };
+
   const handleAddAddress = () => {
     const newAddress: Address = {
-      
       address: '',
-      
       pincode: '',
       city: '',
       state: '',
@@ -150,7 +256,6 @@ const PracticeScreen = () => {
       endTime: '',
       clinicName: '',
       mobile: '',
-
       type: 'Clinic',
       country: 'India',
       latitude: '56.1304',
@@ -159,8 +264,8 @@ const PracticeScreen = () => {
     setOpdAddresses([...opdAddresses, newAddress]);
   };
 
-  const handleRemoveAddress = (id: number) => {
-    setOpdAddresses(opdAddresses.filter(addr => addr.id !== id));
+  const handleRemoveAddress = (index: number) => {
+    setOpdAddresses(opdAddresses.filter((_, i) => i !== index));
   };
 
   const handleTimeChange = (
@@ -204,6 +309,7 @@ const PracticeScreen = () => {
         address: selectedAddress,
       };
       setOpdAddresses(updatedAddresses);
+      fetchCoordinatesFromPlaceId(suggestion.place_id, index);
     }
     setSuggestions([]);
     setShowSuggestions(false);
@@ -218,47 +324,69 @@ const PracticeScreen = () => {
     (updatedAddresses[index][field] as string) = value;
     setOpdAddresses(updatedAddresses);
 
-    if (field === 'address' || field === 'pincode') {
+    if (field === 'address') {
+      setSelectedAddressIndex(index);
       // fetchAddressSuggestions(value, false, index);
     }
   };
 
-  const handleNext = async () => {
+  const handleMapPress = (index: number, event: LongPressEvent) => {
+    console.log('Map pressed at index:', event);
+    // const { latitude, longitude } = event.nativeEvent.coordinate;
+    // console.log(`Map pressed at index ${index}:`, latitude, longitude);
+    // const updatedAddresses = [...opdAddresses];
+    // updatedAddresses[index] = {
+    //   ...updatedAddresses[index],
+    //   latitude: latitude.toString(),
+    //   longitude: longitude.toString(),
+    // };
+    // setOpdAddresses(updatedAddresses);
+    // fetchAddressDetails(latitude, longitude, index);
+  };
 
+  const handleNext = async () => {
     const token = await AsyncStorage.getItem('authToken');
     const hasInvalidAddress = opdAddresses.some(
       addr =>
         !addr.address ||
         !addr.pincode ||
         !addr.city ||
-        !addr.state ||
-        !addr.startTime ||
-        !addr.endTime,
+        !addr.state 
     );
 
     function convertTo24HourFormat(timeStr: string): string {
-  const [time, modifier] = timeStr.trim().toLowerCase().split(' ');
+      if (!timeStr || typeof timeStr !== 'string') return '';
 
-  let [hours, minutes] = time.split(':');
-  minutes = minutes || '00';
+      const parts = timeStr.trim().toLowerCase().split(/\s+/);
+      if (parts.length !== 2) return '';
 
-  let hrs = parseInt(hours, 10);
-  if (modifier === 'pm' && hrs !== 12) hrs += 12;
-  if (modifier === 'am' && hrs === 12) hrs = 0;
+      const [time, marker] = parts;
+      let [hours, minutes] = time.split(':');
+      minutes = minutes || '00';
 
-  return `${hrs.toString().padStart(2, '0')}:${minutes}`;
-}
+      let hrs = parseInt(hours, 10);
+      if (isNaN(hrs)) return '';
+
+      if (marker === 'pm' && hrs !== 12) hrs += 12;
+      if (marker === 'am' && hrs === 12) hrs = 0;
+
+      return `${hrs.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+    }
+
+    console.log('Converting times to 24-hour format...', convertTo24HourFormat(opdAddresses[0].startTime));
 
     const payload = opdAddresses.map(addr => ({
       ...addr,
-      startTime: convertTo24HourFormat(addr.startTime),
-      endTime: convertTo24HourFormat(addr.endTime),
+      startTime: convertTo24HourFormat(addr.startTime || '6:00 am'),
+      endTime: convertTo24HourFormat(addr.endTime || '9:00 pm'),
     }));
+
+    console.log('Payload for API:', payload);
 
     const firstAddress = payload[0];
     const response = await AuthPost('users/addAddress', firstAddress, token);
 
-     console.log('API Response:', response);
+    console.log('API Response:', response);
 
     if (hasInvalidAddress) {
       Toast.show({
@@ -271,9 +399,25 @@ const PracticeScreen = () => {
       });
       return;
     }
-
-    navigation.navigate('ConsultationPreferences');
-    return;
+    if (response.status !== "success"){
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to update practice details',
+        text2:  'Failed to update practice details.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+      return;
+    } else {
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Practice details updated successfully!',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+      navigation.navigate('ConsultationPreferences');
+    }
 
     const hasInvalidTime = opdAddresses.some(addr => {
       const startMinutes = parseTimeToMinutes(addr.startTime);
@@ -282,22 +426,21 @@ const PracticeScreen = () => {
         startMinutes >= endMinutes || startMinutes === -1 || endMinutes === -1
       );
     });
-    if (hasInvalidTime) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'End time must be after Start time for all OPD addresses',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-      return;
-    }
+    // if (hasInvalidTime) {
+    //   Toast.show({
+    //     type: 'error',
+    //     text1: 'Error',
+    //     text2: 'End time must be after Start time for all OPD addresses',
+    //     position: 'top',
+    //     visibilityTime: 4000,
+    //   });
+    //   return;
+    // }
 
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const userId = await AsyncStorage.getItem('userId');
-       const response = await AuthPost('users/addAddress', payload, token);
+      const response = await AuthPost('users/addAddress', payload, token);
 
       Toast.show({
         type: 'success',
@@ -352,57 +495,23 @@ const PracticeScreen = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Practice</Text>
       </View>
+
+
+      
       <ProgressBar
         currentStep={getCurrentStepIndex('Practice')}
         totalSteps={TOTAL_STEPS}
       />
+
+           
+
+  
       <ScrollView
         style={styles.formContainer}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled={true}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Uncomment if Clinic/Hospital Affiliation is needed */}
-        {/* <Text style={styles.label}>Clinic/Hospital Affiliation</Text>
-        <View style={styles.searchContainer}>
-          <Icon name="map-marker" size={width * 0.05} color="#00203F" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search or select..."
-            placeholderTextColor="#999"
-            value={affiliation || ''}
-            onChangeText={(text) => {
-              setAffiliation(text);
-              fetchAddressSuggestions(text, true);
-            }}
-          />
-        </View>
-        {showSuggestions && suggestions.length > 0 && selectedAddressIndex === null && (
-          <View style={styles.suggestionsContainer}>
-            <FlatList
-              data={suggestions}
-              keyExtractor={(item) => item.place_id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.suggestionItem}
-                  onPress={() => handleSelectAddress(item, true)}
-                >
-                  <Text style={styles.suggestionMainText}>
-                    {item.structured_formatting?.main_text || item.description}
-                  </Text>
-                  {item.structured_formatting?.secondary_text && (
-                    <Text style={styles.suggestionSecondaryText}>
-                      {item.structured_formatting.secondary_text}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              )}
-              style={styles.suggestionsList}
-              nestedScrollEnabled={true}
-            />
-          </View>
-        )} */}
-
         <View style={styles.addressSection}>
           <View style={styles.headerRow}>
             <Text style={styles.label}>OPD Address(es)</Text>
@@ -415,8 +524,40 @@ const PracticeScreen = () => {
           </View>
 
           {opdAddresses.map((addr, index) => (
-            <View key={addr.id} style={styles.addressContainer}>
-               <View style={styles.inputContainer}>
+            <View key={index} style={styles.addressContainer}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Location on Map</Text>
+                <View style={{ flex: 1 }} pointerEvents="box-none">
+              <MapView
+  style={{
+    height: 200,
+    width: '100%',
+    borderRadius: 8,
+    zIndex: 0,
+    elevation: 0,
+  }}
+  initialRegion={{
+    latitude:  56.1304,
+    longitude:  -106.3468,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  }}
+
+  onPress={() => console.log('Map pressed')}
+  // onPress={(e) => {
+  //   const { latitude, longitude } = e.nativeEvent.coordinate;
+  //   console.log('Pressed coordinates:', latitude, longitude);
+  //   handleMapPress(index, e);
+  // }}
+  scrollEnabled={true}
+  zoomEnabled={true}
+  pitchEnabled={true}
+  rotateEnabled={true}
+/>
+
+                </View>
+              </View>
+              <View style={styles.inputContainer}>
                 <Text style={styles.label}>Clinic Name *</Text>
                 <TextInput
                   style={styles.input}
@@ -428,8 +569,7 @@ const PracticeScreen = () => {
                   }
                 />
               </View>
-
-                             <View style={styles.inputContainer}>
+              <View style={styles.inputContainer}>
                 <Text style={styles.label}>Mobile *</Text>
                 <TextInput
                   style={styles.input}
@@ -439,12 +579,10 @@ const PracticeScreen = () => {
                   onChangeText={text =>
                     handleInputChange(index, 'mobile', text)
                   }
-                   keyboardType="numeric"
+                  keyboardType="numeric"
                   maxLength={10}
                 />
               </View>
-
-                             
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Address *</Text>
                 <TextInput
@@ -487,7 +625,6 @@ const PracticeScreen = () => {
                     />
                   </View>
                 )}
-              
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Pincode *</Text>
                 <TextInput
@@ -522,11 +659,6 @@ const PracticeScreen = () => {
                   onChangeText={text => handleInputChange(index, 'state', text)}
                 />
               </View>
-
-              
-
-              
-
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Country *</Text>
                 <TextInput
@@ -537,9 +669,8 @@ const PracticeScreen = () => {
                   onChangeText={text => handleInputChange(index, 'country', text)}
                 />
               </View>
-
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Latitude </Text>
+                <Text style={styles.label}>Latitude</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Enter Latitude"
@@ -548,9 +679,8 @@ const PracticeScreen = () => {
                   onChangeText={text => handleInputChange(index, 'latitude', text)}
                 />
               </View>
-
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Longitude </Text>
+                <Text style={styles.label}>Longitude</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Enter Longitude"
@@ -559,7 +689,6 @@ const PracticeScreen = () => {
                   onChangeText={text => handleInputChange(index, 'longitude', text)}
                 />
               </View>
-
               <View style={styles.timeContainer}>
                 <TouchableOpacity
                   style={styles.timeButton}
@@ -576,7 +705,7 @@ const PracticeScreen = () => {
                       style={styles.clockIcon}
                     />
                     <Text style={styles.timeText}>
-                      Start Time: {addr.startTime || 'Select'}
+                      Start: {addr.startTime || 'Select'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -595,7 +724,7 @@ const PracticeScreen = () => {
                       style={styles.clockIcon}
                     />
                     <Text style={styles.timeText}>
-                      End Time: {addr.endTime || 'Select'}
+                      End: {addr.endTime || 'Select'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -622,7 +751,7 @@ const PracticeScreen = () => {
               )}
               <TouchableOpacity
                 style={styles.removeButton}
-                onPress={() => handleRemoveAddress(addr.id)}
+                onPress={() => handleRemoveAddress(index)}
                 disabled={opdAddresses.length === 1}
               >
                 <Text style={styles.removeText}>×</Text>
@@ -635,6 +764,8 @@ const PracticeScreen = () => {
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
+
+      
     </KeyboardAvoidingView>
   );
 };
@@ -673,7 +804,7 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.03,
   },
   scrollContent: {
-    paddingBottom: height * 0.1, // Extra padding to ensure content is scrollable above keyboard
+    paddingBottom: height * 0.1,
   },
   label: {
     fontSize: width * 0.04,
