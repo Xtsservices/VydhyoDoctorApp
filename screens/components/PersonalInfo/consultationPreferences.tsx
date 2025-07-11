@@ -94,7 +94,6 @@ const ConsultationPreferences = () => {
 
       // navigation.navigate('FinancialSetupScreen');
     } catch (error: any) {
-      console.error('API Error:', error?.response?.data || error.message);
       Toast.show({
         type: 'error',
         text1: 'Failed to update preferences',
