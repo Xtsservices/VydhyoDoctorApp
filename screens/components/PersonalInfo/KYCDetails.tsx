@@ -254,6 +254,7 @@ const [modalVisible, setModalVisible] = useState(false);
           name: panImage.name,
           type: panImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
         } as any);
+      }
        const response = await UploadFiles('users/addKYCDetails', formData, token);
       
       if (response.status === 'success') {
