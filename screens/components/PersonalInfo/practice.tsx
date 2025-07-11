@@ -16,7 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
-import MapView, { Marker, Region, LongPressEvent,  } from 'react-native-maps';
+import MapView, { Marker, Region, LongPressEvent } from 'react-native-maps';
 import ProgressBar from '../progressBar/progressBar';
 import {
   getCurrentStepIndex,
@@ -73,7 +73,9 @@ const PracticeScreen = () => {
   ]);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<
+    number | null
+  >(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentOpdIndex, setCurrentOpdIndex] = useState(0);
@@ -128,7 +130,11 @@ const PracticeScreen = () => {
     }
   };
 
-  const fetchAddressDetails = async (latitude: number, longitude: number, index: number) => {
+  const fetchAddressDetails = async (
+    latitude: number,
+    longitude: number,
+    index: number,
+  ) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await axios.get(
@@ -140,7 +146,10 @@ const PracticeScreen = () => {
 
       console.log('Reverse geocode response:', response.data);
 
-      if (response.data.status === 'success' && response.data.data.results.length > 0) {
+      if (
+        response.data.status === 'success' &&
+        response.data.data.results.length > 0
+      ) {
         const result = response.data.data.results[0];
         const addressComponents = result.address_components;
 
@@ -151,7 +160,10 @@ const PracticeScreen = () => {
         let country = 'India';
 
         addressComponents.forEach((component: any) => {
-          if (component.types.includes('street_number') || component.types.includes('route')) {
+          if (
+            component.types.includes('street_number') ||
+            component.types.includes('route')
+          ) {
             address += component.long_name + ' ';
           }
           if (component.types.includes('locality')) {
@@ -203,7 +215,10 @@ const PracticeScreen = () => {
     }
   };
 
-  const fetchCoordinatesFromPlaceId = async (placeId: string, index: number) => {
+  const fetchCoordinatesFromPlaceId = async (
+    placeId: string,
+    index: number,
+  ) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await axios.get(
@@ -347,11 +362,7 @@ const PracticeScreen = () => {
   const handleNext = async () => {
     const token = await AsyncStorage.getItem('authToken');
     const hasInvalidAddress = opdAddresses.some(
-      addr =>
-        !addr.address ||
-        !addr.pincode ||
-        !addr.city ||
-        !addr.state 
+      addr => !addr.address || !addr.pincode || !addr.city || !addr.state,
     );
 
     function convertTo24HourFormat(timeStr: string): string {
@@ -373,7 +384,10 @@ const PracticeScreen = () => {
       return `${hrs.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
     }
 
-    console.log('Converting times to 24-hour format...', convertTo24HourFormat(opdAddresses[0].startTime));
+    console.log(
+      'Converting times to 24-hour format...',
+      convertTo24HourFormat(opdAddresses[0].startTime),
+    );
 
     const payload = opdAddresses.map(addr => ({
       ...addr,
@@ -399,11 +413,11 @@ const PracticeScreen = () => {
       });
       return;
     }
-    if (response.status !== "success"){
+    if (response.status !== 'success') {
       Toast.show({
         type: 'error',
         text1: 'Failed to update practice details',
-        text2:  'Failed to update practice details.',
+        text2: 'Failed to update practice details.',
         position: 'top',
         visibilityTime: 4000,
       });
@@ -496,16 +510,11 @@ const PracticeScreen = () => {
         <Text style={styles.headerTitle}>Practice</Text>
       </View>
 
-
-      
       <ProgressBar
         currentStep={getCurrentStepIndex('Practice')}
         totalSteps={TOTAL_STEPS}
       />
 
-           
-
-  
       <ScrollView
         style={styles.formContainer}
         keyboardShouldPersistTaps="handled"
@@ -528,33 +537,31 @@ const PracticeScreen = () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Location on Map</Text>
                 <View style={{ flex: 1 }} pointerEvents="box-none">
-              <MapView
-  style={{
-    height: 200,
-    width: '100%',
-    borderRadius: 8,
-    zIndex: 0,
-    elevation: 0,
-  }}
-  initialRegion={{
-    latitude:  56.1304,
-    longitude:  -106.3468,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  }}
-
-  onPress={() => console.log('Map pressed')}
-  // onPress={(e) => {
-  //   const { latitude, longitude } = e.nativeEvent.coordinate;
-  //   console.log('Pressed coordinates:', latitude, longitude);
-  //   handleMapPress(index, e);
-  // }}
-  scrollEnabled={true}
-  zoomEnabled={true}
-  pitchEnabled={true}
-  rotateEnabled={true}
-/>
-
+                  <MapView
+                    style={{
+                      height: 200,
+                      width: '100%',
+                      borderRadius: 8,
+                      zIndex: 0,
+                      elevation: 0,
+                    }}
+                    initialRegion={{
+                      latitude: 56.1304,
+                      longitude: -106.3468,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                    onPress={() => console.log('Map pressed')}
+                    // onPress={(e) => {
+                    //   const { latitude, longitude } = e.nativeEvent.coordinate;
+                    //   console.log('Pressed coordinates:', latitude, longitude);
+                    //   handleMapPress(index, e);
+                    // }}
+                    scrollEnabled={true}
+                    zoomEnabled={true}
+                    pitchEnabled={true}
+                    rotateEnabled={true}
+                  />
                 </View>
               </View>
               <View style={styles.inputContainer}>
@@ -666,7 +673,9 @@ const PracticeScreen = () => {
                   placeholder="Enter Country"
                   placeholderTextColor="#999"
                   value={addr.country}
-                  onChangeText={text => handleInputChange(index, 'country', text)}
+                  onChangeText={text =>
+                    handleInputChange(index, 'country', text)
+                  }
                 />
               </View>
               <View style={styles.inputContainer}>
@@ -676,7 +685,9 @@ const PracticeScreen = () => {
                   placeholder="Enter Latitude"
                   placeholderTextColor="#999"
                   value={addr.latitude}
-                  onChangeText={text => handleInputChange(index, 'latitude', text)}
+                  onChangeText={text =>
+                    handleInputChange(index, 'latitude', text)
+                  }
                 />
               </View>
               <View style={styles.inputContainer}>
@@ -686,7 +697,9 @@ const PracticeScreen = () => {
                   placeholder="Enter Longitude"
                   placeholderTextColor="#999"
                   value={addr.longitude}
-                  onChangeText={text => handleInputChange(index, 'longitude', text)}
+                  onChangeText={text =>
+                    handleInputChange(index, 'longitude', text)
+                  }
                 />
               </View>
               <View style={styles.timeContainer}>
@@ -764,8 +777,6 @@ const PracticeScreen = () => {
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
-
-      
     </KeyboardAvoidingView>
   );
 };
