@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Alert, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import ProgressBar from '../progressBar/progressBar';
@@ -65,19 +65,18 @@ const ProfileReview: React.FC = () => {
       {/* Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
-          <View style={styles.circle}>
-            <View style={styles.square}>
-              <Icon name="timer-outline" size={width * 0.08} color="#fff" />
-              <Text style={styles.timer}>{formatTime(timeLeft).slice(0, 5)}</Text>
-            </View>
+          <View >
+           <View style={styles.logoWrapper}>
+                       <Image source={require('../../assets/logo.png')} style={styles.logo} />
+                     </View>
           </View>
-          <Text style={styles.title}>Profile Under Review</Text>
-          <Text style={styles.subtitle}>
+          <Text style={styles.title}>Will get back to you Shortly</Text>
+          {/* <Text style={styles.subtitle}>
             Thank you for submitting your profile. Our medical team will review your information and get back to you within{' '}
             <Text style={{ color: '#00203F', fontWeight: '600' }}>48 hours</Text>.
           </Text>
           <Text style={styles.estimatedTime}>Estimated Time Left</Text>
-          <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+          <Text style={styles.timerText}>{formatTime(timeLeft)}</Text> */}
           <TouchableOpacity onPress={handleSupport}>
             <Text style={styles.helpText}>😊 Need help? Contact support</Text>
           </TouchableOpacity>
@@ -198,6 +197,14 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: height * 0.1,
+  },
+  logo: {
+    width: width * 0.7,
+    height: width * 0.7,
+  },
+  logoWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

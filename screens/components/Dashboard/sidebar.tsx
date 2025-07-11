@@ -31,7 +31,7 @@ const menuItems = [
     label: ' Dashboard',
     description: 'Ratings, milestones, trust metrics',
     icon: 'dashboard',
-    onPress: () => navigation.navigate('dashboard'),
+    onPress: () => navigation.navigate('DoctorDashboard'),
   },
   {
     key: 'appointments',

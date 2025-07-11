@@ -48,12 +48,12 @@ const PersonalInfoScreen: React.FC = () => {
     medicalRegNumber: '',
     email: '',
     gender: '',
-    dateOfBirth: undefined as Date | undefined,
+    dateOfBirth: '',
     spokenLanguages: [] as string[],
     profilePhoto: PLACEHOLDER_IMAGE,
     appLanguage: 'en',
     relationship: 'self',
-    bloodGroup: 'O+',
+    bloodGroup: '',
     maritalStatus: 'single',
   });
   const [newLanguage, setNewLanguage] = useState('');
@@ -65,11 +65,11 @@ const PersonalInfoScreen: React.FC = () => {
     medicalRegNumber: '',
     email: '',
     gender: '',
-    dateOfBirth: '',
+    
     spokenLanguages: '',
     appLanguage: '',
     relationship: '',
-    bloodGroup: '',
+   
     maritalStatus: '',
   });
   const navigation = useNavigation<any>();
@@ -155,11 +155,11 @@ const PersonalInfoScreen: React.FC = () => {
       medicalRegNumber: '',
       email: '',
       gender: '',
-      dateOfBirth: '',
+     
       spokenLanguages: '',
       appLanguage: '',
       relationship: '',
-      bloodGroup: '',
+      
       maritalStatus: '',
     };
 
@@ -172,8 +172,8 @@ const PersonalInfoScreen: React.FC = () => {
       newErrors.lastName = 'Last Name must be at least 3 letters';
     if (!formData.medicalRegNumber.trim())
       newErrors.medicalRegNumber = 'Medical Registration Number is required';
-    else if (!/^[0-9]{5}$/.test(formData.medicalRegNumber))
-      newErrors.medicalRegNumber = 'Must be exactly 5 digits';
+    else if (!/^[0-9]{4,5,6,7}$/.test(formData.medicalRegNumber))
+      newErrors.medicalRegNumber = 'Must be exactly 4 to 7 digits';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Please enter a valid email address';
@@ -202,8 +202,10 @@ const PersonalInfoScreen: React.FC = () => {
 
   const handleNext = async () => {
 
-    if (validateForm()) {
+
+    if (!validateForm()) {
        setLoading(true);
+       console.log('Form data after validation:', formData);
       try {
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
@@ -226,19 +228,17 @@ const PersonalInfoScreen: React.FC = () => {
           relationship: formData.relationship,
           medicalRegistrationNumber: formData.medicalRegNumber,
           gender: formData.gender,
-          DOB: formData.dateOfBirth
-            ? `${formData.dateOfBirth.getDate().toString().padStart(2, '0')}-${(
-                formData.dateOfBirth.getMonth() + 1
-              )
-                .toString()
-                .padStart(2, '0')}-${formData.dateOfBirth.getFullYear()}`
-            : '',
+         
           bloodgroup: formData.bloodGroup,
           maritalStatus: formData.maritalStatus,
           spokenLanguage: formData.spokenLanguages,
         };
 
+        console.log('Form data to be sent:', body);
+
         const response = await AuthPut('users/updateUser', body, token);
+
+        console.log('Response from updateUser:', response);
         if (response.status === 'success') {
           Toast.show({
             type: 'success',
@@ -248,7 +248,7 @@ const PersonalInfoScreen: React.FC = () => {
             visibilityTime: 3000,
           });
          setLoading(false);
-          
+          console.log('Form data sent successfully:', body);
           navigation.navigate('Specialization');
         } else {
           Toast.show({
@@ -294,6 +294,7 @@ const PersonalInfoScreen: React.FC = () => {
   };
 
   return (
+    <ScrollView>
     <View style={styles.container}>
 
       {loading && (
@@ -414,7 +415,7 @@ const PersonalInfoScreen: React.FC = () => {
           <Text style={styles.errorText}>{errors.gender}</Text>
         ) : null}
 
-        <Text style={styles.label}>Date of Birth</Text>
+        {/* <Text style={styles.label}>Date of Birth</Text>
         <TouchableOpacity
           onPress={() => setShowDatePicker(true)}
           style={styles.input}
@@ -448,7 +449,7 @@ const PersonalInfoScreen: React.FC = () => {
             minimumDate={new Date(1900, 0, 1)}
             maximumDate={new Date()}
           />
-        )}
+        )} */}
 
         {/* <Text style={styles.label}>App Language</Text>
         <View style={styles.input}>
@@ -569,23 +570,7 @@ const PersonalInfoScreen: React.FC = () => {
           placeholderTextColor="#999"
         /> */}
 
-         {/* <MultiSelect
-          style={styles.input}
-          data={languageOptions}
-          labelField="label"
-          valueField="value"
-          placeholder="Select languages"
-          value={formData.spokenLanguages}
-          onChange={handleLanguageChange}
-          selectedStyle={styles.selectedStyle}
-          selectedTextStyle={styles.selectedTextStyle}
-          containerStyle={styles.multiSelectContainer}
-          placeholderStyle={styles.placeholderStyle}
-          itemTextStyle={styles.itemTextStyle}
-          activeColor="#E0F2F1"
-        /> */}
-
-         <MultiSelect
+        <MultiSelect
           style={styles.input}
           data={languageOptions}
           labelField="label"
@@ -627,6 +612,7 @@ const PersonalInfoScreen: React.FC = () => {
         <Text style={styles.nextText}>Next</Text>
       </TouchableOpacity>
     </View>
+    </ScrollView>
   );
 };
 

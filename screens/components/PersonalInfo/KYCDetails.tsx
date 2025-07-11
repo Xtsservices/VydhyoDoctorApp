@@ -3,6 +3,8 @@ import { View, Text,Modal, Pressable ,TouchableOpacity, StyleSheet, Image, Scrol
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { pick, types } from '@react-native-documents/picker';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+// import DocumentPicker from 'react-native-document-picker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
@@ -18,7 +20,7 @@ import TermsAndConditionsModal from './TermsAndConditionsModal';
 
 const KYCDetailsScreen = () => {
   const [voterImage, setVoterImage] = useState<{ uri: string, name: string } | null>(null);
-  const [panImage, setPanImage] = useState<{ uri: string, name: string } | null>(null);
+  const [panImage, setPanImage] = useState<{ uri: string, name: string, type?: string } | null>(null);
   const [voterUploaded, setVoterUploaded] = useState(false);
   const [pancardUploaded, setPancardUploaded] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -27,6 +29,7 @@ const KYCDetailsScreen = () => {
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
 const [modalVisible, setModalVisible] = useState(false);
+// const [termsAccepted, setTermsAccepted] = useState(false);
 
   const handleVoterUpload = async () => {
     try {
@@ -43,22 +46,114 @@ const [modalVisible, setModalVisible] = useState(false);
       console.error('Voter ID upload error:', error);
     }
   };
-
   const handlePancardUpload = async () => {
-    try {
-      const [result] = await pick({
-        mode: 'open',
-        type: [types.pdf, types.images],
-      });
-      if (result.uri && result.name) {
-        setPanImage({ uri: result.uri, name: result.name });
-        setPancardUploaded(true);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to pick Pancard document. Please try again.');
-      console.error('Pancard upload error:', error);
-    }
-  };
+  Alert.alert(
+    'Upload PAN Card',
+    'Choose an option',
+    [
+      {
+        text: 'Camera',
+        onPress: async () => {
+          try {
+            const result = await launchCamera({
+              mediaType: 'photo',
+              includeBase64: false,
+            });
+
+            if (result.assets && result.assets.length > 0) {
+              const asset = result.assets[0];
+
+              setPanImage({
+                uri: asset.uri!,
+                name: asset.fileName || 'pan_camera.jpg',
+                type: asset.type || 'image/jpeg',
+              });
+              setPancardUploaded(true);
+            } else {
+              Alert.alert('No image selected from camera');
+            }
+          } catch (error) {
+            Alert.alert('Error', 'Camera access failed.');
+            console.error('Camera error:', error);
+          }
+        },
+      },
+      {
+        text: 'Gallery',
+        onPress: async () => {
+          try {
+            const result = await launchImageLibrary({
+              mediaType: 'photo',
+              includeBase64: false,
+            });
+
+            if (result.assets && result.assets.length > 0) {
+              const asset = result.assets[0];
+
+              setPanImage({
+                uri: asset.uri!,
+                name: asset.fileName || 'pan_gallery.jpg',
+                type: asset.type || 'image/jpeg',
+              });
+              setPancardUploaded(true);
+            } else {
+              Alert.alert('No image selected from gallery');
+            }
+          } catch (error) {
+            Alert.alert('Error', 'Gallery access failed.');
+            console.error('Gallery error:', error);
+          }
+        },
+      },
+      {
+        text: 'Upload PDF',
+        onPress: async () => {
+          try {
+            const [res] = await pick({
+              type: [types.pdf, types.images],
+            });
+
+            if (res && res.uri && res.name) {
+              setPanImage({
+                uri: res.uri,
+                name: res.name,
+                type: res.type || 'application/pdf',
+              });
+              setPancardUploaded(true);
+            } else {
+              Alert.alert('Error', 'Invalid file selected. Please try again.');
+            }
+          } catch (error) {
+            Alert.alert('Error', 'PDF selection failed.');
+            console.error('PDF error:', error);
+          }
+        },
+      },
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+    ],
+    { cancelable: true }
+  );
+};
+
+
+  // const handlePancardUpload = async () => {
+  //   try {
+  //     const [result] = await pick({
+  //       mode: 'open',
+  //       type: [types.pdf, types.images],
+  //     });
+  //     if (result.uri && result.name) {
+  //       setPanImage({ uri: result.uri, name: result.name });
+  //       setPancardUploaded(true);
+  //     }
+  //   } catch (error) {
+  //     Alert.alert('Error', 'Failed to pick Pancard document. Please try again.');
+  //     console.error('Pancard upload error:', error);
+  //   }
+  // };
 
   const validateVoterNumber = (number: string) => {
     // Assuming Voter ID is 10 characters (e.g., ABC1234567)
@@ -73,6 +168,11 @@ const [modalVisible, setModalVisible] = useState(false);
 
   const handleNext = async () => {
     // if (!voterUploaded) {
+
+    if (!termsAccepted) {
+      Alert.alert('Error', 'Please accept the Terms & Conditions.');
+      return;
+    }
     //   Alert.alert('Error', 'Please upload Voter ID document.');
     //   return;
     // }
@@ -105,10 +205,10 @@ const [modalVisible, setModalVisible] = useState(false);
       return;
     }
     
-    if (!pancardUploaded) {
-      Alert.alert('Error', 'Please upload Pancard document.');
-      return;
-    }
+    // if (!pancardUploaded) {
+    //   Alert.alert('Error', 'Please upload Pancard document.');
+    //   return;
+    // }
     // if (!voterNumber || !validateVoterNumber(voterNumber)) {
     //   Alert.alert('Error', 'Please enter a valid 10-character Voter ID number (e.g., ABC1234567).');
     //   return;
@@ -243,7 +343,7 @@ const [modalVisible, setModalVisible] = useState(false);
             </Text>
           )}
 
-          <Text style={styles.label}>Enter PAN Number *</Text>
+          <Text style={styles.label}>Enter PAN Number </Text>
           <TextInput
             style={styles.input}
             value={panNumber}
@@ -255,16 +355,23 @@ const [modalVisible, setModalVisible] = useState(false);
           />
 
           <View style={styles.termsContainer}>
-            <TouchableOpacity onPress={() => setTermsAccepted(!termsAccepted)}>
-              <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
-                {termsAccepted && <Icon name="check" size={width * 0.04} color="#fff" />}
-              </View>
-            </TouchableOpacity>
-            <Text style={styles.linkText} onPress={() => setModalVisible(true)}>
-          Terms & Conditions
-        </Text>
-        <TermsAndConditionsModal modalVisible={modalVisible} setModalVisible={setModalVisible} />
-          </View>
+  <TouchableOpacity onPress={() => setTermsAccepted(!termsAccepted)}>
+    <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+      {termsAccepted && <Icon name="check" size={width * 0.04} color="#fff" />}
+    </View>
+  </TouchableOpacity>
+
+  <Text style={styles.linkText} onPress={() => setModalVisible(true)}>
+    Terms & Conditions
+  </Text>
+
+  <TermsAndConditionsModal
+    modalVisible={modalVisible}
+    setModalVisible={setModalVisible}
+    setTermsAccepted={setTermsAccepted} // ✅ pass this down
+  />
+</View>
+
         </View>
 
         {/* Spacer to ensure content is not hidden by the Next button */}
@@ -272,6 +379,7 @@ const [modalVisible, setModalVisible] = useState(false);
       </ScrollView>
 
       {/* Next Button */}
+      
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextText}>Next</Text>
       </TouchableOpacity>
@@ -466,6 +574,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: width * 0.04,
     marginTop: height * 0.02,
+  },
+   skipButton: {
+    backgroundColor: '#fff',
+    // borderWidth: 1,
+    borderColor: '#00203F',
+  },
+  buttonText2: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+  skipButtonText: {
+    color: '#00203F',
+  },
+   button2: {
+    backgroundColor: '#00203F',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: width * 0.02,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
   },
 });
 

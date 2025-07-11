@@ -16,9 +16,12 @@ import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
 // import DropDownPicker from 'react-native-dropdown-picker';
 
 const AddStaffScreen = () => {
+    const userId = useSelector((state: any) => state.currentUserID);
+
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -57,19 +60,52 @@ const AddStaffScreen = () => {
     console.log(staffData, 'Staff Data to be sent');
 
     try {
-       const token = await AsyncStorage.getItem('authToken');// Replace with actual token if available
-      const response = await AuthPost('doctor/createReceptionist', staffData, token);
-      console.log('Staff created:', response);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Staff Added Successfully',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      const token = await AsyncStorage.getItem('authToken'); 
+      // Replace with actual token if available
+      // const userId = await AsyncStorage.getItem('userId'); // Retrieve userId from storage or context
+      if (!userId) {
+        Alert.alert('Error', 'User ID not found');
+        return;
+      }
+
+      const response = await AuthPost(`doctor/createReceptionist/${userId}`, staffData, token);
+      console.log('Staff created:', response.status, response);
+      if (response.status === 'success') {
+        if ('data' in response) {
+          console.log('Staff added successfully:', response.data);
+        } else {
+          console.log('Staff added successfully');
+        }
+        // Handle success case
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Staff Added Successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        setForm({
+          firstName: '',
+          lastName: '',
+          DOB: '',
+          gender: 'Male',
+          mobile: '',
+    email: '',
+    role: '',
+    access: [] as string[],
+  });
+        // useNavigation().navigate('StaffManagement' as never); // Navigate to Staff Management screen
+      }else if (response.status === 'error') {
+        // Handle error case
+        const message =
+          (response && 'message' in response && response.message?.message) ||
+          (response && 'message' in response && typeof response.message === 'string' && response.message) ||
+          'Failed to create staff';
+        Alert.alert('Error', message);
+      }
     } catch (error) {
       console.error('Error creating staff:', error);
-      Alert.alert('Error', 'Failed to add staff');
+      Alert.alert('Error', 'An unexpected error occurred');
     }
   };
 

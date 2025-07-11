@@ -26,7 +26,7 @@ const ConsultationPreferences = () => {
     video: false,
     homeVisit: false,
   });
-  const [fees, setFees] = useState({ inPerson: "", video: "", homeVisit: "" });
+  const [fees, setFees] = useState({ inPerson: 0, video: 0, homeVisit: 0 });
  const [loading, setLoading] = useState(false);
 
 
@@ -58,7 +58,7 @@ const ConsultationPreferences = () => {
   };
 
   const handleNext = async () => {
-    if (!isFormValid()) return;
+    // if (!isFormValid()) return;
 
     const payload = {
       consultationModeFee: [
@@ -80,17 +80,7 @@ const ConsultationPreferences = () => {
         });
         return;
       }
-
-      // const response = await axios.post(
-      //   'http://192.168.1.42:3000/users/updateConsultationModes',
-      //   payload,
-      //   {
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //       Authorization: `Bearer ${token}`,
-      //     },
-      //   }
-      // );
+      console.log('Sending payload:', payload);
       const response = await AuthPost('users/updateConsultationModes', payload, token);
       
       console.log('API Response:', response);
@@ -220,8 +210,8 @@ const ConsultationPreferences = () => {
 
       {/* Next Button */}
       <TouchableOpacity
-        style={[styles.nextButton, !isFormValid() && styles.disabledButton]}
-        disabled={!isFormValid()}
+        style={[styles.nextButton]}
+        // disabled={!isFormValid()}
         onPress={handleNext}
         // onPress={() => {
         //   setTimeout(() => {

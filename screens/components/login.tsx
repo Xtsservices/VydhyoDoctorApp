@@ -68,7 +68,7 @@ useEffect(() => {
       const storedToken = await AsyncStorage.getItem('authToken');
       const storedUserId = await AsyncStorage.getItem('userId');
       // const storedStep = await AsyncStorage.getItem('currentStep');
-
+let savedStep 
       if (storedToken && storedUserId) {
         const profileResponse = await AuthFetch('users/getUser', storedToken);
         console.log('Profile response:', profileResponse);
@@ -79,9 +79,26 @@ useEffect(() => {
           profileResponse.data
         ) {
           const userData = profileResponse.data.data;
-          dispatch({ type: 'currentUserID', payload: storedUserId });
-          const { screen, params } = await determineNextScreen(userData);
-          await AsyncStorage.setItem('currentStep', screen);
+          if (userData && userData.status === 'approved') {
+            console.log('User Data:', userData);
+            const { screen, params } = await determineNextScreen(userData);
+            dispatch({ type: 'currentUserID', payload: storedUserId });
+            navigation.navigate(screen, params || {});
+          } else {
+            let savedStep = await AsyncStorage.getItem('currentStep');
+          }
+
+          if (savedStep) {
+  navigation.navigate(savedStep);
+} else {
+  const { screen, params } = await determineNextScreen(userData);
+  await AsyncStorage.setItem('currentStep', screen);
+  navigation.navigate(screen, params || {});
+}
+
+          // const { screen, params } = await determineNextScreen(userData);
+          // await AsyncStorage.setItem('currentStep', screen);
+          // console.log('Current Step:', screen);
 
           Toast.show({
             type: 'success',
@@ -91,7 +108,7 @@ useEffect(() => {
             visibilityTime: 3000,
           });
 
-          navigation.navigate(screen, params || {});
+         
         } 
         else {
         setIsLoading(false);
@@ -157,9 +174,10 @@ useEffect(() => {
   
 
   const determineNextScreen = async(userData: any): Promise<{ screen: string; params?: any }> => {
-   console.log('User Data:======', userData);
+   console.log('User Data:======', userData.status);
 
     if (userData.status === 'approved') {
+      console.log('User is approved');
       return { screen: 'AccountVerified', params: undefined };
     }
    // Check stored step in AsyncStorage
@@ -238,14 +256,15 @@ useEffect(() => {
         }
 
         const profileResponse = await AuthFetch('users/getUser', accessToken);
-          console.log('Profile response:', profileResponse);
+          console.log('Profile respons=====e:', profileResponse.status);
 
           if (
-            profileResponse.status === 'success' &&
-            'data' in profileResponse &&
-            profileResponse.data
+            profileResponse.status === 'success'
+            
           ) {
+            console.log('Profile data123:', profileResponse.data);
             const userData = profileResponse.data.data;
+            console.log('User Data:', userData);
             const { screen, params } = await determineNextScreen(userData);
             await AsyncStorage.setItem('currentStep', screen);
 

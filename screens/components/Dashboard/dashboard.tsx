@@ -74,7 +74,7 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
   const slideAnim = useRef(new Animated.Value(width)).current;
     const userId = useSelector((state: any) => state.currentUserID);
     console.log('User ID:', userId);
-  const API_BASE_URL = "http://192.168.1.42:3000";
+  const API_BASE_URL = "http://192.168.1.14:3000";
   const [appointments, setAppointments] = useState<any[]>([]);
     const [dashboardData, setDashboardData] = useState({
     success: true,
@@ -93,9 +93,10 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
   }); 
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [monthRevenue, setMonthRevenue] = useState(0);
+  const [availabilityData, setAvailabilityData] = useState<any[]>([]);
 
   
-  
+
     const getAppointments = async () => {
   try {
     console.log("Fetching appointments...");
@@ -104,6 +105,12 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
    const date = new Date();
 const formattedDate = date.toISOString().split('T')[0];
 console.log('Formatted Date:', formattedDate);
+const countResponse = await AuthFetch(
+  'appointment/getTodayAppointmentCount',
+  storedToken
+);
+
+console.log('Response from getTodayAppointmentCount:', countResponse);  
 const response = await AuthFetch(
   `appointment/getAppointmentsByDoctorID/appointment?date=${formattedDate}`,
   storedToken
@@ -119,20 +126,28 @@ console.log('Response from getAllAppointments:', response);
       typeof response.data === 'object'
     ) {
       const data = response.data.data|| []
+      console.log("Fetched appointments:", data);
 
 
       // Save to async storage
-      await AsyncStorage.setItem('appointments', JSON.stringify(data));
+      // await AsyncStorage.setItem('appointments', JSON.stringify(data));
 
       // Set main list
       setAppointments(data);
 
-      // Filter new appointments
-      const newList = data.filter((item:any )=> !item.isFollowUp);
-      const followUpList = data.filter((item: any) => item.isFollowUp);
+      const followUpWalkinList = data.filter((item: any) => item.appointmentType === 'followup-walkin');
+const NewHomeCare = data.filter((item: any) => item.appointmentType === 'new-homecar');
+const newWalkIn = data.filter((item: any) => item.appointmentType === 'new-walkin');
+const videoList = data.filter((item: any) => item.appointmentType === 'followup-video');
+const followUpHomeCareList = data.filter((item: any) => item.appointmentType === 'followup-homecare');
 
-      setNewAppointments(newList);
-      setFollowUps(followUpList);
+
+      // Filter new appointments
+      const newList = data.filter((item:any )=> !item.followup_walkin);
+      const followUpList = data.filter((item: any) => item.followup_walkin);
+
+      setNewAppointments(newWalkIn);
+      setFollowUps(followUpWalkinList);
 
       console.log("New:", newList.length, "Follow-ups:", followUpList.length);
     } else {
@@ -174,6 +189,7 @@ const response = await AuthFetch(
   'finance/getTodayRevenuebyDoctorId',
   storedToken
 );
+console.log('Response from getTodayRevenuebyDoctorId:', response);
 
 const revenue = (response && 'data' in response && response.data && 'data' in response.data)
   ? response.data.data
@@ -197,22 +213,17 @@ console.log(revenue, 'Response from getTodayRevenuebyDoctorId');
         AsyncStorage.setItem('stepNo', '7');
 
         // Make API call
-        const response = await axios.get(
-          'http://192.168.1.42:3000/users/getUser',
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              userid: userId, // Include userId in headers
-            },
-            params: {
-              userId, // Include userId in query params as well
-            },
-          },
-        );
-        console.log('User data fetched successfully:', response?.data?.data);
+                 const response = await AuthFetch('users/getUser', token);
+        
+        
+        if ('data' in response && response.data) {
+          console.log('User data fetched successfully:', response.data.data);
+        } else {
+          console.log('User data fetch failed:', response);
+        }
         // Check if response status is success
-        if (response.data.status !== 'success') {
-          throw new Error(response.data.message || 'Failed to fetch user data');
+        if (!('data' in response) || response.data.status !== 'success') {
+          throw new Error(('data' in response && response.data.message) || 'Failed to fetch user data');
         }
 
         const userData = response.data.data;
@@ -261,11 +272,48 @@ console.log(revenue, 'Response from getTodayRevenuebyDoctorId');
         setLoading(false); // Stop loading regardless of success or failure
       }
     };
+    const getAvailabilityData = async () => {
 
+    const storedToken = await AsyncStorage.getItem('authToken');
+    const formattedDate = new Date().toISOString().split('T')[0];
+    console.log('Formatted Date for Availability:', formattedDate);
+    const url = `appointment/getSlotsByDoctorIdAndDate?doctorId=VYDUSER10&date=${formattedDate}`;
+    const response = await AuthFetch(url, storedToken);
+    if ('data' in response && response.data && response.data.data && Array.isArray(response.data.data.slots)) {
+      console.log('Response from getSlotsByDoctorIdAndDate:', response.data.data.slots);
+      if (response.data.data.slots.length > 0){
+        setAvailabilityData(response.data.data.slots);
+      }
+    }
+
+    
+
+    // const totalSlots = response.data.data.slots.length || 0;
+
+//     const todaySlots = response.data.data.slots.filter((slot: any) => {
+//   const updatedDate = new Date(slot.updatedAt).toISOString().split('T')[0];
+//   console.log(`Checking slot: ${updatedDate} === ${formattedDate}`);
+//   return updatedDate === formattedDate;
+// });
+
+
+    
+
+console.log('Total Slots:', todaySlots);
+
+    if ('data' in response && response.data) {
+      setAvailabilityData(response.data.data);
+    } else {
+      console.log('Availability data fetch failed:', response);
+    }
+  };
+
+ 
   useEffect(() => {
     fetchUserData();
     getAppointments()
     getRevenueData()
+    getAvailabilityData();
   }, []);
 
   const today = currentDate.getDay();
@@ -385,9 +433,21 @@ console.log(revenue, 'Response from getTodayRevenuebyDoctorId');
 
 const dataToDisplay = filteredAppointments === null ? appointments : filteredAppointments;
 
+const formatSlotTime = (time: string): string => {
+  const [hour, minute] = time.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hour);
+  date.setMinutes(minute);
+
+  return date.toLocaleTimeString('en-IN', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }); // Example: "10:00 AM"
+};
 
 
-console.log('Appointments:', filteredAppointments);
+console.log('Appointments:', availabilityData);
   return (
 
     <View style={styles.container}>
@@ -533,6 +593,28 @@ console.log('Appointments:', filteredAppointments);
     </View>
      <View style={styles.card}>
         <Text style={styles.title}>Clinic Availability</Text>
+        <View style={styles.clinicInfo}>
+          <Text style={styles.clinicName}></Text>
+          <Text style={styles.clinicDate}></Text>
+          <Text style={styles.clinicLocation}></Text>
+        </View>
+
+                <Text style={styles.unavailableText}>Available Slots:</Text>
+    <View style={styles.slotContainer}>
+  {availabilityData.length > 0 ? (
+    availabilityData.map((slot, index) => (
+      <View key={slot._id || index} style={styles.slot}>
+        <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
+      </View>
+    ))
+  ) : (
+    <Text style={styles.unavailableText}>No available slots</Text>
+  )}
+</View>
+</View>
+
+     {/* <View style={styles.card}>
+        <Text style={styles.title}>Clinic Availability</Text>
 
         <View style={styles.clinicInfo}>
           <Text style={styles.clinicName}></Text>
@@ -563,7 +645,7 @@ console.log('Appointments:', filteredAppointments);
             <Text style={styles.arrowText}>›</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </View> */}
 
       {/* Revenue Summary Card */}
        <View style={styles.container}>

@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+import { AuthPost } from '../../auth/auth';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,7 +26,7 @@ const FinancialSetupScreen = () => {
 
   // Popular Indian banks with account number length requirements
   const banks = [
-    { name: 'State Bank of India (SBI)', accountLength: 11 },
+    { name: 'State Bank of India (SBI)', accountLength: 7 },
     { name: 'HDFC Bank', accountLength: [13, 14] },
     { name: 'ICICI Bank', accountLength: 12 },
     { name: 'Axis Bank', accountLength: 15 },
@@ -34,7 +35,7 @@ const FinancialSetupScreen = () => {
     { name: 'Canara Bank', accountLength: 13 },
     { name: 'Union Bank of India', accountLength: 15 },
     { name: 'Kotak Mahindra Bank', accountLength: 14 },
-    { name: 'Indian Bank', accountLength: 16 },
+    { name: 'Indian Bank', accountLength: 7 },
     { name: 'Yes Bank', accountLength: 15 },
     { name: 'IDFC First Bank', accountLength: 11 },
     { name: 'Federal Bank', accountLength: 14 },
@@ -56,6 +57,7 @@ const FinancialSetupScreen = () => {
     } else {
       const selectedBank = banks.find((b) => b.name === bank);
       if (selectedBank) {
+        
         const validLength = Array.isArray(selectedBank.accountLength)
           ? selectedBank.accountLength.includes(accountNumber.length)
           : selectedBank.accountLength === accountNumber.length;
@@ -67,8 +69,8 @@ const FinancialSetupScreen = () => {
         } else if (!/^\d+$/.test(accountNumber)) {
           tempErrors.accountNumber = 'Account number must contain only digits';
         }
-      } else if (accountNumber.length < 9 || accountNumber.length > 18) {
-        tempErrors.accountNumber = 'Account number must be between 9 and 18 digits';
+      } else if (accountNumber.length < 7 || accountNumber.length > 18) {
+        tempErrors.accountNumber = 'Account number must be between 7 to 18 digits';
       }
     }
 
@@ -115,19 +117,20 @@ const FinancialSetupScreen = () => {
 
         console.log('Form data to send:', body);
 
-        const response = await axios.post(
-          'http://192.168.1.42:3000/users/updateBankDetails',
-          body,
-          {
-            headers: {
-               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const response = await AuthPost(
+          'users/updateBankDetails',
+          body,token
+         
         );
         console.log('Response from updateBankDetails:', response);
 
-        if (response.status === 200) {
+        const status = (response as any).data?.status ?? response.status;
+        const message =
+          (response as any).data?.message ??
+          (response as any).message ??
+          'Failed to update bank details';
+
+        if (status === "success") {
           Toast.show({
             type: 'success',
             text1: 'Success',
@@ -135,17 +138,12 @@ const FinancialSetupScreen = () => {
             position: 'top',
             visibilityTime: 3000,
           });
-           navigation.navigate('KYCDetailsScreen' as never)
-          // Navigate to KYCDetailsScreen with userId
-          // navigation.navigate('KYCDetailsScreen', { userId });
+          navigation.navigate('KYCDetailsScreen' as never);
         } else {
           Toast.show({
             type: 'error',
             text1: 'Error',
-            text2:
-              response.data && response.data.message
-                ? response.data.message
-                : 'Failed to update bank details',
+            text2: message,
             position: 'top',
             visibilityTime: 3000,
           });
@@ -173,7 +171,8 @@ const FinancialSetupScreen = () => {
    const handleSkip = async () => {
       try {
         setLoading(true); // Show loader
-        await AsyncStorage.setItem('currentStep', 'KYCDetailsScreen'); // Update current step
+       await AsyncStorage.setItem('currentStep', 'KYCDetailsScreen'); // Update current step
+      console.log(getCurrentStepIndex('currentStep'), 'Current Step Updated');
         Toast.show({
           type: 'info',
           text1: 'Skipped',
