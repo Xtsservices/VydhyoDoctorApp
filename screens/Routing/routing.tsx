@@ -48,7 +48,7 @@ const Routing = () => {
         <Stack.Screen name="AccountVerified" component={AccountVerified} options={{ headerShown: false }}/>
         <Stack.Screen name="DoctorDashboard" component={DoctorDashboard} options={{ headerShown: false }}/>
         <Stack.Screen name="Sidebar" component={Sidebar} options={{ headerShown: false }}/>
-        <Stack.Screen name="AddAppointment" component={AddAppointment} options={{ headerShown: false }} />
+        <Stack.Screen name="AddAppointment" component={AddAppointment}  options={{ title: "Walk-in Consultation", headerTitleAlign: "center", }}  />
         <Stack.Screen name="Availability" component={Availability} />
         <Stack.Screen name="StaffManagement" component={StaffManagement} />
         <Stack.Screen name="AddStaff" component={AddStaffScreen} />

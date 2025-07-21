@@ -47,6 +47,9 @@ interface Appointment {
 
 const AppointmentsScreen = () => {
 
+   const currentuserDetails =  useSelector((state: any) => state.currentUser);
+      const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+
   const [Appointments , setAppointments] = useState<Appointment[]>([]);
   const [allAppointments, setAllAppointments] = useState<any[]>([]);
   const [scheduledAppointments, setScheduledAppointments] = useState<Appointment[]>([]);
@@ -95,7 +98,7 @@ const fetchAppointments = async () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
         console.log('Auth Token:', token);
-        const res = await AuthFetch(`appointment/getAppointmentsCountByDoctorID?doctorId=${userId}`, token);
+        const res = await AuthFetch(`appointment/getAppointmentsCountByDoctorID?doctorId=${doctorId}`, token);
 
         console.log('Response from API:', res);
 
@@ -108,7 +111,8 @@ const fetchAppointments = async () => {
 
         console.log('Data fetched:', data);
         if (data && Array.isArray(data)) {
-          const formattedAppointments = data.map((appt: any) => ({
+           const filteredData = data.filter((appt: any) => appt.appointmentStatus?.toLowerCase() !== "completed");
+          const formattedAppointments = filteredData.map((appt: any) => ({
             label: appt.patientName || '',
             value: appt.appointmentId || '',
             _id: appt._id || appt.appointmentId || '',
@@ -130,6 +134,8 @@ const fetchAppointments = async () => {
             avatar: "https://i.pravatar.cc/150?img=12",
             patientId:appt.userId
           }));
+
+
           setAppointments(formattedAppointments);
           setAllAppointments(formattedAppointments);
         }
@@ -826,20 +832,20 @@ const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
       <ScrollView horizontal showsHorizontalScrollIndicator={false}> 
       <View style={styles.summaryContainer}>
         <View style={[styles.card, { borderColor: '#FBBF24' }]}>
-          <Text style={styles.cardTitle}>{totalAppointments.length}</Text>
-          <Text>Total Appointments</Text>          
+          <Text style={[styles.cardTitle, {color:'#FBBF24'}]}>{totalAppointments.length}</Text>
+          <Text style={{color:'#FBBF24'}}>Total Appointments</Text>          
         </View>
         <View style={[styles.card, { borderColor: '#10B981' }]}>
-          <Text style={styles.cardTitle}>{scheduledAppointments.length}</Text>
-          <Text>Upcoming</Text>
+          <Text style={[styles.cardTitle, {color:'#10B981'}]}>{scheduledAppointments.length}</Text>
+          <Text style={{color:'#10B981'}}>Upcoming</Text>
         </View>
         <View style={[styles.card, { borderColor: '#6366F1' }]}>
-          <Text style={styles.cardTitle}>{completedAppointments.length}</Text>
-          <Text>Completed</Text>
+          <Text style={[styles.cardTitle ,{color:'#6366F1'} ]}>{completedAppointments.length}</Text>
+          <Text style={{color:'#6366F1'}}>Completed</Text>
         </View>
-         <View style={[styles.card, { borderColor: '#6366F1' }]}>
-          <Text style={styles.cardTitle}>{cancelledAppointments.length}</Text>
-          <Text>Cancelled</Text>
+         <View style={[styles.card, { borderColor: 'red' }]}>
+          <Text style={[styles.cardTitle, {color:'red'}]}>{cancelledAppointments.length}</Text>
+          <Text style={{color:'red'}}>Cancelled</Text>
         </View>
       </View>
       </ScrollView>
@@ -904,7 +910,7 @@ const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
             >
               <Text>Cancelled</Text>
             </Pressable>
-            <Pressable
+            {/* <Pressable
               style={styles.option}
               onPress={() => {
                 setSelectedType('completed');
@@ -913,7 +919,7 @@ const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
               }}
             >
               <Text>Completed</Text>
-            </Pressable>
+            </Pressable> */}
           </View>
         
         </Pressable>

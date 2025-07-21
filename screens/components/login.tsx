@@ -82,7 +82,8 @@ let savedStep
           if (userData && userData.status === 'approved') {
             console.log('User Data:', userData);
             const { screen, params } = await determineNextScreen(userData);
-            dispatch({ type: 'currentUserID', payload: storedUserId });
+            dispatch({ type: 'currentUser', payload: userData });
+             dispatch({ type: 'currentUserID', payload: storedUserId });
             navigation.navigate(screen, params || {});
           } else {
             let savedStep = await AsyncStorage.getItem('currentStep');
@@ -100,13 +101,13 @@ let savedStep
           // await AsyncStorage.setItem('currentStep', screen);
           // console.log('Current Step:', screen);
 
-          Toast.show({
-            type: 'success',
-            text1: 'Success',
-            text2: 'Auto-login successful',
-            position: 'top',
-            visibilityTime: 3000,
-          });
+          // Toast.show({
+          //   type: 'success',
+          //   text1: 'Success',
+          //   text2: 'Auto-login successful',
+          //   position: 'top',
+          //   visibilityTime: 3000,
+          // });
 
          
         } 
@@ -243,27 +244,29 @@ let savedStep
         mobile,
       });
       console.log('validateOtp response', response);
-      if (response.status === 'success' && 'data' in response && response.data) {
-        const { accessToken } = response.data;
-        const userId = response.data.userData.userId;
+      if (response.status === 'success' && 'data' in response && response?.data) {
+        const { accessToken } = response?.data;
+        const userId = response?.data?.userData?.userId;
         console.log('userid:', userId);
         if (accessToken) {
           await AsyncStorage.setItem('authToken', accessToken);
           await AsyncStorage.setItem('userId', userId);
+            dispatch({ type: 'currentUser', payload: response?.data?.userData });
+
           dispatch({ type: 'currentUserID', payload: userId });
 
           setToken(accessToken);
         }
 
         const profileResponse = await AuthFetch('users/getUser', accessToken);
-          console.log('Profile respons=====e:', profileResponse.status);
+          console.log('Profile respons=====e:', profileResponse?.status);
 
           if (
             profileResponse.status === 'success'
             
           ) {
-            console.log('Profile data123:', profileResponse.data);
-            const userData = profileResponse.data.data;
+            console.log('Profile data123:', profileResponse?.data);
+            const userData = profileResponse?.data?.data;
             console.log('User Data:', userData);
             const { screen, params } = await determineNextScreen(userData);
             await AsyncStorage.setItem('currentStep', screen);
@@ -291,7 +294,7 @@ let savedStep
           }
         }
         else {
-        setOtpError('message' in response ? response.message : 'Invalid OTP');
+        setOtpError('message' in response ? response?.message : 'Invalid OTP');
       }
     } catch (error) {
       console.log('Error validating OTP:', error);

@@ -45,7 +45,7 @@ const screenWidth = Dimensions.get('window').width;
 const DoctorDashboard = () => {
     const navigation = useNavigation<any>();
   
-  const [currentDate, setCurrentDate] = useState(new Date('2025-06-27T16:12:00+05:30')); // Set to 04:12 PM IST, June 27, 2025
+  const [currentDate, setCurrentDate] = useState(new Date()); // Set to 04:12 PM IST, June 27, 2025
  const [sidebarVisible, setSidebarVisible] = useState(false);
    const [loading, setLoading] = useState(false);
    const [newAppointments, setNewAppointments] = useState<any[]>([]);
@@ -72,9 +72,12 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
   const [viewAll, setViewAll] = useState(false);
  
   const slideAnim = useRef(new Animated.Value(width)).current;
-    const userId = useSelector((state: any) => state.currentUserID);
+      const currentuserDetails =  useSelector((state: any) => state.currentUser);
+    const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+     
+      const userId = currentuserDetails.userId
+    // const userId = useSelector((state: any) => state.currentUserID);
     console.log('User ID:', userId);
-  const API_BASE_URL = "http://192.168.1.14:3000";
   const [appointments, setAppointments] = useState<any[]>([]);
     const [dashboardData, setDashboardData] = useState({
     success: true,
@@ -94,15 +97,16 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [monthRevenue, setMonthRevenue] = useState(0);
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);
+  const [totalAppointments, setTotalAppointments] = useState({})
 
   
 
     const getAppointments = async () => {
   try {
-    console.log("Fetching appointments...");
+    console.log("Fetching appointments...", new Date());
     const storedToken = await AsyncStorage.getItem('authToken');
     console.log('Stored Token:', storedToken);
-   const date = new Date();
+ 
 const formattedDate = date.toISOString().split('T')[0];
 console.log('Formatted Date:', formattedDate);
 const countResponse = await AuthFetch(
@@ -110,9 +114,15 @@ const countResponse = await AuthFetch(
   storedToken
 );
 
-console.log('Response from getTodayAppointmentCount:', countResponse);  
+
+const count = countResponse?.data?.data
+console.log('Response from getTodayAppointmentCount:', count);  
+
+setFollowUps(count.followupAppointments)
+setNewAppointments(count.newAppointments)
+setTotalAppointments(count.totalAppointments)
 const response = await AuthFetch(
-  `appointment/getAppointmentsByDoctorID/appointment?date=${formattedDate}`,
+  `appointment/getAppointmentsByDoctorID/dashboardAppointment?date=${formattedDate}&doctorId=${doctorId}`,
   storedToken
 );
 
@@ -127,29 +137,7 @@ console.log('Response from getAllAppointments:', response);
     ) {
       const data = response.data.data|| []
       console.log("Fetched appointments:", data);
-
-
-      // Save to async storage
-      // await AsyncStorage.setItem('appointments', JSON.stringify(data));
-
-      // Set main list
       setAppointments(data);
-
-      const followUpWalkinList = data.filter((item: any) => item.appointmentType === 'followup-walkin');
-const NewHomeCare = data.filter((item: any) => item.appointmentType === 'new-homecar');
-const newWalkIn = data.filter((item: any) => item.appointmentType === 'new-walkin');
-const videoList = data.filter((item: any) => item.appointmentType === 'followup-video');
-const followUpHomeCareList = data.filter((item: any) => item.appointmentType === 'followup-homecare');
-
-
-      // Filter new appointments
-      const newList = data.filter((item:any )=> !item.followup_walkin);
-      const followUpList = data.filter((item: any) => item.followup_walkin);
-
-      setNewAppointments(newWalkIn);
-      setFollowUps(followUpWalkinList);
-
-      console.log("New:", newList.length, "Follow-ups:", followUpList.length);
     } else {
       console.warn("Server responded with error, falling back to local appointments...");
 
@@ -161,8 +149,6 @@ const followUpHomeCareList = data.filter((item: any) => item.appointmentType ===
           };
 
       setAppointments(fallbackData?.totalAppointments);
-      setNewAppointments(fallbackData?.totalAppointments.filter((a:any) => !a.isFollowUp));
-      setFollowUps(fallbackData?.totalAppointments.filter((a:any )=> a.isFollowUp));
     }
   } catch (error) {
     console.error("Fetch error:", error);
@@ -176,15 +162,13 @@ const followUpHomeCareList = data.filter((item: any) => item.appointmentType ===
         };
 
     setAppointments(fallbackData.totalAppointments);
-    setNewAppointments(fallbackData.totalAppointments.filter((a:any) => !a.isFollowUp));
-    setFollowUps(fallbackData.totalAppointments.filter((a:any) => a.isFollowUp));
   }
 };
 
 const getRevenueData = async () => {
 
     const storedToken = await AsyncStorage.getItem('authToken');
-   const date = new Date();
+   
 const response = await AuthFetch(
   'finance/getTodayRevenuebyDoctorId',
   storedToken
@@ -314,7 +298,7 @@ console.log('Total Slots:', todaySlots);
     getAppointments()
     getRevenueData()
     getAvailabilityData();
-  }, []);
+  }, [date]);
 
   const today = currentDate.getDay();
   const dates = Array.from({ length: 7 }, (_, i) => {
@@ -334,6 +318,7 @@ console.log('Total Slots:', todaySlots);
   }
 
   if (selectedDate) {
+
     setDate(selectedDate);
 
     const selectedDay = selectedDate.toISOString().split('T')[0];
@@ -407,11 +392,7 @@ console.log('Total Slots:', todaySlots);
     setCurrentIndex((prev) => (prev + 1) % feedback.length);
   };
 
-  const handleClearDate = () => {
-    const today = new Date();
-    setDate(today);
-    setFilteredAppointments([]);
-  };
+ 
 
 
   const feedback = [
@@ -431,7 +412,10 @@ console.log('Total Slots:', todaySlots);
   },
 ];
 
-const dataToDisplay = filteredAppointments === null ? appointments : filteredAppointments;
+console.log(filteredAppointments,appointments, "appointments1234" )
+
+const dataToDisplay = filteredAppointments.length === 0 ? appointments : filteredAppointments;
+console.log(dataToDisplay, "total today appointments")
 
 const formatSlotTime = (time: string): string => {
   const [hour, minute] = time.split(':').map(Number);
@@ -485,15 +469,18 @@ console.log('Appointments:', availabilityData);
       <View style={styles.appointmentsCard}>
         <View style={styles.centered}>
           <Text style={styles.mainNumber}>
-            {appointments?.length>0 ? appointments.length : 0}
+            {totalAppointments.today}
           </Text>
           <Text style={styles.subText}>Today's Appointments</Text>
         </View>
 
         <View style={styles.gridRow}>
           <View style={styles.newCard}>
+              <View style={styles.trendBadge}>
+    <Text style={styles.trendBadgeText}>{newAppointments?.percentageChange}↑</Text>
+  </View>
             <Text style={styles.newNumber}>
-              {newAppointments.length}
+              {newAppointments.today}
             </Text>
             <Text style={styles.newLabel}>New Appointments</Text>
             {/* <View style={styles.trendRow}>
@@ -502,8 +489,11 @@ console.log('Appointments:', availabilityData);
           </View>
 
           <View style={styles.followUpCard}>
+                <View style={styles.trendBadge}>
+    <Text style={styles.trendBadgeText}>{followUps?.percentageChange}↑</Text>
+  </View>
             <Text style={styles.followUpNumber}>
-              {followUps.length}
+              {followUps?.today}
             </Text>
             <Text style={styles.followUpLabel}>Follow-ups</Text>
             {/* <View style={styles.trendRow}>
@@ -765,7 +755,7 @@ console.log('Appointments:', availabilityData);
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 , padding: 10},
+  container: { flex: 1 , padding: 10, backgroundColor:'# F0FDF4'},
 
   table: {
   marginTop: 10,
@@ -891,13 +881,33 @@ cell: {
     gap: 5,
     justifyContent: 'space-between',
   },
-  newCard: {
-    backgroundColor: '#F0FDF4',
-    flex: 1,
-    borderRadius: 12,
-    // padding: 16,
-    alignItems: 'center',
-  },
+newCard: {
+  backgroundColor: '#F0FDF4',
+  flex: 1,
+  borderRadius: 12,
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 16,
+  paddingHorizontal: 8,
+  position: 'relative', // needed for absolute children
+},
+
+trendBadge: {
+  position: 'absolute',
+  top: 8,
+  right: 8,
+  backgroundColor: '#DCFCE7', // light green
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  borderRadius: 8,
+},
+
+trendBadgeText: {
+  fontSize: 12,
+  color: '#166534', // darker green
+  fontWeight: '600',
+},
+
   newNumber: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -914,10 +924,13 @@ cell: {
   },
   followUpCard: {
     backgroundColor: '#EFF6FF',
-    flex: 1,
-    borderRadius: 12,
-    padding: 5,
-    alignItems: 'center',
+     flex: 1,
+  borderRadius: 12,
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 16,
+  paddingHorizontal: 8,
+  position: 'relative', 
   },
   followUpNumber: {
     fontSize: 16,

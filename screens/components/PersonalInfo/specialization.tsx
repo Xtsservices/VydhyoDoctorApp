@@ -232,6 +232,8 @@ Alert.alert(
 
   console.log('Current form data:', formData);
 
+  
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -254,7 +256,15 @@ Alert.alert(
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Degree*</Text>
-              <View style={styles.input}>
+              <TextInput
+                style={styles.input}
+                value={formData.degree}
+                onChangeText={(itemValue) => setFormData({ ...formData, degree: itemValue })}
+                placeholder="Degree"
+                placeholderTextColor="#999"
+                editable={!isLoading}
+              />
+              {/* <View style={styles.input}>
                 <Picker
                   selectedValue={formData.degree}
                   onValueChange={(itemValue) => setFormData({ ...formData, degree: itemValue })}
@@ -267,7 +277,7 @@ Alert.alert(
                   <Picker.Item label="FAAP" value="FAAP" />
                   <Picker.Item label="FACC" value="FACC" />
                 </Picker>
-              </View>
+              </View> */}
             </View>
 
             <View style={styles.inputGroup}>

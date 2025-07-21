@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Image,
   ScrollView,
   Platform,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
    ActivityIndicator
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -20,7 +23,7 @@ import { PersonalInfo } from '../../utility/formTypes';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
-import { AuthPut, UploadFiles } from '../../auth/auth';
+import { AuthFetch, AuthPut, UploadFiles } from '../../auth/auth';
 import axios from 'axios';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
@@ -172,7 +175,7 @@ const PersonalInfoScreen: React.FC = () => {
       newErrors.lastName = 'Last Name must be at least 3 letters';
     if (!formData.medicalRegNumber.trim())
       newErrors.medicalRegNumber = 'Medical Registration Number is required';
-    else if (!/^[0-9]{4,5,6,7}$/.test(formData.medicalRegNumber))
+    else if (!/^\d{4,7}$/.test(formData.medicalRegNumber))
       newErrors.medicalRegNumber = 'Must be exactly 4 to 7 digits';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
@@ -192,7 +195,7 @@ const PersonalInfoScreen: React.FC = () => {
       newErrors.appLanguage = 'App Language is required';
     if (!formData.relationship)
       newErrors.relationship = 'Relationship is required';
-    if (!formData.bloodGroup) newErrors.bloodGroup = 'Blood Group is required';
+    // if (!formData.bloodGroup) newErrors.bloodGroup = 'Blood Group is required';
     if (!formData.maritalStatus)
       newErrors.maritalStatus = 'Marital Status is required';
     setErrors(newErrors);
@@ -292,6 +295,59 @@ const PersonalInfoScreen: React.FC = () => {
       spokenLanguages: selectedLanguages.length === 0 ? 'At least one language is required' : '',
     }));
   };
+  const fetchUserData = async () => {
+ 
+      setLoading(true);
+
+      try {
+        // Retrieve token from AsyncStorage
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) {
+          throw new Error('Authentication token not found');
+        }
+
+
+        AsyncStorage.setItem('stepNo', '7');
+  const response = await AuthFetch('users/getUser', token);
+        // Make API call
+        
+       
+        // Check if response status is success
+        if (response.data.status !== 'success') {
+          throw new Error(response.data.message || 'Failed to fetch user data');
+        }
+
+        const userData = response.data.data;
+        // Format phone number to match +XX XXX XXX XXXX
+        setFormData({
+          firstName:userData.firstname || '',
+          lastName: userData.lastname || '',
+          medicalRegNumber: userData.medicalRegistrationNumber || '',
+          email: userData.email || '',
+          gender: userData.gender || '',
+          dateOfBirth: userData.dateOfBirth || '',
+          spokenLanguages: userData.spokenLanguages || [],
+          profilePhoto: userData.profilePhoto || PLACEHOLDER_IMAGE,
+          appLanguage: userData.appLanguage || 'en',
+          relationship: userData.relationship || 'self',
+          bloodGroup: userData.bloodGroup || '',
+          maritalStatus: userData.maritalStatus || 'single',
+
+        });
+      } catch (error: any) {
+        // setLoading(false);
+
+        console.error('Error fetching user data:', error.message);
+      }finally {
+        setLoading(false); // Stop loading regardless of success or failure
+      }
+    
+
+  }
+
+  useEffect(() => {
+    fetchUserData();
+   }, []);
 
   return (
     <ScrollView>
@@ -314,7 +370,13 @@ const PersonalInfoScreen: React.FC = () => {
       <ProgressBar currentStep={getCurrentStepIndex('PersonalInfo')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
-      <ScrollView style={styles.formContainer}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+<KeyboardAvoidingView
+          style={{ flex: 1 }}
+          // behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          // keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
+           <ScrollView style={styles.formContainer}>
         <View style={styles.photoContainer}>
           <TouchableOpacity onPress={handleImagePick}>
             <View style={styles.profilePhotoWrapper}>
@@ -371,7 +433,7 @@ const PersonalInfoScreen: React.FC = () => {
           placeholder="Enter registration number"
           placeholderTextColor="#999"
           keyboardType="numeric"
-          maxLength={5}
+          maxLength={7}
         />
         {errors.medicalRegNumber ? (
           <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
@@ -496,7 +558,7 @@ const PersonalInfoScreen: React.FC = () => {
           <Text style={styles.errorText}>{errors.relationship}</Text>
         ) : null} */}
 
-        <Text style={styles.label}>Blood Group</Text>
+        {/* <Text style={styles.label}>Blood Group</Text>
         <View style={styles.input}>
           <Picker
             selectedValue={formData.bloodGroup}
@@ -520,7 +582,7 @@ const PersonalInfoScreen: React.FC = () => {
         </View>
         {errors.bloodGroup ? (
           <Text style={styles.errorText}>{errors.bloodGroup}</Text>
-        ) : null}
+        ) : null} */}
 
         {/* <Text style={styles.label}>Marital Status</Text>
         <View style={styles.input}>
@@ -606,6 +668,11 @@ const PersonalInfoScreen: React.FC = () => {
         {/* Spacer to ensure content is not hidden by the Next button */}
         <View style={styles.spacer} />
       </ScrollView>
+
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+       
+     
 
       {/* Next Button */}
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>

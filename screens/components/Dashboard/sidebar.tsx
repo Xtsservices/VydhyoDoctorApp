@@ -140,6 +140,8 @@ const menuItems = [
                 profileResponse.data
               ) {
                 const userData = profileResponse.data.data;
+            dispatch({ type: 'currentUser', payload: userData });
+
                 dispatch({ type: 'currentUserID', payload: storedUserId });
           
       
@@ -171,6 +173,8 @@ const menuItems = [
       await AsyncStorage.removeItem('userId');
 
       // Clear Redux user ID
+            dispatch({ type: 'currentUser', payload: null });
+
       dispatch({ type: 'currentUserID', payload: null });
 
       // Show success toast

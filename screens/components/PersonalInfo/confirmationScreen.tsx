@@ -22,6 +22,7 @@ import Toast from 'react-native-toast-message';
 
 
 interface FormData {
+  userId: String,
   addresses: any;
   name: string;
   email: string;
@@ -40,6 +41,7 @@ const ConfirmationScreen: React.FC = () => {
   console.log('Current User ID:', userId);
   const navigation = useNavigation<any>();
   const [formData, setFormData] = useState<FormData>({
+    userId: '',
     name: '',
     email: '',
     phone: '',
@@ -153,6 +155,7 @@ const ConfirmationScreen: React.FC = () => {
         };
 
         setFormData({
+          userId: userData.userId || '',
           name: `${userData.firstname || ''} ${userData.lastname || ''}`.trim(),
           email: userData.email || '',
           phone: formattedPhone,
@@ -197,7 +200,7 @@ const ConfirmationScreen: React.FC = () => {
                   )}
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <TouchableOpacity style={styles.backButton}  onPress={handleBack}>
           <Icon name="arrow-left" size={width * 0.06} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirmation</Text>
@@ -214,9 +217,9 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="account" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Personal Info</Text>
-            <TouchableOpacity onPress={() => handleChange('name', formData.name)}>
+            {/* <TouchableOpacity onPress={() => navigation.navigate('PersonalInfo')}>
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.name}
@@ -225,6 +228,7 @@ const ConfirmationScreen: React.FC = () => {
             placeholder="Enter Name"
             placeholderTextColor="#999"
             autoCapitalize="words"
+            editable={false}
           />
           {errors.name && <Text style={styles.error}>{errors.name}</Text>}
           <TextInput
@@ -235,6 +239,7 @@ const ConfirmationScreen: React.FC = () => {
             placeholderTextColor="#999"
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={false}
           />
           {errors.email && <Text style={styles.error}>{errors.email}</Text>}
           <TextInput
@@ -244,6 +249,7 @@ const ConfirmationScreen: React.FC = () => {
             placeholder="Enter Phone (e.g., +91 234 567 8901)"
             placeholderTextColor="#999"
             keyboardType="phone-pad"
+            editable={false}
           />
           {errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
 
@@ -251,11 +257,11 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="briefcase" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Specialization</Text>
-            <TouchableOpacity
-              onPress={() => handleChange('specialization', '')}
+            {/* <TouchableOpacity
+              onPress={() => navigation.navigate('Specialization')}
             >
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.specialization}
@@ -263,6 +269,7 @@ const ConfirmationScreen: React.FC = () => {
             style={[styles.input, errors.specialization && styles.errorInput]}
             placeholder="Enter Specialization"
             placeholderTextColor="#999"
+            editable={false}
           />
           {errors.specialization && (
             <Text style={styles.error}>{errors.specialization}</Text>
@@ -272,9 +279,9 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="office-building" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Clinic Name</Text>
-            <TouchableOpacity onPress={() => handleChange('practice', '')}>
+            {/* <TouchableOpacity onPress={() => handleChange('practice', '')}>
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData?.addresses[0]?.clinicName || ''}
@@ -282,6 +289,7 @@ const ConfirmationScreen: React.FC = () => {
             style={[styles.input, errors.practice && styles.errorInput]}
             placeholder="Enter Practice"
             placeholderTextColor="#999"
+            editable={false}
           />
           {errors.practice && (
             <Text style={styles.error}>{errors.practice}</Text>
@@ -291,11 +299,11 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="calendar" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Consultation Preferences</Text>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={() => handleChange('consultationPreferences', '')}
             >
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.consultationPreferences}
@@ -306,6 +314,7 @@ const ConfirmationScreen: React.FC = () => {
             ]}
             placeholder="Enter Preferences"
             placeholderTextColor="#999"
+            editable={false}
           />
           {errors.consultationPreferences && (
             <Text style={styles.error}>{errors.consultationPreferences}</Text>
@@ -315,9 +324,9 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="bank" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Financial Setup</Text>
-            <TouchableOpacity onPress={() => handleChange('bank', '')}>
+            {/* <TouchableOpacity onPress={() => handleChange('bank', '')}>
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.bank}
@@ -325,6 +334,7 @@ const ConfirmationScreen: React.FC = () => {
             style={[styles.input, errors.bank && styles.errorInput]}
             placeholder="Enter Bank"
             placeholderTextColor="#999"
+            editable={false}
           />
           {errors.bank && <Text style={styles.error}>{errors.bank}</Text>}
           <TextInput

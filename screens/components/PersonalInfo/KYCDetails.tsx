@@ -173,12 +173,9 @@ const [modalVisible, setModalVisible] = useState(false);
       Alert.alert('Error', 'Please accept the Terms & Conditions.');
       return;
     }
-    //   Alert.alert('Error', 'Please upload Voter ID document.');
-    //   return;
-    // }
-
-    // If no PAN number or PAN image is provided, skip API call and navigate to ConfirmationScreen
+   
     if (!panNumber && !pancardUploaded) {
+      console.log("panNumber", panNumber)
       try {
         setLoading(true);
         await AsyncStorage.setItem('currentStep', 'ConfirmationScreen');
@@ -204,6 +201,10 @@ const [modalVisible, setModalVisible] = useState(false);
       }
       return;
     }
+
+
+
+    
     
     // if (!pancardUploaded) {
     //   Alert.alert('Error', 'Please upload Pancard document.');
@@ -217,10 +218,9 @@ const [modalVisible, setModalVisible] = useState(false);
       Alert.alert('Error', 'Please enter a valid 10-character PAN number (e.g., ABCDE1234F).');
       return;
     }
-    if (!termsAccepted) {
-      Alert.alert('Error', 'Please accept the Terms & Conditions.');
-      return;
-    }
+
+
+   
 
     // Prepare FormData for Axios POST request
     try {
@@ -234,6 +234,11 @@ const [modalVisible, setModalVisible] = useState(false);
       }
       if (!userId) {
         Alert.alert('Error', 'User ID is missing. Please log in again.');
+        return;
+      }
+
+      if (!panImage?.uri) {
+        Alert.alert('Error', 'Please upload a Pancard document.');
         return;
       }
 
@@ -258,6 +263,8 @@ const [modalVisible, setModalVisible] = useState(false);
 
       console.log('Submitting KYC data: addKYCDetails', formData);
        const response = await UploadFiles('users/addKYCDetails', formData, token);
+
+       console.log('KYC submission response:', response);
       
       if (response.status === 'success') {
 

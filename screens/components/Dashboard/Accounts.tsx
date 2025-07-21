@@ -21,7 +21,7 @@ const AccountsScreen = () => {
         const token = await AsyncStorage.getItem('authToken');
         const res = await AuthFetch('finance/getDoctorRevenue', token);
         if (res.status === 'success') {
-          const revenue = res.data?.data || 0;
+          const revenue = res?.data?.data || 0;
           console.log('Revenue fetched:', revenue);
           setTotalRevenue(revenue.totalRevenue || 0);
         } else {

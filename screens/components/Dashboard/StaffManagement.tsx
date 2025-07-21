@@ -39,7 +39,10 @@ interface Staff {
 
 
 const StaffManagement = () => {
-  const userId = useSelector((state: any) => state.currentUserID);
+
+    const currentuserDetails =  useSelector((state: any) => state.currentUser);
+      const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+  const userId = doctorId;
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
       case 'doctor':
@@ -139,6 +142,8 @@ const payload = {
     console.log(res, 'Edit response');
     if (res.status === 'success') {
      fetchStaff(); // Refresh staff list after edit
+      Alert.alert('Success', 'Staff updated successfully');
+    closeModal();
       Toast.show({type: 'success',
            text1: 'Success',
            text2: 'Edited Successfully',
@@ -148,8 +153,7 @@ const payload = {
          closeModal();
       return;
     }
-    Alert.alert('Success', 'Staff updated successfully');
-    closeModal();
+   
   } catch (err) {
     Alert.alert('Error', 'Failed to update staff');
   }
@@ -214,23 +218,69 @@ const clearSearch = () => {
 
     console.log('Staff data fetched:', response);
 
-  const staffList = response?.data?.data || [];
-    const formattedData: Staff[] = staffList.map((staff: any, index: number) => ({
-      id: staff._id || String(index + 1),
-      name: staff.name,
-      email: staff.email,
-      role: staff.stafftype || 'Unknown',
-      status: staff.isLoggedIn ? 'Online' : 'Offline',
-      avatar: staff.avatar || 'https://via.placeholder.com/150',
-      lastLogin: staff.lastLogout
-        ? dayjs(staff.lastLogout).format('YYYY-MM-DD HH:mm:ss')
-        : 'N/A',
-      isBlocked: staff.status?.toLowerCase() === 'blocked',
-      userId: staff.userId,
-      gender: staff.gender || 'Unknown',
-      DOB: staff.DOB ? dayjs(staff.DOB).format('YYYY-MM-DD') : 'N/A',
-      mobile: staff.mobile || 'N/A',
-    }));
+let filterData: any[] = [];
+if ('data' in response && response.data && Array.isArray(response.data.data)) {
+  filterData = response.data.data.filter(
+    (each: { userId: any; }) => each.userId !== currentuserDetails.createdBy
+  );
+}
+
+const sortedData = [...filterData].sort((a, b) => {
+  const dateA = new Date(a.joinDate).getTime();
+  const dateB = new Date(b.joinDate).getTime();
+  return dateB - dateA;
+});
+
+const formattedData: Staff[] = sortedData.map((staff, index) => ({
+  id: staff._id || String(index + 1),
+  name: staff.name,
+  userId: staff.userId,
+  role: staff.stafftype || 'Unknown',
+  email: staff.email,
+  mobile: staff.mobile || 'N/A',
+  gender: staff.gender || 'Unknown',
+  DOB: staff.DOB ? dayjs(staff.DOB).format('YYYY-MM-DD') : 'N/A',
+  profilepic: staff.profilepic || '',
+  avatar: staff.avatar || 'https://via.placeholder.com/150',
+  status: staff.isLoggedIn ? 'Online' : (staff.status?.toLowerCase() === 'blocked' ? 'Blocked' : 'Offline'),
+  lastLogin:
+    staff.lastLogin && staff.lastLogin !== "N/A"
+      ? dayjs(staff.lastLogin).isValid()
+        ? dayjs(staff.lastLogin).format("YYYY-MM-DD HH:mm:ss")
+        : staff.lastLogin
+      : "-",
+  isBlocked: staff.status?.toLowerCase() === 'blocked',
+}));
+   
+
+  // const staffList = response?.data?.data || [];
+  //   const formattedData: Staff[] = staffList.map((staff: any, index: number) => ({
+  //     id: staff._id || String(index + 1),
+  //     name: staff.name,
+  //     email: staff.email,
+  //     role: staff.stafftype || 'Unknown',
+  //     status: staff.isLoggedIn ? 'Online' : 'Offline',
+  //     avatar: staff.avatar || 'https://via.placeholder.com/150',
+  //     lastLogin: staff.lastLogout
+  //       ? dayjs(staff.lastLogout).format('YYYY-MM-DD HH:mm:ss')
+  //       : 'N/A',
+  //     isBlocked: staff.status?.toLowerCase() === 'blocked',
+  //     userId: staff.userId,
+  //     gender: staff.gender || 'Unknown',
+  //     DOB: staff.DOB ? dayjs(staff.DOB).format('YYYY-MM-DD') : 'N/A',
+  //     mobile: staff.mobile || 'N/A',
+  //      access: staff.access || [],
+  //       type: staff.stafftype,
+  //       phone: staff.mobile,
+  //       joinDate: dayjs(staff.joinDate).format("YYYY-MM-DD"),
+  //       lastLogout:
+  //         staff.lastLogout && staff.lastLogout !== "N/A"
+  //           ? dayjs(staff.lastLogout).isValid()
+  //             ? dayjs(staff.lastLogout).format("YYYY-MM-DD HH:mm:ss")
+  //             : staff.lastLogout
+  //           : "-",
+  //       isLoggedIn: staff.isLoggedIn ? "Online" : "Offline",
+  //   }));
 
 setOriginalStaffData(formattedData); // Store unfiltered data
 
@@ -296,9 +346,6 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
     </TouchableOpacity>
   </View>
 </View>
-
-
-    
   </View>
 );
 
@@ -359,7 +406,7 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
         {mode === 'delete' && 'Delete Staff'}
       </Text>
 
-      {['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB'].map((field, i) => (
+      {['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB', 'Access'].map((field, i) => (
         <View key={i} style={styles.inputGroup}>
           <Text style={styles.label}>{field}</Text>
           {mode === 'view' ? (

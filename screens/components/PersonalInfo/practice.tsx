@@ -702,13 +702,14 @@ const PracticeScreen = () => {
                   }
                 />
               </View>
-              <View style={styles.timeContainer}>
+              {/* <View style={styles.timeContainer} >
                 <TouchableOpacity
                   style={styles.timeButton}
                   onPress={() => {
                     setSelectedAddressIndex(index);
                     setShowStartTimePicker(true);
                   }}
+                  disabled={true}
                 >
                   <View style={styles.timeButtonContent}>
                     <Icon
@@ -728,6 +729,7 @@ const PracticeScreen = () => {
                     setSelectedAddressIndex(index);
                     setShowEndTimePicker(true);
                   }}
+                  disabled={true}
                 >
                   <View style={styles.timeButtonContent}>
                     <Icon
@@ -741,7 +743,7 @@ const PracticeScreen = () => {
                     </Text>
                   </View>
                 </TouchableOpacity>
-              </View>
+              </View> */}
               {showStartTimePicker && selectedAddressIndex === index && (
                 <DateTimePicker
                   value={new Date()}

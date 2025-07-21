@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Dimensions ,ActivityIndicator} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Dimensions ,ActivityIndicator, KeyboardAvoidingView,
+  TouchableWithoutFeedback,Platform,} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
@@ -55,23 +56,30 @@ const FinancialSetupScreen = () => {
     if (!accountNumber) {
       tempErrors.accountNumber = 'Account number is required';
     } else {
-      const selectedBank = banks.find((b) => b.name === bank);
-      if (selectedBank) {
+
+      if (!/^\d+$/.test(accountNumber)) {
+  tempErrors.accountNumber = 'Account number must contain only digits';
+} else if (accountNumber.length < 7 || accountNumber.length > 18) {
+  tempErrors.accountNumber = 'Account number must be between 7 to 18 digits';
+}
+
+      // const selectedBank = banks.find((b) => b.name === bank);
+      // if (selectedBank) {
         
-        const validLength = Array.isArray(selectedBank.accountLength)
-          ? selectedBank.accountLength.includes(accountNumber.length)
-          : selectedBank.accountLength === accountNumber.length;
-        if (!validLength) {
-          const lengthText = Array.isArray(selectedBank.accountLength)
-            ? selectedBank.accountLength.join(' or ')
-            : selectedBank.accountLength;
-          tempErrors.accountNumber = `${bank} account number must be ${lengthText} digits`;
-        } else if (!/^\d+$/.test(accountNumber)) {
-          tempErrors.accountNumber = 'Account number must contain only digits';
-        }
-      } else if (accountNumber.length < 7 || accountNumber.length > 18) {
-        tempErrors.accountNumber = 'Account number must be between 7 to 18 digits';
-      }
+      //   const validLength = Array.isArray(selectedBank.accountLength)
+      //     ? selectedBank.accountLength.includes(accountNumber.length)
+      //     : selectedBank.accountLength === accountNumber.length;
+      //   if (!validLength) {
+      //     const lengthText = Array.isArray(selectedBank.accountLength)
+      //       ? selectedBank.accountLength.join(' or ')
+      //       : selectedBank.accountLength;
+      //     tempErrors.accountNumber = `${bank} account number must be ${lengthText} digits`;
+      //   } else if (!/^\d+$/.test(accountNumber)) {
+      //     tempErrors.accountNumber = 'Account number must contain only digits';
+      //   }
+      // } else if (accountNumber.length < 7 || accountNumber.length > 18) {
+      //   tempErrors.accountNumber = 'Account number must be between 7 to 18 digits';
+      // }
     }
 
     // Re-enter account number validation
@@ -82,6 +90,12 @@ const FinancialSetupScreen = () => {
     // IFSC code validation
     if (!ifscCode || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
       tempErrors.ifscCode = 'Invalid IFSC code';
+    }
+
+    if (!accountHolderName.trim()) {
+      tempErrors.accountHolderName = 'Account holder name is required';
+    } else if (!/^[a-zA-Z\s]+$/.test(accountHolderName)) {
+      tempErrors.accountHolderName = 'Account holder name must contain only letters and spaces';
     }
 
     setErrors(tempErrors);
@@ -197,6 +211,7 @@ const FinancialSetupScreen = () => {
 
   return (
     <View style={styles.container}>
+      
 
        {loading && (
                           <View style={styles.loaderOverlay}>
@@ -215,6 +230,12 @@ const FinancialSetupScreen = () => {
       <ProgressBar currentStep={getCurrentStepIndex('FinancialSetupScreen')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
+      <KeyboardAvoidingView
+       
+         style={styles.keyboardAvoidingContainer}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
           <Icon name="bank" size={width * 0.08} color="#00203F" style={styles.icon} />
@@ -301,7 +322,7 @@ const FinancialSetupScreen = () => {
         {/* Spacer to ensure content is not hidden by the Next button */}
         <View style={styles.spacer} />
       </ScrollView>
-
+  
 <View style={styles.buttonsContainer}>
         <TouchableOpacity style={[styles.button2, styles.skipButton]} onPress={handleSkip}>
           <Text style={[styles.buttonText2, styles.skipButtonText]}>Skip</Text>
@@ -310,6 +331,9 @@ const FinancialSetupScreen = () => {
           <Text style={styles.buttonText}>Next</Text>
         </TouchableOpacity>
       </View>
+  </KeyboardAvoidingView>
+
+
       {/* Next Button */}
       {/* <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>Next</Text>
@@ -322,6 +346,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#DCFCE7',
+  },
+   keyboardAvoidingContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -441,8 +468,9 @@ const styles = StyleSheet.create({
   buttonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginHorizontal: width * 0.05,
-    marginBottom: height * 0.03,
+    // marginHorizontal: width * 0.05,
+    marginTop: height * 0.03,
+    marginBottom: height * 0.01
   },
   button2: {
     backgroundColor: '#00203F',
