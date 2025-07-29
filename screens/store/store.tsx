@@ -14,6 +14,8 @@ interface Action {
 
 
 function Reducer(state = initialData, action: Action) {
+
+  console.log(action.payload, "actionPayload")
   switch (action.type) {
     case "currentUser":
       return {
@@ -22,7 +24,7 @@ function Reducer(state = initialData, action: Action) {
        
       };
 
-           case "currentUserID": 
+      case "currentUserID": 
       return { ...state,  currentUserID: action.payload?.userId || null, };
 
     case "CLEAR_USER":

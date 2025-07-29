@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
-import { AuthPost } from '../../auth/auth';
+import { AuthFetch, AuthPost } from '../../auth/auth';
 
 const { width, height } = Dimensions.get("window");
 
@@ -54,7 +54,7 @@ const ConsultationPreferences = () => {
   };
 
   const handleBack = () => {
-    navigation.goBack();
+    navigation.navigate('Practice');
   };
 
   const handleNext = async () => {
@@ -105,6 +105,49 @@ const ConsultationPreferences = () => {
   }
 
   };
+  
+
+
+const fetchUserData = async () => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    if (token) {
+      const response = await AuthFetch('users/getUser', token);
+      if (response.data.status === 'success') {
+        const userData = response.data.data;
+        const consultationFee = userData.consultationModeFee;
+
+        let updatedModes = { inPerson: false, video: false, homeVisit: false };
+        let updatedFees = { inPerson: '', video: '', homeVisit: '' };
+
+        consultationFee.forEach((mode) => {
+          const { type, fee } = mode;
+          if (type === 'In-Person') {
+            updatedFees.inPerson = fee.toString();
+            if (fee > 0) updatedModes.inPerson = true;
+          } else if (type === 'Video') {
+            updatedFees.video = fee.toString();
+            if (fee > 0) updatedModes.video = true;
+          } else if (type === 'Home Visit') {
+            updatedFees.homeVisit = fee.toString();
+            if (fee > 0) updatedModes.homeVisit = true;
+          }
+        });
+
+        setSelectedModes(updatedModes);
+        setFees(updatedFees);
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+  }
+};
+
+
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
 
   return (
     <View style={styles.container}>

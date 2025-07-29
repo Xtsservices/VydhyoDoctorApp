@@ -24,7 +24,7 @@ import {
 } from '../../utility/registrationSteps';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthPost } from '../../auth/auth';
+import { AuthFetch, AuthPost } from '../../auth/auth';
 
 interface Address {
   address: string;
@@ -481,10 +481,38 @@ const PracticeScreen = () => {
       setLoading(false);
     }
   };
+  
 
   const handleBack = () => {
-    navigation.goBack();
+    navigation.navigate('Specialization');
   };
+
+   const fetchUserData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch('users/getUser', token);
+      console.log(response)
+      if (response.data.status === 'success') {
+        const userData = response.data.data;
+      console.log(userData.specialization.experience, "complete response")
+
+       
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch user data.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
 
   console.log('OPD Addresses:', opdAddresses);
   console.log('Affiliation:', affiliation);

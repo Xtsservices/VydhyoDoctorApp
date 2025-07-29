@@ -11,6 +11,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthPost, AuthFetch } from '../../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSelector } from 'react-redux';
 
 type Patient = {
   id: string;
@@ -26,6 +27,9 @@ type Patient = {
 
 
 const MyPatients: React.FC = () => {
+
+  const currentuserDetails =  useSelector((state: any) => state.currentUser);
+        const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
   const [patients , setPatients] = useState<Patient[]>([]);
   const [totalPatients, setTotalPatients] = useState<Patient[]>([]);
     const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -49,7 +53,7 @@ const MyPatients: React.FC = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       console.log('Auth Token:', token);
-      const res = await AuthFetch(`appointment/getAppointmentsByDoctorID/patients`, token);
+      const res = await AuthFetch(`appointment/getAppointmentsByDoctorID/patients?doctorId=${doctorId}`, token);
 
       console.log('Response from API:', res);
 
@@ -66,11 +70,13 @@ const MyPatients: React.FC = () => {
           name: patient.patientName,
           gender: patient.gender,
           age: patient.age,
-          phone: patient.phone,
+          phone: patient.patientDetails.mobile,
           lastVisit: patient.lastVisit,
           status: patient.appointmentType,
           avatar: "https://i.pravatar.cc/150?img=12",
-         
+          patientId:patient.userId,
+          age:patient.patientDetails.age,
+          gender:patient.patientDetails.gender
         }));
         setPatients(formattedPatients);
         setTotalPatients(formattedPatients)
@@ -175,10 +181,19 @@ const MyPatients: React.FC = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Image source={item.avatar} style={styles.avatar} />
+            <View style={styles.avatarContainer}>
+                {/* If there's an image URL, show the image; otherwise show first letter */}
+                {item.avatar ? (
+                  <Text style={styles.avatarText}>{item.name[0]?.toUpperCase()}</Text>
+                ) : (
+                  <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
+                  
+                )}
+              </View>
+            {/* <Image source={item.avatar} style={styles.avatar} /> */}
             <View style={styles.info}>
               <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.id}>ID: {item.id}</Text>
+              <Text style={styles.id}>ID: {item.patientId}</Text>
               <Text style={styles.details}>
                 {item.gender}, {item.age} years
               </Text>
@@ -241,6 +256,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     padding: 16,
   },
+  avatarContainer: {
+  width: 50,
+  height: 50,
+  borderRadius: 25,
+  backgroundColor: '#D1D5DB', // Light gray
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 12,
+},
+
+avatarImage: {
+  width: 50,
+  height: 50,
+  borderRadius: 25,
+},
+
+avatarText: {
+  color: '#1F2937', // Dark text
+  fontSize: 20,
+  fontWeight: 'bold',
+},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

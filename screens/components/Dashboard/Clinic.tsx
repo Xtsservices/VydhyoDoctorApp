@@ -256,7 +256,8 @@ const fetchClinics = async () => {
   const handleDelete = async (addressId: any) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthPost("/users/deleteClinicAddress", { addressId: addressId }, token);
+      console.log(addressId, "selected clinic id")
+      const response = await AuthPost("users/deleteClinicAddress", { addressId: addressId }, token);
       console.log('Response from API:', response);
       if (response.status ==='success') {
         Toast.show({

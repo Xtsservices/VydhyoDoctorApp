@@ -1,5 +1,6 @@
 export type RootStackParamList = {
   Splash: undefined;
+  Authloader:undefined;
   Login: undefined;
   PersonalInfo: undefined;
   Specialization: undefined;
@@ -23,4 +24,10 @@ export type RootStackParamList = {
   Clinic: undefined;
   AddClinic: undefined;
   Reviews: undefined;
+  DoctorDetails:undefined;
+  PatientDetails:undefined;
+  Vitals:undefined;
+  DiagnosisMedication:undefined;
+  AdviceFollowup:undefined;
+  PrescriptionPreview:undefined;
 };

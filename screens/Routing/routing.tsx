@@ -26,6 +26,18 @@ import Accounts from "../components/Dashboard/Accounts";
 import Clinic from "../components/Dashboard/Clinic";
 import AddClinic from "../components/Dashboard/AddClinic";
 import Reviews from "../components/Dashboard/Reviews";
+import DoctorDetails from "../components/DegitalPrescription/DoctorDetails";
+import PatientDetails from "../components/DegitalPrescription/PatientDetails";
+import Vitals from "../components/DegitalPrescription/Vitals";
+import DiagnosisMedication from "../components/DegitalPrescription/DiagnosisMedication";
+import AdviceFollowup from "../components/DegitalPrescription/AdviceFollowup";
+
+import PrescriptionPreview from "../components/DegitalPrescription/PrescriptionPreview";
+import Authloader from "../components/Authloader";
+
+
+
+
 // import Appointments from "../components/appointments/appointments";
 // import MyPatient from "../components/Dashboard/MyPatient";
 
@@ -36,6 +48,8 @@ const Routing = () => {
     <NavigationContainer>
       <Stack.Navigator >
         <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Authloader" component={Authloader} options={{ headerShown: false }} />
+
         <Stack.Screen name="Login" component={DoctorLoginScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="Specialization" component={SpecializationDetails} options={{ headerShown: false }}/>
@@ -57,8 +71,16 @@ const Routing = () => {
         {/* <Stack.Screen name="Dashboard" component={dashboard} /> */}
         <Stack.Screen name="Accounts" component={Accounts} />
         <Stack.Screen name="Clinic" component={Clinic} />
-        <Stack.Screen name="AddClinic" component={AddClinic} />
+        <Stack.Screen name="AddClinic" component={AddClinic} options={{ title: "Clinic Management", headerTitleAlign: "center", }}/>
         <Stack.Screen name="Reviews" component={Reviews} options={{ headerShown: false }}/>
+        <Stack.Screen name="DoctorDetails" component={DoctorDetails} options={{ title: "Consulting Physician", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="PatientDetails" component={PatientDetails} options={{ title: "Patient Details", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="Vitals" component={Vitals} options={{ title: "Vitals & Investigation", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="DiagnosisMedication" component={DiagnosisMedication} options={{ title: "Diagnosis & Medication", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="AdviceFollowup" component={AdviceFollowup} options={{ title: "Advice & Followup", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="PrescriptionPreview" component={PrescriptionPreview} options={{ title: "Prescription Preview", headerTitleAlign: "center", }}/>
+
+
 
 
 

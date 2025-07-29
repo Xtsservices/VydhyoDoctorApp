@@ -14,15 +14,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { AuthFetch } from '../../auth/auth';
 import { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-
-// import { PieChart } from 'react-native-svg-charts';
-// import { AntDesign } from '@expo/vector-icons';
-// import PieChart from 'react-native-pie-chart';
-// import { PieChart } from 'react-native-chart-kit';
-
 import DateTimePicker from '@react-native-community/datetimepicker';
-// import { Ionicons } from '@expo/vector-icons';
-// import { VERTICAL } from 'react-native/types_generated/Libraries/Components/ScrollView/ScrollViewContext';
+import moment from 'moment';
+import dayjs from 'dayjs';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import { PieChart } from "react-native-chart-kit";
+
 
 interface FormData {
   name: string;
@@ -35,9 +32,6 @@ interface FormData {
   accountNumber: string;
 }
 
-
-
-
 const { width, height } = Dimensions.get('window');
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); 
 const screenWidth = Dimensions.get('window').width;
@@ -45,13 +39,11 @@ const screenWidth = Dimensions.get('window').width;
 const DoctorDashboard = () => {
     const navigation = useNavigation<any>();
   
-  const [currentDate, setCurrentDate] = useState(new Date()); // Set to 04:12 PM IST, June 27, 2025
+  const [currentDate, setCurrentDate] = useState(new Date()); 
  const [sidebarVisible, setSidebarVisible] = useState(false);
    const [loading, setLoading] = useState(false);
    const [newAppointments, setNewAppointments] = useState<any[]>([]);
    const [followUps, setFollowUps] = useState<any[]>([]);
-//    const [date, setDate] = useState(new Date()); // today's date by default
-// const [showPicker, setShowPicker] = useState(false);
 
 const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
    const [formData, setFormData] = useState<FormData>({
@@ -67,17 +59,17 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
 
      const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [patients, setPatients] = useState([]);
   // const [loading, setLoading] = useState(true);
   const [viewAll, setViewAll] = useState(false);
  
   const slideAnim = useRef(new Animated.Value(width)).current;
       const currentuserDetails =  useSelector((state: any) => state.currentUser);
-    const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+
+    const doctorId = currentuserDetails?.role==="doctor"? currentuserDetails?.userId : currentuserDetails?.createdBy
      
-      const userId = currentuserDetails.userId
+      const userId = currentuserDetails?.userId
     // const userId = useSelector((state: any) => state.currentUserID);
-    console.log('User ID:', userId);
+    console.log('User ID:', currentuserDetails);
   const [appointments, setAppointments] = useState<any[]>([]);
     const [dashboardData, setDashboardData] = useState({
     success: true,
@@ -98,6 +90,7 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
   const [monthRevenue, setMonthRevenue] = useState(0);
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);
   const [totalAppointments, setTotalAppointments] = useState({})
+ 
 
   
 
@@ -107,10 +100,10 @@ const [filteredAppointments, setFilteredAppointments] = useState<any[]>([]);
     const storedToken = await AsyncStorage.getItem('authToken');
     console.log('Stored Token:', storedToken);
  
-const formattedDate = date.toISOString().split('T')[0];
+const formattedDate = date?.toISOString().split('T')[0];
 console.log('Formatted Date:', formattedDate);
 const countResponse = await AuthFetch(
-  'appointment/getTodayAppointmentCount',
+  `appointment/getTodayAppointmentCount?doctorId=${doctorId}`,
   storedToken
 );
 
@@ -256,48 +249,15 @@ console.log(revenue, 'Response from getTodayRevenuebyDoctorId');
         setLoading(false); // Stop loading regardless of success or failure
       }
     };
-    const getAvailabilityData = async () => {
 
-    const storedToken = await AsyncStorage.getItem('authToken');
-    const formattedDate = new Date().toISOString().split('T')[0];
-    console.log('Formatted Date for Availability:', formattedDate);
-    const url = `appointment/getSlotsByDoctorIdAndDate?doctorId=VYDUSER10&date=${formattedDate}`;
-    const response = await AuthFetch(url, storedToken);
-    if ('data' in response && response.data && response.data.data && Array.isArray(response.data.data.slots)) {
-      console.log('Response from getSlotsByDoctorIdAndDate:', response.data.data.slots);
-      if (response.data.data.slots.length > 0){
-        setAvailabilityData(response.data.data.slots);
-      }
-    }
-
-    
-
-    // const totalSlots = response.data.data.slots.length || 0;
-
-//     const todaySlots = response.data.data.slots.filter((slot: any) => {
-//   const updatedDate = new Date(slot.updatedAt).toISOString().split('T')[0];
-//   console.log(`Checking slot: ${updatedDate} === ${formattedDate}`);
-//   return updatedDate === formattedDate;
-// });
-
-
-    
-
-console.log('Total Slots:', todaySlots);
-
-    if ('data' in response && response.data) {
-      setAvailabilityData(response.data.data);
-    } else {
-      console.log('Availability data fetch failed:', response);
-    }
-  };
+   
+   
 
  
   useEffect(() => {
     fetchUserData();
     getAppointments()
     getRevenueData()
-    getAvailabilityData();
   }, [date]);
 
   const today = currentDate.getDay();
@@ -321,10 +281,10 @@ console.log('Total Slots:', todaySlots);
 
     setDate(selectedDate);
 
-    const selectedDay = selectedDate.toISOString().split('T')[0];
+    const selectedDay = selectedDate?.toISOString().split('T')[0];
 
     const filtered = appointments.filter(item => {
-      const itemDate = new Date(item.appointmentDate).toISOString().split('T')[0];
+      const itemDate = new Date(item.appointmentDate)?.toISOString().split('T')[0];
       return itemDate === selectedDay;
     });
 
@@ -373,15 +333,6 @@ console.log('Total Slots:', todaySlots);
    badgeColor: string;
  };
 
- const [currentClinicIndex, setCurrentClinicIndex] = useState(0);
-
-  const handlePreviousClinic = () => {
-    setCurrentClinicIndex((prev) => (prev > 0 ? prev - 1 : 0));
-  };
-
-  const handleNextClinic = () => {
-    setCurrentClinicIndex((prev) => (prev + 1) % 0);
-  };
    const [currentIndex, setCurrentIndex] = useState(0);
 
   const handlePrev = () => {
@@ -417,21 +368,114 @@ console.log(filteredAppointments,appointments, "appointments1234" )
 const dataToDisplay = filteredAppointments.length === 0 ? appointments : filteredAppointments;
 console.log(dataToDisplay, "total today appointments")
 
-const formatSlotTime = (time: string): string => {
-  const [hour, minute] = time.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hour);
-  date.setMinutes(minute);
-
-  return date.toLocaleTimeString('en-IN', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }); // Example: "10:00 AM"
-};
 
 
-console.log('Appointments:', availabilityData);
+
+
+ const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [currentClinicIndex, setCurrentClinicIndex] = useState(0);
+  const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
+  const [nextAvailableSlot, setNextAvailableSlot] = useState<Slot[]>([]);
+
+  useEffect(() => {
+    const fetchClinics = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const response = await AuthFetch(`users/getClinicAddress?doctorId=${doctorId}`, token);
+        if (response.data.status === 'success') {
+          const activeClinics = response.data.data.filter(
+            (clinic: Clinic) => clinic.status === 'Active'
+          );
+          setClinics(activeClinics || []);
+        }
+      } catch (err) {
+        console.error('Error fetching clinics:', err);
+      }
+    };
+
+    if (doctorId) {
+      fetchClinics();
+    }
+  }, [doctorId]);
+
+  useEffect(() => {
+    const fetchAvailableSlots = async () => {
+      if (!doctorId || clinics.length === 0) return;
+
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const response = await AuthFetch(
+          `appointment/getNextAvailableSlotsByDoctor?doctorId=${doctorId}`,
+          token
+        );
+
+        if (response.data.status === 'success') {
+          const slotsData: Slot[] = response.data.data;
+
+          const today = moment().format('YYYY-MM-DD');
+          const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD');
+
+          const todaySlots = slotsData.filter((s) => s.date === today);
+          const tomorrowSlots = slotsData.filter((s) => s.date === tomorrow);
+
+          setAvailableSlots(todaySlots);
+          setNextAvailableSlot(tomorrowSlots);
+        }
+      } catch (err) {
+        console.error('Error fetching slots:', err);
+      }
+    };
+
+    if (clinics.length > 0) {
+      fetchAvailableSlots();
+    }
+  }, [clinics, currentClinicIndex, doctorId]);
+
+  const handlePreviousClinic = () => {
+    setCurrentClinicIndex((prev) => (prev > 0 ? prev - 1 : clinics.length - 1));
+  };
+
+  const handleNextClinic = () => {
+    setCurrentClinicIndex((prev) => (prev < clinics.length - 1 ? prev + 1 : 0));
+  };
+
+  const currentClinic = clinics[currentClinicIndex];
+
+  const formatSlotTime = (time: string) => {
+    return moment(time, 'HH:mm').format('hh:mm A');
+  };
+
+const selectedClinic = availableSlots.find(
+  (each) => each.addressId === currentClinic?.addressId
+);
+const selectedClinicTomorrowSlots = nextAvailableSlot.find(
+  (each) => each.addressId === currentClinic?.addressId
+);
+const [electiveCount, setElectiveCount] = React.useState(10);
+  const [emergencyCount, setEmergencyCount] = React.useState(20);
+
+
+const pieChartData = [
+    {
+      name: "Elective",
+      population: parseFloat(electiveCount),
+      color: "#3ce7b3",
+      legendFontColor: "#7F7F7F",
+      legendFontSize: 15,
+    },
+    {
+      name: "Emergency",
+      population: parseFloat(emergencyCount),
+      color: "#a357f4",
+      legendFontColor: "#7F7F7F",
+      legendFontSize: 15,
+    },
+   
+  ];
+
+
+  
+console.log('Appointments:', nextAvailableSlot, selectedClinicTomorrowSlots, currentClinic?.addressId, selectedClinic);
   return (
 
     <View style={styles.container}>
@@ -521,6 +565,7 @@ console.log('Appointments:', availabilityData);
   </View>
 </View>
     </View> 
+    {/* Patients Card */}
      <View style={styles.card}>
       <TouchableOpacity style={styles.cardHeader} onPress={() => setShowPicker(true)}>
         <Text style={styles.title}>Patient Appointments</Text>
@@ -557,7 +602,11 @@ console.log('Appointments:', availabilityData);
         <View style={styles.nameColumn}>
           <Text style={styles.nameText}>{item.patientName}</Text>
           <Text style={styles.datetimeText}>
-            {item.appointmentDate} {item.appointmentTime}
+            
+                       {dayjs(item.appointmentDate).format('YYYY-MM-DD')}
+                       {dayjs(item.appointmentDate).format('HH:mm')}
+
+            {/* {item.appointmentDate} {item.appointmentTime.format('')} */}
           </Text>
         </View>
         <Text style={styles.cell}>{item.appointmentType}</Text>
@@ -581,27 +630,75 @@ console.log('Appointments:', availabilityData);
 
       
     </View>
+
+    {/* clinic card */}
      <View style={styles.card}>
-        <Text style={styles.title}>Clinic Availability</Text>
+      <Text style={styles.title}>Clinic Availability</Text>
+
+      {/* Clinic Navigation & Info */}
+      <View style={styles.clinicNavContainer}>
+        <TouchableOpacity onPress={handlePreviousClinic}>
+          <AntDesign name="left" size={24} color="black" />
+        </TouchableOpacity>
+
         <View style={styles.clinicInfo}>
-          <Text style={styles.clinicName}></Text>
-          <Text style={styles.clinicDate}></Text>
-          <Text style={styles.clinicLocation}></Text>
+          <Text style={styles.clinicName}>{currentClinic?.clinicName
+ || 'N/A'}</Text>
+          <Text style={styles.clinicLocation}>{currentClinic?.address || 'No address'}</Text>
         </View>
 
-                <Text style={styles.unavailableText}>Available Slots:</Text>
-    <View style={styles.slotContainer}>
-  {availabilityData.length > 0 ? (
-    availabilityData.map((slot, index) => (
-      <View key={slot._id || index} style={styles.slot}>
-        <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
+        <TouchableOpacity onPress={handleNextClinic}>
+          <AntDesign name="right" size={24} color="black" />
+        </TouchableOpacity>
       </View>
-    ))
-  ) : (
-    <Text style={styles.unavailableText}>No available slots</Text>
-  )}
-</View>
-</View>
+
+      {/* Available Slots (Today) */}
+      <Text style={styles.sectionLabel}>Available Slots (Today):</Text>
+      <ScrollView horizontal contentContainerStyle={styles.slotContainer}>
+        {selectedClinic ? (
+          selectedClinic?.slots?.map((slot) => (
+            <View key={slot._id} style={styles.slot}>
+              <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.unavailableText}>No slots available</Text>
+        )}
+      </ScrollView>
+
+      {/* Next Available Slots (Tomorrow) */}
+      <Text style={styles.sectionLabel}>Next Available Slots (Tomorrow):</Text>
+      <ScrollView horizontal contentContainerStyle={styles.slotContainer}>
+        {selectedClinicTomorrowSlots ? (
+          selectedClinicTomorrowSlots?.slots?.map((slot) => (
+            <View key={slot._id} style={styles.slot}>
+              <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.unavailableText}>No slots available</Text>
+        )}
+      </ScrollView>
+    </View>
+
+    {/* Revenue paichart */}
+
+<View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Patients Percentage</Text>
+          <PieChart
+            data={pieChartData}
+            width={screenWidth}
+            height={200}
+            chartConfig={{
+              color: () => `rgba(0, 0, 0, 1)`,
+              decimalPlaces: 0,
+            }}
+            accessor={"population"}
+            backgroundColor={"transparent"}
+            paddingLeft={"15"}
+            absolute // Shows the actual values instead of percentages
+          />
+        </View>
 
      {/* <View style={styles.card}>
         <Text style={styles.title}>Clinic Availability</Text>
@@ -755,7 +852,7 @@ console.log('Appointments:', availabilityData);
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 , padding: 10, backgroundColor:'# F0FDF4'},
+  container: { flex: 1 , padding: 10, backgroundColor: '#F0FDF4'},
 
   table: {
   marginTop: 10,
@@ -1473,6 +1570,24 @@ addButtonText: {
   },
 
 
+
+  clinicNavContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  
+ 
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+ 
+
+ 
 
 });
 

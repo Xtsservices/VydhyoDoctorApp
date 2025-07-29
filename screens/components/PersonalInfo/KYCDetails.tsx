@@ -289,9 +289,10 @@ const [modalVisible, setModalVisible] = useState(false);
       console.error('KYC submission error:', error);
     }
   };
+  
 
   const handleBack = () => {
-    navigation.goBack();
+    navigation.navigate('FinancialSetupScreen');
   };
 
   return (

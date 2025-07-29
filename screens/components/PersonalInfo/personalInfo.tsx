@@ -29,6 +29,7 @@ import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
 import { MultiSelect } from 'react-native-element-dropdown';
+import { useAsyncDebounce } from '../../utility/useAsyncDebounce';
 
 const languageOptions = [
   { label: 'Telugu', value: 'Telugu' },
@@ -281,6 +282,8 @@ const PersonalInfoScreen: React.FC = () => {
     }
   };
 
+  // const debouncedHandleNext = useAsyncDebounce(handleNext, 2000);
+
   const handleBack = () => {
     navigation.goBack();
   };
@@ -316,8 +319,9 @@ const PersonalInfoScreen: React.FC = () => {
         if (response.data.status !== 'success') {
           throw new Error(response.data.message || 'Failed to fetch user data');
         }
-
         const userData = response.data.data;
+console.log(userData, "userDetails")
+
         // Format phone number to match +XX XXX XXX XXXX
         setFormData({
           firstName:userData.firstname || '',
@@ -326,12 +330,12 @@ const PersonalInfoScreen: React.FC = () => {
           email: userData.email || '',
           gender: userData.gender || '',
           dateOfBirth: userData.dateOfBirth || '',
-          spokenLanguages: userData.spokenLanguages || [],
-          profilePhoto: userData.profilePhoto || PLACEHOLDER_IMAGE,
-          appLanguage: userData.appLanguage || 'en',
-          relationship: userData.relationship || 'self',
-          bloodGroup: userData.bloodGroup || '',
-          maritalStatus: userData.maritalStatus || 'single',
+          spokenLanguages: userData?.spokenLanguages || [],
+          profilePhoto: userData?.profilePhoto || PLACEHOLDER_IMAGE,
+          appLanguage: userData?.appLanguage || 'en',
+          relationship: userData?.relationship || 'self',
+          bloodGroup: userData?.bloodGroup || '',
+          maritalStatus: userData?.maritalStatus || 'single',
 
         });
       } catch (error: any) {
@@ -348,6 +352,8 @@ const PersonalInfoScreen: React.FC = () => {
   useEffect(() => {
     fetchUserData();
    }, []);
+
+   console.log(formData)
 
   return (
     <ScrollView>

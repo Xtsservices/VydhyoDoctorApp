@@ -24,6 +24,9 @@ import { AuthFetch } from '../../auth/auth';
 const Sidebar = () => {
   const navigation = useNavigation<any>();
 const [access, setAccess] = useState<string[]>([]); // ← You’ll receive this from backend
+const currentuserDetails =  useSelector((state: any) => state.currentUser);
+    const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+    console.log(currentuserDetails.access, "currentuserdeils")
 
 const menuItems = [
   {
@@ -125,14 +128,30 @@ const menuItems = [
               console.log('Profile response:', profileResponse.data.data);
               if (profileResponse.status === 'success') {
                 if (profileResponse.data.data.access && Array.isArray(profileResponse.data.data.access)) {
-                  setAccess(profileResponse.data.data.access);
-                }
+  const accessMap: { [key: string]: string } = {
+    viewPatients: 'viewPatient',
+    dashboard: 'dashboard',
+    appointments: 'appointments',
+    availability: 'availability',
+    labs: 'labs',
+    pharmacy: 'pharmacy',
+    staff: 'staff',
+    clinic: 'clinic',
+    accounts: 'accounts',
+    reviews: 'reviews',
+  };
+  console.group( profileResponse.data.data.access)
+
+  const transformedAccess = profileResponse.data.data.access.map(item => accessMap[item])
+  setAccess(transformedAccess);
+}
+
               }
                 
               
               console.log('Access:', access);
 
-              setAccess(access);
+              // setAccess(access);
       
               if (
                 profileResponse.status === 'success' &&
@@ -145,13 +164,13 @@ const menuItems = [
                 dispatch({ type: 'currentUserID', payload: storedUserId });
           
       
-                Toast.show({
-                  type: 'success',
-                  text1: 'Success',
-                  text2: 'Auto-login successful',
-                  position: 'top',
-                  visibilityTime: 3000,
-                });
+                // Toast.show({
+                //   type: 'success',
+                //   text1: 'Success',
+                //   text2: 'Auto-login successful',
+                //   position: 'top',
+                //   visibilityTime: 3000,
+                // });
       
               } 
              
@@ -226,18 +245,22 @@ const menuItems = [
         <Text style={styles.profileButtonText}>View Public Profile</Text>
       </TouchableOpacity>
 
-       {(access.length === 0 ? menuItems : menuItems.filter(item => access.includes(item.key))).map(
-    (item, index) => (
-      <MenuItem
-        key={index}
-        icon={item.icon}
-        label={item.label}
-        description={item.description}
-        iconColor="#8B5CF6"
-        onPress={item.onPress}
-      />
-    )
-  )}
+      {
+  (currentuserDetails.role === 'doctor'
+    ? menuItems
+    : menuItems.filter(item => access.includes(item.key) || item.key === 'Logout') // always allow logout
+  ).map((item, index) => (
+    <MenuItem
+      key={index}
+      icon={item.icon}
+      label={item.label}
+      description={item.description}
+      iconColor="#8B5CF6"
+      onPress={item.onPress}
+    />
+  ))
+}
+
 
       {/* Menu Items */}
      

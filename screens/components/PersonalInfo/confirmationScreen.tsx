@@ -103,13 +103,15 @@ const ConfirmationScreen: React.FC = () => {
     navigation.navigate('ProfileReview');
   };
 
+  
+
   const handleChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const handleBack = () => {
-    navigation.goBack();
+    navigation.navigate('KYCDetailsScreen');
   };
 
   useEffect(() => {

@@ -14,6 +14,8 @@ const AccountVerified = () => {
     const navigation = useNavigation();
      const [loading, setLoading] = useState(false);
 
+     console.log("go to dashboard")
+
       const handleGoToDashboard = () => {
     setLoading(true);
     setTimeout(() => {

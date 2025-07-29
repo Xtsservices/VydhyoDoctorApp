@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Alert,View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,Dimensions,Platform,
+  Modal,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -34,7 +35,7 @@ const AddAppointment = () => {
 const [patientformData, setpatientFormData] = useState({
     firstName: '',
     lastName: '',
-    gender: 'Male',
+    gender: '',
     dob: '',
     age: '',
     mobile: '',
@@ -60,6 +61,10 @@ const [userData,setUserDate] = useState<any>(null);
  const [showDatePicker, setShowDatePicker] = useState(false);
  const [showappointmentDatePicker, setShowappointmentDatePicker] =useState(false)
  const [activeclinicsData, setActiveclinicsData] = useState<any[]>([])
+ const [patientNames, setPatientNames] = useState<any[]>([]);
+const [isPatientSelectModalVisible, setPatientSelectModalVisible] = useState(false);
+const [selectedPatient, setSelectedPatient] = useState<any>(null);
+const [message, setMessage] = useState('')
 
 
 const validateMobile = (value: string) => {
@@ -88,29 +93,22 @@ const formatDOBToDDMMYYYY = (dobString: string): string => {
   };
 const handleSearch = async () => {
   try {
-    console.log('Searching for patient with mobile:', searchMobile);
     const token = await AsyncStorage.getItem('authToken');
-    console.log('Auth Token:', token);
     const response = await AuthFetch(`doctor/searchUser?mobile=${searchMobile}`, token);
-console.log('Search response:', response);
 
-    if ('data' in response && response.data?.data?.totalAppointments) {
-      const patients = response.data.data.totalAppointments;
-      const matched = patients.find(
-        (item: any) => item.mobile === patientformData.mobile
-      );
+    if (response?.status === "success") {
+      const patients = response.data.data;
+      console.log(patients, "selectedPatientDetails")
 
-      if (matched) {
-        setpatientFormData({
-          firstName: matched.firstname,
-          lastName: matched.lastname,
-          dob: matched.DOB,
-          age: '', // optional: you can auto-calculate age
-          gender: matched.gender,
-          mobile: matched.mobile,
-        });
-        setFieldsDisabled(true);
-        Alert.alert('Patient Found', 'Patient details have been filled.');
+      if (patients.length > 0) {
+        if (patients.length === 1) {
+          prefillPatientDetails(patients[0]);
+          setFieldsDisabled(true);
+          Alert.alert('Patient Found', 'Patient details have been filled.');
+        } else {
+          setPatientNames(patients); // store patients for modal
+          setPatientSelectModalVisible(true); // open modal
+        }
       } else {
         Alert.alert('Not Found', 'Patient does not exist. Please add patient.');
         setFieldsDisabled(false);
@@ -120,6 +118,22 @@ console.log('Search response:', response);
     console.error('Search error:', error);
   }
 };
+
+const prefillPatientDetails = (patient: any) => {
+  console.log(patient, "selectedpatient")
+  setpatientFormData({
+    firstName: patient.firstname,
+    lastName: patient.lastname,
+    dob: patient.DOB,
+    age: '', // optionally calculate
+    gender: patient.gender,
+    mobile: patient.mobile,
+  });
+  setPatientId(patient.userId)
+};
+
+
+
 
  const handleAddPatient = async () => {
     console.log('Adding patient with data:', patientformData);
@@ -163,7 +177,7 @@ const handleCreateAppointment = async () => {
   try {
     const token = await AsyncStorage.getItem('authToken');
 
-   
+   console.log(patientformData,patientId, "selectedPatientForm Data")
 
     if (!token) {
       Alert.alert('Authentication Error', 'Please login again.');
@@ -208,7 +222,15 @@ clinicAddressId,
       Alert.alert('Success', 'Appointment created successfully!');
       navigation.goBack(); // Optional: navigate back
     } else {
-    //   Alert.alert('Error', response.message || 'Failed to create appointment');
+      Alert.alert('Error', 'Please fill all fields');
+      Toast.show({
+    type: 'error',
+    text1: 'error',
+    text2: response?.message?.message || "Please fill all fields",
+    position: 'top',
+    visibilityTime: 3000,
+  });
+    //  Alert.alert('Error', response.message || 'Failed to create appointment');
     }
 
   } catch (error: any) {
@@ -238,8 +260,8 @@ if (clinics.length > 0) {
   setActiveclinicsData(activeClinics);
 } else {
   Toast.show({
-    type: 'Error',
-    text1: 'Error',
+    type: 'error',
+    text1: 'error',
     text2: 'No Clinics Found',
     position: 'top',
     visibilityTime: 3000,
@@ -279,32 +301,91 @@ const formattedDate = `${year}-${month}-${day}`;
         );
 
         console.log(response, "selectedTimeSlots")
-        const data = 'data' in response ? response.data : null;
-
-      if (data.status === "success" && data.data?.slots && data.data.addressId === clinicId) {
-       const availableSlots = data.data.slots
+      if (response?.status === "success" && response?.data?.data?.slots ) {
+        console.log("slots")
+       const availableSlots = response?.data?.data?.slots
   .filter((slot: { status: string; }) => slot.status === "available")
   .map((slot: { time: any; }) => slot.time) // no need to format
   .filter((time: any) => {
     const slotMoment = moment(`${formattedDate} ${time}`, "YYYY-MM-DD HH:mm");
     return slotMoment.isAfter(moment());
   });
+  console.log(availableSlots)
         setTimeSlots(availableSlots);
        
    
-      } else {
+      } else if (response.status === "success") {
         setTimeSlots([]);
+          Toast.show({
+    type: 'Error',
+    text1: 'Error',
+    text2: 'No Time Slots Found For this Clinic For the selected Date',
+    position: 'top',
+    visibilityTime: 3000,
+  })
        
+      }else if (response.status ==='error'){
+        console.log("no slots found ")
+        setMessage(`*${response?.message?.message}` || "*No slots Found")
+         Toast.show({
+    type: 'error',
+    text1: 'error',
+    text2: 'No Time Slots Found For this Clinic For the selected Date',
+    position: 'top',
+    visibilityTime: 3000,
+  })
       }
     } catch (error) {
+      
       console.error("Error fetching time slots:", error);
+
+      Toast.show({
+    type: 'error',
+    text1: 'error',
+    text2: 'No Time Slots Found For this Clinic For the selected Date',
+    position: 'top',
+    visibilityTime: 3000,
+  })
       setTimeSlots([]);
      
     } 
   }, []);
 
+const fetchUserProfile = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('authToken');
+
+      if (storedToken) {
+        const profileResponse = await AuthFetch(`users/getUser?userId=${doctorId}`, storedToken);
+
+        console.log('Profile:123', profileResponse);
+        if (profileResponse.data.status === 'success'){
+            const doctorDetails = profileResponse.data.data
+setFormData((prev) => ({
+  ...prev,
+  department:doctorDetails?.specialization?.name
+  ,
+}));
+        }
+
+        // Do something with profileResponse
+      } else {
+        console.warn('No auth token found');
+      }
+    } catch (e) {
+      console.error('Error fetching profile:', e);
+    }
+  };
+
+  console.log(formData, "after doctor data ")
+
+
   
      useEffect(() => {
+
+      if (currentuserDetails.role !== 'doctor'){
+        fetchUserProfile()
+      }
     if (formData.appointmentDate && formData.clinicAddressId && doctorId) {
       console.log("patient")
       fetchTimeSlots(formData.appointmentDate, formData.clinicAddressId);
@@ -348,12 +429,48 @@ const formattedDate = `${year}-${month}-${day}`;
       value={searchMobile}
       onChangeText={setSearchMobile}
       placeholderTextColor="#9CA3AF"
+      maxLength={10}
     />
   </View>
   <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
     <Text style={styles.searchButtonText}>Search</Text>
   </TouchableOpacity>
 </View>
+
+<Modal
+  visible={isPatientSelectModalVisible}
+  animationType="slide"
+  transparent
+  onRequestClose={() => setPatientSelectModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContainer}>
+      <Text style={styles.modalTitle}>Select Patient</Text>
+      <ScrollView style={{ maxHeight: 300 }}>
+        {patientNames.map((patient: any) => (
+          <TouchableOpacity
+            key={patient._id}
+            style={styles.patientOption}
+            onPress={() => {
+              prefillPatientDetails(patient);
+              setFieldsDisabled(true);
+              setPatientSelectModalVisible(false);
+            }}
+          >
+            <Text>{patient.firstname} {patient.lastname} </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={() => setPatientSelectModalVisible(false)}
+      >
+        <Text style={styles.cancelButtonText}>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
 
      {/* <View style={styles.searchRow}>
   <Ionicons name="search" size={24} color="#0a84ff" />
@@ -454,8 +571,8 @@ const formattedDate = `${year}-${month}-${day}`;
           <View key={option} style={styles.radioItem}>
             <RadioButton
               value={option}
-              status={formData.gender === option ? 'checked' : 'unchecked'}
-              onPress={() => setFormData({ ...formData, gender: option })}
+              status={patientformData.gender === option ? 'checked' : 'unchecked'}
+              onPress={() => setpatientFormData({ ...patientformData, gender: option })}
             />
             <Text>{option}</Text>
           </View>
@@ -471,7 +588,7 @@ const formattedDate = `${year}-${month}-${day}`;
 
   
       <Text style={styles.sectionTitle}>Appointment Information</Text>
-      <Text>Appointment Type *</Text>
+      <Text style={styles.inputColor}>Appointment Type *</Text>
       <View style={styles.pickerContainer}>
   <Picker
     selectedValue={formData.appointmentType}
@@ -492,8 +609,9 @@ const formattedDate = `${year}-${month}-${day}`;
      <View style={styles.pickerContainer}>
         <TextInput
           placeholder="Eg : cardio"
-          value={formData.department}
-          onChangeText={(text) => setFormData({ ...formData, department: text })}
+          value={formData.department ||currentuserDetails?.
+specialization?.name || ""}
+          // onChangeText={(text) => setFormData({ ...formData, department: text })}
         />
   {/* <Picker
     selectedValue={formData.department}
@@ -593,20 +711,32 @@ clinicName}
 
       <Text>Available Slots *</Text>
       <View style={styles.timeSlotContainer}>
-        {timeSlots.map((slot) => (
-          <TouchableOpacity
-            key={slot}
-            onPress={() => setFormData({ ...formData, selectedTime: slot })}
-style={[
-  styles.timeSlot,
-  formData.selectedTime === slot && styles.timeSlotSelected,
-]}
-          >
-            <Text style={selectedTime === slot ? styles.timeSelectedText : styles.timeText}>
-              {slot}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {timeSlots.length > 0 ? (
+  timeSlots.map((slot) => (
+    <TouchableOpacity
+      key={slot}
+      onPress={() => setFormData({ ...formData, selectedTime: slot })}
+      style={[
+        styles.timeSlot,
+        formData.selectedTime === slot && styles.timeSlotSelected,
+      ]}
+    >
+      <Text
+        style={
+          formData.selectedTime === slot
+            ? styles.timeSelectedText
+            : styles.timeText
+        }
+      >
+        {slot}
+      </Text>
+    </TouchableOpacity>
+  ))
+) : (
+  <Text style={styles.errorMessage}>{message}</Text>
+)}
+
+       
       </View>
       </View>
 
@@ -651,14 +781,13 @@ style={[
       {/* Action Buttons */}
       <View style={styles.container}>
       {/* Form Inputs (not shown here for brevity) */}
-
-      <TouchableOpacity style={styles.payNowButton} onPress={handleCreateAppointment}>
-        <Text style={styles.payNowText}>Pay Now ₹500</Text>
+<TouchableOpacity style={[styles.payNowButton]} onPress={handleCreateAppointment}>
+        <Text style={[styles.payNowText, styles.inputColor]}>Pay Now</Text>
       </TouchableOpacity>
     </View>
 
       <TouchableOpacity style={styles.confirmButton}>
-        <Text style={styles.confirmText}>Confirm Appointment</Text>
+        <Text style={[styles.confirmText]}>Confirm Appointment</Text>
       </TouchableOpacity>
 </View>
 
@@ -673,6 +802,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: 20,
+
+  },
+  inputColor :{
+color:'#0c0c0cff'
   },
   headerTitle: { fontSize: 18, fontWeight: '600', color: '#333' },
 
@@ -693,9 +826,47 @@ inputContainer: {
   borderRadius: 8,
   paddingHorizontal: 10,
 },
+errorMessage:{
+color:'red'
+},
 
 searchIcon: {
   marginRight: 6,
+},
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+modalContainer: {
+  backgroundColor: 'white',
+  width: '80%',
+  borderRadius: 10,
+  padding: 20,
+  elevation: 5,
+},
+modalTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 10,
+  textAlign: 'center',
+},
+patientOption: {
+  paddingVertical: 10,
+  borderBottomWidth: 1,
+  borderBottomColor: '#ccc',
+},
+cancelButton: {
+  marginTop: 15,
+  backgroundColor: '#e74c3c',
+  padding: 10,
+  borderRadius: 5,
+  alignItems: 'center',
+},
+cancelButtonText: {
+  color: 'white',
+  fontWeight: 'bold',
 },
 
 input: {

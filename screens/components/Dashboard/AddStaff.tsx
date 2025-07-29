@@ -213,7 +213,6 @@ const AddStaffScreen = () => {
   { label: 'View Patients', value: 'viewPatients' },
   { label: 'Pharmacy', value: 'pharmacy' },
   { label: 'Availability', value: 'availability' },
-  { label: 'Accounts', value: 'accounts' },
   { label: 'Dashboard', value: 'dashboard' },
   { label: 'Labs', value: 'labs' },
   { label: 'Appointments', value: 'appointments' },
