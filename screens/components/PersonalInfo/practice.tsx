@@ -359,11 +359,142 @@ const PracticeScreen = () => {
     // fetchAddressDetails(latitude, longitude, index);
   };
 
+//   const handleNext = async () => {
+//   const token = await AsyncStorage.getItem('authToken');
+
+//   // Convert 12-hour time to 24-hour
+//   function convertTo24HourFormat(timeStr: string): string {
+//     if (!timeStr || typeof timeStr !== 'string') return '';
+
+//     const parts = timeStr.trim().toLowerCase().split(/\s+/);
+//     if (parts.length !== 2) return '';
+
+//     const [time, marker] = parts;
+//     let [hours, minutes] = time.split(':');
+//     minutes = minutes || '00';
+
+//     let hrs = parseInt(hours, 10);
+//     if (isNaN(hrs)) return '';
+
+//     if (marker === 'pm' && hrs !== 12) hrs += 12;
+//     if (marker === 'am' && hrs === 12) hrs = 0;
+
+//     return `${hrs.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+//   }
+
+//   function parseTimeToMinutes(time: string): number {
+//     const [hourStr, minuteStr] = time.split(':');
+//     const hours = parseInt(hourStr, 10);
+//     const minutes = parseInt(minuteStr, 10);
+//     if (isNaN(hours) || isNaN(minutes)) return -1;
+//     return hours * 60 + minutes;
+//   }
+
+//   // Validate required address fields
+//   const hasInvalidAddress = opdAddresses.some(
+//     addr => !addr.address || !addr.pincode || !addr.city || !addr.state
+//   );
+//   if (hasInvalidAddress) {
+//     Toast.show({
+//       type: 'error',
+//       text1: 'Error',
+//       text2: 'Please fill all required OPD Address fields',
+//       position: 'top',
+//       visibilityTime: 4000,
+//     });
+//     return;
+//   }
+
+//   // Prepare payload with converted times
+//   const payload = opdAddresses.map(addr => ({
+//     ...addr,
+//     startTime: convertTo24HourFormat(addr.startTime || '6:00 am'),
+//     endTime: convertTo24HourFormat(addr.endTime || '9:00 pm'),
+//   }));
+
+//   // Validate time logic: end > start
+//   const hasInvalidTime = payload.some(addr => {
+//     const startMinutes = parseTimeToMinutes(addr.startTime);
+//     const endMinutes = parseTimeToMinutes(addr.endTime);
+//     return (
+//       startMinutes >= endMinutes || startMinutes === -1 || endMinutes === -1
+//     );
+//   });
+
+//   if (hasInvalidTime) {
+//     Toast.show({
+//       type: 'error',
+//       text1: 'Error',
+//       text2: 'End time must be after Start time for all OPD addresses',
+//       position: 'top',
+//       visibilityTime: 4000,
+//     });
+//     return;
+//   }
+
+//   // API Call
+//   setLoading(true);
+//   try {
+//     const response = await AuthPost('users/addAddress', payload, token);
+
+//     if (response.status !== 'success') {
+//        Toast.show({
+//         type: 'error',
+//         text1: 'Failed to update practice details',
+//         text2: response?.message?.message || 'Unable to update clinic details',
+//         position: 'top',
+//         visibilityTime: 4000,
+//       });
+//       return;
+//     }
+
+//     Toast.show({
+//       type: 'success',
+//       text1: 'Success',
+//       text2: 'Practice details updated successfully!',
+//       position: 'top',
+//       visibilityTime: 3000,
+//     });
+//     await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
+
+//     navigation.navigate('ConsultationPreferences');
+//   } catch (err) {
+//     console.error('API error:', err);
+//     let errorMessage = 'Failed to update practice details.';
+//     if (axios.isAxiosError(err) && err.response?.data?.message) {
+//       errorMessage = err.response.data.message;
+//     } else if (err instanceof Error) {
+//       errorMessage = err.message;
+//     }
+//     Toast.show({
+//       type: 'error',
+//       text1: 'Error',
+//       text2: errorMessage,
+//       position: 'top',
+//       visibilityTime: 4000,
+//     });
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+
+
   const handleNext = async () => {
     const token = await AsyncStorage.getItem('authToken');
     const hasInvalidAddress = opdAddresses.some(
       addr => !addr.address || !addr.pincode || !addr.city || !addr.state,
     );
+     if (hasInvalidAddress) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2:
+          'Please fill all required OPD Address fields (address, pincode, city, state, and times)',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+      return;
+    }
 
     function convertTo24HourFormat(timeStr: string): string {
       if (!timeStr || typeof timeStr !== 'string') return '';
@@ -397,32 +528,13 @@ const PracticeScreen = () => {
 
     console.log('Payload for API:', payload);
 
-    const firstAddress = payload[0];
-    const response = await AuthPost('users/addAddress', firstAddress, token);
+    for (const clinic of payload) {
+   const response = await AuthPost('users/addAddress', clinic, token);
 
-    console.log('API Response:', response);
+    console.log('API Response:12', response);
 
-    if (hasInvalidAddress) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2:
-          'Please fill all required OPD Address fields (address, pincode, city, state, and times)',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-      return;
-    }
-    if (response.status !== 'success') {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to update practice details',
-        text2: 'Failed to update practice details.',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-      return;
-    } else {
+   
+    if (response.status === 'success') {
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -430,8 +542,24 @@ const PracticeScreen = () => {
         position: 'top',
         visibilityTime: 4000,
       });
+         await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
+
       navigation.navigate('ConsultationPreferences');
+    } else {
+
+       Toast.show({
+        type: 'error',
+        text1: 'Failed to update practice details',
+        text2: response?.message?.message,
+        position: 'top',
+        visibilityTime: 4000,
+      });
+      return;
+     
     }
+}
+
+   
 
     const hasInvalidTime = opdAddresses.some(addr => {
       const startMinutes = parseTimeToMinutes(addr.startTime);
@@ -452,34 +580,36 @@ const PracticeScreen = () => {
     // }
 
     setLoading(true);
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthPost('users/addAddress', payload, token);
+    // try {
+    //   const token = await AsyncStorage.getItem('authToken');
+    //   const response = await AuthPost('users/addAddress', payload, token);
 
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Practice details updated successfully!',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      navigation.navigate('ConsultationPreferences');
-    } catch (err) {
-      console.error('API error:', err);
-      let errorMessage = 'Failed to update practice details.';
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      }
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: errorMessage,
-        position: 'top',
-        visibilityTime: 4000,
-      });
-    } finally {
-      setLoading(false);
-    }
+    //   console.log(response, "add address response")
+
+    //   Toast.show({
+    //     type: 'success',
+    //     text1: 'Success',
+    //     text2: 'Practice details updated successfully!',
+    //     position: 'top',
+    //     visibilityTime: 3000,
+    //   });
+    //   navigation.navigate('ConsultationPreferences');
+    // } catch (err) {
+    //   console.error('API error:', err);
+    //   let errorMessage = 'Failed to update practice details.';
+    //   if (axios.isAxiosError(err) && err.response?.data?.message) {
+    //     errorMessage = err.response.data.message;
+    //   }
+    //   Toast.show({
+    //     type: 'error',
+    //     text1: 'error',
+    //     text2: errorMessage,
+    //     position: 'top',
+    //     visibilityTime: 4000,
+    //   });
+    // } finally {
+    //   setLoading(false);
+    // }
   };
   
 
@@ -513,11 +643,6 @@ const PracticeScreen = () => {
   useEffect(() => {
     fetchUserData();
   }, []);
-
-  console.log('OPD Addresses:', opdAddresses);
-  console.log('Affiliation:', affiliation);
-  console.log('Suggestions:', suggestions);
-  console.log('Current OPD Index:', currentOpdIndex);
 
   return (
     <KeyboardAvoidingView

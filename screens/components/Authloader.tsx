@@ -41,6 +41,8 @@ const AuthLoader = () => {
             return;
           }
 
+          
+
           const { screen, params } = await determineNextScreen(userData);
           await AsyncStorage.setItem('currentStep', screen);
           navigation.replace(screen, params || {});
@@ -59,6 +61,7 @@ const AuthLoader = () => {
   console.log(AsyncStorage.getItem('currentStep'), "userCurren step")
 
   const determineNextScreen = async (userData: any): Promise<{ screen: string; params?: any }> => {
+    console.log(userData, "complete user data")
     if (userData?.role !== 'doctor') {
       return { screen: 'AccountVerified' };
     }
@@ -68,6 +71,7 @@ const AuthLoader = () => {
     }
 
     const storedStep = await AsyncStorage.getItem('currentStep');
+    console.log("storedStep",storedStep)
     if (storedStep === 'ProfileReview') {
       return { screen: 'ProfileReview' };
     }
@@ -78,12 +82,19 @@ const AuthLoader = () => {
     if (!userData?.specialization || !userData?.specialization.name) {
       return { screen: 'Specialization' };
     }
-    if (!userData?.consultationModeFee || userData?.consultationModeFee?.length === 0) {
+     if (!userData?.addresses || userData?.addresses?.length === 0) {
       return { screen: 'Practice' };
     }
-    if (!userData?.bankDetails || !userData?.bankDetails?.bankName) {
-      return { screen: 'FinancialSetupScreen' };
+
+    if (!userData?.consultationModeFee || userData?.consultationModeFee?.length === 0) {
+      return { screen: 'ConsultationPreferences' };
     }
+
+
+  if ((!userData?.bankDetails || !userData?.bankDetails?.bankName) && !storedStep) {
+  return { screen: 'FinancialSetupScreen' };
+}
+
     if (!userData?.kycDetails) {
       return { screen: 'KYCDetailsScreen' };
     }

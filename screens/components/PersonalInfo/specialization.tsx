@@ -284,11 +284,12 @@ const SpecializationDetails = () => {
           position: 'top',
           visibilityTime: 3000,
         });
+         await AsyncStorage.setItem('currentStep', 'Practice');
         navigation.navigate('Practice');
       } else {
         Toast.show({
           type: 'error',
-          text1: 'Error',
+          text1: 'error',
           text2: response.message?.message || 'Failed to update specialization details.',
           position: 'top',
           visibilityTime: 4000,

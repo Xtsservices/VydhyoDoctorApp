@@ -38,6 +38,7 @@ const ConsultationPreferences = () => {
 
   const handleFeeChange = (mode: string, value: string) => {
     const numericValue = value.replace(/[^0-9]/g, "");
+    console.log(numericValue, value, mode)
     if (numericValue === "" || (parseInt(numericValue) >= 0 && numericValue.length <= 5)) {
       setFees({ ...fees, [mode]: numericValue });
     }
@@ -60,14 +61,16 @@ const ConsultationPreferences = () => {
   const handleNext = async () => {
     // if (!isFormValid()) return;
 
+    console.log(fees)
+
     const payload = {
       consultationModeFee: [
-        { type: 'In-Person', fee: parseInt(fees.inPerson) },
-        { type: 'Video', fee: parseInt(fees.video) },
-        { type: 'Home Visit', fee: parseInt(fees.homeVisit) },
+        { type: 'In-Person', fee: parseInt(fees?.inPerson) },
+        { type: 'Video', fee: parseInt(fees?.video) },
+        { type: 'Home Visit', fee: parseInt(fees?.homeVisit) },
       ],
     };
-
+console.log(payload)
     try {
        setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
@@ -89,6 +92,7 @@ const ConsultationPreferences = () => {
           type: 'success',
           text1: 'Preferences saved successfully',
         });
+    await AsyncStorage.setItem('currentStep', 'FinancialSetupScreen');
         (navigation as any).navigate('FinancialSetupScreen')
       }
 
@@ -118,7 +122,7 @@ const fetchUserData = async () => {
         const consultationFee = userData.consultationModeFee;
 
         let updatedModes = { inPerson: false, video: false, homeVisit: false };
-        let updatedFees = { inPerson: '', video: '', homeVisit: '' };
+        let updatedFees = { inPerson: 0, video: 0, homeVisit: 0 };
 
         consultationFee.forEach((mode) => {
           const { type, fee } = mode;

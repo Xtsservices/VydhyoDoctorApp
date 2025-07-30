@@ -159,11 +159,9 @@ const PersonalInfoScreen: React.FC = () => {
       medicalRegNumber: '',
       email: '',
       gender: '',
-     
       spokenLanguages: '',
       appLanguage: '',
       relationship: '',
-      
       maritalStatus: '',
     };
 
@@ -232,7 +230,6 @@ const PersonalInfoScreen: React.FC = () => {
           relationship: formData.relationship,
           medicalRegistrationNumber: formData.medicalRegNumber,
           gender: formData.gender,
-         
           bloodgroup: formData.bloodGroup,
           maritalStatus: formData.maritalStatus,
           spokenLanguage: formData.spokenLanguages,
@@ -243,7 +240,7 @@ const PersonalInfoScreen: React.FC = () => {
         const response = await AuthPut('users/updateUser', body, token);
 
         console.log('Response from updateUser:', response);
-        if (response.status === 'success') {
+        if (response?.status === 'success') {
           Toast.show({
             type: 'success',
             text1: 'Success',
@@ -253,6 +250,7 @@ const PersonalInfoScreen: React.FC = () => {
           });
          setLoading(false);
           console.log('Form data sent successfully:', body);
+          await AsyncStorage.setItem('currentStep', 'Specialization');
           navigation.navigate('Specialization');
         } else {
           Toast.show({
@@ -331,6 +329,7 @@ console.log(userData, "userDetails")
           gender: userData.gender || '',
           dateOfBirth: userData.dateOfBirth || '',
           spokenLanguages: userData?.spokenLanguages || [],
+          
           profilePhoto: userData?.profilePhoto || PLACEHOLDER_IMAGE,
           appLanguage: userData?.appLanguage || 'en',
           relationship: userData?.relationship || 'self',

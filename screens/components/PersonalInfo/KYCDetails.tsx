@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text,Modal, Pressable ,TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput,ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
-import { UploadFiles } from '../../auth/auth';
+import { UploadFiles, AuthFetch } from '../../auth/auth';
 
 const voter_icon = require('../../assets/aadhar.png'); // Update with actual voter ID icon if available
 const pancard_icon = require('../../assets/pan.png');
@@ -186,6 +186,9 @@ const [modalVisible, setModalVisible] = useState(false);
           position: 'top',
           visibilityTime: 3000,
         });
+
+  console.log(AsyncStorage.getItem('currentStep'), "userCurren step")
+
         navigation.navigate('ConfirmationScreen');
       } catch (error) {
         console.error('Error skipping KYC details:', error);
@@ -275,20 +278,64 @@ const [modalVisible, setModalVisible] = useState(false);
           position: 'top',
           visibilityTime: 3000,
         });
-        setTimeout(() => {
+        setTimeout(async () => {
           setLoading(false)
+          await AsyncStorage.setItem('currentStep', 'ConfirmationScreen');
           navigation.navigate('ConfirmationScreen');
         }, 2000);
       } else {
+      Alert.alert(response?.message?.error ||'Error', 'Failed to submit KYC details. Please try again.');
+
+
       setLoading(false); // 👉 Hide loader on failure
       
     }
+ } catch (error: any) {
+  console.log(error)
+  setLoading(false);
+  const errorMessage =
+    (error?.response?.data?.message as string) ||
+    (error?.message as string) ||
+    'Failed to submit KYC details. Please try again.';
+  Alert.alert('Error', errorMessage);
+  console.error('KYC submission error:', error);
+}
+
+  };
+
+
+     const fetchUserData = async () => {
+
+  console.log(AsyncStorage.getItem('currentStep'), "userCurren step")
+
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token){
+        navigation.navigate("/Login")
+      }
+      const response = await AuthFetch('users/getKycByUserId', token);
+      console.log(response, "123456")
+      if (response?.data?.status === 'success') {
+        const userData = response?.data?.data;
+      // console.log(userDat, "complete response")
+
+       
+      }
     } catch (error) {
-        setLoading(false);
-      Alert.alert('Error', 'Failed to submit KYC details. Please try again.');
-      console.error('KYC submission error:', error);
+      console.error('Error fetching user data:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch user data.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
     }
   };
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
   
 
   const handleBack = () => {
@@ -612,3 +659,4 @@ const styles = StyleSheet.create({
 });
 
 export default KYCDetailsScreen;
+

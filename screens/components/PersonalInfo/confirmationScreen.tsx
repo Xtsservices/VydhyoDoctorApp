@@ -77,22 +77,29 @@ const ConfirmationScreen: React.FC = () => {
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = async() => {
-    if (!validateForm()) {
-      Alert.alert(
-        'Error',
-        'Please correct the errors in the form before submitting.',
-      );
-      return;
-    }
-    const userdata = {
-    "userId" : userId
+  const handleSubmit = async () => {
+    setLoading(true);
+  if (!validateForm()) {
+    Alert.alert(
+      'Error',
+      'Please correct the errors in the form before submitting.',
+    );
+    return;
   }
-     const token = await AsyncStorage.getItem('authToken');
-    await AsyncStorage.setItem('currentStep', 'ProfileReview');
- const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
 
- console.log('Email sent successfully:', response);
+  try {
+    setLoading(true); // Prevent further submissions
+
+    const userdata = {
+      userId: userId,
+    };
+
+    const token = await AsyncStorage.getItem('authToken');
+    await AsyncStorage.setItem('currentStep', 'ProfileReview');
+    const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
+
+    console.log('Email sent successfully:', response);
+
     Toast.show({
       type: 'success',
       text1: 'Success',
@@ -100,8 +107,45 @@ const ConfirmationScreen: React.FC = () => {
       position: 'top',
       visibilityTime: 3000,
     });
+
     navigation.navigate('ProfileReview');
-  };
+  } catch (error) {
+    console.error('Error in handleSubmit:', error);
+    Alert.alert('Error', 'Failed to submit profile. Please try again.');
+  } finally {
+    setLoading(false); // Re-enable the button after processing
+  }
+};
+
+
+//   const handleSubmit = async() => { 
+//      if (loading) return;
+//     if (!validateForm()) {
+//       Alert.alert(
+//         'Error',
+//         'Please correct the errors in the form before submitting.',
+//       );
+//       return;
+//     }
+//     const userdata = {
+//     "userId" : userId
+//   }
+//      const token = await AsyncStorage.getItem('authToken');
+//     await AsyncStorage.setItem('currentStep', 'ProfileReview');
+//  const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
+
+
+
+//  console.log('Email sent successfully:', response);
+//     Toast.show({
+//       type: 'success',
+//       text1: 'Success',
+//       text2: 'Profile submitted successfully',
+//       position: 'top',
+//       visibilityTime: 3000,
+//     });
+//     navigation.navigate('ProfileReview');
+//   };
 
   
 
@@ -128,15 +172,18 @@ const ConfirmationScreen: React.FC = () => {
 
         AsyncStorage.setItem('stepNo', '7');
   const response = await AuthFetch('users/getUser', token);
+
+  console.log(AsyncStorage.getItem('currentStep'), "userCurren step")
+
         // Make API call
         
         console.log('User data fetched successfully:', response?.data?.data);
         // Check if response status is success
-        if (response.data.status !== 'success') {
+        if (response?.data?.status !== 'success') {
           throw new Error(response.data.message || 'Failed to fetch user data');
         }
 
-        const userData = response.data.data;
+        const userData = response?.data?.data;
         // Format phone number to match +XX XXX XXX XXXX
         const rawMobile = userData.mobile || '';
         const formattedPhone =

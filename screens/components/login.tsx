@@ -89,6 +89,7 @@ const DoctorLoginScreen = () => {
   };
 
   const handleLogin = async () => {
+    await AsyncStorage.removeItem('currentStep');
     const otpString = otp.join('');
     if (otpString.length !== 6) return setOtpError('Enter a valid 6-digit OTP');
 

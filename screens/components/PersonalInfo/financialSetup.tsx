@@ -130,6 +130,7 @@ const FinancialSetupScreen = () => {
             position: 'top',
             visibilityTime: 3000,
           });
+      await AsyncStorage.setItem('currentStep', 'KYCDetailsScreen');
           navigation.navigate('KYCDetailsScreen');
         } else {
           Toast.show({
