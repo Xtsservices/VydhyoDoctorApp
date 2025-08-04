@@ -47,7 +47,7 @@ const [patientformData, setpatientFormData] = useState({
   age: '',
   gender: '',
   appointmentType: '',
-  department: '',
+  department: currentuserDetails?.specialization?.name || '',
   appointmentDate: '',
   selectedTime: '',
   paymentMethod: 'UPI Payment',
@@ -65,6 +65,8 @@ const [userData,setUserDate] = useState<any>(null);
 const [isPatientSelectModalVisible, setPatientSelectModalVisible] = useState(false);
 const [selectedPatient, setSelectedPatient] = useState<any>(null);
 const [message, setMessage] = useState('')
+const [isPatientAdded, setIsPatientAdded] = useState(false);
+
 
 
 const validateMobile = (value: string) => {
@@ -81,6 +83,45 @@ const formatDOBToDDMMYYYY = (dobString: string): string => {
   const [month, day, year] = dobString.split('/');
   return `${day.padStart(2, '0')}-${month.padStart(2, '0')}-${year}`;
 };
+const fetchUserProfile = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('authToken');
+
+      if (storedToken) {
+        const profileResponse = await AuthFetch(`users/getUser?userId=${doctorId}`, storedToken);
+
+        console.log('Profile:123', profileResponse);
+        if (profileResponse.data.status === 'success'){
+            const doctorDetails = profileResponse.data.data
+setFormData((prev) => ({
+  ...prev,
+  department:doctorDetails?.specialization?.name
+  ,
+}));
+        }
+
+        // Do something with profileResponse
+      } else {
+        console.warn('No auth token found');
+      }
+    } catch (e) {
+      console.error('Error fetching profile:', e);
+    }
+  };
+  
+     useEffect(() => {
+
+      if (currentuserDetails.role !== 'doctor'){
+        fetchUserProfile()
+      }
+    if (formData.appointmentDate && formData.clinicAddressId && doctorId) {
+      console.log("patient")
+      fetchTimeSlots(formData.appointmentDate, formData.clinicAddressId);
+    } else {
+      setTimeSlots([]);
+      // setPatientData((prev) => ({ ...prev, selectedTimeSlot: "" }));
+    }
+  }, [formData.appointmentDate, formData.clinicAddressId, fetchTimeSlots]);
 
  const onDateChange = (event: any, selectedDate: Date | undefined) => {
     setShowDatePicker(false);
@@ -95,7 +136,7 @@ const handleSearch = async () => {
   try {
     const token = await AsyncStorage.getItem('authToken');
     const response = await AuthFetch(`doctor/searchUser?mobile=${searchMobile}`, token);
-
+console.log(response, "selected patient details")
     if (response?.status === "success") {
       const patients = response.data.data;
       console.log(patients, "selectedPatientDetails")
@@ -109,10 +150,16 @@ const handleSearch = async () => {
           setPatientNames(patients); // store patients for modal
           setPatientSelectModalVisible(true); // open modal
         }
-      } else {
-        Alert.alert('Not Found', 'Patient does not exist. Please add patient.');
+      } else if(patients) {
+        prefillPatientDetails(patients);
+          setFieldsDisabled(true);
+          Alert.alert('Patient Found', 'Patient details have been filled.');
+      }else{
+Alert.alert('Not Found', 'Patient does not exist. Please add patient.');
         setFieldsDisabled(false);
       }
+    }else{
+      Alert.alert(response?.message?.message || "no User found PLease add patient")
     }
   } catch (error) {
     console.error('Search error:', error);
@@ -143,13 +190,19 @@ const prefillPatientDetails = (patient: any) => {
   firstname: patientformData.firstName,
   lastname: patientformData.lastName,
   gender: patientformData.gender,
-  DOB: patientformData.dob,
-  mobile: patientformData.mobile,
-  age: patientformData.age || calculateAge(patientformData.dob)
+  DOB: patientformData.dob || '',
+  mobile: patientformData.mobile ,
+  age: patientformData.age || calculateAge(patientformData.dob) || "0"
 };
+
+console.log(payload, 'payload details')
       const response = await AuthPost('doctor/createPatient', payload, token);
-      const data = 'data' in response ? response.data : null;
-      setPatientId(data.data.userId || ''); // Assuming userId is returned in the response
+      console.log(response, 'patient response')
+      if (response.status === 'success'){
+ const data = response?.data
+      setIsPatientAdded(true)
+
+      setPatientId(data?.data?.userId || ''); // Assuming userId is returned in the response
       console.log('Add patient response:', data);
        Toast.show({
                   type: 'success',
@@ -159,6 +212,7 @@ const prefillPatientDetails = (patient: any) => {
                   visibilityTime: 3000,
                 });
 
+
                setpatientFormData({
     firstName: data.data?.firstname || '',
     lastName: data.data?.lastname || '',
@@ -167,6 +221,8 @@ const prefillPatientDetails = (patient: any) => {
     age: data.data?.age || '',
     mobile: data.data?.mobile || '',
   });
+      }
+     
     } catch (error) {
       console.error('Add patient error:', error);
       Alert.alert('Error', 'Failed to add patient');
@@ -177,7 +233,7 @@ const handleCreateAppointment = async () => {
   try {
     const token = await AsyncStorage.getItem('authToken');
 
-   console.log(patientformData,patientId, "selectedPatientForm Data")
+   console.log(patientformData,patientId,formData,  "selectedPatientForm Data")
 
     if (!token) {
       Alert.alert('Authentication Error', 'Please login again.');
@@ -220,9 +276,9 @@ clinicAddressId,
 
     if (response.status === 'success') {
       Alert.alert('Success', 'Appointment created successfully!');
-      navigation.goBack(); // Optional: navigate back
+      navigation.navigate('DoctorDashboard'); // Optional: navigate back
     } else {
-      Alert.alert('Error', 'Please fill all fields');
+      Alert.alert( response?.message?.message ||'Error', 'Please fill all fields');
       Toast.show({
     type: 'error',
     text1: 'error',
@@ -235,6 +291,13 @@ clinicAddressId,
 
   } catch (error: any) {
     console.error('Create appointment error:', error);
+     Toast.show({
+    type: 'error',
+    text1: 'error',
+    text2: response?.message?.message || "Please fill all fields",
+    position: 'top',
+    visibilityTime: 3000,
+  });
     Alert.alert('Error', error.response?.data?.message || 'Failed to create appointment');
   }
 };
@@ -311,6 +374,9 @@ const formattedDate = `${year}-${month}-${day}`;
     return slotMoment.isAfter(moment());
   });
   console.log(availableSlots)
+  if (availableSlots.length ===0){
+    Alert.alert('No slots available for the selected clinic on the selected date')
+  }
         setTimeSlots(availableSlots);
        
    
@@ -351,49 +417,7 @@ const formattedDate = `${year}-${month}-${day}`;
     } 
   }, []);
 
-const fetchUserProfile = async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem('authToken');
 
-      if (storedToken) {
-        const profileResponse = await AuthFetch(`users/getUser?userId=${doctorId}`, storedToken);
-
-        console.log('Profile:123', profileResponse);
-        if (profileResponse.data.status === 'success'){
-            const doctorDetails = profileResponse.data.data
-setFormData((prev) => ({
-  ...prev,
-  department:doctorDetails?.specialization?.name
-  ,
-}));
-        }
-
-        // Do something with profileResponse
-      } else {
-        console.warn('No auth token found');
-      }
-    } catch (e) {
-      console.error('Error fetching profile:', e);
-    }
-  };
-
-  console.log(formData, "after doctor data ")
-
-
-  
-     useEffect(() => {
-
-      if (currentuserDetails.role !== 'doctor'){
-        fetchUserProfile()
-      }
-    if (formData.appointmentDate && formData.clinicAddressId && doctorId) {
-      console.log("patient")
-      fetchTimeSlots(formData.appointmentDate, formData.clinicAddressId);
-    } else {
-      setTimeSlots([]);
-      // setPatientData((prev) => ({ ...prev, selectedTimeSlot: "" }));
-    }
-  }, [formData.appointmentDate, formData.clinicAddressId, fetchTimeSlots]);
 
   const calculateAge = useCallback((dob: string): string => {
   if (!dob ) return "";
@@ -407,6 +431,8 @@ setFormData((prev) => ({
   }
   return String(age);
 }, []);
+
+console.log(formData, "complete form data")
 
   return (
     <ScrollView style={styles.container}>
@@ -498,6 +524,7 @@ setFormData((prev) => ({
           style={styles.inputFlex}
           value={patientformData.firstName}
           onChangeText={(text) => setpatientFormData({ ...patientformData, firstName: text })}
+          editable={!isPatientAdded}
         />
         </View>
            <View style={styles.inputWrapper}>
@@ -507,6 +534,7 @@ setFormData((prev) => ({
           style={styles.inputFlex}
           value={patientformData.lastName}
           onChangeText={(text) => setpatientFormData({ ...patientformData, lastName: text })}
+          editable={!isPatientAdded}
         />
         </View>
       </View>
@@ -515,9 +543,10 @@ setFormData((prev) => ({
       <View style={styles.row}>
          <View style={styles.inputWrapper}>
     <Text style={styles.label}>Date of Birth</Text>
-         <TouchableOpacity style={styles.inputFlex} onPress={() => setShowDatePicker(true)}>
+         <TouchableOpacity style={styles.inputFlex} onPress={() => setShowDatePicker(true)} >
               <Text style={{ color: patientformData.dob ? '#000' : '#9CA3AF' }}>
                 {patientformData.dob || 'DD/MM/YYYY'}
+                
               </Text>
             </TouchableOpacity>
 
@@ -560,6 +589,7 @@ setFormData((prev) => ({
           setpatientFormData({ ...patientformData, mobile: text });
           if (mobileError) validateMobile(text); // Live recheck if already errored
         }}
+        editable={!isPatientAdded}
         onBlur={() => validateMobile(patientformData.mobile)}
       />
       {mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
@@ -608,7 +638,6 @@ setFormData((prev) => ({
       <Text>Department *</Text>
      <View style={styles.pickerContainer}>
         <TextInput
-          placeholder="Eg : cardio"
           value={formData.department ||currentuserDetails?.
 specialization?.name || ""}
           // onChangeText={(text) => setFormData({ ...formData, department: text })}

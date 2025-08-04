@@ -12,8 +12,11 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   SafeAreaView,
+  Modal,
+  FlatList,
+  Pressable,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import CheckBox from '@react-native-community/checkbox';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { pick, types } from '@react-native-documents/picker';
@@ -24,8 +27,9 @@ import ProgressBar from '../progressBar/progressBar';
 import { AuthFetch, UploadFiles } from '../../auth/auth';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { Picker } from '@react-native-picker/picker';
 
-// Specialization options from the provided document
+// Specialization options
 const specializationOptions = [
   'General Medicine',
   'Internal Medicine',
@@ -123,22 +127,79 @@ const { width, height } = Dimensions.get('window');
 
 const SpecializationDetails = () => {
   const userId = useSelector((state: any) => state.currentUserID);
-  const [degrees, setDegrees] = useState<{ id: string; name: string }[]>([]);
+  const [degrees, setDegrees] = useState<{ id: string; degreeName: string }[]>([]);
   const [formData, setFormData] = useState({
     degree: '',
     specialization: '',
     yearsExperience: '',
     bio: '',
+    customDegree: '',
     degrees: null as { uri: string; type: string; name: string } | null,
     certifications: null as { uri: string; type: string; name: string } | null,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [tempDegrees, setTempDegrees] = useState<string[]>(
+    formData.degree ? formData.degree.split(',').map(deg => deg.trim()).filter(deg => deg) : []
+  );
 
   const navigation = useNavigation<NavigationProp>();
 
+  const handleDegreeChange = (itemValue: string) => {
+    let newDegrees: string[];
+
+    if (tempDegrees.includes(itemValue)) {
+      // Remove degree if already selected
+      newDegrees = tempDegrees.filter(deg => deg !== itemValue);
+    } else {
+      // Add degree to selection
+      newDegrees = [...tempDegrees, itemValue].filter(deg => deg !== '');
+    }
+
+    setTempDegrees(newDegrees);
+  };
+
+  const handleConfirm = () => {
+    // Replace "Others" with customDegree value if provided and non-empty, otherwise exclude it
+    const finalDegrees = tempDegrees
+      .map(deg => (deg === 'Others' && formData.customDegree?.trim() ? formData.customDegree.trim() : deg))
+      .filter(deg => deg !== 'Others' && deg.trim() !== '')
+      .join(', ');
+
+    setFormData({
+      ...formData,
+      degree: finalDegrees,
+      customDegree: tempDegrees.includes('Others') ? formData.customDegree : '',
+    });
+    setModalVisible(false);
+  };
+
+  const handleCancel = () => {
+    setTempDegrees(formData.degree ? formData.degree.split(',').map(deg => deg.trim()).filter(deg => deg) : []);
+    setModalVisible(false);
+  };
+
+  const renderDegreeItem = ({ item }: { item: { id: string; degreeName: string } }) => (
+    <Pressable style={styles.checkboxContainer} onPress={() => handleDegreeChange(item.degreeName)}>
+      <CheckBox
+        value={tempDegrees.includes(item.degreeName)}
+        onValueChange={() => handleDegreeChange(item.degreeName)}
+        disabled={isLoading}
+        tintColors={{ true: '#00203F', false: '#999' }}
+      />
+      <Text style={styles.checkboxLabel}>{item.degreeName}</Text>
+    </Pressable>
+  );
+
+  const degreeList = [...degrees, { id: 'others', degreeName: 'Others' }];
+
   const validateForm = () => {
     if (!formData.degree) {
-      Alert.alert('Error', 'Please select a degree.');
+      Alert.alert('Error', 'Please select at least one degree.');
+      return false;
+    }
+    if (tempDegrees.includes('Others') && !formData.customDegree?.trim()) {
+      Alert.alert('Error', 'Please enter a custom degree for "Others".');
       return false;
     }
     if (!formData.specialization) {
@@ -275,7 +336,7 @@ const SpecializationDetails = () => {
       }
 
       const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
-      console.log(response, "update form data")
+      console.log(response, "update form data");
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -284,16 +345,16 @@ const SpecializationDetails = () => {
           position: 'top',
           visibilityTime: 3000,
         });
-         await AsyncStorage.setItem('currentStep', 'Practice');
+        await AsyncStorage.setItem('currentStep', 'Practice');
         navigation.navigate('Practice');
       } else {
         Toast.show({
           type: 'error',
-          text1: 'error',
+          text1: 'Error',
           text2: response.message?.message || 'Failed to update specialization details.',
           position: 'top',
           visibilityTime: 4000,
-      });
+        });
       }
     } catch (err) {
       console.error('API error:', err);
@@ -303,8 +364,6 @@ const SpecializationDetails = () => {
     }
   };
 
-  
-
   const handleBack = () => {
     navigation.navigate('PersonalInfo');
   };
@@ -313,9 +372,18 @@ const SpecializationDetails = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('catalogue/degree/getAllDegrees', token);
-      console.log(response, "get all degrees")
-      const data = response?.data?.data || [];
-      setDegrees(data);
+      console.log(response, "get all degrees");
+       console.log(response, "get all degrees");
+    const data = response?.data?.data || [];
+
+    // Sort alphabetically by 'name'
+    const sortedData = data.sort((a: { degreeName: string; }, b: { degreeName: any; }) =>
+      a.degreeName.localeCompare(b.degreeName)
+    );
+
+    setDegrees(sortedData);
+      // const data = response?.data?.data || [];
+      // setDegrees(data);
     } catch (error) {
       console.error('Error fetching degrees:', error);
       Toast.show({
@@ -328,38 +396,29 @@ const SpecializationDetails = () => {
     }
   };
 
-
-
   const fetchUserData = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
- const response = await AuthFetch('users/getUser', token);
-      console.log(response)
-      if (response.data.status === 'success') {
-        const userData = response.data.data;
-      console.log(userData?.specialization?.experience, "complete response")
-
-        setFormData({
-          degree: userData?.specialization?.degree || '',
-          specialization: userData?.specialization?.name || '',
-          yearsExperience: userData?.specialization?.experience|| '',
-          bio: userData?.specialization?.bio || '',
-          degrees: userData?.specialization?.degrees && 'uploaded successfully'  || null,
-          certifications: userData?.specialization?.certifications&& "uploaded successfully" || null,
-        });
+        const response = await AuthFetch('users/getUser', token);
+        console.log(response);
+        if (response.data.status === 'success') {
+          const userData = response.data.data;
+          console.log(userData?.specialization?.experience, "complete response");
+          setFormData({
+            degree: userData?.specialization?.degree || '',
+            specialization: userData?.specialization?.name || '',
+            yearsExperience: userData?.specialization?.experience || '',
+            bio: userData?.specialization?.bio || '',
+            customDegree: userData?.specialization?.customDegree || '',
+            degrees: userData?.specialization?.degrees && 'uploaded successfully' || null,
+            certifications: userData?.specialization?.certifications && "uploaded successfully" || null,
+          });
+          setTempDegrees(userData?.specialization?.degree ? userData?.specialization?.degree.split(',').map((deg: string) => deg.trim()).filter((deg: string) => deg) : []);
+        }
       }
-      }
-     
     } catch (error) {
       console.error('Error fetching user data:', error);
-      // Toast.show({
-      //   type: 'error',
-      //   text1: 'Error',
-      //   text2: 'Failed to fetch user data.',
-      //   position: 'top',
-      //   visibilityTime: 4000,
-      // });
     }
   };
 
@@ -368,7 +427,7 @@ const SpecializationDetails = () => {
     fetchDegrees();
   }, []);
 
-  console.log(formData, "setForm data")
+  console.log(formData, "setForm data");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -389,27 +448,55 @@ const SpecializationDetails = () => {
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Degree*</Text>
-              {/* <TextInput
-                style={styles.input}
-                value={formData.degree}
-                onChangeText={(itemValue) => setFormData({ ...formData, degree: itemValue })}
-                placeholder="Degree"
-                placeholderTextColor="#999"
-                editable={!isLoading}
-              /> */}
-              <View style={styles.input}>
-                <Picker
-                  selectedValue={formData.degree}
-                  onValueChange={(itemValue) => setFormData({ ...formData, degree: itemValue })}
-                  style={styles.picker}
-                  enabled={!isLoading}
-                >
-                  <Picker.Item label="Select degree" value="" />
-                  {degrees.map((degree) => (
-                    <Picker.Item key={degree.id} label={degree.degreeName} value={degree.degreeName} />
-                  ))}
-                </Picker>
-              </View>
+              <TouchableOpacity
+                style={[styles.input, styles.dropdownButton]}
+                onPress={() => !isLoading && setModalVisible(true)}
+                disabled={isLoading}
+              >
+                <Text style={styles.dropdownText}>
+                  {formData.degree || 'Select degrees'}
+                </Text>
+              </TouchableOpacity>
+              <Modal
+                visible={modalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={handleCancel}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select Degrees</Text>
+                    <FlatList
+                      data={degreeList}
+                      renderItem={renderDegreeItem}
+                      keyExtractor={(item) => item.id}
+                      style={styles.flatList}
+                    />
+                    {tempDegrees.includes('Others') && (
+                      <TextInput
+                        style={[styles.input, styles.textInput]}
+                        value={formData.customDegree || ''}
+                        onChangeText={(text) => setFormData({ ...formData, customDegree: text })}
+                        placeholder="Enter custom degree"
+                        placeholderTextColor="#999"
+                        editable={!isLoading}
+                      />
+                    )}
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity style={styles.modalButton} onPress={handleCancel} disabled={isLoading}>
+                        <Text style={styles.modalButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.modalButton} onPress={handleConfirm} disabled={isLoading}>
+                        <Text style={styles.modalButtonText}>Confirm</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+              <Text style={styles.selectedText}>
+                Selected: {formData.degree || 'None'}
+                {tempDegrees.includes('Others') && formData.customDegree ? ` (${formData.customDegree})` : ''}
+              </Text>
             </View>
 
             <View style={styles.inputGroup}>
@@ -647,6 +734,73 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: width * 0.04,
     marginTop: height * 0.02,
+  },
+  dropdownButton: {
+    padding: 10,
+    justifyContent: 'center',
+  },
+  dropdownText: {
+    fontSize: width * 0.04,
+    color: '#333',
+  },
+  textInput: {
+    marginTop: 10,
+    padding: 10,
+    fontSize: width * 0.04,
+  },
+  selectedText: {
+    marginTop: 8,
+    fontSize: width * 0.035,
+    color: '#555',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: width * 0.9,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: width * 0.05,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  flatList: {
+    maxHeight: 300,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  checkboxLabel: {
+    fontSize: width * 0.04,
+    color: '#333',
+    marginLeft: 8,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  modalButton: {
+    padding: 10,
+    backgroundColor: '#00203F',
+    borderRadius: 8,
+    width: '48%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    fontWeight: '600',
   },
 });
 

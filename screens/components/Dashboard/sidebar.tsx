@@ -17,16 +17,36 @@ const PLACEHOLDER_IMAGE = require('../../assets/img.png');
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
-import { AuthFetch } from '../../auth/auth';
-
+import { AuthFetch, AuthPost } from '../../auth/auth';
+import { Alert } from 'react-native';
 
 
 const Sidebar = () => {
   const navigation = useNavigation<any>();
-const [access, setAccess] = useState<string[]>([]); // ← You’ll receive this from backend
-const currentuserDetails =  useSelector((state: any) => state.currentUser);
-    const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
-    console.log(currentuserDetails.access, "currentuserdeils")
+const currentuserDetails =  useSelector((state: any) => state?.currentUser);
+    const doctorId = currentuserDetails?.role==="doctor"? currentuserDetails?.userId : currentuserDetails?.createdBy
+    console.log(currentuserDetails?.access, "currentuserdeils")
+    const [department, setDepartment] = useState(currentuserDetails?.specialization?.name)
+const [access, setAccess] = useState<string[]>(currentuserDetails?.access); // ← You’ll receive this from backend
+
+const confirmLogout = () => {
+  Alert.alert(
+    'Confirm Logout',
+    'Are you sure you want to log out?',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: handleLogout,
+      },
+    ],
+    { cancelable: true }
+  );
+};
 
 const menuItems = [
   {
@@ -40,75 +60,75 @@ const menuItems = [
     key: 'appointments',
     label: 'Appointments',
     description: 'Manage your appointments',
-    icon: 'dashboard',
+    icon: 'event_note',
     onPress: () => navigation.navigate('Appointments'),
   },
   {
     key: 'viewPatient',
     label: 'My Patient',
     description: 'Total patient',
-    icon: 'folder',
+    icon: 'groups',
     onPress: () => navigation.navigate('MyPatient'),
   },
   {
     key: 'prescription',
     label: 'E Prescription',
     description: 'Patient Prescription',
-    icon: 'folder',
+    icon: 'description',
   },
-  {
-    key: 'labs',
-    label: 'Labs',
-    description: 'Labs',
-    icon: 'folder',
-  },
-  {
-    key: 'pharmacy',
-    label: 'Pharmacy',
-    description: 'Pharmacy',
-    icon: 'folder',
-  },
+  // {
+  //   key: 'labs',
+  //   label: 'Labs',
+  //   description: 'Labs',
+  //   icon: 'science',
+  // },
+  // {
+  //   key: 'pharmacy',
+  //   label: 'Pharmacy',
+  //   description: 'Pharmacy',
+  //   icon: 'folder',
+  // },
   {
     key: 'staff',
     label: 'Staff Management',
     description: 'Update Staff Management',
-    icon: 'group',
+    icon: 'settings',
     onPress: () => navigation.navigate('StaffManagement'),
   },
   {
     key: 'clinic',
     label: 'Clinic Management',
     description: 'Manage clinic settings and information',
-    icon: 'folder',
+    icon: 'star',
     onPress: () => navigation.navigate('Clinic'),
   },
   {
     key: 'availability',
     label: 'Availability',
     description: 'Update Availability',
-    icon: 'clock',
+    icon: 'event',
     onPress: () => navigation.navigate('Availability'),
   },
   {
     key: 'accounts',
     label: 'Accounts',
     description: 'Accounts and Billing',
-    icon: 'event-available',
+    icon: 'receipt',
     onPress: () => navigation.navigate('Accounts'),
   },
   {
     key: 'reviews',
     label: 'Reviews',
     description: 'Manage reviews and ratings',
-    icon: 'support-agent',
+    icon: 'reviews',
     onPress: () => navigation.navigate('Reviews'),
   },
   {
     key: 'Logout',
     label: 'Logout',
     description: 'Sign out of your account',
-    icon: 'support-agent',
-    onPress: () => navigation.navigate('Logout'),
+    icon: 'logout',
+    onPress: confirmLogout,
   },
 ];
 
@@ -124,9 +144,13 @@ const menuItems = [
             // const storedStep = await AsyncStorage.getItem('currentStep');
       
             if (storedToken && storedUserId) {
-              const profileResponse = await AuthFetch('users/getUser', storedToken);
-              console.log('Profile response:', profileResponse.data.data);
+              const profileResponse = await AuthFetch(`users/getUser/${doctorId}`, storedToken);
+              console.log('Profile response:', profileResponse);
               if (profileResponse.status === 'success') {
+                if (profileResponse.data.data.role !== 'doctor'){
+                  console.log(profileResponse.data.data.specialization.name, "department")
+setDepartment (profileResponse.data.data.specialization.name)
+                }
                 if (profileResponse.data.data.access && Array.isArray(profileResponse.data.data.access)) {
   const accessMap: { [key: string]: string } = {
     viewPatients: 'viewPatient',
@@ -184,10 +208,16 @@ const menuItems = [
   useEffect(() => {
     fetchUserData();
   }, []);
+  
 
   const handleLogout = async () => {
     try {
       // Clear AsyncStorage
+       const storedToken = await AsyncStorage.getItem('authToken');
+
+       const response = await AuthPost("auth/logout", storedToken);
+
+       console.log(response, 'logoutresponse ')
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('userId');
 
@@ -205,7 +235,7 @@ const menuItems = [
         visibilityTime: 3000,
       });
      navigation.navigate('Login'); // Navigate to Login screen
-     
+     return;
     } catch (error) {
       console.error('Error during logout:', error);
       Toast.show({
@@ -218,6 +248,8 @@ const menuItems = [
     }
   };
 
+  const name = currentuserDetails?.role === 'doctor' ? `Dr.${currentuserDetails?.firstname} ${currentuserDetails?.lastname}` : `${currentuserDetails?.firstname} ${currentuserDetails?.lastname}`
+console.log(department, 'departmetn')
   return (
    <ScrollView
         style={styles.scrollView}
@@ -231,8 +263,8 @@ const menuItems = [
           style={styles.profileImage}
         />
         <View style={styles.headerText}>
-          <Text style={styles.name}>Dr. Rohan Mehta</Text>
-          <Text style={styles.title}>Cardiologist</Text>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.title}>{department}</Text>
         </View>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <AntDesign name="right" size={20} color="#000" />
@@ -246,9 +278,9 @@ const menuItems = [
       </TouchableOpacity>
 
       {
-  (currentuserDetails.role === 'doctor'
+  (currentuserDetails?.role === 'doctor'
     ? menuItems
-    : menuItems.filter(item => access.includes(item.key) || item.key === 'Logout') // always allow logout
+    : menuItems?.filter(item => access?.includes(item.key) || item.key === 'Logout') // always allow logout
   ).map((item, index) => (
     <MenuItem
       key={index}

@@ -69,11 +69,9 @@ const PersonalInfoScreen: React.FC = () => {
     medicalRegNumber: '',
     email: '',
     gender: '',
-    
     spokenLanguages: '',
     appLanguage: '',
     relationship: '',
-   
     maritalStatus: '',
   });
   const navigation = useNavigation<any>();
@@ -328,7 +326,7 @@ console.log(userData, "userDetails")
           email: userData.email || '',
           gender: userData.gender || '',
           dateOfBirth: userData.dateOfBirth || '',
-          spokenLanguages: userData?.spokenLanguages || [],
+          spokenLanguages: userData?.spokenLanguage || [],
           
           profilePhoto: userData?.profilePhoto || PLACEHOLDER_IMAGE,
           appLanguage: userData?.appLanguage || 'en',

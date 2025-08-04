@@ -47,14 +47,13 @@ const AccountVerified = () => {
       <Text style={styles.congratsText}>
         Congratulations! Your account has been successfully verified. You now have full access to all features.
       </Text>
-      <TouchableOpacity style={styles.viewProfileButton}>
+      {/* <TouchableOpacity style={styles.viewProfileButton}>
          {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.buttonText}>View Profile</Text>
         )}
-        {/* <Text style={styles.buttonText}>View Profile</Text> */}
-      </TouchableOpacity>
+      </TouchableOpacity> */}
       <TouchableOpacity style={styles.goToDashboardButton} onPress={() => navigation.navigate('DoctorDashboard' as never)}>
         {/* <Text style={styles.buttonText2}>Go to Dashboard</Text> */}
          {loading ? (

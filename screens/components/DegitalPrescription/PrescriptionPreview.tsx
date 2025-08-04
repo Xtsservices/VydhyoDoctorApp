@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -300,21 +300,72 @@ const token = await AsyncStorage.getItem('authToken');
       Toast.show({ type: 'error', text1: error.response?.data?.message || 'Failed to add prescription' });
     }
   };
+  const [error, setError] = useState(null);
+  const [selectedClinic, setSelectedClinic] = useState()
 
+
+  useEffect(()=>{
+ const fetchClinics = async () => {
+      if (!doctorId) {
+        console.error("No doctorId available. User:", currentuserDetails);
+        setError("No doctor ID available");
+       
+        return;
+      }
+
+      try {
+        console.log("Fetching clinics for doctorId:", doctorId);
+      const token = await AsyncStorage.getItem('authToken');
+
+        const response = await AuthFetch(`users/getClinicAddress?doctorId=${doctorId}`,token);
+
+
+        if ( response.data?.status === "success") {
+          const allClinics = response.data.data || [];
+          console.log(allClinics)
+          const activeClinics = allClinics.filter((clinic) => clinic.addressId === formData.
+doctorInfo
+.selectedClinicId
+);
+        
+          setSelectedClinic(activeClinics[0]);
+        } else {
+          setError("Failed to fetch clinics");
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setError(err.message);
+      } 
+    };
+    fetchClinics()
+  },[])
+
+        console.log("API Response:", selectedClinic);
 
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerText}>VYDHQ MULTISPECIALITY</Text>
+
+        <View style={styles.row}>
+        <Text style={styles.headerText}>{selectedClinic?.clinicName
+}</Text>
+<View >
+<Text style={styles.headerText}>📍 {selectedClinic?.address
+}</Text>
+                    <Text style={styles.headerText}>📞{selectedClinic?.mobile
+}</Text>
+</View>
+        </View>
+         
       </View>
 
-      <View style={styles.section}>
+      {/* <View style={styles.section}>
         <Text style={styles.sectionTitle}>Contact Information</Text>
         <Text>Phone: +91 12345 67890</Text>
         <Text>Email: info@vydhq.com</Text>
         <Text>Website: www.vydhq.com</Text>
-      </View>
+      </View> */}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Dr. {formData?.doctorInfo?.doctorName}</Text>
@@ -332,52 +383,82 @@ const token = await AsyncStorage.getItem('authToken');
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Patient Complaint</Text>
-        <Text>{formData.patientInfo.
-chiefComplaint}</Text>
-      </View>
+        <Text style={styles.sectionTitle}>Patient History</Text>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Family History</Text>
-        <Text>{formData.patientInfo?.familyMedicalHistory}</Text>
-        <Text>{formData.patientInfo?.pastMedicalHistory}</Text>
-        <Text>{formData.patientInfo?.physicalExamination}</Text>
+        <Text>Chief Complaint: {formData.patientInfo.
+chiefComplaint}</Text>
+<Text>Past History: {formData.patientInfo.
+pastMedicalHistory
+}</Text>
+<Text>Family History: {formData.patientInfo.
+familyMedicalHistory}</Text>
+<Text>Examination: {formData.patientInfo.
+physicalExamination}</Text>
+
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Vitals</Text>
-        <Text>BP: {formData.vitals.bp}</Text>
+         <View style={styles.row}>
+ <Text>BP: {formData.vitals.bpDiastolic
+}/{formData.vitals.bpSystolic
+}</Text>
         <Text>Pulse: {formData.vitals.pulseRate}</Text>
-        <Text>Temp:  {formData.vitals.temperature}</Text>
+         <Text>Temp:  {formData.vitals.temperature}</Text>
+         </View>
+        <View style={styles.row}>
+<Text>RR
+:  {formData.vitals.respiratoryRate
+}</Text>
+<Text>Spo2
+:  {formData.vitals.spo2
+}</Text>
+<Text>BMI
+:  {formData.vitals.bmi
+}</Text>
+
+        </View>
+       
+        
+
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Investigations</Text>
-        {/* {formData.diagnosis.selectedTests?.map((test: string, index: number) => (
-          <Text key={index}>{test.testName}</Text>
-        ))} */}
-      </View>
+
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Diagnosis</Text>
-         {formData.diagnosis.selectedTests?.map((test: string, index: number) => (
+        <Text style={styles.sectionTitle}>Tests</Text>
+         {formData?.diagnosis?.selectedTests?.map((test: string, index: number) => (
           <Text key={index}>{test.testName}</Text>
         ))}
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Prescribed Medications</Text>
-        {/* {formData.prescribedMedications?.map((med: any, index: number) => (
+        {formData?.diagnosis?.medications?.map((med: any, index: number) => (
           <View key={index} style={styles.medItem}>
             <Text>Medicine #{index + 1}</Text>
-            <Text>Name: {med.name}</Text>
-            <Text>Type: {med.type}</Text>
+            <View style={styles.row}>
+ <Text>Name: {med.
+medName}</Text>
+            <Text>Type: {med.medicineType}</Text>
             <Text>Dosage: {med.dosage}</Text>
-            <Text>Duration:  days</Text>
-            <Text>Frequency: </Text>
-            <Text>Timing: </Text>
+            </View>
+            <View style={styles.row}>
+ <Text>Duration: {med.
+duration
+}</Text>
+            <Text>Frequency: {med.
+frequency
+}</Text>
+            
+            </View>
+            <Text>Timing: {med.
+timings?.join(', ')}</Text>
+
+           
+  
           </View>
-        ))} */}
+        ))}
       </View>
 
       <View style={styles.section}>
@@ -420,16 +501,18 @@ export default PrescriptionPreview;
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#f6f6f6',
+    backgroundColor: '#F0FDF4',
   },
   header: {
     alignItems: 'center',
     marginBottom: 16,
+    backgroundColor:'#2563eb',
+    color:'white'
   },
   headerText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: 'white',
   },
   section: {
     backgroundColor: '#fff',
@@ -471,6 +554,11 @@ const styles = StyleSheet.create({
   saveText: {
     color: '#fff',
     fontWeight: '600',
+  },
+   row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
 });
 

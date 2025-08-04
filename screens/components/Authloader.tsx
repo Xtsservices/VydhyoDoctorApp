@@ -1,5 +1,5 @@
 // AuthLoader.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -11,6 +11,7 @@ const { width, height } = Dimensions.get('window');
 const AuthLoader = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
+  const [isPatient, setIsPatient] = useState(false);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -33,6 +34,12 @@ const AuthLoader = () => {
           const userData = profileResponse?.data?.data;
           console.log(userData, "current user data")
 
+           if (userData.role === 'patient') {
+            console.log(userData.role, 'user is a patient');
+            setIsPatient(true); // Set state to show unauthorized message
+            return;
+          }
+
           dispatch({ type: 'currentUser', payload: userData });
           dispatch({ type: 'currentUserID', payload: { userId: storedUserId } });
 
@@ -40,6 +47,8 @@ const AuthLoader = () => {
             navigation.replace('AccountVerified');
             return;
           }
+
+         
 
           
 
@@ -108,6 +117,14 @@ const AuthLoader = () => {
     return { screen: 'ProfileReview' };
   };
 
+  if (isPatient) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>You are not Authorized to access this app</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#00203F" />
@@ -130,4 +147,11 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     color: '#333',
   },
+  errorText: {
+    fontSize: width * 0.05,
+    color: '#FF0000',
+    textAlign: 'center',
+    paddingHorizontal: width * 0.05,
+  },
+
 });

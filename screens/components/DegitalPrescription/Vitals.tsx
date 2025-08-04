@@ -28,6 +28,22 @@ const VitalsScreen = () => {
   }, [formData.vitals?.weight, formData.vitals?.height]);
 
   const handleVitalsChange = (field: string, value: string) => {
+     const normalizedValue =
+      value === "" ? "" : Number(value) < 0 ? "" : String(value).trim();
+    const updatedData = { ...formData, [field]: normalizedValue };
+    if (field === "bpSystolic" || field === "bpDiastolic") {
+      const systolic =
+        field === "bpSystolic" ? normalizedValue : formData.bpSystolic;
+      const diastolic =
+        field === "bpDiastolic" ? normalizedValue : formData.bpDiastolic;
+      updatedData.bp = systolic && diastolic ? `${systolic}/${diastolic}` : "";
+    }
+    if (field === "weight" || field === "height") {
+      updatedData.bmi = calculateBMI(
+        field === "weight" ? normalizedValue : updatedData.weight,
+        field === "height" ? normalizedValue : updatedData.height
+      );
+    }
     setFormData((prev) => ({
       ...prev,
       vitals: {
@@ -36,6 +52,61 @@ const VitalsScreen = () => {
       },
     }));
   };
+
+   const validationRules = {
+    bpSystolic: {
+      min: 0,
+      max: 240,
+      message: "Systolic BP must be between 0 and 240 mmHg",
+    },
+    bpDiastolic: {
+      min: 0,
+      max: 200,
+      message: "Diastolic BP must be between 0 and 200 mmHg",
+    },
+    pulseRate: {
+      min: 0,
+      max: 350,
+      message: "Pulse rate must be between 0 and 350 bpm",
+    },
+    respiratoryRate: {
+      min: 0,
+      max: 30,
+      message: "Respiratory rate must be between 0 and 30 breaths/min",
+    },
+    temperature: {
+      min: 95,
+      max: 110,
+      message: "Temperature must be between 95 and 110 °F",
+    },
+    spo2: { min: 0, max: 100, message: "SpO2 must be between 0 and 100%" },
+    height: {
+      min: 50,
+      max: 300,
+      message: "Height must be between 50 and 300 cm",
+    },
+    weight: {
+      min: 0,
+      max: 250,
+      message: "Weight must be between 0 and 250 kg",
+    },
+  };
+   const calculateBMI = (weight, height) => {
+    if (weight && height && !isNaN(Number(weight)) && !isNaN(Number(height))) {
+      const heightInMeters = Number(height) / 100;
+      const bmi = Number(weight) / (heightInMeters * heightInMeters);
+      return bmi.toFixed(1);
+    }
+    return "";
+  };
+
+  //   const validateField = (field, value) => {
+  //   const rules = validationRules[field];
+  //   if (!rules || value === "" || value === null || value === undefined)
+  //     return true;
+  //   const numVal = Number(value);
+  //   return !isNaN(numVal) && numVal >= rules.min && numVal <= rules.max;
+  // };
 
   return (
     <KeyboardAvoidingView
@@ -49,11 +120,23 @@ const VitalsScreen = () => {
           <Text style={styles.sectionTitle}>🩺 Vitals</Text>
           <View style={styles.inputRow}>
             <TextInput
-              placeholder="BP"
+              placeholder="bpSystolic"
               style={styles.input}
-              value={formData.vitals?.BP || ''}
-              onChangeText={(text) => handleVitalsChange('bp', text)}
+              value={formData.vitals?.bpSystolic || ''}
+              onChangeText={(text) => handleVitalsChange('bpSystolic', text)}
+              keyboardType="numeric"
+
             />
+            {/* <Text>/</Text> */}
+             <TextInput
+              placeholder="bpDiastolic"
+              style={styles.input}
+              value={formData.vitals?.bpDiastolic || ''}
+              onChangeText={(text) => handleVitalsChange('bpDiastolic', text)}
+              keyboardType="numeric"
+
+            />
+
             <TextInput
               placeholder="Pulse Rate"
               style={styles.input}
@@ -108,7 +191,7 @@ const VitalsScreen = () => {
             <TextInput
               placeholder="BMI"
               style={[styles.input, { backgroundColor: '#f0f0f0' }]}
-              value={formData.vitals?.BMI || 'Auto-calculated'}
+              value={formData.vitals?.bmi || 'Auto-calculated'}
               editable={false}
             />
           </View>

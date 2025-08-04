@@ -210,12 +210,19 @@ const ConfirmationScreen: React.FC = () => {
           phone: formattedPhone,
           specialization: userData.specialization.name || '',
           practice: userData.addresses.length > 0 ? userData.addresses[0] : '',
+          // consultationPreferences:
+          //   userData.consultationModeFee.length > 0
+          //     ? userData.consultationModeFee
+          //         .map((mode: any) => mode.type)
+          //         .join(', ')
+          //     : '',
           consultationPreferences:
-            userData.consultationModeFee.length > 0
-              ? userData.consultationModeFee
-                  .map((mode: any) => mode.type)
-                  .join(', ')
-              : '',
+  userData.consultationModeFee.length > 0
+    ? userData.consultationModeFee
+        .filter((mode: any) => mode.fee > 0)
+        .map((mode: any) => mode.type)
+        .join(', ')
+    : '',
           bank: userData.bankDetails.bankName || '',
           accountNumber: maskAccountNumber(
             userData.bankDetails?.accountNumber || '',

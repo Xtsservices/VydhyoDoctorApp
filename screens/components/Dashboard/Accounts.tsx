@@ -41,14 +41,33 @@ const AccountsScreen = () => {
     setShowTxnModal(true);
   };
 
+   const [accountSummary, setAccountSummary] = useState({
+    totalReceived: 0,
+    totalExpenditure: 0,
+    pendingTransactions: 0,
+    recentTransactions: [],
+  });
+
   const fetchRevenue = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const res = await AuthFetch('finance/getDoctorRevenue', token);
-      if (res.status === 'success') {
-        const revenue = res?.data?.data || 0;
-        console.log('Revenue fetched:', revenue);
-        setTotalRevenue(revenue.totalRevenue || 0);
+      const response = await AuthFetch(`finance/getDoctorRevenue?${doctorId}`, token);
+      console.log(response, 'revenue summery')
+      if (response.status === 'success') {
+         const apiData = response.data.data;
+
+        setAccountSummary((prev) => ({
+          ...prev,
+          totalReceived: apiData.totalRevenue,
+          totalExpenditure: apiData.totalExpenditure,
+          recentTransactions: apiData.lastThreeTransactions.map((txn) => ({
+            name: txn.username,
+            amount: txn.finalAmount,
+          })),
+        }));
+        // const revenue = res?.data?.data || 0;
+        // console.log('Revenue fetched:', revenue);
+        // setTotalRevenue(revenue.totalRevenue || 0);
       } else {
         throw new Error('Failed to fetch revenue data');
       }
@@ -57,8 +76,7 @@ const AccountsScreen = () => {
       console.error('Error fetching revenue:', error);
     }
   };
-
-  const fetchTransactions = useCallback(async () => {
+  const fetchTransactions = async () => {
     if (!doctorId) return;
 
     console.log(doctorId, 'selectedDoctor Id');
@@ -77,7 +95,7 @@ const AccountsScreen = () => {
 
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthPost('finance/getTransactionHistory', payload, token);
+      const response = await AuthPost('finance/getTransactionHistory', payload, token) as TransactionResponse;
       console.log(response, 'total transactions history');
       const data = response?.data;
       if (data?.status === 'success') {
@@ -87,12 +105,43 @@ const AccountsScreen = () => {
     } catch (err) {
       console.error('Error fetching transactions:', err);
     }
-  }, [doctorId, startDate, endDate, searchText]);
+  };
+
+  // const fetchTransactions = useCallback(async () => {
+  //   if (!doctorId) return;
+
+  //   console.log(doctorId, 'selectedDoctor Id');
+
+  //   const payload = {
+  //     service: '',
+  //     status: '',
+  //     search: searchText,
+  //     limit: 100,
+  //     doctorId: doctorId,
+  //     startDate: startDate ? dayjs(startDate).format('YYYY-MM-DD') : '',
+  //     endDate: endDate ? dayjs(endDate).format('YYYY-MM-DD') : '',
+  //   };
+
+  //   console.log(payload, 'payload to be sent');
+
+  //   try {
+  //     const token = await AsyncStorage.getItem('authToken');
+  //     const response = await AuthPost('finance/getTransactionHistory', payload, token);
+  //     console.log(response, 'total transactions history');
+  //     const data = response?.data;
+  //     if (data?.status === 'success') {
+  //       setTransactions(data.data || []);
+  //       setTotalItems(data.totalResults || 0);
+  //     }
+  //   } catch (err) {
+  //     console.error('Error fetching transactions:', err);
+  //   }
+  // }, [doctorId, startDate, endDate, searchText]);
 
   useEffect(() => {
     fetchTransactions();
     fetchRevenue();
-  }, [fetchTransactions]);
+  }, [doctorId, startDate, endDate, searchText]);
 
   const onStartChange = (_: any, selectedDate?: Date) => {
     setShowStartPicker(Platform.OS === 'ios');
@@ -205,12 +254,12 @@ const AccountsScreen = () => {
         <View style={styles.summaryRow}>
           <View style={[styles.summaryCard, { borderColor: '#10B981' }]}>
             <Icon name="cash" size={24} color="#10B981" />
-            <Text style={styles.summaryAmount}>₹{totalRevenue}</Text>
+            <Text style={styles.summaryAmount}>₹{accountSummary.totalReceived}</Text>
             <Text>Total Amount Received</Text>
           </View>
           <View style={[styles.summaryCard, { borderColor: '#EF4444' }]}>
             <Icon name="cash-remove" size={24} color="#EF4444" />
-            <Text style={styles.summaryAmount}>₹35,000</Text>
+            <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
             <Text>Total Expenditure</Text>
           </View>
         </View>
@@ -384,18 +433,18 @@ const AccountsScreen = () => {
                     <View style={styles.column}>
                       <Text style={styles.modalLabel}>Created At:</Text>
                       <Text style={styles.modalValue}>
-                        {dayjs(selectedTxn.createdAt).format('YYYY-MM-DD HH:mm')}
+                        {dayjs(selectedTxn?.createdAt).format('YYYY-MM-DD HH:mm')}
                       </Text>
                     </View>
                   </View>
                   <View style={styles.row}>
                     <View style={styles.column}>
                       <Text style={styles.modalLabel}>Actual Amount:</Text>
-                      <Text style={styles.modalValue}>₹{selectedTxn.actualAmount}</Text>
+                      <Text style={styles.modalValue}>₹{selectedTxn?.actualAmount}</Text>
                     </View>
                     <View style={styles.column}>
                       <Text style={styles.modalLabel}>Final Amount:</Text>
-                      <Text style={styles.modalValue}>₹{selectedTxn.finalAmount}</Text>
+                      <Text style={styles.modalValue}>₹{selectedTxn?.finalAmount}</Text>
                     </View>
                   </View>
                   <View style={styles.row}>

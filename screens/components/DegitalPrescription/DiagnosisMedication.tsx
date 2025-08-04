@@ -1,5 +1,3 @@
-// Updated PrescriptionScreen with timing-frequency match, multi-timing, and auto quantity
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -30,23 +28,74 @@ const PrescriptionScreen = () => {
   const [filteredTests, setFilteredTests] = useState<any[]>([]);
   const [medications, setMedications] = useState<any[]>([]);
   const [showMedicationForm, setShowMedicationForm] = useState(false);
+  const [medInventory, setMedInventory] = useState([]);
+  const [medicineOptions, setMedicineOptions] = useState([]);
+  const [filteredMedicines, setFilteredMedicines] = useState<any[]>([]); // New state for filtered medicines
+  const [activeDropdown, setActiveDropdown] = useState<'test' | 'medicine' | null>(null); // Track active dropdown
 
-  const frequencyOptions = ['1-0-0','1-0-1','1-1-1','0-0-1','0-1-0','1-1-0','0-1-1','SOS'];
-  const timingOptions = ['Before Breakfast','After Breakfast','Before Lunch','After Lunch','Before Dinner','After Dinner','Bedtime'];
-  const medicineTypeOptions = ['Tablet','Capsule','Syrup','Injection','Cream','Drops'];
+  const frequencyOptions = ['1-0-0', '1-0-1', '1-1-1', '0-0-1', '0-1-0', '1-1-0', '0-1-1', 'SOS'];
+  const timingOptions = ['Before Breakfast', 'After Breakfast', 'Before Lunch', 'After Lunch', 'Before Dinner', 'After Dinner', 'Bedtime'];
+  const medicineTypeOptions = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Drops'];
 
-  useEffect(() => { fetchTests(); }, [doctorId]);
+  const fetchInventory = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch('pharmacy/getAllMedicinesByDoctorID', storedToken);
+      const medicines = response?.data?.data || [];
+      const sortedMedicines = [...medicines].sort((a, b) =>
+        a.medName.localeCompare(b.medName)
+      );
+      setMedInventory(sortedMedicines);
+      setMedicineOptions(
+        sortedMedicines.map((med) => ({
+          value: med.medName,
+          label: med.medName,
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching inventory:', error);
+    }
+  };
 
   const fetchTests = async () => {
     try {
       const storedToken = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`lab/getTestsByDoctorId/${doctorId}`, storedToken);
-      const tests = response.data.data || [];
+      const tests = response?.data?.data?.tests || [];
+      console.log(tests, "test results from inventory")
       const sorted = [...tests].sort((a, b) => a.testName.localeCompare(b.testName));
       setTestList(sorted);
       setTestOptions(sorted.map((test) => ({ value: test.testName, label: test.testName })));
-    } catch (error) { console.error('Error fetching tests:', error); }
+    } catch (error) {
+      console.error('Error fetching tests:', error);
+    }
   };
+
+  useEffect(() => {
+    fetchTests();
+    fetchInventory();
+  }, [doctorId]);
+
+  useEffect(() => {
+    // Filter tests based on testInput
+    const matches = testOptions.filter((t) =>
+      t.label.toLowerCase().includes(testInput.toLowerCase())
+    ).map((t) => t.label);
+    setFilteredTests(matches);
+  }, [testInput, testOptions]);
+
+  useEffect(() => {
+    // Filter medicines based on the last medication's name input
+    if (medications.length > 0) {
+      const lastMed = medications[medications.length - 1];
+      const matches = medicineOptions.filter((m) =>
+        m.label.toLowerCase().includes(lastMed.name.toLowerCase())
+      ).map((m) => m.label);
+      setFilteredMedicines(matches);
+    } else {
+      setFilteredMedicines([]);
+    }
+  }, [medications, medicineOptions]);
 
   const calculateQuantity = (frequency: string, duration: number | null) => {
     const freqCount = frequency === 'SOS' ? 1 : frequency?.split('-').filter((x) => x === '1').length || 0;
@@ -55,7 +104,9 @@ const PrescriptionScreen = () => {
 
   const handleAddTest = (testName: string) => {
     if (!testName) return Toast.show({ type: 'error', text1: 'Please enter a valid test name' });
-    const exists = formData?.diagnosis?.selectedTests?.some((item) => item.testName.toLowerCase().trim() === testName.toLowerCase().trim());
+    const exists = formData?.diagnosis?.selectedTests?.some(
+      (item) => item.testName.toLowerCase().trim() === testName.toLowerCase().trim()
+    );
     if (!exists) {
       setFormData((prev) => ({
         ...prev,
@@ -70,6 +121,7 @@ const PrescriptionScreen = () => {
     }
     setTestInput('');
     setFilteredTests([]);
+    setActiveDropdown(null);
   };
 
   const handleAddMedicine = () => {
@@ -82,7 +134,7 @@ const PrescriptionScreen = () => {
     Toast.show({ type: 'success', text1: 'Medicine form added' });
   };
 
-     const handleMedicineChange = (index: number, field: string, value: any) => {
+  const handleMedicineChange = (index: number, field: string, value: any) => {
     const updated = [...medications];
     updated[index][field] = value;
     const { frequency, duration, name, type, dosage, timing } = updated[index];
@@ -107,9 +159,17 @@ const PrescriptionScreen = () => {
       ...prev,
       diagnosis: {
         ...prev.diagnosis,
-        medications: transformed
-      }
+        medications: transformed,
+      },
     }));
+
+    // Update filtered medicines when name changes
+    if (field === 'name') {
+      const matches = medicineOptions.filter((m) =>
+        m.label.toLowerCase().includes(value.toLowerCase())
+      ).map((m) => m.label);
+      setFilteredMedicines(matches);
+    }
   };
 
   const updateMedicationFrequency = (index: number, value: string) => {
@@ -141,6 +201,8 @@ const PrescriptionScreen = () => {
     setFormData((prev: any) => ({ ...prev, prescribedMedications: updated }));
     if (updated.length === 0) setShowMedicationForm(false);
     Toast.show({ type: 'success', text1: 'Medicine removed' });
+    setFilteredMedicines([]);
+    setActiveDropdown(null);
   };
 
   const handleNext = () => {
@@ -148,23 +210,31 @@ const PrescriptionScreen = () => {
     navigation.navigate('AdviceFollowup', { patientDetails, formData });
   };
 
-  useEffect(() => {
-    const matches = testOptions.filter((t) => t.label.toLowerCase().includes(testInput.toLowerCase())).map((t) => t.label);
-    setFilteredTests(matches);
-  }, [testInput]);
-
-  console.log(formData, "complete form data after adding medicine")
+  console.log(testOptions, "filtered tests")
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🧪 Diagnostic Tests</Text>
-        <TextInput style={styles.input} placeholder="Enter test name" value={testInput} onChangeText={setTestInput} />
-        {filteredTests.length > 0 && (
+        <TextInput
+          style={styles.input}
+          placeholder="Enter test name"
+          value={testInput}
+          onChangeText={setTestInput}
+          onFocus={() => setActiveDropdown('test')}
+        />
+        {activeDropdown === 'test' && testOptions.length > 0 && (
           <View style={styles.dropdown}>
-            {filteredTests.map((test, idx) => (
-              <TouchableOpacity key={idx} onPress={() => handleAddTest(test)} style={styles.dropdownItem}>
-                <Text>{test}</Text>
+            {testOptions.map((test, idx) => (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => {
+                  handleAddTest(test.value);
+                  setActiveDropdown(null);
+                }}
+                style={styles.dropdownItem}
+              >
+                <Text>{test.value}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -198,6 +268,17 @@ const PrescriptionScreen = () => {
             <Text style={styles.blueButtonText}>+ Add Medicine</Text>
           </TouchableOpacity>
         </View>
+         {formData?.diagnosis?.medications
+?.map((med: any, index: number) => (
+  <View style={styles.row}>
+          <Text key={index} style={styles.testTag}>Name: {med.medName}</Text>
+          <Text key={index} style={styles.testTag}>duration: {med.duration}</Text>
+          <Text key={index} style={styles.testTag}>dosage: {med.dosage
+}</Text>
+
+  </View>
+          
+        ))}
 
         {showMedicationForm && medications.map((med, index) => (
           <View key={med.id} style={styles.medBlock}>
@@ -207,16 +288,61 @@ const PrescriptionScreen = () => {
                 <Text style={{ color: 'red' }}>🗑️</Text>
               </TouchableOpacity>
             </View>
-            <TextInput placeholder="Medicine Name" style={styles.input} value={med.name} onChangeText={(text) => handleMedicineChange(index, 'name', text)} />
-            <Picker selectedValue={med.type} onValueChange={(value) => handleMedicineChange(index, 'type', value)} style={styles.picker}>
+            <TextInput
+              placeholder="Medicine Name"
+              style={styles.input}
+              value={med.name}
+              onChangeText={(text) => handleMedicineChange(index, 'name', text)}
+              onFocus={() => setActiveDropdown('medicine')}
+            />
+            {activeDropdown === 'medicine' && filteredMedicines.length > 0 && medications.length - 1 === index && (
+              <View style={styles.dropdown}>
+                {filteredMedicines.map((medicine, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => {
+                      handleMedicineChange(index, 'name', medicine);
+                      setActiveDropdown(null);
+                    }}
+                    style={styles.dropdownItem}
+                  >
+                    <Text>{medicine}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <Picker
+              selectedValue={med.type}
+              onValueChange={(value) => handleMedicineChange(index, 'type', value)}
+              style={styles.picker}
+            >
               <Picker.Item label="Select Type" value={null} />
-              {medicineTypeOptions.map((option) => <Picker.Item key={option} label={option} value={option} />)}
+              {medicineTypeOptions.map((option) => (
+                <Picker.Item key={option} label={option} value={option} />
+              ))}
             </Picker>
-            <TextInput placeholder="Dosage (e.g. 100mg, 5ml)" style={styles.input} value={med.dosage} onChangeText={(text) => handleMedicineChange(index, 'dosage', text)} />
-            <TextInput placeholder="Duration (days)" style={styles.input} value={med.duration?.toString() || ''} onChangeText={(text) => handleMedicineChange(index, 'duration', parseInt(text) || null)} keyboardType="numeric" />
-            <Picker selectedValue={med.frequency} onValueChange={(value) => updateMedicationFrequency(index, value)} style={styles.picker}>
+            <TextInput
+              placeholder="Dosage (e.g. 100mg, 5ml)"
+              style={styles.input}
+              value={med.dosage}
+              onChangeText={(text) => handleMedicineChange(index, 'dosage', text)}
+            />
+            <TextInput
+              placeholder="Duration (days)"
+              style={styles.input}
+              value={med.duration?.toString() || ''}
+              onChangeText={(text) => handleMedicineChange(index, 'duration', parseInt(text) || null)}
+              keyboardType="numeric"
+            />
+            <Picker
+              selectedValue={med.frequency}
+              onValueChange={(value) => updateMedicationFrequency(index, value)}
+              style={styles.picker}
+            >
               <Picker.Item label="Select Frequency" value={null} />
-              {frequencyOptions.map((option) => <Picker.Item key={option} label={option} value={option} />)}
+              {frequencyOptions.map((option) => (
+                <Picker.Item key={option} label={option} value={option} />
+              ))}
             </Picker>
 
             <View style={{ marginBottom: 10 }}>
@@ -270,6 +396,7 @@ const PrescriptionScreen = () => {
             />
           </View>
         ))}
+
       </View>
 
       <View style={styles.buttonRow}>
@@ -296,7 +423,7 @@ const styles = StyleSheet.create({
   addButton: { backgroundColor: '#007bff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 },
   addButtonText: { color: '#fff', fontWeight: '600' },
   testTag: { backgroundColor: '#e2e2e2', padding: 6, borderRadius: 6, marginTop: 4 },
-  dropdown: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 6 },
+  dropdown: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 6, maxHeight: 150, overflow: 'scroll' },
   dropdownItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
   medHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   blueButton: { backgroundColor: '#007bff', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
@@ -308,4 +435,9 @@ const styles = StyleSheet.create({
   nextButton: { backgroundColor: '#007bff', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 },
   cancelText: { color: '#000', fontWeight: '500' },
   nextText: { color: '#fff', fontWeight: '600' },
+    row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
 });

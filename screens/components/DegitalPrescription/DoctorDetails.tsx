@@ -78,9 +78,9 @@ console.log('not loading')
       const response = await AuthFetch(`pharmacy/getEPrescriptionByAppointmentId/${patientDetails.id}`, token);
 
       console.log(response, "complete prescription details")
-      if (response.data.success && response.data.data) {
-        const prescription2 = response.data.data;
-        const prescription = response.data.data[0]; // Select the first prescription
+      if (response?.data?.success && response?.data?.data) {
+        const prescription2 = response?.data?.data;
+        const prescription = response?.data?.data[0]; // Select the first prescription
         console.log("response====",response)
         console.log("prescription2====",prescription2)
         console.log("prescription====",prescription)
@@ -206,12 +206,12 @@ useEffect(() => {
         <Text style={styles.sectionTitle}>
           <Icon name="person" size={16} color="#3B82F6" /> Doctor Information
         </Text>
-        <Text style={styles.input}>{doctorData.firstname} {doctorData.lastname}</Text>
+        <Text style={styles.input}>{doctorData?.firstname} {doctorData?.lastname}</Text>
         <Text style={styles.input}>{doctorData?.specialization?.degree}</Text>
 
         
         <Text style={styles.input}>{doctorData?.specialization?.name}</Text>
-        <Text style={styles.input}>{allClinics.clinicName}</Text>
+        <Text style={styles.input}>{allClinics?.clinicName}</Text>
       </View>
 
       {/* Clinic Address */}
@@ -219,7 +219,7 @@ useEffect(() => {
         <Text style={styles.sectionTitle}>
           <Icon name="local-hospital" size={16} color="#3B82F6" /> Clinic Address
         </Text>
-        <Text style={styles.input}>{allClinics.address}</Text>
+        <Text style={styles.input}>{allClinics?.address}</Text>
       </View>
 
       {/* Location Details */}
@@ -227,8 +227,8 @@ useEffect(() => {
         <Text style={styles.sectionTitle}>
           <Icon name="location-pin" size={16} color="#3B82F6" /> Location Details
         </Text>
-        <Text style={styles.input}>{allClinics.city}</Text>
-        <Text style={styles.input}>{allClinics.pincode}</Text>
+        <Text style={styles.input}>{allClinics?.city}</Text>
+        <Text style={styles.input}>{allClinics?.pincode}</Text>
       </View>
 
       {/* Contact & Report Schedule */}

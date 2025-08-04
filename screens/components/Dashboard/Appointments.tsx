@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { Key, ReactNode, useEffect, useState } from 'react';
-import { AuthPost, AuthFetch } from '../../auth/auth';
 import {
   View,
   Text,
@@ -20,6 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import moment from 'moment';
+import { AuthPost, AuthFetch } from '../../auth/auth';
+
 
 interface Appointment {
   doctorId: string;
@@ -76,16 +77,40 @@ const AppointmentsScreen = () => {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [selectedClinicId, setSelectedClinicId] = useState('');
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+    const [totalAppointmentsCount, setTotalAppointmentsCount] = useState(0);
+  const [scheduledAppointmentsCount, setScheduledAppointmentsCount] =
+    useState(0);
+  const [completedAppointmentsCount, setCompletedAppointmentsCount] =
+    useState(0);
+  const [cancledAppointmentsCount, setCancledAppointmentsCount] = useState(0);
+   const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 5,
+    total: 0,
+  });
 
-  const fetchAppointments = async () => {
-    try {
+  const fetchAppointments = async (page = 1, limit = 5) => {
+console.log("render", selectedType)
+const queryParams = new URLSearchParams({
+  doctorId: String(doctorId),
+  ...(search ? { searchText: String(search) } : {}),
+  ...(selectedType && selectedType !== "all" ? { status: String(selectedType) } : {}),
+  page: String(page),
+  limit: String(limit),
+});
+      console.log("Fetching appointments with params:", queryParams.toString()); // Debug log
       const token = await AsyncStorage.getItem('authToken');
-      const res = await AuthFetch(`appointment/getAppointmentsCountByDoctorID?doctorId=${doctorId}`, token);
+    try {
+       const res = await AuthFetch(
+        `appointment/getAppointmentsByDoctorID/appointment?${queryParams.toString()}`, token
+      );
 
-      let data: any[] = Array.isArray(res?.data?.data) ? res.data.data : [];
+      console.log(res.data.data, "reponse of appointments" )
+
+       const { appointments, pagination } = res.data.data;
+       console.log(appointments, "component 123")
       
-      const formattedAppointments = data
-        .filter((appt: any) => appt.appointmentStatus?.toLowerCase() !== "completed")
+      const formattedAppointments = appointments
         .map((appt: any) => ({
           label: appt.patientName || '',
           value: appt.appointmentId || '',
@@ -108,41 +133,66 @@ const AppointmentsScreen = () => {
           addressId: appt.addressId,
         }));
 
+         setPagination({
+          current: pagination.currentPage,
+          pageSize: pagination.pageSize,
+          total: pagination.totalItems,
+        });
+
       setAppointments(formattedAppointments);
-      setAllAppointments(formattedAppointments);
-      setTotalAppointments(data);
-      setScheduledAppointments(data.filter((appt: any) => appt.appointmentStatus === 'scheduled'));
-      setRescheduledAppointments(data.filter((appt: any) => appt.appointmentStatus === 'rescheduled'));
-      setCancelledAppointments(data.filter((appt: any) => appt.appointmentStatus === 'cancelled'));
-      setCompletedAppointments(data.filter((appt: any) => appt.appointmentStatus === 'completed'));
+      // setAllAppointments(formattedAppointments);
+      // setTotalAppointments(appointments);
+      // setScheduledAppointments(appointments.filter((appt: any) => appt.appointmentStatus === 'scheduled'));
+      // setRescheduledAppointments(appointments.filter((appt: any) => appt.appointmentStatus === 'rescheduled'));
+      // setCancelledAppointments(appointments.filter((appt: any) => appt.appointmentStatus === 'cancelled'));
     } catch (error) {
-      console.error('Error fetching appointments:', error);
       Alert.alert('Error', 'Failed to fetch appointments');
     }
   };
+
+    useEffect(() => {
+    if (currentuserDetails && doctorId) {
+      console.log("initial")
+      fetchAppointments();
+    }
+  }, [currentuserDetails, doctorId, search, selectedType]);
+
+   const getAppointmentsCount = async () => {
+    try {
+       const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch(
+        `appointment/getAppointmentsCountByDoctorID?doctorId=${doctorId}`, token
+      );
+
+      console.log(response, "response of count data");
+
+      if (response.status === 'success') {
+        const count = response?.data?.data;
+
+        setTotalAppointmentsCount(count.total);
+        setScheduledAppointmentsCount(count.scheduled);
+        setCompletedAppointmentsCount(count.completed);
+        setCancledAppointmentsCount(count.cancelled);
+      } else {
+        Alert.alert('Failed to fetch appointments count');
+      }
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+        Alert.alert('Failed to fetch appointments count');
+
+    } 
+  };
+
+  useEffect(() => {
+    if (currentuserDetails && doctorId) {
+      getAppointmentsCount();
+    }
+  }, [currentuserDetails, doctorId]);
 
   useEffect(() => {
     fetchAppointments();
   }, []);
 
-  useEffect(() => {
-    let filtered = allAppointments;
-
-    if (selectedType && selectedType !== '') {
-      filtered = filtered.filter((appt) => appt.status.toLowerCase() === selectedType.toLowerCase());
-    }
-
-    if (search.trim() !== '') {
-      const keyword = search.toLowerCase();
-      filtered = filtered.filter(
-        (appt) =>
-          appt.patientName.toLowerCase().includes(keyword) ||
-          appt.id.toLowerCase().includes(keyword)
-      );
-    }
-
-    setAppointments(filtered);
-  }, [selectedType, search, allAppointments]);
 
   const fetchTimeSlots = async (date: string) => {
     try {
@@ -294,6 +344,12 @@ const AppointmentsScreen = () => {
     setActionMenuVisible(true);
   };
 
+  const handlePageChange = (newPage: number) => {
+  fetchAppointments(newPage, pagination.pageSize);
+  setPagination((prev) => ({ ...prev, current: newPage }));
+};
+
+
   const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => (
     <View style={styles.apptCard}>
       <View style={styles.row}>
@@ -322,6 +378,11 @@ const AppointmentsScreen = () => {
           </Text>
         </View>
       </View>
+
+
+{/* Pagination Controls */}
+
+
 
       <Modal
         visible={actionModalVisible && selectedAppointmentId === appt.id}
@@ -456,19 +517,19 @@ const AppointmentsScreen = () => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.summaryContainer}>
             <View style={[styles.card, { borderColor: '#FBBF24' }]}>
-              <Text style={[styles.cardTitle, { color: '#FBBF24' }]}>{totalAppointments.length}</Text>
+              <Text style={[styles.cardTitle, { color: '#FBBF24' }]}>{totalAppointmentsCount}</Text>
               <Text style={{ color: '#FBBF24' }}>Total Appointments</Text>
             </View>
             <View style={[styles.card, { borderColor: '#10B981' }]}>
-              <Text style={[styles.cardTitle, { color: '#10B981' }]}>{scheduledAppointments.length}</Text>
+              <Text style={[styles.cardTitle, { color: '#10B981' }]}>{scheduledAppointmentsCount}</Text>
               <Text style={{ color: '#10B981' }}>Upcoming</Text>
             </View>
             <View style={[styles.card, { borderColor: '#6366F1' }]}>
-              <Text style={[styles.cardTitle, { color: '#6366F1' }]}>{completedAppointments.length}</Text>
+              <Text style={[styles.cardTitle, { color: '#6366F1' }]}>{completedAppointmentsCount}</Text>
               <Text style={{ color: '#6366F1' }}>Completed</Text>
             </View>
             <View style={[styles.card, { borderColor: 'red' }]}>
-              <Text style={[styles.cardTitle, { color: 'red' }]}>{cancelledAppointments.length}</Text>
+              <Text style={[styles.cardTitle, { color: 'red' }]}>{cancledAppointmentsCount}</Text>
               <Text style={{ color: 'red' }}>Cancelled</Text>
             </View>
           </View>
@@ -476,7 +537,7 @@ const AppointmentsScreen = () => {
 
         <View style={styles.searchContainer}>
           <TextInput
-            placeholder="Search by Patient ID or Name"
+            placeholder="Search by Appointment ID or Patient Name"
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
@@ -500,7 +561,7 @@ const AppointmentsScreen = () => {
             onPress={() => setDropdownVisible(false)}
           >
             <View style={styles.dropdown}>
-              {['scheduled', 'rescheduled', 'cancelled'].map((status) => (
+              {['all','scheduled', 'cancelled'].map((status) => (
                 <Pressable
                   key={status}
                   style={styles.option}
@@ -553,8 +614,51 @@ const AppointmentsScreen = () => {
           data={appointments}
           keyExtractor={(item) => item.id}
           renderItem={renderAppointmentCard}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 10 }}
         />
+        <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 10 , marginBottom:40}}>
+  <TouchableOpacity
+    onPress={() => handlePageChange(pagination.current - 1)}
+    disabled={pagination.current === 1}
+    style={{
+      padding: 10,
+      marginHorizontal: 5,
+      backgroundColor: pagination.current === 1 ? '#e5e7eb' : '#3b82f6',
+      borderRadius: 6,
+    }}
+  >
+    <Text style={{ color: pagination.current === 1 ? '#9ca3af' : '#fff' }}>Previous</Text>
+  </TouchableOpacity>
+
+  <Text style={{ alignSelf: 'center', fontSize: 16, marginHorizontal: 10 }}>
+    Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize)}
+  </Text>
+
+  <TouchableOpacity
+    onPress={() => handlePageChange(pagination.current + 1)}
+    disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
+    style={{
+      padding: 10,
+      marginHorizontal: 5,
+      backgroundColor:
+        pagination.current >= Math.ceil(pagination.total / pagination.pageSize)
+          ? '#e5e7eb'
+          : '#3b82f6',
+      borderRadius: 6,
+    }}
+  >
+    <Text
+      style={{
+        color:
+          pagination.current >= Math.ceil(pagination.total / pagination.pageSize)
+            ? '#9ca3af'
+            : '#fff',
+      }}
+    >
+      Next
+    </Text>
+  </TouchableOpacity>
+</View>
       </View>
     </ScrollView>
   );
@@ -596,6 +700,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginBottom:10
   },
   searchInput: {
     flex: 1,
