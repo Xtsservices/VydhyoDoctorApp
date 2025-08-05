@@ -22,7 +22,9 @@ import AddStaffScreen from "../components/Dashboard/AddStaff";
 import MyPatient from "../components/Dashboard/MyPatient";
 import Appointments from "../components/Dashboard/Appointments";
 // import dashboard from "../components/Dashboard/dashboard";
-import Accounts from "../components/Dashboard/Accounts";
+import Accounts from "../components/Revenue/Accounts";
+import expenditure from "../components/Revenue/expenditure";
+
 import Clinic from "../components/Dashboard/Clinic";
 import AddClinic from "../components/Dashboard/AddClinic";
 import Reviews from "../components/Dashboard/Reviews";
@@ -70,6 +72,8 @@ const Routing = () => {
         <Stack.Screen name="Appointments" component={Appointments} />
         {/* <Stack.Screen name="Dashboard" component={dashboard} /> */}
         <Stack.Screen name="Accounts" component={Accounts} />
+        <Stack.Screen name="expenditure" component={expenditure} />
+
         <Stack.Screen name="Clinic" component={Clinic} />
         <Stack.Screen name="AddClinic" component={AddClinic} options={{ title: "Clinic Management", headerTitleAlign: "center", }}/>
         <Stack.Screen name="Reviews" component={Reviews} options={{ headerShown: false }}/>

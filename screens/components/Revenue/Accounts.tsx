@@ -20,6 +20,8 @@ import { useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import RNFS from 'react-native-fs';
+import { useNavigation } from '@react-navigation/native';
+
 
 const AccountsScreen = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
@@ -35,6 +37,8 @@ const AccountsScreen = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [selectedTxn, setSelectedTxn] = useState(null);
   const [showTxnModal, setShowTxnModal] = useState(false);
+    const navigation = useNavigation<any>();
+   
 
   const handleViewTxn = (txn) => {
     setSelectedTxn(txn);
@@ -257,11 +261,19 @@ const AccountsScreen = () => {
             <Text style={styles.summaryAmount}>₹{accountSummary.totalReceived}</Text>
             <Text>Total Amount Received</Text>
           </View>
-          <View style={[styles.summaryCard, { borderColor: '#EF4444' }]}>
+          <TouchableOpacity
+  style={[styles.summaryCard, { borderColor: '#EF4444' }]}
+  onPress={() => navigation.navigate('expenditure')}
+>
+  <Icon name="cash-remove" size={24} color="#EF4444" />
+  <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
+  <Text>Total Expenditure</Text>
+</TouchableOpacity>
+          {/* <View style={[styles.summaryCard, { borderColor: '#EF4444' }]}>
             <Icon name="cash-remove" size={24} color="#EF4444" />
             <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
             <Text>Total Expenditure</Text>
-          </View>
+          </View> */}
         </View>
 
         {/* Filter Section */}
@@ -480,7 +492,7 @@ export default AccountsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#F0FDF4',
     paddingTop: 50,
     paddingHorizontal: 16,
   },

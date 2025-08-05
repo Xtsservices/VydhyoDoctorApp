@@ -30,4 +30,5 @@ export type RootStackParamList = {
   DiagnosisMedication:undefined;
   AdviceFollowup:undefined;
   PrescriptionPreview:undefined;
+  expenditure:undefined;
 };
