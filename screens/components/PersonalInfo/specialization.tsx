@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,11 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   SafeAreaView,
+  Modal,
+  FlatList,
+  Pressable,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import CheckBox from '@react-native-community/checkbox';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { pick, types } from '@react-native-documents/picker';
@@ -21,10 +24,99 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
 import ProgressBar from '../progressBar/progressBar';
-import { UploadFiles } from '../../auth/auth';
+import { AuthFetch, UploadFiles } from '../../auth/auth';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { Picker } from '@react-native-picker/picker';
 
+// Specialization options
+const specializationOptions = [
+  'General Medicine',
+  'Internal Medicine',
+  'Pediatrics',
+  'Obstetrics and Gynaecology',
+  'General Surgery',
+  'Family Medicine',
+  'Emergency Medicine',
+  'Geriatrics / Geriatric Medicine',
+  'Critical Care / Critical Care Medicine',
+  'Preventive Cardiology',
+  'Clinical Cardiology',
+  'Cardiology',
+  'Diabetology',
+  'Respiratory Medicine / Pulmonary & Critical Care Medicine',
+  'Psychiatry / Psychological Medicine',
+  'Dermatology, Venereology & Leprosy',
+  'Neurology',
+  'Nephrology',
+  'Endocrinology',
+  'Rheumatology',
+  'Infectious Diseases',
+  'Hepatology',
+  'Cardiothoracic and Vascular Surgery',
+  'Vascular Surgery',
+  'Surgical Gastroenterology',
+  'Surgical Oncology',
+  'Endocrine Surgery',
+  'Plastic & Reconstructive Surgery / Plastic Surgery',
+  'Pediatric Surgery',
+  'Neurosurgery',
+  'Urology',
+  'Hand Surgery',
+  'Trauma Surgery and Critical Care',
+  'Minimal Access Surgery and Robotic Surgery',
+  'Hepato-Pancreato-Biliary Surgery',
+  'Breast and Endocrine Surgery',
+  'Gynaecologic Oncology',
+  'Reproductive Medicine',
+  'Maternal & Fetal Medicine',
+  'Radiodiagnosis / Medical Radiodiagnosis / Radio Diagnosis',
+  'Nuclear Medicine',
+  'Interventional Radiology',
+  'Pathology / Clinical Pathology / Oral Pathology and Microbiology',
+  'Biochemistry',
+  'Microbiology',
+  'Pharmacology / Clinical Pharmacology',
+  'Clinical Immunology / Immunology and Immunopathology',
+  'Anatomy',
+  'Physiology',
+  'Forensic Medicine',
+  'Hematology',
+  'Medical Genetics',
+  'Community Medicine',
+  'Public Health / Public Health Dentistry',
+  'Industrial Health',
+  'Health Administration / Hospital Administration',
+  'Occupational Health',
+  'Lifestyle Medicine (IBLM)',
+  'Tropical Medicine / Tropical Medicine and Health',
+  'Medical Oncology',
+  'Medical Gastroenterology',
+  'Ophthalmology / Ophthalmic Medicine and Surgery',
+  'ENT / Otorhinolaryngology (ENT)',
+  'Tuberculosis and Chest Diseases',
+  'Sports Medicine',
+  'Immunohematology & Blood Transfusion',
+  'Pain Medicine',
+  'Palliative Medicine / Onco-Anesthesia and Palliative Medicine',
+  'Clinical Nutrition',
+  'Pediatric Cardiology',
+  'Pediatric Neurology',
+  'Pediatric Nephrology',
+  'Pediatric Gastroenterology',
+  'Neonatology',
+  'Child Health',
+  'Ayurveda',
+  'Homeopathy',
+  'Yoga and Naturopathy',
+  'Unani',
+  'Oral and Maxillofacial Surgery',
+  'Orthodontics and Dentofacial Orthopedics',
+  'Prosthodontics and Crown & Bridge',
+  'Conservative Dentistry and Endodontics',
+  'Pedodontics and Preventive Dentistry',
+  'Oral Medicine and Radiology'
+];
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -35,28 +127,83 @@ const { width, height } = Dimensions.get('window');
 
 const SpecializationDetails = () => {
   const userId = useSelector((state: any) => state.currentUserID);
-
+  const [degrees, setDegrees] = useState<{ id: string; degreeName: string }[]>([]);
   const [formData, setFormData] = useState({
     degree: '',
     specialization: '',
     yearsExperience: '',
-    // services: '',
     bio: '',
+    customDegree: '',
     degrees: null as { uri: string; type: string; name: string } | null,
     certifications: null as { uri: string; type: string; name: string } | null,
   });
-
   const [isLoading, setIsLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [tempDegrees, setTempDegrees] = useState<string[]>(
+    formData.degree ? formData.degree.split(',').map(deg => deg.trim()).filter(deg => deg) : []
+  );
 
   const navigation = useNavigation<NavigationProp>();
 
+  const handleDegreeChange = (itemValue: string) => {
+    let newDegrees: string[];
+
+    if (tempDegrees.includes(itemValue)) {
+      // Remove degree if already selected
+      newDegrees = tempDegrees.filter(deg => deg !== itemValue);
+    } else {
+      // Add degree to selection
+      newDegrees = [...tempDegrees, itemValue].filter(deg => deg !== '');
+    }
+
+    setTempDegrees(newDegrees);
+  };
+
+  const handleConfirm = () => {
+    // Replace "Others" with customDegree value if provided and non-empty, otherwise exclude it
+    const finalDegrees = tempDegrees
+      .map(deg => (deg === 'Others' && formData.customDegree?.trim() ? formData.customDegree.trim() : deg))
+      .filter(deg => deg !== 'Others' && deg.trim() !== '')
+      .join(', ');
+
+    setFormData({
+      ...formData,
+      degree: finalDegrees,
+      customDegree: tempDegrees.includes('Others') ? formData.customDegree : '',
+    });
+    setModalVisible(false);
+  };
+
+  const handleCancel = () => {
+    setTempDegrees(formData.degree ? formData.degree.split(',').map(deg => deg.trim()).filter(deg => deg) : []);
+    setModalVisible(false);
+  };
+
+  const renderDegreeItem = ({ item }: { item: { id: string; degreeName: string } }) => (
+    <Pressable style={styles.checkboxContainer} onPress={() => handleDegreeChange(item.degreeName)}>
+      <CheckBox
+        value={tempDegrees.includes(item.degreeName)}
+        onValueChange={() => handleDegreeChange(item.degreeName)}
+        disabled={isLoading}
+        tintColors={{ true: '#00203F', false: '#999' }}
+      />
+      <Text style={styles.checkboxLabel}>{item.degreeName}</Text>
+    </Pressable>
+  );
+
+  const degreeList = [...degrees, { id: 'others', degreeName: 'Others' }];
+
   const validateForm = () => {
     if (!formData.degree) {
-      Alert.alert('Error', 'Please select a degree.');
+      Alert.alert('Error', 'Please select at least one degree.');
+      return false;
+    }
+    if (tempDegrees.includes('Others') && !formData.customDegree?.trim()) {
+      Alert.alert('Error', 'Please enter a custom degree for "Others".');
       return false;
     }
     if (!formData.specialization) {
-      Alert.alert('Error', 'Please enter a specialization.');
+      Alert.alert('Error', 'Please select a specialization.');
       return false;
     }
     if (!formData.yearsExperience || isNaN(Number(formData.yearsExperience))) {
@@ -67,115 +214,109 @@ const SpecializationDetails = () => {
   };
 
   const handleFileUpload = async (field: 'degrees' | 'certifications') => {
-Alert.alert(
-    'Upload PAN Card',
-    'Choose an option',
-    [
-      {
-        text: 'Camera',
-        onPress: async () => {
-          try {
-            const result = await launchCamera({
-              mediaType: 'photo',
-              includeBase64: false,
-            });
-            console.log('Camera result:', result);
-
-            if (result.assets && result.assets.length > 0) {
-              const asset = result.assets[0];
-
-
-               setFormData({ ...formData, [field]: result })
-              // setPancardUploaded(true);
-            } else {
-              Alert.alert('No image selected from camera');
+    Alert.alert(
+      'Upload File',
+      'Choose an option',
+      [
+        {
+          text: 'Camera',
+          onPress: async () => {
+            try {
+              const result = await launchCamera({
+                mediaType: 'photo',
+                includeBase64: false,
+              });
+              if (result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                setFormData({
+                  ...formData,
+                  [field]: {
+                    uri: asset.uri,
+                    type: asset.type || 'image/jpeg',
+                    name: asset.fileName || 'file.jpg',
+                  },
+                });
+              } else {
+                Alert.alert('No image selected from camera');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Camera access failed.');
+              console.error('Camera error:', error);
             }
-          } catch (error) {
-            Alert.alert('Error', 'Camera access failed.');
-            console.error('Camera error:', error);
-          }
+          },
         },
-      },
-      {
-        text: 'Gallery',
-        onPress: async () => {
-          try {
-            const result = await launchImageLibrary({
-              mediaType: 'photo',
-              includeBase64: false,
-            });
-
-            if (result.assets && result.assets.length > 0) {
-              const asset = result.assets[0];
-
-             setFormData({ ...formData, [field]: result })
-              // setPancardUploaded(true);
-            } else {
-              Alert.alert('No image selected from gallery');
+        {
+          text: 'Gallery',
+          onPress: async () => {
+            try {
+              const result = await launchImageLibrary({
+                mediaType: 'photo',
+                includeBase64: false,
+              });
+              if (result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                setFormData({
+                  ...formData,
+                  [field]: {
+                    uri: asset.uri,
+                    type: asset.type || 'image/jpeg',
+                    name: asset.fileName || 'file.jpg',
+                  },
+                });
+              } else {
+                Alert.alert('No image selected from gallery');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Gallery access failed.');
+              console.error('Gallery error:', error);
             }
-          } catch (error) {
-            Alert.alert('Error', 'Gallery access failed.');
-            console.error('Gallery error:', error);
-          }
+          },
         },
-      },
-      {
-        text: 'Upload PDF',
-        onPress: async () => {
-          try {
-            const [result] = await pick({
-              type: [types.pdf, types.images],
-            });
-
-            if (result) {
-              setFormData({ ...formData, [field]: result });
-            } else {
-              Alert.alert('Error', 'Invalid file selected. Please try again.');
+        {
+          text: 'Upload PDF',
+          onPress: async () => {
+            try {
+              const [result] = await pick({
+                type: [types.pdf, types.images],
+              });
+              if (result) {
+                setFormData({
+                  ...formData,
+                  [field]: {
+                    uri: result.uri,
+                    type: result.type || 'application/pdf',
+                    name: result.name || 'file.pdf',
+                  },
+                });
+              } else {
+                Alert.alert('Error', 'Invalid file selected. Please try again.');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'PDF selection failed.');
+              console.error('PDF error:', error);
             }
-          } catch (error) {
-            Alert.alert('Error', 'PDF selection failed.');
-            console.error('PDF error:', error);
-          }
+          },
         },
-      },
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-    ],
-    { cancelable: true }
-  );
-
-  // try {
-  //   const [result] = await pick({
-  //     mode: 'open',
-  //     type: [types.allFiles],
-  //     });
-  //     setFormData({ ...formData, [field]: result });
-  //   } catch (err) {
-  //     if (err instanceof Error && err.message.includes('cancel')) {
-  //       console.log('File selection cancelled');
-  //     } else {
-  //       Alert.alert('Error', 'Failed to pick file.');
-  //       console.error('File picker error:', err);
-  //     }
-  //   }
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handleNext = async () => {
     if (!validateForm()) return;
 
     const token = await AsyncStorage.getItem('authToken');
-
     try {
       setIsLoading(true);
-
       const formDataObj = new FormData();
       formDataObj.append('id', userId);
       formDataObj.append('name', formData.specialization);
       formDataObj.append('experience', formData.yearsExperience);
       formDataObj.append('degree', formData.degree);
-      // formDataObj.append('services', formData.services);
       formDataObj.append('bio', formData.bio);
 
       if (formData.degrees) {
@@ -194,43 +335,99 @@ Alert.alert(
         } as any);
       }
 
-      console.log('Form data to be sent:', formDataObj);
-
       const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
-      console.log('API response:', response);
-    if (response.status === 'success') {
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Specialization details updated successfully!',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      navigation.navigate('Practice');
-    } else {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'message' in response && response.message ? response.message.message : 'Failed to update specialization details.',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-    }
-
-      setIsLoading(false);
-      navigation.navigate('Practice');
+      console.log(response, "update form data");
+      if (response.status === 'success') {
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Specialization details updated successfully!',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        await AsyncStorage.setItem('currentStep', 'Practice');
+        navigation.navigate('Practice');
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: response.message?.message || 'Failed to update specialization details.',
+          position: 'top',
+          visibilityTime: 4000,
+        });
+      }
     } catch (err) {
-      setIsLoading(false);
       console.error('API error:', err);
       Alert.alert('Error', 'Failed to update specialization details.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleBack = () => {
-    navigation.goBack();
+    navigation.navigate('PersonalInfo');
   };
 
-  console.log('Current form data:', formData);
+  const fetchDegrees = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch('catalogue/degree/getAllDegrees', token);
+      console.log(response, "get all degrees");
+       console.log(response, "get all degrees");
+    const data = response?.data?.data || [];
+
+    // Sort alphabetically by 'name'
+    const sortedData = data.sort((a: { degreeName: string; }, b: { degreeName: any; }) =>
+      a.degreeName.localeCompare(b.degreeName)
+    );
+
+    setDegrees(sortedData);
+      // const data = response?.data?.data || [];
+      // setDegrees(data);
+    } catch (error) {
+      console.error('Error fetching degrees:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch degrees.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    }
+  };
+
+  const fetchUserData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        const response = await AuthFetch('users/getUser', token);
+        console.log(response);
+        if (response.data.status === 'success') {
+          const userData = response.data.data;
+          console.log(userData?.specialization?.experience, "complete response");
+          setFormData({
+            degree: userData?.specialization?.degree || '',
+            specialization: userData?.specialization?.name || '',
+            yearsExperience: userData?.specialization?.experience || '',
+            bio: userData?.specialization?.bio || '',
+            customDegree: userData?.specialization?.customDegree || '',
+            degrees: userData?.specialization?.degrees && 'uploaded successfully' || null,
+            certifications: userData?.specialization?.certifications && "uploaded successfully" || null,
+          });
+          setTempDegrees(userData?.specialization?.degree ? userData?.specialization?.degree.split(',').map((deg: string) => deg.trim()).filter((deg: string) => deg) : []);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
+    fetchDegrees();
+  }, []);
+
+  console.log(formData, "setForm data");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -239,47 +436,84 @@ Alert.alert(
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-       
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack} disabled={isLoading}>
-              <Icon name="arrow-left" size={width * 0.06} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Specialization Details</Text>
-          </View>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack} disabled={isLoading}>
+            <Icon name="arrow-left" size={width * 0.06} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Specialization Details</Text>
+        </View>
 
-          <ProgressBar currentStep={getCurrentStepIndex('Specialization')} totalSteps={TOTAL_STEPS} />
- <ScrollView contentContainerStyle={styles.scrollContainer}>
-          {/* Form Content */}
+        <ProgressBar currentStep={getCurrentStepIndex('Specialization')} totalSteps={TOTAL_STEPS} />
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Degree*</Text>
-              <View style={styles.input}>
-                <Picker
-                  selectedValue={formData.degree}
-                  onValueChange={(itemValue) => setFormData({ ...formData, degree: itemValue })}
-                  style={styles.picker}
-                  enabled={!isLoading}
-                >
-                  <Picker.Item label="Select degree" value="" />
-                  <Picker.Item label="MBBS" value="MBBS" />
-                  <Picker.Item label="MD" value="MD" />
-                  <Picker.Item label="FAAP" value="FAAP" />
-                  <Picker.Item label="FACC" value="FACC" />
-                </Picker>
-              </View>
+              <TouchableOpacity
+                style={[styles.input, styles.dropdownButton]}
+                onPress={() => !isLoading && setModalVisible(true)}
+                disabled={isLoading}
+              >
+                <Text style={styles.dropdownText}>
+                  {formData.degree || 'Select degrees'}
+                </Text>
+              </TouchableOpacity>
+              <Modal
+                visible={modalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={handleCancel}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select Degrees</Text>
+                    <FlatList
+                      data={degreeList}
+                      renderItem={renderDegreeItem}
+                      keyExtractor={(item) => item.id}
+                      style={styles.flatList}
+                    />
+                    {tempDegrees.includes('Others') && (
+                      <TextInput
+                        style={[styles.input, styles.textInput]}
+                        value={formData.customDegree || ''}
+                        onChangeText={(text) => setFormData({ ...formData, customDegree: text })}
+                        placeholder="Enter custom degree"
+                        placeholderTextColor="#999"
+                        editable={!isLoading}
+                      />
+                    )}
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity style={styles.modalButton} onPress={handleCancel} disabled={isLoading}>
+                        <Text style={styles.modalButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.modalButton} onPress={handleConfirm} disabled={isLoading}>
+                        <Text style={styles.modalButtonText}>Confirm</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+              <Text style={styles.selectedText}>
+                Selected: {formData.degree || 'None'}
+                {tempDegrees.includes('Others') && formData.customDegree ? ` (${formData.customDegree})` : ''}
+              </Text>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Specialization(s)*</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.specialization}
-                onChangeText={(text) => setFormData({ ...formData, specialization: text })}
-                placeholder="e.g. Cardiology, Neurology"
-                placeholderTextColor="#999"
-                editable={!isLoading}
-              />
+              <View style={styles.input}>
+                <Picker
+                  selectedValue={formData.specialization}
+                  onValueChange={(itemValue) => setFormData({ ...formData, specialization: itemValue })}
+                  style={styles.picker}
+                  enabled={!isLoading}
+                >
+                  <Picker.Item label="Select specialization" value="" />
+                  {specializationOptions.map((spec, index) => (
+                    <Picker.Item key={index} label={spec} value={spec} />
+                  ))}
+                </Picker>
+              </View>
             </View>
 
             <View style={styles.inputGroup}>
@@ -292,20 +526,9 @@ Alert.alert(
                 placeholder="e.g. 5"
                 placeholderTextColor="#999"
                 editable={!isLoading}
+                maxLength={2}
               />
             </View>
-
-            {/* <View style={styles.inputGroup}>
-              <Text style={styles.label}>Services Provided*</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.services}
-                onChangeText={(text) => setFormData({ ...formData, services: text })}
-                placeholder="e.g. Consultations, Diagnostics, Surgeries"
-                placeholderTextColor="#999"
-                editable={!isLoading}
-              />
-            </View> */}
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Bio/Profile Info</Text>
@@ -331,7 +554,7 @@ Alert.alert(
                 <View style={styles.uploadField}>
                   <Icon name="upload" size={width * 0.05} color="#00203F" style={styles.uploadIcon} />
                   <Text style={styles.uploadText}>
-                    {formData.degrees ? 'uploaded Successfully' : 'Upload Degree Certificate(s)'}
+                    {formData.degrees ? 'Uploaded Successfully' : 'Upload Degree Certificate(s)'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -347,7 +570,7 @@ Alert.alert(
                 <View style={styles.uploadField}>
                   <Icon name="upload" size={width * 0.05} color="#00203F" style={styles.uploadIcon} />
                   <Text style={styles.uploadText}>
-                    {formData.certifications ? 'uploaded Successfully' : 'Upload Certificate(s)'}
+                    {formData.certifications ? 'Uploaded Successfully' : 'Upload Certificate(s)'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -355,7 +578,6 @@ Alert.alert(
           </View>
         </ScrollView>
 
-        {/* Next Button */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.nextButton, isLoading && styles.disabledButton]}
@@ -387,7 +609,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: height * 0.1, // Extra padding to ensure content is not cut off
+    paddingBottom: height * 0.1,
   },
   header: {
     flexDirection: 'row',
@@ -512,6 +734,73 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: width * 0.04,
     marginTop: height * 0.02,
+  },
+  dropdownButton: {
+    padding: 10,
+    justifyContent: 'center',
+  },
+  dropdownText: {
+    fontSize: width * 0.04,
+    color: '#333',
+  },
+  textInput: {
+    marginTop: 10,
+    padding: 10,
+    fontSize: width * 0.04,
+  },
+  selectedText: {
+    marginTop: 8,
+    fontSize: width * 0.035,
+    color: '#555',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: width * 0.9,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: width * 0.05,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  flatList: {
+    maxHeight: 300,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  checkboxLabel: {
+    fontSize: width * 0.04,
+    color: '#333',
+    marginLeft: 8,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  modalButton: {
+    padding: 10,
+    backgroundColor: '#00203F',
+    borderRadius: 8,
+    width: '48%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: width * 0.04,
+    fontWeight: '600',
   },
 });
 

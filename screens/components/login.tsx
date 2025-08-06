@@ -26,215 +26,75 @@ const { width, height } = Dimensions.get('window');
 
 const DoctorLoginScreen = () => {
   const dispatch = useDispatch();
-
   const navigation = useNavigation<any>();
+
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [showOtp, setShowOtp] = useState(false);
   const [mobileError, setMobileError] = useState('');
   const [otpError, setOtpError] = useState('');
   const [userId, setUserId] = useState('');
-  const [token, setToken] = useState('');
-  const [isOtpSent, setIsOtpSent] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Added for auto-login loading state
-
   const [sendingOtp, setSendingOtp] = useState(false);
-const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
 
   const otpRefs = useRef<(TextInput | null)[]>(Array(6).fill(null));
+
+  const validateMobile = (number: string) => /^[6-9]\d{9}$/.test(number);
 
   const handleOtpChange = (text: string, index: number) => {
     const newOtp = [...otp];
     newOtp[index] = text;
     setOtp(newOtp);
-
-    if (text && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
-    if (!text && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
+    if (text && index < 5) otpRefs.current[index + 1]?.focus();
+    if (!text && index > 0) otpRefs.current[index - 1]?.focus();
   };
-
-  const validateMobile = (number: string) => {
-    const mobileRegex = /^[6-9]\d{9}$/;
-    return mobileRegex.test(number);
-  };
-
-  // Check for existing token on mount
-useEffect(() => {
-  const checkAuthToken = async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem('authToken');
-      const storedUserId = await AsyncStorage.getItem('userId');
-      // const storedStep = await AsyncStorage.getItem('currentStep');
-let savedStep 
-      if (storedToken && storedUserId) {
-        const profileResponse = await AuthFetch('users/getUser', storedToken);
-        console.log('Profile response:', profileResponse);
-
-        if (
-          profileResponse.status === 'success' &&
-          'data' in profileResponse &&
-          profileResponse.data
-        ) {
-          const userData = profileResponse.data.data;
-          if (userData && userData.status === 'approved') {
-            console.log('User Data:', userData);
-            const { screen, params } = await determineNextScreen(userData);
-            dispatch({ type: 'currentUserID', payload: storedUserId });
-            navigation.navigate(screen, params || {});
-          } else {
-            let savedStep = await AsyncStorage.getItem('currentStep');
-          }
-
-          if (savedStep) {
-  navigation.navigate(savedStep);
-} else {
-  const { screen, params } = await determineNextScreen(userData);
-  await AsyncStorage.setItem('currentStep', screen);
-  navigation.navigate(screen, params || {});
-}
-
-          // const { screen, params } = await determineNextScreen(userData);
-          // await AsyncStorage.setItem('currentStep', screen);
-          // console.log('Current Step:', screen);
-
-          Toast.show({
-            type: 'success',
-            text1: 'Success',
-            text2: 'Auto-login successful',
-            position: 'top',
-            visibilityTime: 3000,
-          });
-
-         
-        } 
-        else {
-        setIsLoading(false);
-      }
-      } else {
-        setIsLoading(false);
-      }
-      
-    } catch (error) {
-      console.error('Error checking auth token:', error);
-     setIsLoading(false);
-    }
-  };
-
-  checkAuthToken();
-}, []);
-
 
   const handleSendOtp = async () => {
-    if (!mobile) {
-      setMobileError('Mobile number is required');
-      return;
-    }
-    if (!validateMobile(mobile)) {
-      setMobileError('Please enter a valid 10-digit Indian mobile number');
-      return;
-    }
+    if (!mobile) return setMobileError('Mobile number is required');
+    if (!validateMobile(mobile)) return setMobileError('Enter a valid 10-digit mobile number');
+
     setMobileError('');
     setSendingOtp(true);
     setIsOtpSent(true);
+
     try {
       const response = await UsePost('auth/login', {
         mobile,
         userType: 'doctor',
         language: 'tel',
       });
-      console.log('response', response);
-      if (response.status === 'success' && 'data' in response && response.data) {
+
+      if (response.status === 'success' && response.data) {
         setUserId(response.data.userId);
         setShowOtp(true);
-        // Focus on the first OTP field after showing OTP inputs
-      setTimeout(() => {
-        otpRefs.current[0]?.focus();
-      }, 100); // Small delay to ensure the UI has rendered
+        setTimeout(() => otpRefs.current[0]?.focus(), 100);
         Toast.show({
           type: 'success',
           text1: 'Success',
           text2: response.data.message || 'OTP sent successfully',
           position: 'top',
-          visibilityTime: 3000,
         });
       } else {
-        setMobileError('message' in response ? response.message : 'Failed to send OTP');
+        setMobileError(response?.message || 'Failed to send OTP');
         setIsOtpSent(false);
       }
-    } catch (error) {
+    } catch (err) {
+      console.log('Error sending OTP:', err);
       setMobileError('Network error. Please try again.');
       setIsOtpSent(false);
-      console.error('Error sending OTP:', error);
+    } finally {
+      setSendingOtp(false);
     }
-  };
-
-  
-
-  const determineNextScreen = async(userData: any): Promise<{ screen: string; params?: any }> => {
-   console.log('User Data:======', userData.status);
-
-    if (userData.status === 'approved') {
-      console.log('User is approved');
-      return { screen: 'AccountVerified', params: undefined };
-    }
-   // Check stored step in AsyncStorage
-  const storedStep = await AsyncStorage.getItem('currentStep');
-  if (storedStep === 'ProfileReview') {
-    return { screen: 'ProfileReview' };
-  }
-    
-    if (!userData.firstname || !userData.lastname || !userData.email || !userData.medicalRegistrationNumber) {
-      return { screen: 'PersonalInfo', params: undefined };
-    }
-    if (!userData.specialization || !userData.specialization.name) {
-      return { screen: 'Specialization', params: undefined };
-    }
-    // if (!userData.addresses || userData.addresses.length === 0) {
-    if (!userData.consultationModeFee || userData.consultationModeFee.length === 0) {
-
-      return { screen: 'Practice', params: undefined };
-    }
-    if (!userData.consultationModeFee || userData.consultationModeFee.length === 0) {
-      return { screen: 'ConsultationPreferences', params: undefined };
-    }
-    if (!userData.bankDetails || !userData.bankDetails.bankName) {
-      return { screen: 'FinancialSetupScreen', params: undefined };
-    }
-    // Assuming KYC fields are part of the schema (e.g., pan, aadhar)
-    if (!userData.kycDetails) {
-      return { screen: 'KYCDetailsScreen', params: undefined };
-    }
-    if (userData.status === 'pending') {
-      return { screen: 'ConfirmationScreen', params: undefined };
-    }
-     if (userData.status === 'inActive') {
-      return { screen: 'ProfileReview', params: undefined };
-    }
-   
-    return { screen: 'ProfileReview', params: undefined }; // Default or final step
   };
 
   const handleLogin = async () => {
+    await AsyncStorage.removeItem('currentStep');
     const otpString = otp.join('');
-    if (otpString.length !== 6 || !/^\d{6}$/.test(otpString)) {
-      setOtpError('Please enter a valid 6-digit OTP');
-      return;
-    }
+    if (otpString.length !== 6) return setOtpError('Enter a valid 6-digit OTP');
+
     setOtpError('');
     setVerifyingOtp(true);
-
-    if (!userId) {
-      setOtpError('User ID is required');
-      return;
-    }
-    if (!mobile) {
-      setOtpError('Mobile number is required');
-      return;
-    }
-    console.log('validateOtp body', userId, otpString, mobile);
 
     try {
       const response = await UsePost('auth/validateOtp', {
@@ -242,76 +102,33 @@ let savedStep
         OTP: otpString,
         mobile,
       });
-      console.log('validateOtp response', response);
-      if (response.status === 'success' && 'data' in response && response.data) {
-        const { accessToken } = response.data;
-        const userId = response.data.userData.userId;
-        console.log('userid:', userId);
-        if (accessToken) {
-          await AsyncStorage.setItem('authToken', accessToken);
-          await AsyncStorage.setItem('userId', userId);
-          dispatch({ type: 'currentUserID', payload: userId });
 
-          setToken(accessToken);
-        }
+      if (response.status === 'success' && response.data) {
+        const { accessToken, userData } = response.data;
+        const id = userData?.userId;
 
-        const profileResponse = await AuthFetch('users/getUser', accessToken);
-          console.log('Profile respons=====e:', profileResponse.status);
+        await AsyncStorage.setItem('authToken', accessToken);
+        await AsyncStorage.setItem('userId', id);
 
-          if (
-            profileResponse.status === 'success'
-            
-          ) {
-            console.log('Profile data123:', profileResponse.data);
-            const userData = profileResponse.data.data;
-            console.log('User Data:', userData);
-            const { screen, params } = await determineNextScreen(userData);
-            await AsyncStorage.setItem('currentStep', screen);
+        dispatch({ type: 'currentUser', payload: userData });
+        dispatch({ type: 'currentUserID', payload: id });
 
-            Toast.show({
-              type: 'success',
-              text1: 'Success',
-              text2: response.data.message ? response.data.message : 'Login successful',
-              position: 'top',
-              visibilityTime: 3000,
-            });
+        Toast.show({
+          type: 'success',
+          text1: 'Login successful',
+        });
 
-            navigation.navigate(screen, params || {});
-          } else {
-            // Fallback to PersonalInfo if profile fetch fails
-            await AsyncStorage.setItem('currentStep', 'PersonalInfo');
-            Toast.show({
-              type: 'success',
-              text1: 'Success',
-              text2: 'Login successful, starting from Personal Info',
-              position: 'top',
-              visibilityTime: 3000,
-            });
-            navigation.navigate('PersonalInfo');
-          }
-        }
-        else {
-        setOtpError('message' in response ? response.message : 'Invalid OTP');
+        navigation.replace('Authloader');
+      } else {
+        setOtpError(response?.message || 'Invalid OTP');
       }
-    } catch (error) {
-      console.log('Error validating OTP:', error);
+    } catch (err) {
+      console.log('Error validating OTP:', err);
       setOtpError('Network error. Please try again.');
-      console.error('Error validating OTP:', error);
-    }finally {
-    setVerifyingOtp(false);
-  }
+    } finally {
+      setVerifyingOtp(false);
+    }
   };
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00203F" />
-        <Text style={styles.loadingText}>Checking login status...</Text>
-      </View>
-    );
-  }
-
-
 
   return (
     <KeyboardAvoidingView
@@ -319,21 +136,14 @@ let savedStep
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Doctor Login</Text>
       </View>
 
-      {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.logoContainer}>
-          <View style={styles.logoWrapper}>
-            <Image source={require('../assets/logo.png')} style={styles.logo} />
-          </View>
+          <Image source={require('../assets/logo.png')} style={styles.logo} />
           <Text style={styles.portalTitle}>VYDHYO Doctor Portal</Text>
-          {/* <TouchableOpacity onPress={() => Linking.openURL('#')}>
-            <Text style={styles.signInLink}>Sign in to your account</Text>
-          </TouchableOpacity> */}
         </View>
 
         <Text style={styles.label}>Mobile Number*</Text>
@@ -363,9 +173,7 @@ let savedStep
               {otp.map((digit, index) => (
                 <TextInput
                   key={index}
-                  ref={(ref) => {
-                    otpRefs.current[index] = ref;
-                  }}
+                  ref={(ref) => (otpRefs.current[index] = ref)}
                   style={styles.otpBox}
                   keyboardType="numeric"
                   maxLength={1}
@@ -377,38 +185,34 @@ let savedStep
             {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
           </>
         )}
-
-        {/* Spacer to ensure content is not hidden by the button */}
         <View style={styles.spacer} />
       </ScrollView>
 
-      {/* Send OTP or Login Button */}
       {!showOtp ? (
         <TouchableOpacity
           style={[styles.button, isOtpSent && styles.disabledButton]}
           onPress={handleSendOtp}
           disabled={isOtpSent}
         >
-          {/* <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text> */}
-           {sendingOtp ? (
-      <ActivityIndicator color="#fff" />
-    ) : (
-      <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text>
-    )}
+          {sendingOtp ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text>
+          )}
         </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
-           {verifyingOtp ? (
-      <ActivityIndicator color="#fff" />
-    ) : (
-      <Text style={styles.buttonText}>Login</Text>
-    )}
-          {/* <Text style={styles.buttonText}>Login</Text> */}
+          {verifyingOtp ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
         </TouchableOpacity>
       )}
     </KeyboardAvoidingView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

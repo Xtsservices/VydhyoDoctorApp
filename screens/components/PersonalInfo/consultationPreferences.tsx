@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
-import { AuthPost } from '../../auth/auth';
+import { AuthFetch, AuthPost } from '../../auth/auth';
 
 const { width, height } = Dimensions.get("window");
 
@@ -38,6 +38,7 @@ const ConsultationPreferences = () => {
 
   const handleFeeChange = (mode: string, value: string) => {
     const numericValue = value.replace(/[^0-9]/g, "");
+    console.log(numericValue, value, mode)
     if (numericValue === "" || (parseInt(numericValue) >= 0 && numericValue.length <= 5)) {
       setFees({ ...fees, [mode]: numericValue });
     }
@@ -54,20 +55,22 @@ const ConsultationPreferences = () => {
   };
 
   const handleBack = () => {
-    navigation.goBack();
+    navigation.navigate('Practice');
   };
 
   const handleNext = async () => {
     // if (!isFormValid()) return;
 
+    console.log(fees)
+
     const payload = {
       consultationModeFee: [
-        { type: 'In-Person', fee: parseInt(fees.inPerson) },
-        { type: 'Video', fee: parseInt(fees.video) },
-        { type: 'Home Visit', fee: parseInt(fees.homeVisit) },
+        { type: 'In-Person', fee: parseInt(fees?.inPerson) },
+        { type: 'Video', fee: parseInt(fees?.video) },
+        { type: 'Home Visit', fee: parseInt(fees?.homeVisit) },
       ],
     };
-
+console.log(payload)
     try {
        setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
@@ -89,6 +92,7 @@ const ConsultationPreferences = () => {
           type: 'success',
           text1: 'Preferences saved successfully',
         });
+    await AsyncStorage.setItem('currentStep', 'FinancialSetupScreen');
         (navigation as any).navigate('FinancialSetupScreen')
       }
 
@@ -105,6 +109,49 @@ const ConsultationPreferences = () => {
   }
 
   };
+  
+
+
+const fetchUserData = async () => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    if (token) {
+      const response = await AuthFetch('users/getUser', token);
+      if (response.data.status === 'success') {
+        const userData = response.data.data;
+        const consultationFee = userData.consultationModeFee;
+
+        let updatedModes = { inPerson: false, video: false, homeVisit: false };
+        let updatedFees = { inPerson: 0, video: 0, homeVisit: 0 };
+
+        consultationFee.forEach((mode) => {
+          const { type, fee } = mode;
+          if (type === 'In-Person') {
+            updatedFees.inPerson = fee.toString();
+            if (fee > 0) updatedModes.inPerson = true;
+          } else if (type === 'Video') {
+            updatedFees.video = fee.toString();
+            if (fee > 0) updatedModes.video = true;
+          } else if (type === 'Home Visit') {
+            updatedFees.homeVisit = fee.toString();
+            if (fee > 0) updatedModes.homeVisit = true;
+          }
+        });
+
+        setSelectedModes(updatedModes);
+        setFees(updatedFees);
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+  }
+};
+
+
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
 
   return (
     <View style={styles.container}>

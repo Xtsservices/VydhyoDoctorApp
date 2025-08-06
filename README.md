@@ -1,7 +1,7 @@
 This is a new [React Native](https://reactnative.dev) project, bootstrapped using [@react-native-community/cli](https://github.com/react-native-community/cli).
 
 # Getting Started
-
+npx react-native run-android
 <!-- Reference video how to set up -->
 
 https://youtu.be/kOoGj5LfSvY?si=fKDlEeUJ6n7LrHGP
@@ -9,7 +9,6 @@ npx @react-native-community/cli@latest init AwesomeProject
 
 <!-- the below is current project but the abive one is foloow -->
 
-npx react-native init Vitalz
 
 > Note: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
 

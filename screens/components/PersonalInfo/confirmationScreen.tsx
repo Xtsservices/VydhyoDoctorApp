@@ -22,6 +22,7 @@ import Toast from 'react-native-toast-message';
 
 
 interface FormData {
+  userId: String,
   addresses: any;
   name: string;
   email: string;
@@ -40,6 +41,7 @@ const ConfirmationScreen: React.FC = () => {
   console.log('Current User ID:', userId);
   const navigation = useNavigation<any>();
   const [formData, setFormData] = useState<FormData>({
+    userId: '',
     name: '',
     email: '',
     phone: '',
@@ -75,22 +77,29 @@ const ConfirmationScreen: React.FC = () => {
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = async() => {
-    if (!validateForm()) {
-      Alert.alert(
-        'Error',
-        'Please correct the errors in the form before submitting.',
-      );
-      return;
-    }
-    const userdata = {
-    "userId" : userId
+  const handleSubmit = async () => {
+    setLoading(true);
+  if (!validateForm()) {
+    Alert.alert(
+      'Error',
+      'Please correct the errors in the form before submitting.',
+    );
+    return;
   }
-     const token = await AsyncStorage.getItem('authToken');
-    await AsyncStorage.setItem('currentStep', 'ProfileReview');
- const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
 
- console.log('Email sent successfully:', response);
+  try {
+    setLoading(true); // Prevent further submissions
+
+    const userdata = {
+      userId: userId,
+    };
+
+    const token = await AsyncStorage.getItem('authToken');
+    await AsyncStorage.setItem('currentStep', 'ProfileReview');
+    const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
+
+    console.log('Email sent successfully:', response);
+
     Toast.show({
       type: 'success',
       text1: 'Success',
@@ -98,8 +107,47 @@ const ConfirmationScreen: React.FC = () => {
       position: 'top',
       visibilityTime: 3000,
     });
+
     navigation.navigate('ProfileReview');
-  };
+  } catch (error) {
+    console.error('Error in handleSubmit:', error);
+    Alert.alert('Error', 'Failed to submit profile. Please try again.');
+  } finally {
+    setLoading(false); // Re-enable the button after processing
+  }
+};
+
+
+//   const handleSubmit = async() => { 
+//      if (loading) return;
+//     if (!validateForm()) {
+//       Alert.alert(
+//         'Error',
+//         'Please correct the errors in the form before submitting.',
+//       );
+//       return;
+//     }
+//     const userdata = {
+//     "userId" : userId
+//   }
+//      const token = await AsyncStorage.getItem('authToken');
+//     await AsyncStorage.setItem('currentStep', 'ProfileReview');
+//  const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
+
+
+
+//  console.log('Email sent successfully:', response);
+//     Toast.show({
+//       type: 'success',
+//       text1: 'Success',
+//       text2: 'Profile submitted successfully',
+//       position: 'top',
+//       visibilityTime: 3000,
+//     });
+//     navigation.navigate('ProfileReview');
+//   };
+
+  
 
   const handleChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -107,7 +155,7 @@ const ConfirmationScreen: React.FC = () => {
   };
 
   const handleBack = () => {
-    navigation.goBack();
+    navigation.navigate('KYCDetailsScreen');
   };
 
   useEffect(() => {
@@ -124,15 +172,18 @@ const ConfirmationScreen: React.FC = () => {
 
         AsyncStorage.setItem('stepNo', '7');
   const response = await AuthFetch('users/getUser', token);
+
+  console.log(AsyncStorage.getItem('currentStep'), "userCurren step")
+
         // Make API call
         
         console.log('User data fetched successfully:', response?.data?.data);
         // Check if response status is success
-        if (response.data.status !== 'success') {
+        if (response?.data?.status !== 'success') {
           throw new Error(response.data.message || 'Failed to fetch user data');
         }
 
-        const userData = response.data.data;
+        const userData = response?.data?.data;
         // Format phone number to match +XX XXX XXX XXXX
         const rawMobile = userData.mobile || '';
         const formattedPhone =
@@ -153,17 +204,25 @@ const ConfirmationScreen: React.FC = () => {
         };
 
         setFormData({
+          userId: userData.userId || '',
           name: `${userData.firstname || ''} ${userData.lastname || ''}`.trim(),
           email: userData.email || '',
           phone: formattedPhone,
           specialization: userData.specialization.name || '',
           practice: userData.addresses.length > 0 ? userData.addresses[0] : '',
+          // consultationPreferences:
+          //   userData.consultationModeFee.length > 0
+          //     ? userData.consultationModeFee
+          //         .map((mode: any) => mode.type)
+          //         .join(', ')
+          //     : '',
           consultationPreferences:
-            userData.consultationModeFee.length > 0
-              ? userData.consultationModeFee
-                  .map((mode: any) => mode.type)
-                  .join(', ')
-              : '',
+  userData.consultationModeFee.length > 0
+    ? userData.consultationModeFee
+        .filter((mode: any) => mode.fee > 0)
+        .map((mode: any) => mode.type)
+        .join(', ')
+    : '',
           bank: userData.bankDetails.bankName || '',
           accountNumber: maskAccountNumber(
             userData.bankDetails?.accountNumber || '',
@@ -197,7 +256,7 @@ const ConfirmationScreen: React.FC = () => {
                   )}
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <TouchableOpacity style={styles.backButton}  onPress={handleBack}>
           <Icon name="arrow-left" size={width * 0.06} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirmation</Text>
@@ -214,9 +273,9 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="account" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Personal Info</Text>
-            <TouchableOpacity onPress={() => handleChange('name', formData.name)}>
+            {/* <TouchableOpacity onPress={() => navigation.navigate('PersonalInfo')}>
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.name}
@@ -225,6 +284,7 @@ const ConfirmationScreen: React.FC = () => {
             placeholder="Enter Name"
             placeholderTextColor="#999"
             autoCapitalize="words"
+            editable={false}
           />
           {errors.name && <Text style={styles.error}>{errors.name}</Text>}
           <TextInput
@@ -235,6 +295,7 @@ const ConfirmationScreen: React.FC = () => {
             placeholderTextColor="#999"
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={false}
           />
           {errors.email && <Text style={styles.error}>{errors.email}</Text>}
           <TextInput
@@ -244,6 +305,7 @@ const ConfirmationScreen: React.FC = () => {
             placeholder="Enter Phone (e.g., +91 234 567 8901)"
             placeholderTextColor="#999"
             keyboardType="phone-pad"
+            editable={false}
           />
           {errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
 
@@ -251,11 +313,11 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="briefcase" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Specialization</Text>
-            <TouchableOpacity
-              onPress={() => handleChange('specialization', '')}
+            {/* <TouchableOpacity
+              onPress={() => navigation.navigate('Specialization')}
             >
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.specialization}
@@ -263,6 +325,7 @@ const ConfirmationScreen: React.FC = () => {
             style={[styles.input, errors.specialization && styles.errorInput]}
             placeholder="Enter Specialization"
             placeholderTextColor="#999"
+            editable={false}
           />
           {errors.specialization && (
             <Text style={styles.error}>{errors.specialization}</Text>
@@ -272,9 +335,9 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="office-building" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Clinic Name</Text>
-            <TouchableOpacity onPress={() => handleChange('practice', '')}>
+            {/* <TouchableOpacity onPress={() => handleChange('practice', '')}>
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData?.addresses[0]?.clinicName || ''}
@@ -282,6 +345,7 @@ const ConfirmationScreen: React.FC = () => {
             style={[styles.input, errors.practice && styles.errorInput]}
             placeholder="Enter Practice"
             placeholderTextColor="#999"
+            editable={false}
           />
           {errors.practice && (
             <Text style={styles.error}>{errors.practice}</Text>
@@ -291,11 +355,11 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="calendar" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Consultation Preferences</Text>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={() => handleChange('consultationPreferences', '')}
             >
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.consultationPreferences}
@@ -306,6 +370,7 @@ const ConfirmationScreen: React.FC = () => {
             ]}
             placeholder="Enter Preferences"
             placeholderTextColor="#999"
+            editable={false}
           />
           {errors.consultationPreferences && (
             <Text style={styles.error}>{errors.consultationPreferences}</Text>
@@ -315,9 +380,9 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="bank" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Financial Setup</Text>
-            <TouchableOpacity onPress={() => handleChange('bank', '')}>
+            {/* <TouchableOpacity onPress={() => handleChange('bank', '')}>
               <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.bank}
@@ -325,6 +390,7 @@ const ConfirmationScreen: React.FC = () => {
             style={[styles.input, errors.bank && styles.errorInput]}
             placeholder="Enter Bank"
             placeholderTextColor="#999"
+            editable={false}
           />
           {errors.bank && <Text style={styles.error}>{errors.bank}</Text>}
           <TextInput

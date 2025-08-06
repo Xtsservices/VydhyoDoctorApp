@@ -20,7 +20,10 @@ import { useSelector } from 'react-redux';
 // import DropDownPicker from 'react-native-dropdown-picker';
 
 const AddStaffScreen = () => {
-    const userId = useSelector((state: any) => state.currentUserID);
+   const currentuserDetails =  useSelector((state: any) => state.currentUser);
+        const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+    const userId = currentuserDetails.userId
+      const navigation = useNavigation<any>();
 
   const [form, setForm] = useState({
     firstName: '',
@@ -94,7 +97,7 @@ const AddStaffScreen = () => {
     role: '',
     access: [] as string[],
   });
-        // useNavigation().navigate('StaffManagement' as never); // Navigate to Staff Management screen
+        navigation.navigate('StaffManagement' as never); // Navigate to Staff Management screen
       }else if (response.status === 'error') {
         // Handle error case
         const message =
@@ -210,7 +213,6 @@ const AddStaffScreen = () => {
   { label: 'View Patients', value: 'viewPatients' },
   { label: 'Pharmacy', value: 'pharmacy' },
   { label: 'Availability', value: 'availability' },
-  { label: 'Accounts', value: 'accounts' },
   { label: 'Dashboard', value: 'dashboard' },
   { label: 'Labs', value: 'labs' },
   { label: 'Appointments', value: 'appointments' },

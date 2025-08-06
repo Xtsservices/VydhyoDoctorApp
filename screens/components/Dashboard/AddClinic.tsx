@@ -7,20 +7,24 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import axios from 'axios';
 import { AuthPost, AuthFetch } from '../../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import { useNavigation } from '@react-navigation/native';
 
 
 
 const AddClinicForm = () => {
+    const navigation = useNavigation<any>();
   const [form, setForm] = useState({
     clinicName: '',
-    startTime: '',
+    startTime: '6',
     openingPeriod: 'AM',
-    endTime: '',
+    endTime: '18',
     closingPeriod: 'PM',
     landmark: '',
     city: '',
@@ -42,8 +46,6 @@ const AddClinicForm = () => {
   const validateForm = () => {
     const {
       clinicName,
-      startTime,
-      endTime,
       address,
       landmark,
       city,
@@ -55,7 +57,6 @@ const AddClinicForm = () => {
 
 
     if (!clinicName.trim()) return 'Clinic name is required';
-    if (!startTime || !endTime) return 'Opening and closing times are required';
     if (!address.trim()) return 'Address is required';
     if (!landmark.trim()) return 'Landmark is required';
     if (!city.trim() || !state.trim()) return 'City and State are required';
@@ -87,13 +88,17 @@ const convertTo24Hour = (timeStr: string, period: string): string => {
       Alert.alert('Validation Error', error);
       return;
     }
-   
+   const convertSafeTime = (time: string, period: string) => {
+  const converted = convertTo24Hour(time, period);
+  return converted === "NaN:00" || !converted ? "00:00" : converted;
+};
 
 const { openingPeriod, closingPeriod,landmark,email, ...cleanForm } = form;
     const payload = {
       ...cleanForm,
-      startTime: convertTo24Hour(form.startTime, form.openingPeriod),
-      endTime: convertTo24Hour(form.endTime, form.closingPeriod),
+      startTime: convertSafeTime(form.startTime, form.openingPeriod),
+      endTime: convertSafeTime(form.endTime, form.closingPeriod),
+      country:'India'
     };
 console.log(payload, 'Payload to be sent');
     try {
@@ -108,7 +113,7 @@ if ( response.status === 'success') {
           position: 'top',
           visibilityTime: 3000,
         });
-        return;
+         navigation.navigate('Clinic' as never);
       }
 
       setForm({
@@ -125,7 +130,7 @@ if ( response.status === 'success') {
     pincode: '',
      type: "Clinic",
     address: "",
-    country: "",
+    country: "India",
      latitude: 56.1304,
     longitude: -106.3468,
       });
@@ -137,7 +142,15 @@ if ( response.status === 'success') {
   console.log('Form state:', form);
 
   return (
+    <KeyboardAvoidingView
+             
+               style={styles.keyboardAvoidingContainer}
+                      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+              >
     <ScrollView style={styles.container}>
+      
+       <Text style={styles.label}>Clinic Name</Text>
       <TextInput
         style={styles.input}
         placeholder="Enter clinic name"
@@ -147,10 +160,11 @@ if ( response.status === 'success') {
 
       {/* Opening & Closing Time */}
       <Text style={styles.label}>Opening & Closing Time</Text>
+        <Text style={styles.label}>Open Time</Text>
       <View style={styles.row}>
         <TextInput
           style={styles.timeInput}
-          placeholder="9"
+          placeholder="9:00"
           keyboardType="numeric"
           value={form.startTime}
           onChangeText={(text) => handleChange('startTime', text)}
@@ -174,11 +188,11 @@ if ( response.status === 'success') {
           <Text style={styles.toggleText}>PM</Text>
         </TouchableOpacity>
       </View>
-
+ <Text style={styles.label}>Close Time</Text>
       <View style={styles.row}>
         <TextInput
           style={styles.timeInput}
-          placeholder="11"
+          placeholder="18:00"
           keyboardType="numeric"
           value={form.endTime}
           onChangeText={(text) => handleChange('endTime', text)}
@@ -202,7 +216,7 @@ if ( response.status === 'success') {
           <Text style={styles.toggleText}>PM</Text>
         </TouchableOpacity>
       </View>
-
+<Text style={styles.label}>Address</Text>
       <TextInput
         style={[styles.input, styles.textarea]}
         placeholder="Enter OPD address"
@@ -211,7 +225,7 @@ if ( response.status === 'success') {
         value={form.address}
         onChangeText={(text) => handleChange('address', text)}
       />
-
+<Text style={styles.label}>Landmark</Text>
       <TextInput
         style={styles.input}
         placeholder="Enter landmark"
@@ -233,7 +247,7 @@ if ( response.status === 'success') {
           onChangeText={(text) => handleChange('state', text)}
         />
       </View>
-
+<Text style={styles.label}>Mobile Number</Text>
       <TextInput
         style={styles.input}
         placeholder="Enter 10-digit mobile number"
@@ -242,6 +256,7 @@ if ( response.status === 'success') {
         onChangeText={(text) => handleChange('mobile', text)}
         maxLength={10}
       />
+      <Text style={styles.label}>Email Id</Text>
       <TextInput
         style={styles.input}
         placeholder="Enter email address"
@@ -249,13 +264,16 @@ if ( response.status === 'success') {
         value={form.email}
         onChangeText={(text) => handleChange('email', text)}
       />
+      <Text style={styles.label}>Pin Code</Text>
       <TextInput
         style={styles.input}
         placeholder="Enter pincode"
         keyboardType="numeric"
         value={form.pincode}
         onChangeText={(text) => handleChange('pincode', text)}
+        maxLength={6}
       />
+     
 
       {/* Buttons */}
       <View style={styles.buttonRow}>
@@ -266,7 +284,9 @@ if ( response.status === 'success') {
           <Text style={styles.confirmText}>✔ Confirm</Text>
         </TouchableOpacity>
       </View>
+      
     </ScrollView>
+     </KeyboardAvoidingView>
   );
 };
 
@@ -275,14 +295,16 @@ export default AddClinicForm;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#F0FDF4',
     padding: 16,
+    color:'black'
   },
   label: {
     fontSize: 14,
-    color: '#374151',
+    color: '#161b20ff',
     marginTop: 8,
     marginBottom: 4,
+     fontWeight: '600',
   },
   input: {
     backgroundColor: '#fff',
@@ -291,6 +313,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 12,
     fontSize: 14,
+    borderWidth:1,
+    borderColor: '#D1D5DB',
+    // borderColor:'#655e5cff'
   },
   textarea: {
     height: 80,
@@ -307,6 +332,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 10,
+    borderWidth:1,
+    borderColor: '#D1D5DB',
   },
   toggleBtn: {
     paddingHorizontal: 14,
@@ -326,6 +353,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
     marginTop: 20,
+    marginBottom:50
   },
   cancelBtn: {
     flex: 1,
@@ -348,5 +376,8 @@ const styles = StyleSheet.create({
   confirmText: {
     color: '#fff',
     fontWeight: '600',
+  },
+   keyboardAvoidingContainer: {
+    flex: 1,
   },
 });
