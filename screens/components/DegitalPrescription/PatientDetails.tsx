@@ -91,7 +91,7 @@ setFormData((prev) => ({
         <View style={styles.radioCircle}>
           {isSelected && <View style={styles.selectedCircle} />}
         </View>
-        <Text>{g}</Text>
+        <Text style={{ color: '#000' }}>{g}</Text>
       </TouchableOpacity>
     );
   })}
@@ -121,6 +121,8 @@ setFormData((prev) => ({
       },
     }))
   }
+      placeholderTextColor="#9CA3AF"
+
 />
 
 <TextInput
@@ -137,6 +139,8 @@ setFormData((prev) => ({
       },
     }))
   }
+      placeholderTextColor="#9CA3AF"
+
 />
 
 <TextInput
@@ -153,6 +157,7 @@ setFormData((prev) => ({
       },
     }))
   }
+      placeholderTextColor="#9CA3AF"
 />
 
 <TextInput
@@ -169,6 +174,8 @@ setFormData((prev) => ({
       },
     }))
   }
+      placeholderTextColor="#9CA3AF"
+
 />
 
       </View>
@@ -210,6 +217,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     marginBottom: 8,
+    color:'#0A2342',
   },
   subtitle: {
     fontSize: 13,
@@ -220,6 +228,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 4,
     marginTop: 12,
+    color: '#333',
   },
   input: {
     borderWidth: 1,
@@ -237,6 +246,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     minHeight: 60,
     textAlignVertical: 'top',
+    color:'black',
   },
   radioGroup: {
     flexDirection: 'row',
@@ -247,6 +257,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 16,
+    color: '#000',
   },
   radioCircle: {
     height: 18,

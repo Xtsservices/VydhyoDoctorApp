@@ -300,6 +300,7 @@ const DoctorDashboard = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`appointment/getNextAvailableSlotsByDoctor?doctorId=${doctorId}`, token);
+      console.log(response , "slots response")
       if (response.data.status === 'success') {
         const slotsData: Slot[] = response.data.data;
         const today = moment().format('YYYY-MM-DD');
@@ -364,7 +365,7 @@ const DoctorDashboard = () => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Sidebar')}>
-            <Ionicons size={28} name="menu" />
+            <Ionicons style={styles.title} size={28} name="menu" />
           </TouchableOpacity>
           <Text style={styles.headerText}>
             Good Morning,{"\n"}Dr. {formData.name}
@@ -620,7 +621,7 @@ const styles = StyleSheet.create({
   headerCell: { flex: 1, fontWeight: 'bold', color: '#333' },
   tableRow: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'flex-start' },
   nameColumn: { flex: 1 },
-  nameText: { fontWeight: '600', fontSize: 14 },
+  nameText: { fontWeight: '600', fontSize: 14, color: '#0A2342' },
   datetimeText: { color: '#777', fontSize: 12 },
   cell: { flex: 1, fontSize: 13, color: '#555' },
   viewAllButton: { marginTop: 12, alignSelf: 'flex-end' },
@@ -628,7 +629,7 @@ const styles = StyleSheet.create({
   clinicNavContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   clinicInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   clinicName: { fontSize: 16, fontWeight: '600', color: '#0A2342' },
-  sectionLabel: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 8 },
+  sectionLabel: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 8, color:'black' },
   slotContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   slot: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#f0f8f0', borderRadius: 15, borderWidth: 1, borderColor: '#1b5e20' },
   slotText: { fontSize: 12, fontWeight: '600', color: '#1b5e20', fontFamily: 'Poppins' },

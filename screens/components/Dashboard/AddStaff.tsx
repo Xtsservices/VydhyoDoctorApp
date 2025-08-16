@@ -127,6 +127,8 @@ const AddStaffScreen = () => {
         placeholder="Enter first name"
         value={form.firstName}
         onChangeText={(text) => setForm({ ...form, firstName: text })}
+                placeholderTextColor={'gray'}
+
       />
 
        <Text style={styles.label}>Last Name</Text>
@@ -136,6 +138,7 @@ const AddStaffScreen = () => {
         style={styles.input}
         placeholder="Enter last name"
         value={form.lastName}
+                placeholderTextColor={'gray'}
 
         onChangeText={(text) => setForm({ ...form, lastName: text })}
       />
@@ -179,6 +182,8 @@ const AddStaffScreen = () => {
         value={form.mobile}
         maxLength={10}
         onChangeText={(text) => setForm({ ...form, mobile: text })}
+                placeholderTextColor={'gray'}
+
       />
        <Text style={styles.label}>Email</Text>
 
@@ -188,6 +193,8 @@ const AddStaffScreen = () => {
         keyboardType="email-address"
         value={form.email}
         onChangeText={(text) => setForm({ ...form, email: text })}
+                placeholderTextColor={'gray'}
+
       />
 
        <Text style={styles.label}>Role</Text>
@@ -200,11 +207,11 @@ const AddStaffScreen = () => {
     }
     style={styles.picker}
   >
-    <Picker.Item label="Select Role" value="" />
-    <Picker.Item label="Lab Assistant" value="lab_assistant" />
-    <Picker.Item label="Pharmacy Assistant" value="pharmacy_assistant" />
-    <Picker.Item label="Assistant" value="assistant" />
-    <Picker.Item label="Receptionist" value="receptionist" />
+    <Picker.Item label="Select Role" value=""  style={{ color: 'black' }}/>
+    <Picker.Item label="Lab Assistant" value="lab_assistant" style={{ color: 'black' }}/>
+    <Picker.Item label="Pharmacy Assistant" value="pharmacy_assistant" style={{ color: 'black' }}/>
+    <Picker.Item label="Assistant" value="assistant" style={{ color: 'black' }}/>
+    <Picker.Item label="Receptionist" value="receptionist" style={{ color: 'black' }}/>
   </Picker>
 </View>
 
@@ -274,6 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
+    color:'black'
   },
   subtitle: {
     fontSize: 14,
@@ -287,11 +295,13 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
+    color: '#18191bff',
   },
   label: {
     fontSize: 14,
     marginBottom: 8,
     fontWeight: '500',
+    color:'black'
   },
   genderGroup: {
     flexDirection: 'row',

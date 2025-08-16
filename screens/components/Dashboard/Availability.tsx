@@ -467,7 +467,7 @@ const AvailabilityScreen: React.FC = () => {
             <Picker.Item label="Select Clinic" value="" />
             {clinics?.length > 0 &&
               clinics.map((clinic) => (
-                <Picker.Item key={clinic.value} label={clinic.label} value={clinic.value} />
+                <Picker.Item key={clinic.value} label={clinic.label} value={clinic.value} style={{ color: '#333' }} />
               ))}
           </Picker>
         </View>
@@ -482,7 +482,7 @@ const AvailabilityScreen: React.FC = () => {
             setShowDatePicker(true);
           }}
         >
-          <Text>{dayjs(fromDate).format('DD/MM/YYYY')}</Text>
+          <Text style={{ color: '#333' }}>{dayjs(fromDate).format('DD/MM/YYYY')}</Text>
           <Icon name="calendar-today" size={20} color="#000" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
 
@@ -494,7 +494,7 @@ const AvailabilityScreen: React.FC = () => {
             setShowDatePicker(true);
           }}
         >
-          <Text>{dayjs(toDate).format('DD/MM/YYYY')}</Text>
+          <Text style={{ color: '#333' }}>{dayjs(toDate).format('DD/MM/YYYY')}</Text>
           <Icon name="calendar-today" size={20} color="#000" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
 
@@ -554,7 +554,7 @@ const AvailabilityScreen: React.FC = () => {
                 style={[styles.periodButton, { backgroundColor: startPeriod === 'PM' ? '#ffeaa7' : '#fff' }]}
                 onPress={() => setStartPeriod((prev) => (prev === 'AM' ? 'PM' : 'AM'))}
               >
-                <Text>{startPeriod}</Text>
+                <Text style={{ color: '#333' }}>{startPeriod}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -575,7 +575,7 @@ const AvailabilityScreen: React.FC = () => {
                 style={[styles.periodButton, { backgroundColor: endPeriod === 'PM' ? '#ffeaa7' : '#fff' }]}
                 onPress={() => setEndPeriod((prev) => (prev === 'AM' ? 'PM' : 'AM'))}
               >
-                <Text>{endPeriod}</Text>
+                <Text style={{ color: '#333' }}>{endPeriod}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -586,7 +586,7 @@ const AvailabilityScreen: React.FC = () => {
           <View style={styles.pickerWrapper}>
             <Picker selectedValue={duration} onValueChange={(val) => setDuration(val)} style={styles.picker}>
               {durations.map((d) => (
-                <Picker.Item key={d} label={d} value={d} />
+                <Picker.Item key={d} label={d} value={d} style={{ color: '#333' }} />
               ))}
             </Picker>
           </View>
@@ -617,7 +617,7 @@ const AvailabilityScreen: React.FC = () => {
                 setShowDeleteConfirm(true);
               }}
             >
-              <Text>{slot.time}</Text>
+              <Text style={{ color: '#333' }}>{slot.time}</Text>
             </TouchableOpacity>
           ))
         )}
@@ -671,6 +671,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#333',
   },
   dropdownContainer: {
     marginBottom: 12,
@@ -685,6 +686,7 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     width: '100%',
+    color:' #333',
   },
   row: {
     flexDirection: 'row',
@@ -744,6 +746,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     minWidth: 30,
     textAlign: 'center',
+    color: '#333',
   },
   arrowGroup: {
     marginLeft: 8,
@@ -757,6 +760,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     marginBottom: 2,
+    color: '#333',
   },
   periodButton: {
     marginLeft: 8,
@@ -801,6 +805,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     marginBottom: 20,
+    color: '#333',
   },
   slotGrid: {
     flexDirection: 'row',

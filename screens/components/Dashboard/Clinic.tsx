@@ -304,6 +304,7 @@ const fetchClinics = async () => {
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
+          placeholderTextColor="black"
         />
         <Icon name="magnify" size={20} color="#6B7280" />
       </View>
@@ -428,6 +429,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 12,
+    color:'black'
   },
    avatar: {
     width: 44,
@@ -455,10 +457,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     gap: 6,
+    color:'black'
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
+    color:'black'
   },
   card: {
     backgroundColor: '#fff',
@@ -485,6 +489,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 4,
+    color:'black'
   },
   clinicType: {
     color: '#6B7280',
@@ -525,6 +530,7 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 15,
     backgroundColor: '#f9fafb',
+    color:'black'
   },
   buttonRow: {
     flexDirection: 'row',

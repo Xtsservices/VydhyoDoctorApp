@@ -125,6 +125,7 @@ const VitalsScreen = () => {
               value={formData.vitals?.bpSystolic || ''}
               onChangeText={(text) => handleVitalsChange('bpSystolic', text)}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
 
             />
             {/* <Text>/</Text> */}
@@ -134,6 +135,7 @@ const VitalsScreen = () => {
               value={formData.vitals?.bpDiastolic || ''}
               onChangeText={(text) => handleVitalsChange('bpDiastolic', text)}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
 
             />
 
@@ -143,6 +145,7 @@ const VitalsScreen = () => {
               value={formData.vitals?.pulseRate || ''}
               onChangeText={(text) => handleVitalsChange('pulseRate', text)}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
           </View>
 
@@ -153,6 +156,7 @@ const VitalsScreen = () => {
               value={formData.vitals?.respiratoryRate || ''}
               onChangeText={(text) => handleVitalsChange('respiratoryRate', text)}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
             <TextInput
               placeholder="Temperature"
@@ -160,6 +164,7 @@ const VitalsScreen = () => {
               value={formData.vitals?.temperature || ''}
               onChangeText={(text) => handleVitalsChange('temperature', text)}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
           </View>
 
@@ -170,6 +175,7 @@ const VitalsScreen = () => {
               value={formData.vitals?.spo2 || ''}
               onChangeText={(text) => handleVitalsChange('spo2', text)}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
             <TextInput
               placeholder="Height (cm)"
@@ -177,6 +183,8 @@ const VitalsScreen = () => {
               value={formData.vitals?.height || ''}
               onChangeText={(text) => handleVitalsChange('height', text)}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
+
             />
           </View>
 
@@ -187,12 +195,14 @@ const VitalsScreen = () => {
               value={formData.vitals?.weight || ''}
               onChangeText={(text) => handleVitalsChange('weight', text)}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
             <TextInput
               placeholder="BMI"
               style={[styles.input, { backgroundColor: '#f0f0f0' }]}
               value={formData.vitals?.bmi || 'Auto-calculated'}
               editable={false}
+            placeholderTextColor="#9CA3AF"
             />
           </View>
         </View>
@@ -215,6 +225,7 @@ const VitalsScreen = () => {
                 },
               }))
             }
+            placeholderTextColor="#9CA3AF"
           />
         </View>
 
@@ -260,6 +271,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     marginBottom: 8,
+    color:'black'
   },
   subtitle: {
     fontSize: 13,
@@ -270,6 +282,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+    color:'black'
   },
   input: {
     flex: 1,
@@ -289,6 +302,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
     backgroundColor: '#fff',
+    color:'black'
   },
   buttonRow: {
     flexDirection: 'row',

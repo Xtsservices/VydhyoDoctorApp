@@ -714,7 +714,7 @@ overlay: {
   },
   value: {
     fontSize: 15,
-    color: '#222',
+    color: 'black',
     paddingVertical: 6,
   },
   input: {
@@ -724,6 +724,7 @@ overlay: {
     padding: 10,
     fontSize: 15,
     backgroundColor: '#f9fafb',
+    color:'black',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -843,6 +844,7 @@ accessItem: {
 },
 accessText: {
   marginRight: 6,
+  color:'black'
 },
 removeButton: {
   color: 'red',

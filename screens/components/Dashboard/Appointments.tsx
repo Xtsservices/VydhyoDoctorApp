@@ -401,6 +401,7 @@ const queryParams = new URLSearchParams({
                 value={reason}
                 onChangeText={setReason}
                 multiline
+                placeholderTextColor={'gray'}
               />
             )}
 
@@ -541,6 +542,7 @@ const queryParams = new URLSearchParams({
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
+            placeholderTextColor="#9CA3AF"
           />
           <TouchableOpacity
             style={styles.filterButton}
@@ -570,7 +572,7 @@ const queryParams = new URLSearchParams({
                     setDropdownVisible(false);
                   }}
                 >
-                  <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+                  <Text style={{ color: '#000' }}>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -602,7 +604,7 @@ const queryParams = new URLSearchParams({
             }
           }}
         >
-          <Text>{status}</Text>
+          <Text style={{ color: '#000' }}>{status}</Text>
         </Pressable>
       ))}
     </View>
@@ -709,6 +711,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     fontSize: 14,
+    color:'black'
   },
   filterButton: {
     width: 45,
@@ -978,5 +981,6 @@ option: {
   paddingVertical: 12,
   borderBottomWidth: 1,
   borderBottomColor: '#eee',
+  color:'black'
 },
 });
