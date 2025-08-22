@@ -89,7 +89,7 @@ const PrescriptionPreview = () => {
         PrescribeMedNotes: advice.medicationNotes || null,
       },
       createdBy: currentuserDetails.userId || doctorInfo.doctorId,
-      updatedBy: currentuserDetails.userId || doctorInfo.doctorId,
+      updatedBy: currentuserDetails.userId || doctorInfo.doctordId,
     };
   }
 
@@ -97,6 +97,15 @@ const PrescriptionPreview = () => {
     const vitals = data?.vitals || {};
     const patient = data.patientInfo || {};
     const doctorInfo = data.doctorInfo || {};
+
+    // Fix: Access BP values correctly
+    const bpValue = data?.vitals?.bp || 
+                   (data?.vitals?.bpSystolic && data?.vitals?.bpDiastolic 
+                    ? `${data.vitals.bpSystolic}/${data.vitals.bpDiastolic}` 
+                    : 'Not provided');
+    
+    // Fix: Access follow-up date correctly
+    const followUpDate = data?.advice?.followUpDate || 'Not provided';
 
     const medRows = data?.diagnosis?.medications?.map(
       (med, i) => `
@@ -213,7 +222,7 @@ const PrescriptionPreview = () => {
             <div class="prescription-section">
               <div class="section-header">🩺 VITALS</div>
               <div class="vitals-container">
-                <div class="vital-item"><span class="vital-label">BP:</span><span class="vital-value">${vitals.bp || 'Not provided'} mmHg</span></div>
+                <div class="vital-item"><span class="vital-label">BP:</span><span class="vital-value">${bpValue} mmHg</span></div>
                 <div class="vital-separator">|</div>
                 <div class="vital-item"><span class="vital-label">Pulse:</span><span class="vital-value">${vitals.pulseRate || 'Not provided'} BPM</span></div>
                 <div class="vital-separator">|</div>
@@ -287,11 +296,11 @@ const PrescriptionPreview = () => {
               </div>
             ` : ''}
 
-            ${data?.advice?.followUpDate ? `
+            ${followUpDate !== 'Not provided' ? `
               <div class="prescription-section">
                 <div class="section-header">📅 FOLLOW-UP</div>
                 <div class="follow-up-container">
-                  <div class="follow-up-date">Next Visit: ${dayjs(data.advice.followUpDate).format('DD MMM YYYY')}</div>
+                  <div class="follow-up-date">Next Visit: ${dayjs(followUpDate).format('DD MMM YYYY')}</div>
                 </div>
               </div>
             ` : ''}
@@ -511,8 +520,8 @@ physicalExamination}</Text>
         <Text style={styles.sectionTitle}>Vitals</Text>
 
          <View style={styles.row}>
- <Text style={{ color: 'black' }}>BP: {formData.vitals.bpDiastolic
-}/{formData.vitals.bpSystolic
+ <Text style={{ color: 'black' }}>BP: {formData.vitals.bpSystolic
+}/{formData.vitals.bpDiastolic
 }</Text>
         <Text style={{ color: 'black' }}>Pulse: {formData.vitals.pulseRate}</Text>
          <Text style={{ color: 'black' }}>Temp:  {formData.vitals.temperature}</Text>
