@@ -376,7 +376,7 @@ const DoctorDashboard = () => {
             {"\n"}Dr. {formData.name}
           </Text>
           <View style={styles.rightIcons}>
-            <Image source={PLACEHOLDER_IMAGE} style={{ width: 30, height: 30, marginLeft: 10 }} />
+            {/* <Image source={PLACEHOLDER_IMAGE} style={{ width: 30, height: 30, marginLeft: 10 }} /> */}
           </View>
         </View>
         <View style={[styles.appointmentButton, { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }]}>
@@ -513,7 +513,7 @@ const DoctorDashboard = () => {
           </ScrollView>
         </View>
       </ScrollView>
-      <Footer />
+      {/* <Footer /> */}
     </View>
   );
 };
