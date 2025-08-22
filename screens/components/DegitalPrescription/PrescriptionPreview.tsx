@@ -473,46 +473,70 @@ const PrescriptionPreview = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Dr. {formData?.doctorInfo?.doctorName}</Text>
+
         <Text>
           {formData?.doctorInfo?.qualifications || 'Qualifications not provided'} | {formData?.doctorInfo?.specialization || 'Specialist'}
         </Text>
         <Text>Medical Registration No: {formData?.doctorInfo?.medicalRegistrationNumber || 'Not provided'}</Text>
+
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Patient Details</Text>
-        <Text>Name: {formData?.patientInfo?.patientName}</Text>
-        <Text>Age: {formData?.patientInfo?.age} Years</Text>
-        <Text>Gender: {formData?.patientInfo?.gender}</Text>
-        <Text>Mobile: {formData?.patientInfo?.mobileNumber}</Text>
+
+        <Text style={{ color: 'black' }}>Name: {formData?.patientInfo?.patientName}</Text>
+        <Text style={{ color: 'black' }}>Age: {formData?.patientInfo?.age} Years</Text>
+        <Text style={{ color: 'black' }}>Gender: {formData?.patientInfo?.gender} </Text>
+        <Text style={{ color: 'black' }}>Mobile: {formData?.patientInfo?.mobileNumber}</Text>
+
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Patient History</Text>
-        <Text>Chief Complaint: {formData.patientInfo.chiefComplaint}</Text>
-        <Text>Past History: {formData.patientInfo.pastMedicalHistory}</Text>
-        <Text>Family History: {formData.patientInfo.familyMedicalHistory}</Text>
-        <Text>Examination: {formData.patientInfo.physicalExamination}</Text>
+
+
+        <Text style={{ color: 'black' }}>Chief Complaint: {formData.patientInfo.
+chiefComplaint}</Text>
+<Text style={{ color: 'black' }}>Past History: {formData.patientInfo.
+pastMedicalHistory
+}</Text>
+<Text style={{ color: 'black' }}>Family History: {formData.patientInfo.
+familyMedicalHistory}</Text>
+<Text style={{ color: 'black' }}>Examination: {formData.patientInfo.
+physicalExamination}</Text>
+
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Vitals</Text>
+
+         <View style={styles.row}>
+ <Text style={{ color: 'black' }}>BP: {formData.vitals.bpDiastolic
+}/{formData.vitals.bpSystolic
+}</Text>
+        <Text style={{ color: 'black' }}>Pulse: {formData.vitals.pulseRate}</Text>
+         <Text style={{ color: 'black' }}>Temp:  {formData.vitals.temperature}</Text>
+         </View>
         <View style={styles.row}>
-          <Text>BP: {formData.vitals.bpDiastolic}/{formData.vitals.bpSystolic}</Text>
-          <Text>Pulse: {formData.vitals.pulseRate}</Text>
-          <Text>Temp: {formData.vitals.temperature}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text>RR: {formData.vitals.respiratoryRate}</Text>
-          <Text>Spo2: {formData.vitals.spo2}</Text>
-          <Text>BMI: {formData.vitals.bmi}</Text>
+<Text style={{ color: 'black' }}>RR
+:  {formData.vitals.respiratoryRate
+}</Text>
+<Text style={{ color: 'black' }}>Spo2
+:  {formData.vitals.spo2
+}</Text>
+<Text style={{ color: 'black' }}>BMI
+:  {formData.vitals.bmi
+}</Text>
+
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Tests</Text>
-        {formData?.diagnosis?.selectedTests?.map((test, index) => (
-          <Text key={index}>{test.testName}</Text>
+
+        <Text  style={styles.sectionTitle}>Tests</Text>
+         {formData?.diagnosis?.selectedTests?.map((test: string, index: number) => (
+          <Text style={{ color: 'black' }} key={index}>{test.testName}</Text>
+
         ))}
       </View>
 
@@ -520,17 +544,28 @@ const PrescriptionPreview = () => {
         <Text style={styles.sectionTitle}>Prescribed Medications</Text>
         {formData?.diagnosis?.medications?.map((med, index) => (
           <View key={index} style={styles.medItem}>
-            <Text>Medicine #{index + 1}</Text>
+            <Text style={{ color: 'black' }}>Medicine #{index + 1}</Text>
             <View style={styles.row}>
-              <Text>Name: {med.medName}</Text>
-              <Text>Type: {med.medicineType}</Text>
-              <Text>Dosage: {med.dosage}</Text>
+
+              <Text style={{ color: 'black' }}>Name: {med.medName}</Text>
+            <Text style={{ color: 'black' }}>Type: {med.medicineType}</Text>
+            <Text style={{ color: 'black' }}>Dosage: {med.dosage}</Text>
             </View>
             <View style={styles.row}>
-              <Text>Duration: {med.duration}</Text>
-              <Text>Frequency: {med.frequency}</Text>
+ <Text style={{ color: 'black' }}>Duration: {med.
+duration
+}</Text>
+            <Text style={{ color: 'black' }}>Frequency: {med.
+frequency
+}</Text>
+            
             </View>
-            <Text>Timing: {med.timings?.join(', ')}</Text>
+            <Text style={{ color: 'black' }}>Timing: {med.
+timings?.join(', ')}</Text>
+
+           
+  
+
           </View>
         ))}
       </View>
@@ -542,12 +577,14 @@ const PrescriptionPreview = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Advice</Text>
-        <Text>{formData.advice.advice}</Text>
+        <Text style={{ color: 'black' }}>{formData.advice.advice}</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Follow-Ups</Text>
-        <Text>Date: {formData.advice.followUpDate}</Text>
+
+        <Text style={{ color: 'black' }}>Date:{formData.advice.followUpDate} </Text>
+
       </View>
 
       <View style={styles.buttonRow}>
@@ -591,6 +628,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
+    color: '#fff',
   },
   section: {
     backgroundColor: '#fff',
@@ -603,6 +641,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
+    color: '#0A2342',
   },
   medItem: {
     marginBottom: 8,

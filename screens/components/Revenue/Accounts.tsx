@@ -259,7 +259,7 @@ const AccountsScreen = () => {
           <View style={[styles.summaryCard, { borderColor: '#10B981' }]}>
             <Icon name="cash" size={24} color="#10B981" />
             <Text style={styles.summaryAmount}>₹{accountSummary.totalReceived}</Text>
-            <Text>Total Amount Received</Text>
+            <Text style={{ color: '#333' }}>Total Amount Received</Text>
           </View>
           <TouchableOpacity
   style={[styles.summaryCard, { borderColor: '#EF4444' }]}
@@ -267,7 +267,7 @@ const AccountsScreen = () => {
 >
   <Icon name="cash-remove" size={24} color="#EF4444" />
   <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
-  <Text>Total Expenditure</Text>
+  <Text style={{ color: '#333' }}>Total Expenditure</Text>
 </TouchableOpacity>
           {/* <View style={[styles.summaryCard, { borderColor: '#EF4444' }]}>
             <Icon name="cash-remove" size={24} color="#EF4444" />
@@ -296,6 +296,7 @@ const AccountsScreen = () => {
               style={styles.searchInput}
               value={searchText}
               onChangeText={(text) => setSearchText(text)}
+              placeholderTextColor="#9CA3AF"
             />
 
             <View style={styles.dateRow}>
@@ -500,6 +501,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 12,
+    color: '#0A2342',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -518,6 +520,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginVertical: 4,
+    color: '#0A2342',
   },
   filterToggle: {
     flexDirection: 'row',
@@ -530,6 +533,7 @@ const styles = StyleSheet.create({
   },
   filterTitle: {
     fontWeight: '600',
+    color: '#0A2342',
   },
   filters: {
     backgroundColor: '#fff',
@@ -592,6 +596,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     marginBottom: 8,
+    color: '#0A2342',
   },
   transactionCard: {
     backgroundColor: '#fff',
@@ -603,6 +608,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 4,
+    color: '#6B7280',
   },
   txnId: {
     color: '#6B7280',
@@ -616,6 +622,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 6,
+    color: '#0A2342',
   },
   txnRow: {
     flexDirection: 'row',
@@ -662,6 +669,7 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontWeight: '600',
     marginTop: 8,
+    color: '#374151',
   },
   modalValue: {
     marginBottom: 4,

@@ -69,6 +69,7 @@ const AdviceScreen = () => {
           multiline
           value={formData.advice.advice || ''}
           onChangeText={(text) => handleChange('advice', text)}
+          placeholderTextColor={"#9CA3AF"}
         />
       </View>
 
@@ -96,6 +97,32 @@ const AdviceScreen = () => {
           />
         )}
       </View>
+
+
+      <Text style={styles.cardTitle}>Follow-Ups</Text>
+
+      <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+        <TextInput
+          style={styles.input}
+          placeholder="mm/dd/yyyy"
+          value={formData.advice.followUpDate}
+          editable={false}
+          pointerEvents="none"
+          placeholderTextColor={"#9CA3AF"}
+        />
+      </TouchableOpacity>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={new Date()} // disable past dates
+          onChange={onChange}
+        />
+      )}
+    </View>
+
 
       <View style={styles.buttonRow}>
         <TouchableOpacity style={styles.cancelButton}>
@@ -162,6 +189,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#0A2342',
   },
   textArea: {
     borderWidth: 1,

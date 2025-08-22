@@ -73,8 +73,8 @@ const MyPatients: React.FC = () => {
   const [ePrescriptionData, setEPrescriptionData] = useState<any | null>(null);
   const [prescriptionLoading, setPrescriptionLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
-    current: 1,
     pageSize: 5,
     total: 0,
   });
@@ -94,80 +94,90 @@ const MyPatients: React.FC = () => {
     return moment().diff(moment(dob, 'DD-MM-YYYY'), 'years').toString();
   };
 
-  const fetchPatients = useCallback(
-    async (page: number = 1, limit: number = 5) => {
-      if (!doctorId) return;
-      setLoading(true);
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        if (!token) {
-          console.error('No authentication token found');
-          return;
-        }
+  const fetchPatients = async (page: number = 1, limit: number = 5) => {
+    console.log('Fetching patients with params:', { doctorId, searchText, selectedStatus, page, limit });
+    if (!doctorId) return;
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
 
-        const queryParams = new URLSearchParams({
-          doctorId: String(doctorId),
-          ...(searchText && { searchText: String(searchText) }),
-          ...(selectedStatus !== 'all' && { appointmentType: String(selectedStatus) }),
-          page: String(page),
-          limit: String(limit),
-        });
+      const queryParams = new URLSearchParams({
+        doctorId: String(doctorId),
+        ...(searchText && { searchText: String(searchText) }),
+        ...(selectedStatus !== 'all' && { appointmentType: String(selectedStatus) }),
+        page: String(page),
+        limit: String(limit),
+      });
 
-        const res = await AuthFetch(`appointment/getAppointmentsByDoctorID/patients?${queryParams.toString()}`, token);
+      const res = await AuthFetch(`appointment/getAppointmentsByDoctorID/patients?${queryParams.toString()}`, token);
 
-        if (res.status === 'success' && res.data?.data) {
-          const { appointments, pagination: apiPagination } = res.data.data;
-          const formattedPatients = appointments.map((appointment: any) => ({
-            id: appointment.userId || appointment._id || 'N/A',
-            appointmentId: appointment.appointmentId || 'N/A',
-            name: appointment.patientName || 'N/A',
-            gender: appointment.patientDetails?.gender || 'N/A',
-            age: appointment.patientDetails?.dob
-              ? calculateAge(appointment.patientDetails.dob)
-              : appointment.patientDetails?.age || 'N/A',
-            phone: appointment.patientDetails?.mobile || 'N/A',
-            lastVisit: appointment.appointmentDate
-              ? moment(appointment.appointmentDate).format('DD MMMM YYYY')
-              : 'N/A',
-            appointmentType: appointment.appointmentType || 'N/A',
-            status:
-              appointment.appointmentType === 'new-walkin' ||
-              appointment.appointmentType === 'New-Walkin'
-                ? 'New Patient'
-                : 'Follow-up',
-            department: appointment.appointmentDepartment || 'N/A',
-            appointmentStatus: appointment.appointmentStatus || 'N/A',
-            appointmentReason: appointment.appointmentReason || 'N/A',
-            appointmentTime: appointment.appointmentTime || 'N/A',
-            appointmentCount: 1,
-            allAppointments: [appointment],
-            ePrescription: appointment.ePrescription || null,
-            avatar: 'https://i.pravatar.cc/150?img=12',
-          }));
+      if (res.status === 'success' && res.data?.data) {
+        const { appointments, pagination: apiPagination } = res.data.data;
+        console.log('API response:', appointments);
+        const formattedPatients = appointments.map((appointment: any) => ({
+          id: appointment.userId || appointment._id || 'N/A',
+          appointmentId: appointment.appointmentId || 'N/A',
+          name: appointment.patientName || 'N/A',
+          gender: appointment.patientDetails?.gender || 'N/A',
+          age: appointment.patientDetails?.dob
+            ? calculateAge(appointment.patientDetails.dob)
+            : appointment.patientDetails?.age || 'N/A',
+          phone: appointment.patientDetails?.mobile || 'N/A',
+          lastVisit: appointment.appointmentDate
+            ? moment(appointment.appointmentDate).format('DD MMMM YYYY')
+            : 'N/A',
+          appointmentType: appointment.appointmentType || 'N/A',
+          status:
+            appointment.appointmentType === 'new-walkin' ||
+            appointment.appointmentType === 'New-Walkin'
+              ? 'New Patient'
+              : 'Follow-up',
+          department: appointment.appointmentDepartment || 'N/A',
+          appointmentStatus: appointment.appointmentStatus || 'N/A',
+          appointmentReason: appointment.appointmentReason || 'N/A',
+          appointmentTime: appointment.appointmentTime || 'N/A',
+          appointmentCount: 1,
+          allAppointments: [appointment],
+          ePrescription: appointment.ePrescription || null,
+          avatar: 'https://i.pravatar.cc/150?img=12',
+        }));
 
-          setPatients(formattedPatients);
-          setFilteredPatients(formattedPatients);
-          setPagination({
-            current: page,
+        setPatients(formattedPatients);
+        setFilteredPatients(formattedPatients);
+        console.log('Fetched patients:', formattedPatients.length, 'from API');
+        setPagination((prev) => {
+          const newPagination = {
             pageSize: apiPagination.pageSize || limit,
             total: apiPagination.totalItems || formattedPatients.length,
-          });
-        } else {
-          setPatients([]);
-          setFilteredPatients([]);
-          setPagination({ current: page, pageSize: limit, total: 0 });
-        }
-      } catch (error) {
-        console.error('Error fetching patients:', error);
+          };
+          if (prev.pageSize === newPagination.pageSize && prev.total === newPagination.total) {
+            return prev;
+          }
+          return newPagination;
+        });
+        setCurrentPage(page); // Ensure currentPage is set to the fetched page
+      } else {
         setPatients([]);
         setFilteredPatients([]);
-        setPagination({ current: page, pageSize: limit, total: 0 });
-      } finally {
-        setLoading(false);
+        console.log('No data found, setting pagination to empty state');
+        setPagination({ pageSize: limit, total: 0 });
+        setCurrentPage(1); // Reset to page 1 on empty data
       }
-    },
-    [doctorId, searchText, selectedStatus]
-  );
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+      setPatients([]);
+      setFilteredPatients([]);
+      console.log('Setting pagination to empty state');
+      setPagination({ pageSize: limit, total: 0 });
+      setCurrentPage(1); // Reset to page 1 on error
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchPrescriptionDetails = useCallback(
     async (patientId: string) => {
@@ -213,14 +223,11 @@ const MyPatients: React.FC = () => {
 
   useEffect(() => {
     if (currentUserDetails && doctorId && !hasFetchedPatients.current) {
+      console.log('Fetching patients for the first time');
       hasFetchedPatients.current = true;
       fetchPatients(1, pagination.pageSize);
     }
-  }, [currentUserDetails, doctorId, fetchPatients, pagination.pageSize]);
-
-  useEffect(() => {
-    fetchPatients(pagination.current, pagination.pageSize);
-  }, [pagination.current, fetchPatients]);
+  }, [currentUserDetails, doctorId, pagination.pageSize]);
 
   useEffect(() => {
     const filtered = patients.filter((patient) => {
@@ -242,12 +249,19 @@ const MyPatients: React.FC = () => {
       return true;
     });
     setFilteredPatients(filtered);
-    setPagination((prev) => ({ ...prev, current: 1, total: filtered.length }));
-  }, [searchText, searchField, patients]);
+    console.log('Filtered patients:', filtered.length, 'from', patients.length);
+    setPagination((prev) => ({ ...prev, total: filtered.length }));
+    // Only reset currentPage if the filter reduces the total pages below currentPage
+    if (filtered.length > 0 && currentPage > Math.ceil(filtered.length / pagination.pageSize)) {
+      setCurrentPage(1);
+    }
+  }, [searchText, searchField, patients, pagination.pageSize]);
 
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= Math.ceil(pagination.total / pagination.pageSize)) {
-      setPagination((prev) => ({ ...prev, current: newPage }));
+    console.log('Attempting to change to page:', newPage);
+    if (newPage >= 1 && newPage <= Math.ceil(pagination.total / pagination.pageSize) && !loading) {
+      setCurrentPage(newPage);
+      fetchPatients(newPage, pagination.pageSize);
     }
   };
 
@@ -309,6 +323,8 @@ const MyPatients: React.FC = () => {
     );
   };
 
+
+  console.log('No patients to render', filteredPatients, patients);
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -322,10 +338,7 @@ const MyPatients: React.FC = () => {
           placeholderTextColor="#999"
           style={styles.searchInput}
           value={searchText}
-          onChangeText={(text) => {
-            setSearchText(text);
-            setPagination((prev) => ({ ...prev, current: 1 }));
-          }}
+          onChangeText={setSearchText}
         />
         <TouchableOpacity onPress={() => setDropdownVisible((prev) => !prev)}>
           <Icon name="filter-variant" size={24} color="#007AFF" />
@@ -340,7 +353,8 @@ const MyPatients: React.FC = () => {
               onPress={() => {
                 setSelectedStatus(option.value as typeof selectedStatus);
                 setDropdownVisible(false);
-                setPagination((prev) => ({ ...prev, current: 1 }));
+                setCurrentPage(1); // Reset to first page on filter change
+                fetchPatients(1, pagination.pageSize); // Fetch patients with new filter
               }}
               style={styles.dropdownOption}
             >
@@ -356,6 +370,8 @@ const MyPatients: React.FC = () => {
                   setSearchField(field as typeof searchField);
                   setSearchText('');
                   setDropdownVisible(false);
+                  setCurrentPage(1); // Reset to first page
+                  fetchPatients(1, pagination.pageSize); // Fetch patients with new search field
                 }}
                 style={styles.dropdownOption}
               >
@@ -382,32 +398,32 @@ const MyPatients: React.FC = () => {
 
       <View style={styles.pagination}>
         <TouchableOpacity
-          onPress={() => handlePageChange(pagination.current - 1)}
-          disabled={pagination.current === 1}
+          onPress={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
           style={[
             styles.paginationButton,
-            pagination.current === 1 && styles.disabledButton,
+            currentPage === 1 && styles.disabledButton,
           ]}
         >
-          <Text style={[styles.paginationText, pagination.current === 1 && styles.disabledText]}>
+          <Text style={[styles.paginationText, currentPage === 1 && styles.disabledText]}>
             Previous
           </Text>
         </TouchableOpacity>
         <Text style={styles.paginationInfo}>
-          Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize) || 1}
+          Page {currentPage} of {Math.ceil(pagination.total / pagination.pageSize) || 1}
         </Text>
         <TouchableOpacity
-          onPress={() => handlePageChange(pagination.current + 1)}
-          disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
+          onPress={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage >= Math.ceil(pagination.total / pagination.pageSize)}
           style={[
             styles.paginationButton,
-            pagination.current >= Math.ceil(pagination.total / pagination.pageSize) && styles.disabledButton,
+            currentPage >= Math.ceil(pagination.total / pagination.pageSize) && styles.disabledButton,
           ]}
         >
           <Text
             style={[
               styles.paginationText,
-              pagination.current >= Math.ceil(pagination.total / pagination.pageSize) && styles.disabledText,
+              currentPage >= Math.ceil(pagination.total / pagination.pageSize) && styles.disabledText,
             ]}
           >
             Next

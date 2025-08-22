@@ -152,6 +152,9 @@ const VitalsScreen = () => {
               onChangeText={(text) => handleVitalsChange('bpSystolic', text)}
               onBlur={() => handleBlur('bpSystolic')}
               keyboardType="numeric"
+
+            placeholderTextColor="#9CA3AF"
+
             />
             <TextInput
               placeholder="Diastolic"
@@ -160,6 +163,10 @@ const VitalsScreen = () => {
               onChangeText={(text) => handleVitalsChange('bpDiastolic', text)}
               onBlur={() => handleBlur('bpDiastolic')}
               keyboardType="numeric"
+
+            placeholderTextColor="#9CA3AF"
+
+
             />
             <TextInput
               placeholder="Pulse Rate"
@@ -168,6 +175,7 @@ const VitalsScreen = () => {
               onChangeText={(text) => handleVitalsChange('pulseRate', text)}
               onBlur={() => handleBlur('pulseRate')}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
           </View>
 
@@ -179,6 +187,7 @@ const VitalsScreen = () => {
               onChangeText={(text) => handleVitalsChange('respiratoryRate', text)}
               onBlur={() => handleBlur('respiratoryRate')}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
             <TextInput
               placeholder="Temperature"
@@ -187,6 +196,7 @@ const VitalsScreen = () => {
               onChangeText={(text) => handleVitalsChange('temperature', text)}
               onBlur={() => handleBlur('temperature')}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
           </View>
 
@@ -198,6 +208,7 @@ const VitalsScreen = () => {
               onChangeText={(text) => handleVitalsChange('spo2', text)}
               onBlur={() => handleBlur('spo2')}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
             <TextInput
               placeholder="Height (cm)"
@@ -206,6 +217,8 @@ const VitalsScreen = () => {
               onChangeText={(text) => handleVitalsChange('height', text)}
               onBlur={() => handleBlur('height')}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
+
             />
           </View>
 
@@ -217,15 +230,42 @@ const VitalsScreen = () => {
               onChangeText={(text) => handleVitalsChange('weight', text)}
               onBlur={() => handleBlur('weight')}
               keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
             />
             <TextInput
               placeholder="BMI"
               style={[styles.input, { backgroundColor: '#f0f0f0' }]}
               value={formData.vitals?.bmi || 'Auto-calculated'}
               editable={false}
+            placeholderTextColor="#9CA3AF"
             />
           </View>
         </View>
+
+
+        {/* Investigation Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🧪 Investigation</Text>
+          <Text style={styles.subtitle}>Clinical examination findings and observations</Text>
+          <TextInput
+            placeholder="Enter findings from clinical examination..."
+            style={styles.textArea}
+            multiline
+            value={formData.patientInfo?.examinationFindings || ''}
+            onChangeText={(text) =>
+              setFormData((prev) => ({
+                ...prev,
+                patientInfo: {
+                  ...prev.patientInfo,
+                  examinationFindings: text,
+                },
+              }))
+            }
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+
+        {/* Buttons */}
 
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
@@ -268,11 +308,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     marginBottom: 8,
+    color:'black'
   },
   inputRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+    color:'black'
   },
   input: {
     flex: 1,
@@ -282,7 +324,19 @@ const styles = StyleSheet.create({
     padding: 10,
     marginRight: 8,
     backgroundColor: '#fff',
-    color: 'black'
+
+    color:'black'
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    backgroundColor: '#fff',
+    color:'black'
+
   },
   buttonRow: {
     flexDirection: 'row',

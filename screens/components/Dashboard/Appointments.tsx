@@ -250,6 +250,7 @@ const queryParams = new URLSearchParams({
 
       if (status === 'Cancel') {
         const response = await AuthPost('appointment/cancelAppointment', body, token);
+        console.log(response, "1234")
         if (response?.data?.status === 'success') {
           Toast.show({
             type: 'success',
@@ -260,7 +261,7 @@ const queryParams = new URLSearchParams({
           });
           fetchAppointments();
         } else {
-          Alert.alert('Error', response?.data?.message || 'Failed to cancel appointment');
+          Alert.alert('Error', response?.message?.message || 'Failed to cancel appointment');
         }
       } else if (status === 'Reschedule') {
         if (!newDate || !newTime) {
@@ -285,7 +286,7 @@ const queryParams = new URLSearchParams({
           });
           fetchAppointments();
         } else {
-          Alert.alert('Error', response?.data?.message || 'Failed to reschedule appointment');
+          Alert.alert('Error', response?.message?.message || 'Failed to reschedule appointment');
         }
       } else if (status === 'Mark as Completed') {
         const response = await AuthPost('appointment/completeAppointment', body, token);
@@ -371,7 +372,9 @@ const queryParams = new URLSearchParams({
         <View style={styles.tag}>
           <Text style={styles.tagText}>{appt.type}</Text>
         </View>
-        <Text style={styles.date}>{appt.date}</Text>
+        <Text style={styles.date}>{appt.date} {appt.appointmentTime}</Text>
+        {/* <Text style={styles.date}></Text> */}
+
         <View style={[styles.status, { backgroundColor: appt.status === 'Upcoming' ? '#DCFCE7' : '#E0E7FF' }]}>
           <Text style={{ fontSize: 12, color: appt.status === 'Upcoming' ? '#16A34A' : '#4338CA' }}>
             {appt.status}
@@ -401,6 +404,7 @@ const queryParams = new URLSearchParams({
                 value={reason}
                 onChangeText={setReason}
                 multiline
+                placeholderTextColor={'gray'}
               />
             )}
 
@@ -541,6 +545,7 @@ const queryParams = new URLSearchParams({
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
+            placeholderTextColor="#9CA3AF"
           />
           <TouchableOpacity
             style={styles.filterButton}
@@ -570,7 +575,7 @@ const queryParams = new URLSearchParams({
                     setDropdownVisible(false);
                   }}
                 >
-                  <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+                  <Text style={{ color: '#000' }}>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -596,13 +601,13 @@ const queryParams = new URLSearchParams({
             setSelectedAction(status);
             setActionMenuVisible(false);
             if (status === 'Prescription') {
-              navigation.navigate('DoctorDetails', { patientDetails });
+              navigation.navigate('PatientDetails', { patientDetails });
             } else {
               setActionModalVisible(true);
             }
           }}
         >
-          <Text>{status}</Text>
+          <Text style={{ color: '#000' }}>{status}</Text>
         </Pressable>
       ))}
     </View>
@@ -677,6 +682,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 12,
+    color:'black'
   },
   summaryContainer: {
     flexDirection: 'row',
@@ -709,6 +715,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     fontSize: 14,
+    color:'black'
   },
   filterButton: {
     width: 45,
@@ -978,5 +985,6 @@ option: {
   paddingVertical: 12,
   borderBottomWidth: 1,
   borderBottomColor: '#eee',
+  color:'black'
 },
 });

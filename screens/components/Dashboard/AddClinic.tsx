@@ -156,6 +156,8 @@ if ( response.status === 'success') {
         placeholder="Enter clinic name"
         value={form.clinicName}
         onChangeText={(text) => handleChange('clinicName', text)}
+        placeholderTextColor="gray"
+
       />
 
       {/* Opening & Closing Time */}
@@ -168,6 +170,8 @@ if ( response.status === 'success') {
           keyboardType="numeric"
           value={form.startTime}
           onChangeText={(text) => handleChange('startTime', text)}
+        placeholderTextColor="gray"
+
         />
         <TouchableOpacity
           style={[
@@ -196,6 +200,8 @@ if ( response.status === 'success') {
           keyboardType="numeric"
           value={form.endTime}
           onChangeText={(text) => handleChange('endTime', text)}
+        placeholderTextColor="gray"
+
         />
         <TouchableOpacity
           style={[
@@ -224,6 +230,8 @@ if ( response.status === 'success') {
         numberOfLines={3}
         value={form.address}
         onChangeText={(text) => handleChange('address', text)}
+        placeholderTextColor="gray"
+
       />
 <Text style={styles.label}>Landmark</Text>
       <TextInput
@@ -231,6 +239,8 @@ if ( response.status === 'success') {
         placeholder="Enter landmark"
         value={form.landmark}
         onChangeText={(text) => handleChange('landmark', text)}
+        placeholderTextColor="gray"
+
       />
 
       <View style={styles.row}>
@@ -239,12 +249,16 @@ if ( response.status === 'success') {
           placeholder="Enter city"
           value={form.city}
           onChangeText={(text) => handleChange('city', text)}
+        placeholderTextColor="gray"
+
         />
         <TextInput
           style={[styles.input, { flex: 1 }]}
           placeholder="Enter state"
           value={form.state}
           onChangeText={(text) => handleChange('state', text)}
+        placeholderTextColor="gray"
+
         />
       </View>
 <Text style={styles.label}>Mobile Number</Text>
@@ -255,6 +269,8 @@ if ( response.status === 'success') {
         value={form.mobile}
         onChangeText={(text) => handleChange('mobile', text)}
         maxLength={10}
+        placeholderTextColor="gray"
+
       />
       <Text style={styles.label}>Email Id</Text>
       <TextInput
@@ -263,6 +279,7 @@ if ( response.status === 'success') {
         keyboardType="email-address"
         value={form.email}
         onChangeText={(text) => handleChange('email', text)}
+        placeholderTextColor="gray"
       />
       <Text style={styles.label}>Pin Code</Text>
       <TextInput
@@ -272,6 +289,7 @@ if ( response.status === 'success') {
         value={form.pincode}
         onChangeText={(text) => handleChange('pincode', text)}
         maxLength={6}
+        placeholderTextColor="gray"
       />
      
 
@@ -315,6 +333,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     borderWidth:1,
     borderColor: '#D1D5DB',
+    color:'black'
     // borderColor:'#655e5cff'
   },
   textarea: {
@@ -334,6 +353,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth:1,
     borderColor: '#D1D5DB',
+    color:'black'
   },
   toggleBtn: {
     paddingHorizontal: 14,

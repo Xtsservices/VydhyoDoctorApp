@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
+  Alert,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -176,13 +177,13 @@ const AvailabilityScreen: React.FC = () => {
       if (response.status !== 'success') {
         setUnAvailableSlots([]);
         setAvailableSlots([]);
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: response?.message?.message || response?.data?.message || 'Failed to update clinic',
-          position: 'top',
-          visibilityTime: 3000,
-        });
+        // Toast.show({
+        //   type: 'error',
+        //   text1: 'Error',
+        //   text2: response?.message?.message || response?.data?.message || 'Failed to update clinic',
+        //   position: 'top',
+        //   visibilityTime: 3000,
+        // });
       } else {
         const slotsData = response.data.data;
         const available: Slot[] = [];
@@ -260,18 +261,30 @@ const AvailabilityScreen: React.FC = () => {
       };
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthPost('appointment/createSlotsForDoctor', payload, token);
+      console.log(response, "slots")
 
       if (response?.data && response?.data?.status === 'success') {
-        fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
+        if (response?.data?.results[0]?.status === 'created'){
+           fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
         setToDate(new Date());
-        Toast.show({
+           Toast.show({
           type: 'success',
           text1: 'Success',
           text2: response?.data?.message || 'Slots Added Successfully',
           position: 'top',
           visibilityTime: 3000,
         });
+        }
+        const overlap = response?.data?.results[0]?.reason
+        const clinicname = response?.data?.results[0]?.overlaps[0]?.clinic
+        if (overlap &&clinicname) {
+        Alert.alert(overlap, `Clinic Name: ${clinicname}`)
+        }
+        fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
+        setToDate(new Date());
+       
       } else {
+        console.log(response, "12")
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -281,13 +294,14 @@ const AvailabilityScreen: React.FC = () => {
         });
       }
     } catch (error: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.message || 'Please Retry',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      console.log(error, "1234")
+      // Toast.show({
+      //   type: 'error',
+      //   text1: 'Error',
+      //   text2: error?.message || 'Please Retry',
+      //   position: 'top',
+      //   visibilityTime: 3000,
+      // });
     }
   };
 
@@ -454,6 +468,45 @@ const AvailabilityScreen: React.FC = () => {
     setFromDate(date);
   };
 
+  // Convert "HH:mm" or "h:mm AM/PM" => minutes since midnight
+const slotStringToMinutes = (s) => {
+  if (!s) return 0;
+  const raw = s.trim().toUpperCase();
+  const hasAMPM = /\bAM\b|\bPM\b/.test(raw);
+  const cleaned = raw.replace(/\s?(AM|PM)\b/, '').trim();
+  const [hStr, mStr = '0'] = cleaned.split(':');
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10) || 0;
+
+  if (hasAMPM) {
+    const isPM = /\bPM\b/.test(raw);
+    if (isPM && h !== 12) h += 12;
+    if (!isPM && h === 12) h = 0; // 12:xx AM -> 00:xx
+  }
+  return h * 60 + m;
+};
+
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+/**
+ * Disable if:
+ *  - selected date is strictly before today, OR
+ *  - selected date is today AND slot time is <= current time
+ */
+const isPastSlot = (slotTimeStr, fromDate) => {
+  const now = new Date();
+  const today0 = startOfDay(now).getTime();
+  const sel0 = startOfDay(fromDate).getTime();
+
+  if (sel0 < today0) return true;                // any time in a past day
+  if (sel0 > today0) return false;               // future day – all enabled
+
+  const slotMins = slotStringToMinutes(slotTimeStr);
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  return slotMins <= nowMins;                    // today: past or current minute
+};
+
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.dropdownContainer}>
@@ -467,7 +520,7 @@ const AvailabilityScreen: React.FC = () => {
             <Picker.Item label="Select Clinic" value="" />
             {clinics?.length > 0 &&
               clinics.map((clinic) => (
-                <Picker.Item key={clinic.value} label={clinic.label} value={clinic.value} />
+                <Picker.Item key={clinic.value} label={clinic.label} value={clinic.value} style={{ color: '#979393ff' }} />
               ))}
           </Picker>
         </View>
@@ -482,7 +535,7 @@ const AvailabilityScreen: React.FC = () => {
             setShowDatePicker(true);
           }}
         >
-          <Text>{dayjs(fromDate).format('DD/MM/YYYY')}</Text>
+          <Text style={{ color: '#333' }}>{dayjs(fromDate).format('DD/MM/YYYY')}</Text>
           <Icon name="calendar-today" size={20} color="#000" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
 
@@ -494,7 +547,7 @@ const AvailabilityScreen: React.FC = () => {
             setShowDatePicker(true);
           }}
         >
-          <Text>{dayjs(toDate).format('DD/MM/YYYY')}</Text>
+          <Text style={{ color: '#333' }}>{dayjs(toDate).format('DD/MM/YYYY')}</Text>
           <Icon name="calendar-today" size={20} color="#000" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
 
@@ -554,7 +607,7 @@ const AvailabilityScreen: React.FC = () => {
                 style={[styles.periodButton, { backgroundColor: startPeriod === 'PM' ? '#ffeaa7' : '#fff' }]}
                 onPress={() => setStartPeriod((prev) => (prev === 'AM' ? 'PM' : 'AM'))}
               >
-                <Text>{startPeriod}</Text>
+                <Text style={{ color: '#333' }}>{startPeriod}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -575,7 +628,7 @@ const AvailabilityScreen: React.FC = () => {
                 style={[styles.periodButton, { backgroundColor: endPeriod === 'PM' ? '#ffeaa7' : '#fff' }]}
                 onPress={() => setEndPeriod((prev) => (prev === 'AM' ? 'PM' : 'AM'))}
               >
-                <Text>{endPeriod}</Text>
+                <Text style={{ color: '#333' }}>{endPeriod}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -586,7 +639,7 @@ const AvailabilityScreen: React.FC = () => {
           <View style={styles.pickerWrapper}>
             <Picker selectedValue={duration} onValueChange={(val) => setDuration(val)} style={styles.picker}>
               {durations.map((d) => (
-                <Picker.Item key={d} label={d} value={d} />
+                <Picker.Item key={d} label={d} value={d} style={{ color: '#333' }} />
               ))}
             </Picker>
           </View>
@@ -609,16 +662,34 @@ const AvailabilityScreen: React.FC = () => {
         ) : (
           availableSlots.map((slot: Slot, index: number) => (
             <TouchableOpacity
-              key={index}
-              style={[styles.slotBubble, selectedSlots.includes(slot.time) && styles.selectedSlotBubble]}
-              onPress={() => toggleSlotSelection(slot.time)}
-              onLongPress={() => {
-                setSelectedSlots([slot.time]);
-                setShowDeleteConfirm(true);
-              }}
-            >
-              <Text>{slot.time}</Text>
-            </TouchableOpacity>
+  key={index}
+  disabled={isPastSlot(slot.time, fromDate)}
+  style={[
+    styles.slotBubble,
+    selectedSlots.includes(slot.time) && styles.selectedSlotBubble,
+    isPastSlot(slot.time, fromDate) && styles.disabledSlotBubble,
+  ]}
+  onPress={() => {
+    if (isPastSlot(slot.time, fromDate)) return;
+    toggleSlotSelection(slot.time);
+  }}
+  onLongPress={() => {
+    if (isPastSlot(slot.time, fromDate)) return;
+    setSelectedSlots([slot.time]);
+    setShowDeleteConfirm(true);
+  }}
+  accessibilityState={{ disabled: isPastSlot(slot.time, fromDate) }}
+>
+  <Text
+    style={[
+      { color: '#333' },
+      isPastSlot(slot.time, fromDate) && styles.disabledSlotText,
+    ]}
+  >
+    {slot.time}
+  </Text>
+</TouchableOpacity>
+
           ))
         )}
       </View>
@@ -671,6 +742,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#333',
   },
   dropdownContainer: {
     marginBottom: 12,
@@ -685,6 +757,7 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     width: '100%',
+    color:' #3f3e3eff',
   },
   row: {
     flexDirection: 'row',
@@ -744,6 +817,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     minWidth: 30,
     textAlign: 'center',
+    color: '#333',
   },
   arrowGroup: {
     marginLeft: 8,
@@ -757,6 +831,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     marginBottom: 2,
+    color: '#333',
   },
   periodButton: {
     marginLeft: 8,
@@ -801,6 +876,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     marginBottom: 20,
+    color: '#333',
   },
   slotGrid: {
     flexDirection: 'row',
@@ -837,6 +913,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 20,
     textAlign: 'center',
+    color:'black'
   },
   modalButtons: {
     flexDirection: 'row',
@@ -853,5 +930,11 @@ const styles = StyleSheet.create({
   },
   defaultButton: {
     backgroundColor: '#f0f0f0',
+  },
+   disabledSlotBubble: {
+    opacity: 0.45,
+  },
+  disabledSlotText: {
+    color: '#999',
   },
 });
