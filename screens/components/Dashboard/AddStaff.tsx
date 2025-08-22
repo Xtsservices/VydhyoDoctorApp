@@ -206,7 +206,7 @@ const AddStaffScreen = () => {
       setForm((prev) => ({ ...prev, role: itemValue }))
     }
     style={styles.picker}
-  >
+  > 
     <Picker.Item label="Select Role" value=""  style={{ color: 'black' }}/>
     <Picker.Item label="Lab Assistant" value="lab_assistant" style={{ color: 'black' }}/>
     <Picker.Item label="Pharmacy Assistant" value="pharmacy_assistant" style={{ color: 'black' }}/>

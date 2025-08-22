@@ -151,6 +151,8 @@ const payload = {
   stafftype: form.role,
   userId: form.userId,
   DOB: form.DOB,
+  firstname:form.firstName,
+  lastname:form.lastName
   // : `${firstName} ${lastName}`, // using before removal
 };
 
@@ -211,6 +213,23 @@ const handleSearch = (text: string) => {
     setStaffData(filtered);
   }
 };
+
+useEffect(()=>{
+  if (selectedStatus !== 'all'){
+  const filtered = originalStaffData.filter((staff) =>
+      staff.role.toLowerCase() === (selectedStatus.toLowerCase())
+    );
+    setStaffData(filtered);
+  }else{
+    setStaffData(originalStaffData)
+  }
+
+
+}, [selectedStatus])
+console.log("filter after", staffData)
+
+
+
 
 
 const clearSearch = () => {
@@ -292,7 +311,7 @@ setOriginalStaffData(formattedData); // Store unfiltered data
 
   const [fetchLoading, setFetchLoading] = React.useState<boolean>(false);
 
-  console.log(staffData, "selectedstaff data")
+  console.log(selectedStatus, "selectedstaff data")
 
 // Fetch staff data on component mount  
 useEffect(() => {
@@ -407,7 +426,7 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
         {mode === 'delete' && 'Delete Staff'}
       </Text>
 
-   {['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB', 'access'].map((field, i) => (
+{['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB', 'access'].map((field, i) => (
   <View key={i} style={styles.inputGroup}>
     <Text style={styles.label}>{field}</Text>
 
@@ -456,6 +475,20 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
           ))}
         </Picker>
       </>
+    ) : field === 'mobile' ? (
+      <TextInput
+        value={String(form.mobile ?? '')}
+        onChangeText={(text) => {
+          const onlyDigits = text.replace(/\D/g, '').slice(0, 10); // keep digits, cap at 10
+          setForm({ ...form, mobile: onlyDigits });
+        }}
+        keyboardType="number-pad"
+        // inputMode="numeric" // (optional, RN 0.71+) helps on web as well
+        maxLength={10}
+        style={styles.input}
+        editable={mode === 'edit'}
+        placeholder="10-digit mobile"
+      />
     ) : (
       <TextInput
         value={
@@ -470,6 +503,7 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
     )}
   </View>
 ))}
+
 
 
 
@@ -850,9 +884,5 @@ removeButton: {
   color: 'red',
   fontWeight: 'bold',
 },
-
-
-
-
 });
 

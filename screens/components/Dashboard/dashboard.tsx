@@ -507,7 +507,7 @@ const DoctorDashboard = () => {
           </ScrollView>
         </View>
       </ScrollView>
-      <Footer />
+      {/* <Footer /> */}
     </View>
   );
 };

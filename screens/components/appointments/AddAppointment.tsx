@@ -266,6 +266,7 @@ clinicAddressId,
       discount: discount,
       discountType: discountType,
       paymentStatus: paymentStatus,
+      appSource:"walkIn"
     };
 
     console.log('Final appointment payload:', appointmentRequest);
