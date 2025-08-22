@@ -14,29 +14,22 @@ import moment from 'moment';
 
 const AdviceScreen = () => {
   const navigation = useNavigation<any>();
-   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const route = useRoute<any>();
   const { patientDetails, formData: initialFormData } = route.params;
-  const [formData, setFormData] = useState({
-    ...initialFormData,
-    examinationFindings: initialFormData.advice.advice || '',
-    followUpDate: initialFormData.advice.followUpDate || '',
-  });
+  const [formData, setFormData] = useState(initialFormData);
 
-  const handleChange = (field: string, value: string) => {
-     setFormData((prev) => ({
+  const handleChange = (name: string, value: string) => {
+    setFormData((prev) => ({
       ...prev,
       advice: {
         ...prev.advice,
-        [field]: value,
+        [name]: value,
       },
     }));
-    // setFormData((prev) => ({
-    //   ...prev,
-    //   [field]: value,
-    // }));
   };
-   const onChange = (event, selectedDate) => {
+
+  const onChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
       const formatted = moment(selectedDate).format('MM/DD/YYYY');
@@ -55,57 +48,61 @@ const AdviceScreen = () => {
         <View style={styles.iconContainer}>
           <Text style={styles.icon}>⚕️</Text>
         </View>
+        <Text style={styles.cardTitle}>General Notes</Text>
+        <TextInput
+          style={styles.textArea}
+          placeholder="Enter general notes..."
+          multiline
+          value={formData.advice.medicationNotes || ''}
+          onChangeText={(text) => handleChange('medicationNotes', text)}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.iconContainer}>
+          <Text style={styles.icon}>⚕️</Text>
+        </View>
         <Text style={styles.cardTitle}>Advice</Text>
-        <Text style={styles.cardSubtitle}>
-          Clinical examination findings and observations
-        </Text>
         <TextInput
           style={styles.textArea}
           placeholder="Enter findings from clinical examination..."
           multiline
-          value={formData.advice.advice}
+          value={formData.advice.advice || ''}
           onChangeText={(text) => handleChange('advice', text)}
         />
       </View>
 
       <View style={styles.cardGreen}>
-      <View style={styles.iconContainer}>
-        <Text style={styles.icon}>📅</Text>
+        <View style={styles.iconContainer}>
+          <Text style={styles.icon}>📅</Text>
+        </View>
+        <Text style={styles.cardTitle}>Follow-Ups</Text>
+        <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+          <TextInput
+            style={styles.input}
+            placeholder="mm/dd/yyyy"
+            value={formData.advice.followUpDate || ''}
+            editable={false}
+            pointerEvents="none"
+          />
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            minimumDate={new Date()}
+            onChange={onChange}
+          />
+        )}
       </View>
 
-      <Text style={styles.cardTitle}>Follow-Ups</Text>
-
-      <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-        <TextInput
-          style={styles.input}
-          placeholder="mm/dd/yyyy"
-          value={formData.advice.followUpDate}
-          editable={false}
-          pointerEvents="none"
-        />
-      </TouchableOpacity>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          minimumDate={new Date()} // disable past dates
-          onChange={onChange}
-        />
-      )}
-    </View>
-
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>Cancel</Text>
+        <TouchableOpacity style={styles.cancelButton}>
+          <Text style={styles.buttonText}>Cancel</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.nextButton}  onPress={() => navigation.navigate('PrescriptionPreview', {
-     patientDetails,
-     formData
- 
-  })}>
-          <Text style={styles.nextText}>Confirm</Text>
+        <TouchableOpacity style={styles.nextButton} onPress={() => navigation.navigate('PrescriptionPreview', { patientDetails, formData })}>
+          <Text style={styles.buttonText}>Confirm</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -117,7 +114,7 @@ export default AdviceScreen;
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#f6f6f6',
+    backgroundColor: '#F0FDF4',
   },
   header: {
     flexDirection: 'row',
@@ -166,11 +163,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
-  cardSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
   textArea: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -205,14 +197,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
   },
-  cancelText: {
-    color: '#000',
-    fontWeight: '500',
-  },
-  nextText: {
+  buttonText: {
     color: '#fff',
     fontWeight: '600',
   },
 });
-
-

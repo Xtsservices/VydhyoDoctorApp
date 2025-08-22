@@ -31,4 +31,7 @@ export type RootStackParamList = {
   AdviceFollowup:undefined;
   PrescriptionPreview:undefined;
   expenditure:undefined;
+  Profile: undefined;
+  PreviousPrescription: undefined;
+  EPrescriptionList: undefined;
 };

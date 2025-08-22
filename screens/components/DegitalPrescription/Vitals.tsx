@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 
 const VitalsScreen = () => {
   const navigation = useNavigation<any>();
@@ -8,52 +9,9 @@ const VitalsScreen = () => {
   const { patientDetails, formData: initialFormData } = route.params;
 
   const [formData, setFormData] = useState(initialFormData);
+  const [errors, setErrors] = useState({});
 
-  console.log(formData, "previousData if any")
-
-  // Auto-calculate BMI
-  useEffect(() => {
-    const { weight, height } = formData.vitals || {};
-    if (weight && height) {
-      const heightInMeters = parseFloat(height) / 100;
-      const bmi = (parseFloat(weight) / (heightInMeters * heightInMeters)).toFixed(1);
-      setFormData((prev) => ({
-        ...prev,
-        vitals: {
-          ...prev.vitals,
-          bmi: bmi,
-        },
-      }));
-    }
-  }, [formData.vitals?.weight, formData.vitals?.height]);
-
-  const handleVitalsChange = (field: string, value: string) => {
-     const normalizedValue =
-      value === "" ? "" : Number(value) < 0 ? "" : String(value).trim();
-    const updatedData = { ...formData, [field]: normalizedValue };
-    if (field === "bpSystolic" || field === "bpDiastolic") {
-      const systolic =
-        field === "bpSystolic" ? normalizedValue : formData.bpSystolic;
-      const diastolic =
-        field === "bpDiastolic" ? normalizedValue : formData.bpDiastolic;
-      updatedData.bp = systolic && diastolic ? `${systolic}/${diastolic}` : "";
-    }
-    if (field === "weight" || field === "height") {
-      updatedData.bmi = calculateBMI(
-        field === "weight" ? normalizedValue : updatedData.weight,
-        field === "height" ? normalizedValue : updatedData.height
-      );
-    }
-    setFormData((prev) => ({
-      ...prev,
-      vitals: {
-        ...prev.vitals,
-        [field]: value,
-      },
-    }));
-  };
-
-   const validationRules = {
+  const validationRules = {
     bpSystolic: {
       min: 0,
       max: 240,
@@ -71,8 +29,8 @@ const VitalsScreen = () => {
     },
     respiratoryRate: {
       min: 0,
-      max: 30,
-      message: "Respiratory rate must be between 0 and 30 breaths/min",
+      max: 60,
+      message: "Respiratory rate must be between 0 and 60 breaths/min",
     },
     temperature: {
       min: 95,
@@ -91,7 +49,84 @@ const VitalsScreen = () => {
       message: "Weight must be between 0 and 250 kg",
     },
   };
-   const calculateBMI = (weight, height) => {
+
+  useEffect(() => {
+    const { weight, height } = formData.vitals || {};
+    if (weight && height) {
+      const heightInMeters = parseFloat(height) / 100;
+      const bmi = (parseFloat(weight) / (heightInMeters * heightInMeters)).toFixed(1);
+      setFormData((prev) => ({
+        ...prev,
+        vitals: {
+          ...prev.vitals,
+          bmi: bmi,
+        },
+      }));
+    }
+  }, [formData.vitals?.weight, formData.vitals?.height]);
+
+  const validateField = (field, value) => {
+    const rules = validationRules[field];
+    if (!rules || value === "" || value === null || value === undefined) return true;
+    const numVal = Number(value);
+    return !isNaN(numVal) && numVal >= rules.min && numVal <= rules.max;
+  };
+
+  const handleVitalsChange = (field: string, value: string) => {
+    const normalizedValue = value === "" ? "" : Number(value) < 0 ? "" : String(value).trim();
+    const updatedData = { ...formData.vitals, [field]: normalizedValue };
+
+    if (field === "bpSystolic" || field === "bpDiastolic") {
+      const systolic = field === "bpSystolic" ? normalizedValue : formData.vitals.bpSystolic;
+      const diastolic = field === "bpDiastolic" ? normalizedValue : formData.vitals.bpDiastolic;
+      updatedData.bp = systolic && diastolic ? `${systolic}/${diastolic}` : "";
+    }
+    if (field === "weight" || field === "height") {
+      updatedData.bmi = calculateBMI(
+        field === "weight" ? normalizedValue : updatedData.weight,
+        field === "height" ? normalizedValue : updatedData.height
+      );
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      vitals: updatedData,
+    }));
+  };
+
+  const handleBlur = (field) => {
+    const value = formData.vitals[field];
+    if (!validateField(field, value)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Value',
+        text2: validationRules[field].message,
+      });
+      const updatedData = { ...formData.vitals, [field]: "" };
+      if (field === "height" || field === "weight") {
+        updatedData.bmi = calculateBMI(
+          field === "weight" ? "" : updatedData.weight,
+          field === "height" ? "" : updatedData.height
+        );
+      }
+      setFormData((prev) => ({
+        ...prev,
+        vitals: updatedData,
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        [field]: validationRules[field].message,
+      }));
+    } else {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const calculateBMI = (weight, height) => {
     if (weight && height && !isNaN(Number(weight)) && !isNaN(Number(height))) {
       const heightInMeters = Number(height) / 100;
       const bmi = Number(weight) / (heightInMeters * heightInMeters);
@@ -100,14 +135,6 @@ const VitalsScreen = () => {
     return "";
   };
 
-  //   const validateField = (field, value) => {
-  //   const rules = validationRules[field];
-  //   if (!rules || value === "" || value === null || value === undefined)
-  //     return true;
-  //   const numVal = Number(value);
-  //   return !isNaN(numVal) && numVal >= rules.min && numVal <= rules.max;
-  // };
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -115,33 +142,31 @@ const VitalsScreen = () => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Vitals Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🩺 Vitals</Text>
           <View style={styles.inputRow}>
             <TextInput
-              placeholder="bpSystolic"
+              placeholder="Systolic"
               style={styles.input}
               value={formData.vitals?.bpSystolic || ''}
               onChangeText={(text) => handleVitalsChange('bpSystolic', text)}
+              onBlur={() => handleBlur('bpSystolic')}
               keyboardType="numeric"
-
             />
-            {/* <Text>/</Text> */}
-             <TextInput
-              placeholder="bpDiastolic"
+            <TextInput
+              placeholder="Diastolic"
               style={styles.input}
               value={formData.vitals?.bpDiastolic || ''}
               onChangeText={(text) => handleVitalsChange('bpDiastolic', text)}
+              onBlur={() => handleBlur('bpDiastolic')}
               keyboardType="numeric"
-
             />
-
             <TextInput
               placeholder="Pulse Rate"
               style={styles.input}
               value={formData.vitals?.pulseRate || ''}
               onChangeText={(text) => handleVitalsChange('pulseRate', text)}
+              onBlur={() => handleBlur('pulseRate')}
               keyboardType="numeric"
             />
           </View>
@@ -152,6 +177,7 @@ const VitalsScreen = () => {
               style={styles.input}
               value={formData.vitals?.respiratoryRate || ''}
               onChangeText={(text) => handleVitalsChange('respiratoryRate', text)}
+              onBlur={() => handleBlur('respiratoryRate')}
               keyboardType="numeric"
             />
             <TextInput
@@ -159,6 +185,7 @@ const VitalsScreen = () => {
               style={styles.input}
               value={formData.vitals?.temperature || ''}
               onChangeText={(text) => handleVitalsChange('temperature', text)}
+              onBlur={() => handleBlur('temperature')}
               keyboardType="numeric"
             />
           </View>
@@ -169,6 +196,7 @@ const VitalsScreen = () => {
               style={styles.input}
               value={formData.vitals?.spo2 || ''}
               onChangeText={(text) => handleVitalsChange('spo2', text)}
+              onBlur={() => handleBlur('spo2')}
               keyboardType="numeric"
             />
             <TextInput
@@ -176,6 +204,7 @@ const VitalsScreen = () => {
               style={styles.input}
               value={formData.vitals?.height || ''}
               onChangeText={(text) => handleVitalsChange('height', text)}
+              onBlur={() => handleBlur('height')}
               keyboardType="numeric"
             />
           </View>
@@ -186,6 +215,7 @@ const VitalsScreen = () => {
               style={styles.input}
               value={formData.vitals?.weight || ''}
               onChangeText={(text) => handleVitalsChange('weight', text)}
+              onBlur={() => handleBlur('weight')}
               keyboardType="numeric"
             />
             <TextInput
@@ -197,28 +227,6 @@ const VitalsScreen = () => {
           </View>
         </View>
 
-        {/* Investigation Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🧪 Investigation</Text>
-          <Text style={styles.subtitle}>Clinical examination findings and observations</Text>
-          <TextInput
-            placeholder="Enter findings from clinical examination..."
-            style={styles.textArea}
-            multiline
-            value={formData.patientInfo?.examinationFindings || ''}
-            onChangeText={(text) =>
-              setFormData((prev) => ({
-                ...prev,
-                patientInfo: {
-                  ...prev.patientInfo,
-                  examinationFindings: text,
-                },
-              }))
-            }
-          />
-        </View>
-
-        {/* Buttons */}
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -261,11 +269,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 13,
-    color: '#555',
-    marginBottom: 8,
-  },
   inputRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -279,16 +282,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginRight: 8,
     backgroundColor: '#fff',
-    color:'black'
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 10,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    backgroundColor: '#fff',
+    color: 'black'
   },
   buttonRow: {
     flexDirection: 'row',
