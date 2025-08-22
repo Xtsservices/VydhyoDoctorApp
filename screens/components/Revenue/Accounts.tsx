@@ -292,7 +292,7 @@ const AccountsScreen = () => {
         {showFilters && (
           <View style={styles.filters}>
             <TextInput
-              placeholder="Search by Patient or Transaction ID"
+              placeholder="Search by Patient"
               style={styles.searchInput}
               value={searchText}
               onChangeText={(text) => setSearchText(text)}

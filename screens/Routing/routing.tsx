@@ -33,12 +33,11 @@ import PatientDetails from "../components/DegitalPrescription/PatientDetails";
 import Vitals from "../components/DegitalPrescription/Vitals";
 import DiagnosisMedication from "../components/DegitalPrescription/DiagnosisMedication";
 import AdviceFollowup from "../components/DegitalPrescription/AdviceFollowup";
-
+import Profile from "../components/PersonalInfo/Profile";
 import PrescriptionPreview from "../components/DegitalPrescription/PrescriptionPreview";
 import Authloader from "../components/Authloader";
-
-
-
+import EPrescriptionList from "../components/DegitalPrescription/EPrescriptionList";
+import PreviousPrescription from "../components/DegitalPrescription/PreviousPrescription";
 
 // import Appointments from "../components/appointments/appointments";
 // import MyPatient from "../components/Dashboard/MyPatient";
@@ -83,13 +82,9 @@ const Routing = () => {
         <Stack.Screen name="DiagnosisMedication" component={DiagnosisMedication} options={{ title: "Diagnosis & Medication", headerTitleAlign: "center", }}/>
         <Stack.Screen name="AdviceFollowup" component={AdviceFollowup} options={{ title: "Advice & Followup", headerTitleAlign: "center", }}/>
         <Stack.Screen name="PrescriptionPreview" component={PrescriptionPreview} options={{ title: "Prescription Preview", headerTitleAlign: "center", }}/>
-
-
-
-
-
-
-
+        <Stack.Screen name="Profile" component={Profile} options={{ title: "Profile", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="PreviousPrescription" component={PreviousPrescription} options={{ title: "Previous Prescription", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="EPrescriptionList" component={EPrescriptionList} options={{ title: "E-Prescriptions", headerTitleAlign: "center", }}/>
 
 
       </Stack.Navigator>

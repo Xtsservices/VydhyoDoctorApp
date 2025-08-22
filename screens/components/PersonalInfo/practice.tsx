@@ -688,7 +688,7 @@ const PracticeScreen = () => {
           {opdAddresses.map((addr, index) => (
             <View key={index} style={styles.addressContainer}>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Location on Map</Text>
+                {/* <Text style={styles.label}>Select Location on Map</Text>
                 <View style={{ flex: 1 }} pointerEvents="box-none">
                   <MapView
                     style={{
@@ -715,7 +715,7 @@ const PracticeScreen = () => {
                     pitchEnabled={true}
                     rotateEnabled={true}
                   />
-                </View>
+                </View> */}
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Clinic Name *</Text>

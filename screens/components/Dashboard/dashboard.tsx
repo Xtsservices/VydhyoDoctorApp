@@ -172,7 +172,7 @@ const DoctorDashboard = () => {
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [monthRevenue, setMonthRevenue] = useState(0);
   const [revenueSummaryData, setRevenueSummaryData] = useState([
-    { name: 'Appointment', population: 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+    { name: 'Appointment', population: 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
     { name: 'Lab', population: 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
     { name: 'Pharmacy', population: 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
   ]);
@@ -208,7 +208,7 @@ const DoctorDashboard = () => {
       if (response.data.status === 'success') {
         const data = response.data.data;
         setRevenueSummaryData([
-          { name: 'Appointment', population: data.appointment || 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+          { name: 'Appointment', population: data.appointment || 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
           { name: 'Lab', population: data.lab || 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
           { name: 'Pharmacy', population: data.pharmacy || 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
         ]);
@@ -365,13 +365,21 @@ const DoctorDashboard = () => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Sidebar')}>
-            <Ionicons style={styles.title} size={28} name="menu" />
+
+            <Ionicons style={styles.title} size={28} name="menu"  color="#000000"/>
+
           </TouchableOpacity>
           <Text style={styles.headerText}>
-            Good Morning,{"\n"}Dr. {formData.name}
+            {(() => {
+              const hour = new Date().getHours();
+              if (hour < 12) return 'Good Morning,';
+              if (hour < 17) return 'Good Afternoon,';
+              return 'Good Evening,';
+            })()}
+            {"\n"}Dr. {formData.name}
           </Text>
           <View style={styles.rightIcons}>
-            <Image source={PLACEHOLDER_IMAGE} style={{ width: 30, height: 30, marginLeft: 10 }} />
+            {/* <Image source={PLACEHOLDER_IMAGE} style={{ width: 30, height: 30, marginLeft: 10 }} /> */}
           </View>
         </View>
         <View style={[styles.appointmentButton, { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }]}>
@@ -383,7 +391,7 @@ const DoctorDashboard = () => {
         <View style={styles.container}>
           <View style={styles.appointmentsCard}>
             <View style={styles.centered}>
-              < Text style={styles.mainNumber}>{dashboardData.appointmentCounts.today}</Text>
+              <Text style={styles.mainNumber}>{dashboardData.appointmentCounts.today}</Text>
               <Text style={styles.subText}>Today's Appointments</Text>
             </View>
             <View style={styles.gridRow}>
@@ -459,18 +467,19 @@ const DoctorDashboard = () => {
           </ScrollView>
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { alignItems: 'flex-start', paddingLeft: 0 }]}>
           <Text style={styles.title}>Revenue Summary</Text>
           <PieChart
             data={revenueSummaryData}
-            width={screenWidth}
+            width={screenWidth - 30}
             height={200}
             chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
             accessor={'population'}
             backgroundColor={'transparent'}
-            paddingLeft={'15'}
+            paddingLeft={'0'}
             hasLegend={true}
             absolute
+            style={{ alignSelf: 'flex-start', marginLeft: -10, paddingRight: 10 }}
           />
         </View>
 

@@ -71,11 +71,12 @@ const menuItems = [
     onPress: () => navigation.navigate('MyPatient'),
   },
   {
-    key: 'prescription',
-    label: 'E Prescription',
-    description: 'Patient Prescription',
-    icon: 'description',
-  },
+      key: 'prescription',
+      label: 'E Prescription',
+      description: 'Patient Prescription',
+      icon: 'description',
+      onPress: () => navigation.navigate('EPrescriptionList'),
+    },
   // {
   //   key: 'labs',
   //   label: 'Labs',
@@ -272,7 +273,10 @@ console.log(department, 'departmetn')
       </View>
 
       {/* Public Profile Button */}
-      <TouchableOpacity style={styles.profileButton}>
+      <TouchableOpacity 
+        style={styles.profileButton} 
+        onPress={() => navigation.navigate('Profile')}
+      >
         <Feather name="eye" size={16} color="#007AFF" />
         <Text style={styles.profileButtonText}>View Public Profile</Text>
       </TouchableOpacity>
