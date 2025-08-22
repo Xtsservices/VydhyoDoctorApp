@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -30,12 +30,13 @@ const PrescriptionScreen = () => {
   const [showMedicationForm, setShowMedicationForm] = useState(false);
   const [medInventory, setMedInventory] = useState([]);
   const [medicineOptions, setMedicineOptions] = useState([]);
-  const [filteredMedicines, setFilteredMedicines] = useState<any[]>([]); // New state for filtered medicines
-  const [activeDropdown, setActiveDropdown] = useState<'test' | 'medicine' | null>(null); // Track active dropdown
+  const [filteredMedicines, setFilteredMedicines] = useState<any[]>([]);
+  const [activeDropdown, setActiveDropdown] = useState<'test' | 'medicine' | null>(null);
 
   const frequencyOptions = ['1-0-0', '1-0-1', '1-1-1', '0-0-1', '0-1-0', '1-1-0', '0-1-1', 'SOS'];
   const timingOptions = ['Before Breakfast', 'After Breakfast', 'Before Lunch', 'After Lunch', 'Before Dinner', 'After Dinner', 'Bedtime'];
   const medicineTypeOptions = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Drops'];
+  const manualQuantityTypes = ['Syrup', 'Cream', 'Drops'];
 
   const fetchInventory = async () => {
     try {
@@ -50,6 +51,7 @@ const PrescriptionScreen = () => {
         sortedMedicines.map((med) => ({
           value: med.medName,
           label: med.medName,
+          id: med._id,
         }))
       );
     } catch (error) {
@@ -62,7 +64,6 @@ const PrescriptionScreen = () => {
       const storedToken = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`lab/getTestsByDoctorId/${doctorId}`, storedToken);
       const tests = response?.data?.data?.tests || [];
-      console.log(tests, "test results from inventory")
       const sorted = [...tests].sort((a, b) => a.testName.localeCompare(b.testName));
       setTestList(sorted);
       setTestOptions(sorted.map((test) => ({ value: test.testName, label: test.testName })));
@@ -77,7 +78,6 @@ const PrescriptionScreen = () => {
   }, [doctorId]);
 
   useEffect(() => {
-    // Filter tests based on testInput
     const matches = testOptions.filter((t) =>
       t.label.toLowerCase().includes(testInput.toLowerCase())
     ).map((t) => t.label);
@@ -85,7 +85,6 @@ const PrescriptionScreen = () => {
   }, [testInput, testOptions]);
 
   useEffect(() => {
-    // Filter medicines based on the last medication's name input
     if (medications.length > 0) {
       const lastMed = medications[medications.length - 1];
       const matches = medicineOptions.filter((m) =>
@@ -97,7 +96,10 @@ const PrescriptionScreen = () => {
     }
   }, [medications, medicineOptions]);
 
-  const calculateQuantity = (frequency: string, duration: number | null) => {
+  const calculateQuantity = (frequency: string, duration: number | null, type: string | null) => {
+    if (manualQuantityTypes.includes(type || '')) {
+      return 0; // Will be entered manually
+    }
     const freqCount = frequency === 'SOS' ? 1 : frequency?.split('-').filter((x) => x === '1').length || 0;
     return duration ? freqCount * duration : 0;
   };
@@ -126,7 +128,17 @@ const PrescriptionScreen = () => {
 
   const handleAddMedicine = () => {
     if (medications.length > 0 && !validateMedication(medications[medications.length - 1])) return;
-    const newMedication = { id: Date.now(), name: '', type: null, dosage: '', duration: null, timing: [], frequency: null, quantity: 0 };
+    const newMedication = { 
+      id: Date.now(), 
+      name: '', 
+      type: null, 
+      dosage: '', 
+      duration: null, 
+      timing: [], 
+      frequency: null, 
+      quantity: 0,
+      manualQuantity: false 
+    };
     const updated = [...medications, newMedication];
     setMedications(updated);
     setFormData((prev) => ({ ...prev, prescribedMedications: updated }));
@@ -137,14 +149,26 @@ const PrescriptionScreen = () => {
   const handleMedicineChange = (index: number, field: string, value: any) => {
     const updated = [...medications];
     updated[index][field] = value;
-    const { frequency, duration, name, type, dosage, timing } = updated[index];
-
-    if (frequency && duration) {
-      updated[index].quantity = calculateQuantity(frequency, duration);
+    
+    // Check if this medicine type requires manual quantity input
+    if (field === 'type') {
+      updated[index].manualQuantity = manualQuantityTypes.includes(value);
+      if (updated[index].manualQuantity) {
+        updated[index].quantity = 0;
+      } else {
+        const { frequency, duration } = updated[index];
+        updated[index].quantity = calculateQuantity(frequency, duration, value);
+      }
+    }
+    
+    // Recalculate quantity if frequency or duration changes for non-manual types
+    if ((field === 'frequency' || field === 'duration') && !updated[index].manualQuantity) {
+      const { frequency, duration, type } = updated[index];
+      updated[index].quantity = calculateQuantity(frequency, duration, type);
     }
 
     const transformed = updated.map((med) => ({
-      medInventoryId: med.medInventoryId || null,
+      medInventoryId: medInventory.find(m => m.medName === med.name)?._id || null,
       medName: med.name,
       quantity: med.quantity,
       medicineType: med.type,
@@ -163,7 +187,6 @@ const PrescriptionScreen = () => {
       },
     }));
 
-    // Update filtered medicines when name changes
     if (field === 'name') {
       const matches = medicineOptions.filter((m) =>
         m.label.toLowerCase().includes(value.toLowerCase())
@@ -177,7 +200,11 @@ const PrescriptionScreen = () => {
     const med = updatedMedications[index];
     med.frequency = value;
     med.timing = value === 'SOS' ? [] : med.timing.slice(0, value.split('-').filter((x) => x === '1').length);
-    med.quantity = calculateQuantity(med.frequency, med.duration);
+    
+    if (!med.manualQuantity) {
+      med.quantity = calculateQuantity(med.frequency, med.duration, med.type);
+    }
+    
     setMedications(updatedMedications);
     setFormData((prev: any) => ({ ...prev, prescribedMedications: updatedMedications }));
   };
@@ -192,6 +219,7 @@ const PrescriptionScreen = () => {
     if (!med.frequency) return Toast.show({ type: 'error', text1: 'Select a frequency' }), false;
     const required = med.frequency === 'SOS' ? 0 : med.frequency.split('-').filter((x) => x === '1').length;
     if (med.timing.length !== required) return Toast.show({ type: 'error', text1: `Select ${required} timing(s)` }), false;
+    if (med.quantity <= 0) return Toast.show({ type: 'error', text1: 'Quantity must be greater than 0' }), false;
     return true;
   };
 
@@ -210,8 +238,6 @@ const PrescriptionScreen = () => {
     navigation.navigate('AdviceFollowup', { patientDetails, formData });
   };
 
-  console.log(testOptions, "filtered tests")
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.section}>
@@ -224,7 +250,7 @@ const PrescriptionScreen = () => {
           onFocus={() => setActiveDropdown('test')}
         />
         {activeDropdown === 'test' && testOptions.length > 0 && (
-          <View style={styles.dropdown}>
+          <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
             {testOptions.map((test, idx) => (
               <TouchableOpacity
                 key={idx}
@@ -237,7 +263,7 @@ const PrescriptionScreen = () => {
                 <Text>{test.value}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         )}
         <TouchableOpacity style={styles.addButton} onPress={() => handleAddTest(testInput)}>
           <Text style={styles.addButtonText}>+ Add Test</Text>
@@ -264,20 +290,13 @@ const PrescriptionScreen = () => {
       <View style={styles.section}>
         <View style={styles.medHeader}>
           <Text style={styles.sectionTitle}>💊 Prescribed Medications</Text>
-          <TouchableOpacity onPress={handleAddMedicine} style={styles.blueButton}>
-            <Text style={styles.blueButtonText}>+ Add Medicine</Text>
-          </TouchableOpacity>
         </View>
-         {formData?.diagnosis?.medications
-?.map((med: any, index: number) => (
-  <View style={styles.row}>
-          <Text key={index} style={styles.testTag}>Name: {med.medName}</Text>
-          <Text key={index} style={styles.testTag}>duration: {med.duration}</Text>
-          <Text key={index} style={styles.testTag}>dosage: {med.dosage
-}</Text>
-
-  </View>
-          
+        {formData?.diagnosis?.medications?.map((med: any, index: number) => (
+          <View key={index} style={styles.row}>
+            <Text style={styles.testTag}>Name: {med.medName}</Text>
+            <Text style={styles.testTag}>Duration: {med.duration}</Text>
+            <Text style={styles.testTag}>Dosage: {med.dosage}</Text>
+          </View>
         ))}
 
         {showMedicationForm && medications.map((med, index) => (
@@ -296,7 +315,7 @@ const PrescriptionScreen = () => {
               onFocus={() => setActiveDropdown('medicine')}
             />
             {activeDropdown === 'medicine' && filteredMedicines.length > 0 && medications.length - 1 === index && (
-              <View style={styles.dropdown}>
+              <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
                 {filteredMedicines.map((medicine, idx) => (
                   <TouchableOpacity
                     key={idx}
@@ -309,7 +328,7 @@ const PrescriptionScreen = () => {
                     <Text>{medicine}</Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             )}
             <Picker
               selectedValue={med.type}
@@ -380,12 +399,22 @@ const PrescriptionScreen = () => {
               ))}
             </View>
 
-            <TextInput
-              placeholder="Quantity"
-              style={[styles.input, { backgroundColor: '#eaeaea' }]}
-              value={med.quantity?.toString() || ''}
-              editable={false}
-            />
+            {med.manualQuantity ? (
+              <TextInput
+                placeholder="Quantity (e.g. 1 bottle, 1 tube)"
+                style={styles.input}
+                value={med.quantity?.toString() || ''}
+                onChangeText={(text) => handleMedicineChange(index, 'quantity', text)}
+                keyboardType="default"
+              />
+            ) : (
+              <TextInput
+                placeholder="Quantity"
+                style={[styles.input, { backgroundColor: '#eaeaea' }]}
+                value={med.quantity?.toString() || ''}
+                editable={false}
+              />
+            )}
 
             <TextInput
               placeholder="Notes"
@@ -396,7 +425,10 @@ const PrescriptionScreen = () => {
             />
           </View>
         ))}
-
+        
+        <TouchableOpacity onPress={handleAddMedicine} style={[styles.blueButton, { marginTop: 16 }]}>
+          <Text style={styles.blueButtonText}>+ Add Medicine</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.buttonRow}>
@@ -423,7 +455,7 @@ const styles = StyleSheet.create({
   addButton: { backgroundColor: '#007bff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 },
   addButtonText: { color: '#fff', fontWeight: '600' },
   testTag: { backgroundColor: '#e2e2e2', padding: 6, borderRadius: 6, marginTop: 4 },
-  dropdown: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 6, maxHeight: 150, overflow: 'scroll' },
+  dropdown: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 6, maxHeight: 150 },
   dropdownItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
   medHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   blueButton: { backgroundColor: '#007bff', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
@@ -435,7 +467,7 @@ const styles = StyleSheet.create({
   nextButton: { backgroundColor: '#007bff', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 },
   cancelText: { color: '#000', fontWeight: '500' },
   nextText: { color: '#fff', fontWeight: '600' },
-    row: {
+  row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8,
