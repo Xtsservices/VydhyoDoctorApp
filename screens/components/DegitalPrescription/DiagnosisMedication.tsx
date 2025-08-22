@@ -222,6 +222,7 @@ const PrescriptionScreen = () => {
           value={testInput}
           onChangeText={setTestInput}
           onFocus={() => setActiveDropdown('test')}
+          placeholderTextColor="#9CA3AF"
         />
         {activeDropdown === 'test' && testOptions.length > 0 && (
           <View style={styles.dropdown}>
@@ -234,7 +235,7 @@ const PrescriptionScreen = () => {
                 }}
                 style={styles.dropdownItem}
               >
-                <Text>{test.value}</Text>
+                <Text style={{ color: 'black' }}>{test.value}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -258,6 +259,8 @@ const PrescriptionScreen = () => {
             ...prev,
             diagnosis: { ...prev.diagnosis, diagnosisList: text.toUpperCase() },
           }))}
+          placeholderTextColor="#9CA3AF"
+
         />
       </View>
 
@@ -294,6 +297,7 @@ const PrescriptionScreen = () => {
               value={med.name}
               onChangeText={(text) => handleMedicineChange(index, 'name', text)}
               onFocus={() => setActiveDropdown('medicine')}
+              placeholderTextColor="#9CA3AF"
             />
             {activeDropdown === 'medicine' && filteredMedicines.length > 0 && medications.length - 1 === index && (
               <View style={styles.dropdown}>
@@ -326,6 +330,8 @@ const PrescriptionScreen = () => {
               style={styles.input}
               value={med.dosage}
               onChangeText={(text) => handleMedicineChange(index, 'dosage', text)}
+              placeholderTextColor="#9CA3AF"
+
             />
             <TextInput
               placeholder="Duration (days)"
@@ -333,6 +339,7 @@ const PrescriptionScreen = () => {
               value={med.duration?.toString() || ''}
               onChangeText={(text) => handleMedicineChange(index, 'duration', parseInt(text) || null)}
               keyboardType="numeric"
+              placeholderTextColor="#9CA3AF"
             />
             <Picker
               selectedValue={med.frequency}
@@ -346,7 +353,7 @@ const PrescriptionScreen = () => {
             </Picker>
 
             <View style={{ marginBottom: 10 }}>
-              <Text style={{ fontWeight: '600', marginBottom: 4 }}>Timing:</Text>
+              <Text style={{ fontWeight: '600', marginBottom: 4 , color:'black'}}>Timing:</Text>
               {timingOptions.map((option) => (
                 <TouchableOpacity
                   key={option}
@@ -385,6 +392,8 @@ const PrescriptionScreen = () => {
               style={[styles.input, { backgroundColor: '#eaeaea' }]}
               value={med.quantity?.toString() || ''}
               editable={false}
+              placeholderTextColor="#9CA3AF"
+
             />
 
             <TextInput
@@ -393,6 +402,7 @@ const PrescriptionScreen = () => {
               multiline
               value={med.notes || ''}
               onChangeText={(text) => handleMedicineChange(index, 'notes', text)}
+              placeholderTextColor="#9CA3AF"
             />
           </View>
         ))}
@@ -416,13 +426,13 @@ export default PrescriptionScreen;
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: '#f6f6f6' },
   section: { backgroundColor: '#fff', padding: 16, borderRadius: 10, marginBottom: 16, elevation: 2 },
-  sectionTitle: { fontWeight: '600', fontSize: 16, marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 10 },
-  picker: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 10, backgroundColor: '#fff' },
-  textArea: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, minHeight: 80, textAlignVertical: 'top', backgroundColor: '#fff', marginBottom: 10 },
+  sectionTitle: { fontWeight: '600', fontSize: 16, marginBottom: 8, color: '#0A2342' },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 10, color: 'black', backgroundColor: '#fff' },
+  picker: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 10, backgroundColor: '#fff', color: 'black' },
+  textArea: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, minHeight: 80, textAlignVertical: 'top', backgroundColor: '#fff', marginBottom: 10, color: 'black' },
   addButton: { backgroundColor: '#007bff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 },
   addButtonText: { color: '#fff', fontWeight: '600' },
-  testTag: { backgroundColor: '#e2e2e2', padding: 6, borderRadius: 6, marginTop: 4 },
+  testTag: { backgroundColor: '#e2e2e2', padding: 6, borderRadius: 6, marginTop: 4, color:'black' },
   dropdown: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 6, maxHeight: 150, overflow: 'scroll' },
   dropdownItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
   medHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

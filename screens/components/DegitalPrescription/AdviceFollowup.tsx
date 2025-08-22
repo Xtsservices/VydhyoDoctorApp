@@ -65,6 +65,7 @@ const AdviceScreen = () => {
           multiline
           value={formData.advice.advice}
           onChangeText={(text) => handleChange('advice', text)}
+          placeholderTextColor={"#9CA3AF"}
         />
       </View>
 
@@ -82,6 +83,7 @@ const AdviceScreen = () => {
           value={formData.advice.followUpDate}
           editable={false}
           pointerEvents="none"
+          placeholderTextColor={"#9CA3AF"}
         />
       </TouchableOpacity>
 
@@ -165,6 +167,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#0A2342',
   },
   cardSubtitle: {
     fontSize: 12,

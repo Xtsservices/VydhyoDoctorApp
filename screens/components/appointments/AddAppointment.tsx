@@ -266,6 +266,7 @@ clinicAddressId,
       discount: discount,
       discountType: discountType,
       paymentStatus: paymentStatus,
+      appSource:"walkIn"
     };
 
     console.log('Final appointment payload:', appointmentRequest);
@@ -477,6 +478,7 @@ console.log(formData, "complete form data")
           <TouchableOpacity
             key={patient._id}
             style={styles.patientOption}
+            
             onPress={() => {
               prefillPatientDetails(patient);
               setFieldsDisabled(true);
@@ -525,6 +527,8 @@ console.log(formData, "complete form data")
           value={patientformData.firstName}
           onChangeText={(text) => setpatientFormData({ ...patientformData, firstName: text })}
           editable={!isPatientAdded}
+      placeholderTextColor="#9CA3AF"
+
         />
         </View>
            <View style={styles.inputWrapper}>
@@ -535,6 +539,8 @@ console.log(formData, "complete form data")
           value={patientformData.lastName}
           onChangeText={(text) => setpatientFormData({ ...patientformData, lastName: text })}
           editable={!isPatientAdded}
+      placeholderTextColor="#9CA3AF"
+
         />
         </View>
       </View>
@@ -566,6 +572,7 @@ console.log(formData, "complete form data")
           placeholder="Age"
           style={styles.inputFlex}
           keyboardType="numeric"
+      placeholderTextColor="#9CA3AF"
            value={
               patientformData.dob
                 ? calculateAge(patientformData.dob) || patientformData.age
@@ -573,6 +580,7 @@ console.log(formData, "complete form data")
             }
           onChangeText={(text) => setpatientFormData({ ...patientformData, age: text })}
           editable={!patientformData.dob} 
+          maxLength={3}
         /> 
         </View>     
       </View>
@@ -591,6 +599,7 @@ console.log(formData, "complete form data")
         }}
         editable={!isPatientAdded}
         onBlur={() => validateMobile(patientformData.mobile)}
+      placeholderTextColor="#9CA3AF"
       />
       {mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
     </View>
@@ -604,7 +613,7 @@ console.log(formData, "complete form data")
               status={patientformData.gender === option ? 'checked' : 'unchecked'}
               onPress={() => setpatientFormData({ ...patientformData, gender: option })}
             />
-            <Text>{option}</Text>
+            <Text  style={{ color: '#000' }}>{option}</Text>
           </View>
         ))}
       </View>
@@ -622,6 +631,7 @@ console.log(formData, "complete form data")
       <View style={styles.pickerContainer}>
   <Picker
     selectedValue={formData.appointmentType}
+    
     onValueChange={(itemValue) =>
       setFormData((prev) => ({ ...prev, appointmentType: itemValue }))
     }
@@ -635,9 +645,10 @@ console.log(formData, "complete form data")
     <Picker.Item label="Followup Homecare" value="followup-homecare" />
   </Picker>
 </View>
-      <Text>Department *</Text>
+      <Text style={styles.label}>Department *</Text>
      <View style={styles.pickerContainer}>
         <TextInput
+        style={styles.input}
           value={formData.department ||currentuserDetails?.
 specialization?.name || ""}
           // onChangeText={(text) => setFormData({ ...formData, department: text })}
@@ -656,7 +667,7 @@ specialization?.name || ""}
   </Picker> */}
 </View>
 
-<Text>Appointment Date *</Text>
+<Text style={styles.label}>Appointment Date *</Text>
 
 <View style={styles.pickerContainer}>
          <TouchableOpacity style={styles.input} onPress={() => setShowappointmentDatePicker(true)}>
@@ -695,7 +706,7 @@ specialization?.name || ""}
            
       </View>
 
-      <Text>Clinic Name *</Text>
+      <Text style={styles.label}>Clinic Name *</Text>
 
        <View style={styles.pickerContainer}>
         <Picker
@@ -738,7 +749,7 @@ clinicName}
 
       {/* Time Slots */}
 
-      <Text>Available Slots *</Text>
+      <Text style={styles.label}>Available Slots *</Text>
       <View style={styles.timeSlotContainer}>
       {timeSlots.length > 0 ? (
   timeSlots.map((slot) => (
@@ -786,6 +797,7 @@ clinicName}
       <Text style={styles.sectionTitle}>Payment</Text>
        <TextInput
           placeholder="Consultation Fee"
+      placeholderTextColor="#9CA3AF"
           style={styles.inputFlex}
           keyboardType="numeric"
           value={formData.fee}
@@ -803,7 +815,7 @@ clinicName}
             status={paymentMethod === method ? 'checked' : 'unchecked'}
             onPress={() => setPaymentMethod(method)}
           />
-          <Text>{method}</Text>
+          <Text style={styles.paymentMethodText}>{method}</Text>
         </TouchableOpacity>
       ))}
 
@@ -919,6 +931,7 @@ patientsContainer: {
   inputFlex: {
     borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10,
     flex: 1, marginRight: 10,
+    color:'black'
   },
   searchButton: {
     backgroundColor: '#2563EB'
@@ -950,7 +963,7 @@ patientsContainer: {
     borderRadius: 8,
   },
   timeSlotSelected: {
-    backgroundColor: '#0a84ff', borderColor: '#0a84ff',
+    backgroundColor: '#0a84ff', borderColor: '#0bc148ff',
   },
   timeText: { color: '#333' },
   timeSelectedText: { color: '#fff', fontWeight: '600' },
@@ -966,7 +979,11 @@ patientsContainer: {
     fontSize: 15, fontWeight: '500', marginVertical: 10,
   },
   paymentOption: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: 6,
+    flexDirection: 'row', alignItems: 'center', marginBottom: 6, color:'black'
+  },
+  paymentMethodText: {
+    color: 'black',
+    fontWeight: '500',
   },
   payNowButton: {
     backgroundColor: '#28a745', padding: 14,
@@ -1011,6 +1028,7 @@ patientsContainer: {
   picker: {
     height: 50,
     width: '100%',
+    color:'black'
   },
 });
 // Removed unused moment function as date parsing is handled inline.

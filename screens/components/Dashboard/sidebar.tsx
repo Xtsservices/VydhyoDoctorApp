@@ -60,7 +60,7 @@ const menuItems = [
     key: 'appointments',
     label: 'Appointments',
     description: 'Manage your appointments',
-    icon: 'event_note',
+    icon: 'event',
     onPress: () => navigation.navigate('Appointments'),
   },
   {
@@ -112,7 +112,7 @@ const menuItems = [
   {
     key: 'accounts',
     label: 'Accounts',
-    description: 'Accounts and Billing',
+    description: 'Accounts ',
     icon: 'receipt',
     onPress: () => navigation.navigate('Accounts'),
   },

@@ -16,7 +16,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
-import { apiGet, apiPost } from '../../api'; // Assuming api utilities are available
 import { AuthPost, AuthFetch } from '../../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -202,6 +201,7 @@ const TotalExpenditureScreen: React.FC = () => {
           placeholder="Search by Transaction ID, Description or Notes"
           value={searchText}
           onChangeText={handleSearch}
+          placeholderTextColor="#9CA3AF"
         />
         <TouchableOpacity
           style={styles.datePickerButton}
@@ -296,6 +296,7 @@ const TotalExpenditureScreen: React.FC = () => {
                 placeholder="e.g., Rent, Salary, Supplies"
                 value={formData.description}
                 onChangeText={text => setFormData({ ...formData, description: text })}
+                placeholderTextColor="#9CA3AF"
               />
 
               <Text style={styles.formLabel}>Amount (₹)</Text>
@@ -305,6 +306,7 @@ const TotalExpenditureScreen: React.FC = () => {
                 value={formData.amount}
                 onChangeText={text => setFormData({ ...formData, amount: text })}
                 keyboardType="numeric"
+                placeholderTextColor="#9CA3AF"
               />
 
               <Text style={styles.formLabel}>Payment Method</Text>
