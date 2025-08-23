@@ -53,7 +53,7 @@ const ProfileReview: React.FC = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <TouchableOpacity style={styles.backButton} >
           <Icon name="arrow-left" size={width * 0.06} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile Review</Text>

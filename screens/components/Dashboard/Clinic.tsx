@@ -1,7 +1,7 @@
-
+// ClinicManagementScreen.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import React, { Key, ReactNode, use, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,11 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-   Image,
-   Modal,
+  Image,
+  Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthFetch, AuthPost, AuthPut } from '../../auth/auth';
-import AvailabilityScreen from './Availability';
 import Toast from 'react-native-toast-message';
 
 interface Clinic {
@@ -26,7 +25,7 @@ interface Clinic {
   city: string;
   mobile: string;
   status: 'Active' | 'Pending' | 'Inactive';
-  Avatar?: string; // Optional property for avatar URL
+  Avatar?: string;
   addressId?: string;
   address?: string;
   state?: string;
@@ -36,10 +35,7 @@ interface Clinic {
   longitude?: string;
 }
 
-
-
 const getStatusStyle = (status: string) => {
-    
   switch (status) {
     case 'Active':
       return { backgroundColor: '#DCFCE7', color: '#16A34A' };
@@ -56,16 +52,18 @@ const ClinicManagementScreen = () => {
   const navigation = useNavigation<any>();
   const [clinics, setClinic] = useState<Clinic[]>([]);
   const [totalClinics, setTotalClinics] = useState<Clinic[]>([]);
-  const [search, setSearch] = useState(''); const [modalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
   const [mode, setMode] = useState<'view' | 'edit' | 'delete' | null>(null);
+
   const [form, setForm] = useState({
     id: '',
-    name:  '',
-    type:  'General',
-    city:  'unknown',
-    mobile:  '',
-    status: 'Active',
-    Avatar: "https://i.pravatar.cc/150?img=12",
+    name: '',
+    type: 'General',
+    city: 'unknown',
+    mobile: '',
+    status: 'Active' as Clinic['status'],
+    Avatar: 'https://i.pravatar.cc/150?img=12',
     startTime: '',
     endTime: '',
     addressId: '',
@@ -73,84 +71,104 @@ const ClinicManagementScreen = () => {
     state: '',
     pincode: '',
     country: 'India',
-      latitude: '56.1304',
-      longitude: '-106.3468'
-
+    latitude: '56.1304',
+    longitude: '-106.3468',
   });
 
+  type FormKeys = keyof typeof form;
 
-const fetchClinics = async () => {
-     
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        console.log('Auth Token:', token);
-        const res = await AuthFetch('users/getClinicAddress', token);
-        
-  
-        console.log('Response from API:', res);
-  
-        let data: any[] | undefined;
-        if ('data' in res && Array.isArray(res.data?.data)) {
-          data = res.data.data;
-        } else {
-          data = undefined;
-        }
-        console.log('Data fetched:', data);
-        if (data && Array.isArray(data)) {
-          
-          const formattedClinics = data
-  .filter((appt: any) => appt.status === 'Active') // ✅ Only 'Completed' = Active
-  .map((appt: any) => ({
-    id: appt.appointmentId || '',
-    addressId: appt.addressId || '',
-    address: appt.address || '',
-    state: appt.state || '',
-    country: appt.country || '',
-    pincode: appt.pincode || '',
-    latitude: appt.latitude || '',
-    longitude: appt.longitude || '',
-    name: appt.clinicName || '',
-    type: appt.appointmentType || 'General',
-    city: appt.city || 'unknown',
-    mobile: appt.mobile || '',
-    status: 'Active' as 'Active', // ✅ Hardcoded and explicitly typed
-    Avatar: 'https://i.pravatar.cc/150?img=12',
-    startTime: appt.startTime || '',
-    endTime: appt.endTime || '',
-  }));
+  const FIELD_CONFIGS: Array<{
+    key: FormKeys;
+    label: string;
+    editableInEdit?: boolean;
+    multiline?: boolean;
+    keyboardType?:
+      | 'default'
+      | 'phone-pad'
+      | 'numeric'
+      | 'email-address'
+      | 'number-pad'
+      | 'decimal-pad';
+  }> = [
+    // { key: 'id', label: 'Clinic ID', editableInEdit: false },
+    // { key: 'addressId', label: 'Address ID', editableInEdit: false },
+    { key: 'name', label: 'Clinic Name' },
+    { key: 'status', label: 'Status', editableInEdit: false },
+    { key: 'type', label: 'Clinic Type' },
+    { key: 'mobile', label: 'Mobile', keyboardType: 'phone-pad' },
+    { key: 'address', label: 'Address', multiline: true },
+    { key: 'city', label: 'City' },
+    { key: 'state', label: 'State' },
+    { key: 'pincode', label: 'Pincode', keyboardType: 'number-pad' },
+    { key: 'country', label: 'Country' },
+    // { key: 'latitude', label: 'Latitude', keyboardType: 'decimal-pad' },
+    // { key: 'longitude', label: 'Longitude', keyboardType: 'decimal-pad' },
+    // { key: 'startTime', label: 'Start Time' },
+    // { key: 'endTime', label: 'End Time' },
+    // { key: 'Avatar', label: 'Avatar URL' },
+  ];
 
-          console.log('Formatted Clinics:', formattedClinics);
-          
+  const fetchClinics = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const res = await AuthFetch('users/getClinicAddress', token);
 
-          setTotalClinics(formattedClinics);
-          setClinic(formattedClinics);
-        }
-
-      } catch (error) {
-        console.error('Error fetching appointments:', error);
+      let data: any[] | undefined;
+      if ('data' in res && Array.isArray(res.data?.data)) {
+        data = res.data.data;
+      } else {
+        data = undefined;
       }
-    };
 
-    useEffect(() => {
-        fetchClinics();
-      }, []);
+      if (data && Array.isArray(data)) {
+        const formattedClinics: Clinic[] = data
+          .filter((appt: any) => appt.status === 'Active')
+          .map((appt: any) => ({
+            id: appt.addressId || appt.appointmentId || '',
+            addressId: appt.addressId || '',
+            address: appt.address || '',
+            state: appt.state || '',
+            country: appt.country || '',
+            pincode: appt.pincode || '',
+            latitude: appt.latitude || '',
+            longitude: appt.longitude || '',
+            name: appt.clinicName || '',
+            type: appt.appointmentType || 'General',
+            city: appt.city || 'unknown',
+            mobile: appt.mobile || '',
+            status: 'Active',
+            Avatar: 'https://i.pravatar.cc/150?img=12',
+            startTime: appt.startTime || '',
+            endTime: appt.endTime || '',
+          }));
+
+        setTotalClinics(formattedClinics);
+        setClinic(formattedClinics);
+      }
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  };
 
   useEffect(() => {
+    fetchClinics();
+  }, []);
 
-    
+  useEffect(() => {
     if (search) {
-      const filteredClinics = totalClinics.filter((clinic) =>
-        clinic.name.toLowerCase().includes(search.toLowerCase()) ||
-        clinic.id.toLowerCase().includes(search.toLowerCase())
+      const q = search.toLowerCase();
+      const filteredClinics = totalClinics.filter(
+        (clinic) =>
+          (clinic.name || '').toLowerCase().includes(q) ||
+          (clinic.id || '').toLowerCase().includes(q)
       );
-    
       setClinic(filteredClinics);
     } else {
       setClinic(totalClinics);
     }
   }, [search, totalClinics]);
-   const openModal = (type: 'view' | 'edit' | 'delete', clinic: Clinic) => {
-      console.log('Opening modal for:', type, clinic);
+
+  const openModal = (type: 'view' | 'edit' | 'delete', clinic: Clinic) => {
     setForm({
       id: clinic.id,
       name: clinic.name,
@@ -158,7 +176,7 @@ const fetchClinics = async () => {
       city: clinic.city || 'unknown',
       mobile: clinic.mobile || '',
       status: clinic.status || 'Active',
-      Avatar: clinic.Avatar || "https://i.pravatar.cc/150?img=12",
+      Avatar: clinic.Avatar || 'https://i.pravatar.cc/150?img=12',
       startTime: clinic.startTime || '',
       endTime: clinic.endTime || '',
       addressId: clinic.addressId || '',
@@ -171,40 +189,37 @@ const fetchClinics = async () => {
     });
     setMode(type);
     setModalVisible(true);
-  }
+  };
 
   const closeModal = () => {
     setModalVisible(false);
     setMode(null);
   };
-  
+
   const handleEditSubmit = async () => {
     const token = await AsyncStorage.getItem('authToken');
-    console.log(form, 'Form Data to be sent for update');
-    try{
-       const updateData = {
-          addressId: form.addressId,
-          clinicName: form.name,
-          mobile: form.mobile,
-          address: form.address,
-          city: form.city,
-          state: form.state,
-          country: form.country,
-          pincode: form.pincode,
-          latitude: form.latitude,
-          longitude: form.longitude,
-          // location: {
-          //   type: "Point",
-          //   coordinates: [
-          //     parseFloat(form.longitude),
-          //     parseFloat(form.latitude),
-          //   ],
-          // },
-        };
-        console.log('Update Data:', updateData);
+    try {
+      const updateData = {
+        addressId: form.addressId,
+        clinicName: form.name,
+        mobile: form.mobile,
+        address: form.address,
+        city: form.city,
+        state: form.state,
+        country: form.country,
+        pincode: form.pincode,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        // If backend expects GeoJSON:
+        // location: {
+        //   type: 'Point',
+        //   coordinates: [parseFloat(form.longitude), parseFloat(form.latitude)],
+        // },
+      };
+
       const res = await AuthPut('users/updateAddress', updateData, token);
-      console.log('Response from API:', res);
-      if (res.status === 'success') {
+
+      if ((res as any)?.status === 'success') {
         Toast.show({
           type: 'success',
           text1: 'Success',
@@ -212,35 +227,39 @@ const fetchClinics = async () => {
           position: 'top',
           visibilityTime: 3000,
         });
-        fetchClinics();
-        setForm({ id: '',
-    name:  '',
-    type:  'General',
-    city:  'unknown',
-    mobile:  '',
-    status: 'Active',
-    Avatar: "https://i.pravatar.cc/150?img=12",
-    startTime: '',
-    endTime: '',
-    addressId: '',
-    address: '',
-    state: '',
-    pincode: '',
-    country: 'India',
-      latitude: '56.1304',
-      longitude: '-106.3468' });
+        await fetchClinics();
+        setForm({
+          id: '',
+          name: '',
+          type: 'General',
+          city: 'unknown',
+          mobile: '',
+          status: 'Active',
+          Avatar: 'https://i.pravatar.cc/150?img=12',
+          startTime: '',
+          endTime: '',
+          addressId: '',
+          address: '',
+          state: '',
+          pincode: '',
+          country: 'India',
+          latitude: '56.1304',
+          longitude: '-106.3468',
+        });
         closeModal();
       } else {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: res.message || 'Failed to update clinic',
+          text2:
+            (res as any)?.message ||
+            (res as any)?.data?.message ||
+            'Failed to update clinic',
           position: 'top',
           visibilityTime: 3000,
         });
       }
-
-    }catch (error) {
+    } catch (error) {
       console.error('Error updating clinic:', error);
       Toast.show({
         type: 'error',
@@ -250,39 +269,50 @@ const fetchClinics = async () => {
         visibilityTime: 3000,
       });
     }
-   
   };
-  
+
   const handleDelete = async (addressId: any) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthPost("/users/deleteClinicAddress", { addressId: addressId }, token);
-      console.log('Response from API:', response);
-      if (response.status ==='success') {
+      const response = await AuthPost(
+        'users/deleteClinicAddress',
+        { addressId },
+        token
+      );
+
+      if ((response as any)?.status === 'success') {
         Toast.show({
           type: 'success',
           text1: 'Success',
-          text2: (response as any).data?.message || (response as any).message || "Clinic deleted successfully",
+          text2:
+            (response as any).data?.message ||
+            (response as any).message ||
+            'Clinic deleted successfully',
           position: 'top',
           visibilityTime: 3000,
         });
-        setClinic(prevClinics => prevClinics.filter(clinic => clinic.addressId !== form.addressId));
+        setClinic((prev) =>
+          prev.filter((c) => c.addressId !== addressId)
+        );
         closeModal();
       } else {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: (response as any).data?.message || (response as any).message || "Failed to delete clinic",
+          text2:
+            (response as any).data?.message ||
+            (response as any).message ||
+            'Failed to delete clinic',
           position: 'top',
           visibilityTime: 3000,
         });
       }
     } catch (err: any) {
-      console.error("Delete error:", err);
+      console.error('Delete error:', err);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: err.message || "Failed to delete clinic. Please try again.",
+        text2: err?.message || 'Failed to delete clinic. Please try again.',
         position: 'top',
         visibilityTime: 3000,
       });
@@ -293,69 +323,91 @@ const fetchClinics = async () => {
     <View style={styles.container}>
       <Text style={styles.header}>Clinic Management</Text>
 
-      <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddClinic')}>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => navigation.navigate('AddClinic')}
+      >
         <Text style={styles.addButtonText}>+ Add Clinic</Text>
       </TouchableOpacity>
 
       <View style={styles.searchBox}>
-         <TextInput
+        <TextInput
           placeholder="Search by Clinic Name or ID"
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
+          placeholderTextColor="black"
         />
         <Icon name="magnify" size={20} color="#6B7280" />
       </View>
 
-      <Modal visible={modalVisible}  >
-            
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeModal}
+      >
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.title}>
-              {mode === 'view' && 'Staff Details'}
-              {mode === 'edit' && 'Edit Staff'}
-              {mode === 'delete' && 'Delete Staff'}
+              {mode === 'view' && 'View Clinic'}
+              {mode === 'edit' && 'Edit Clinic'}
+              {mode === 'delete' && 'Delete Clinic'}
             </Text>
 
-            {['name', 'type', 'mobile', 'city', 'startTime', 'endTime'].map((field, i) => (
-              <View key={i} style={styles.inputGroup}>
-                <Text style={styles.label}>{field}</Text>
-                {mode === 'view' ? (
-                  <Text style={styles.value}>view clinic</Text>
-                ) : (
-                  <TextInput
-                    value={
-                      Array.isArray(form[field as keyof typeof form])
-                        ? ''
-                        : String(form[field as keyof typeof form] ?? '')
-                    }
-                    onChangeText={(text) => setForm({ ...form, [field]: text })}
-                    style={styles.input}
-                    editable={mode === 'edit'}
-                  />
-                )}
-              </View>
-            ))}
-      
+            <ScrollView style={{ maxHeight: 420 }}>
+              {FIELD_CONFIGS.map((cfg) => {
+                const value = String(form[cfg.key] ?? '');
+                const isEditable =
+                  mode === 'edit' &&
+                  (cfg.editableInEdit === undefined ? true : cfg.editableInEdit);
+
+                return (
+                  <View key={String(cfg.key)} style={styles.inputGroup}>
+                    <Text style={styles.label}>{cfg.label}</Text>
+
+                    {mode === 'view' ? (
+                      <Text style={styles.value}>{value || '—'}</Text>
+                    ) : (
+                      <TextInput
+                        value={value}
+                        onChangeText={(text) =>
+                          setForm((prev) => ({ ...prev, [cfg.key]: text }))
+                        }
+                        style={[
+                          styles.input,
+                          !isEditable && { backgroundColor: '#f3f4f6', opacity: 0.8 },
+                        ]}
+                        editable={isEditable}
+                        multiline={!!cfg.multiline}
+                        keyboardType={cfg.keyboardType || 'default'}
+                        placeholder={cfg.label}
+                        placeholderTextColor="#6b7280"
+                      />
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+
             <View style={styles.buttonRow}>
               <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-      
+
               {mode === 'edit' && (
                 <TouchableOpacity style={styles.saveButton} onPress={handleEditSubmit}>
                   <Text style={styles.saveText}>Save</Text>
                 </TouchableOpacity>
               )}
-      
+
               {mode === 'delete' && (
                 <TouchableOpacity
-  style={styles.deleteButton}
-  onPress={() => handleDelete(form.addressId)}
->
-  <Text style={styles.deleteText}>Delete</Text>
-</TouchableOpacity>
-
+                  style={styles.deleteButton}
+                  onPress={() => handleDelete(form.addressId)}
+                >
+                  <Text style={styles.deleteText}>Delete</Text>
+                </TouchableOpacity>
               )}
             </View>
           </View>
@@ -380,7 +432,6 @@ const fetchClinics = async () => {
                   </Text>
                 </View>
               </View>
-              
 
               <Text style={styles.clinicName}>{clinic.name}</Text>
               <Text style={styles.clinicType}>{clinic.type}</Text>
@@ -396,14 +447,19 @@ const fetchClinics = async () => {
               </View>
 
               <View style={styles.actionsRow}>
-                {/* <TouchableOpacity>
-                  <Icon name="eye-outline" size={20} color="#6B7280"  onPress={() => openModal('view', clinic)} />
-                </TouchableOpacity> */}
-                <TouchableOpacity>
-                  <Icon name="pencil-outline" size={20} color="#6B7280"  onPress={() => openModal('edit', clinic)} />
+                <TouchableOpacity onPress={() => openModal('view', clinic)}>
+                  <Icon name="eye-outline" size={20} color="#6B7280" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.iconButton} onPress={() => openModal('delete', clinic)}>
-                  <Icon name="delete-outline" size={20} color="#6B7280"  onPress={() => openModal('delete', clinic)} />
+
+                <TouchableOpacity onPress={() => openModal('edit', clinic)}>
+                  <Icon name="pencil-outline" size={20} color="#6B7280" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={() => openModal('delete', clinic)}
+                >
+                  <Icon name="delete-outline" size={20} color="#6B7280" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -427,8 +483,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 12,
+    color: 'black',
   },
-   avatar: {
+  avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -458,6 +515,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
+    color: 'black',
   },
   card: {
     backgroundColor: '#fff',
@@ -470,11 +528,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 4,
   },
-  clinicId: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '500',
-  },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -484,6 +537,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 4,
+    color: 'black',
   },
   clinicType: {
     color: '#6B7280',
@@ -504,7 +558,7 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 12,
   },
-    inputGroup: {
+  inputGroup: {
     marginBottom: 10,
   },
   label: {
@@ -524,6 +578,7 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 15,
     backgroundColor: '#f9fafb',
+    color: 'black',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -561,21 +616,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  bottomRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginTop: 40,
-},
-
-searchContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#f1f5f9',
-  borderRadius: 10,
-  paddingHorizontal: 10,
-},
-overlay: {
+  overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
@@ -593,8 +634,7 @@ overlay: {
     marginBottom: 16,
     textAlign: 'center',
   },
-   iconButton: {
+  iconButton: {
     paddingHorizontal: 6,
   },
-
 });

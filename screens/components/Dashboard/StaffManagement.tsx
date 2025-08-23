@@ -17,6 +17,7 @@ import { AuthPost, AuthFetch, AuthPut } from '../../auth/auth';
 import dayjs from 'dayjs';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import { Picker } from '@react-native-picker/picker';
 
 
 
@@ -39,7 +40,10 @@ interface Staff {
 
 
 const StaffManagement = () => {
-  const userId = useSelector((state: any) => state.currentUserID);
+
+    const currentuserDetails =  useSelector((state: any) => state.currentUser);
+      const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+  const userId = doctorId;
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
       case 'doctor':
@@ -70,6 +74,18 @@ const [form, setForm] = useState({
   access:[],
   role:''
 });
+
+const accessOptions = [
+  { label: 'View Patients', value: 'viewPatients' },
+  { label: 'Pharmacy', value: 'pharmacy' },
+  { label: 'Availability', value: 'availability' },
+  { label: 'Dashboard', value: 'dashboard' },
+  { label: 'Labs', value: 'labs' },
+  { label: 'Appointments', value: 'appointments' },
+  { label: 'New Appointments', value: 'New appointments' },
+];
+
+  const [staffData, setStaffData] = React.useState<Staff[]>([]);
     const [dropdownVisible, setDropdownVisible] = useState(false);
       const [selectedStatus, setSelectedStatus] = useState<'all' | 'Lab Assistant' | 'Pharmacy Assistant' | 'Assistant' | 'Receptionist' >('all');
 
@@ -96,9 +112,9 @@ const [originalStaffData, setOriginalStaffData] = useState<Staff[]>([]); // Unfi
     email: staff.email,
     mobile:  staff.mobile || '',
     gender:  staff.gender || '',
-    DOB:  staff.DOB ? dayjs(staff.DOB).format('YYYY-MM-DD') : 'N/A',
+    DOB:  staff.DOB || 'N/A',
     profilepic: staff.profilepic || {},
-    access: [],
+    access: staff?.access,
     role: staff.role || '',
   });
   setMode(type);
@@ -114,6 +130,8 @@ const closeModal = () => {
 };
 
 const handleEditSubmit = async () => {
+
+  console.log(form, "completeform data")
   try {
      const token = await AsyncStorage.getItem('authToken');
      const formatDOBToDDMMYYYY = (dobString: string): string => {
@@ -123,14 +141,18 @@ const handleEditSubmit = async () => {
   const year = date.getFullYear();
 
   return `${day}-${month}-${year}`;
+
+  
 };
     const { firstName, lastName,  ...restForm } = form;
 
 const payload = {
   ...restForm,
   stafftype: form.role,
-  userId: userId,
-  DOB: formatDOBToDDMMYYYY(form.DOB),
+  userId: form.userId,
+  DOB: form.DOB,
+  firstname:form.firstName,
+  lastname:form.lastName
   // : `${firstName} ${lastName}`, // using before removal
 };
 
@@ -139,6 +161,8 @@ const payload = {
     console.log(res, 'Edit response');
     if (res.status === 'success') {
      fetchStaff(); // Refresh staff list after edit
+      Alert.alert('Success', 'Staff updated successfully');
+    closeModal();
       Toast.show({type: 'success',
            text1: 'Success',
            text2: 'Edited Successfully',
@@ -148,8 +172,7 @@ const payload = {
          closeModal();
       return;
     }
-    Alert.alert('Success', 'Staff updated successfully');
-    closeModal();
+   
   } catch (err) {
     Alert.alert('Error', 'Failed to update staff');
   }
@@ -191,6 +214,23 @@ const handleSearch = (text: string) => {
   }
 };
 
+useEffect(()=>{
+  if (selectedStatus !== 'all'){
+  const filtered = originalStaffData.filter((staff) =>
+      staff.role.toLowerCase() === (selectedStatus.toLowerCase())
+    );
+    setStaffData(filtered);
+  }else{
+    setStaffData(originalStaffData)
+  }
+
+
+}, [selectedStatus])
+console.log("filter after", staffData)
+
+
+
+
 
 const clearSearch = () => {
   setSearchText('');
@@ -214,24 +254,43 @@ const clearSearch = () => {
 
     console.log('Staff data fetched:', response);
 
-  const staffList = response?.data?.data || [];
-    const formattedData: Staff[] = staffList.map((staff: any, index: number) => ({
-      id: staff._id || String(index + 1),
-      name: staff.name,
-      email: staff.email,
-      role: staff.stafftype || 'Unknown',
-      status: staff.isLoggedIn ? 'Online' : 'Offline',
-      avatar: staff.avatar || 'https://via.placeholder.com/150',
-      lastLogin: staff.lastLogout
-        ? dayjs(staff.lastLogout).format('YYYY-MM-DD HH:mm:ss')
-        : 'N/A',
-      isBlocked: staff.status?.toLowerCase() === 'blocked',
-      userId: staff.userId,
-      gender: staff.gender || 'Unknown',
-      DOB: staff.DOB ? dayjs(staff.DOB).format('YYYY-MM-DD') : 'N/A',
-      mobile: staff.mobile || 'N/A',
-    }));
+let filterData: any[] = [];
+if ('data' in response && response.data && Array.isArray(response.data.data)) {
+  filterData = response.data.data.filter(
+    (each: { userId: any; }) => each.userId !== currentuserDetails.createdBy
+  );
+}
 
+const sortedData = [...filterData].sort((a, b) => {
+  const dateA = new Date(a.joinDate).getTime();
+  const dateB = new Date(b.joinDate).getTime();
+  return dateB - dateA;
+});
+
+console.log(sortedData, "sortedData")
+
+const formattedData: Staff[] = sortedData.map((staff, index) => ({
+  id: staff._id || String(index + 1),
+  name: staff.name,
+  userId: staff.userId,
+  role: staff.stafftype || 'Unknown',
+  email: staff.email,
+  mobile: staff.mobile || 'N/A',
+  gender: staff.gender || 'Unknown',
+  DOB: staff.DOB ||'N/A',
+  profilepic: staff.profilepic || '',
+  avatar: staff.avatar || 'https://via.placeholder.com/150',
+  status: staff.isLoggedIn ? 'Online' : (staff.status?.toLowerCase() === 'blocked' ? 'Blocked' : 'Offline'),
+  lastLogin:
+    staff.lastLogin && staff.lastLogin !== "N/A"
+      ? dayjs(staff.lastLogin).isValid()
+        ? dayjs(staff.lastLogin).format("YYYY-MM-DD HH:mm:ss")
+        : staff.lastLogin
+      : "-",
+  isBlocked: staff.status?.toLowerCase() === 'blocked',
+  access:staff.access
+}));
+   
 setOriginalStaffData(formattedData); // Store unfiltered data
 
     setStaffData(formattedData);
@@ -249,8 +308,10 @@ setOriginalStaffData(formattedData); // Store unfiltered data
   }
 };
 
-  const [staffData, setStaffData] = React.useState<Staff[]>([]);
+
   const [fetchLoading, setFetchLoading] = React.useState<boolean>(false);
+
+  console.log(selectedStatus, "selectedstaff data")
 
 // Fetch staff data on component mount  
 useEffect(() => {
@@ -258,8 +319,17 @@ useEffect(() => {
   }, []);
 const renderStaffCard = ({ item }: { item: Staff }) => (
   <View style={styles.card}>
-    <Image source={{ uri: item.avatar }} style={styles.avatar} />
+    <View style={styles.avatarContainer}>
+    {/* If there's an image URL, show the image; otherwise show first letter */}
+    {item.avatar ? (
+      <Text style={styles.avatarText}>{item.name[0]?.toUpperCase()}</Text>
+    ) : (
+      <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
+      
+    )}
+  </View>
 
+    {/* <Image source={{ uri: item.avatar }} style={styles.avatar} /> */}
     <View style={styles.content}>
       <View style={styles.nameRow}>
         <Text style={styles.name}>{item.name}</Text>
@@ -296,9 +366,6 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
     </TouchableOpacity>
   </View>
 </View>
-
-
-    
   </View>
 );
 
@@ -359,25 +426,86 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
         {mode === 'delete' && 'Delete Staff'}
       </Text>
 
-      {['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB'].map((field, i) => (
-        <View key={i} style={styles.inputGroup}>
-          <Text style={styles.label}>{field}</Text>
-          {mode === 'view' ? (
-            <Text style={styles.value}>{form[field as keyof typeof form]}</Text>
-          ) : (
-            <TextInput
-              value={
-                Array.isArray(form[field as keyof typeof form])
-                  ? ''
-                  : String(form[field as keyof typeof form] ?? '')
-              }
-              onChangeText={(text) => setForm({ ...form, [field]: text })}
-              style={styles.input}
-              editable={mode === 'edit'}
-            />
-          )}
+{['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB', 'access'].map((field, i) => (
+  <View key={i} style={styles.inputGroup}>
+    <Text style={styles.label}>{field}</Text>
+
+    {mode === 'view' ? (
+      <Text style={styles.value}>
+        {field === 'access'
+          ? Array.isArray(form.access)
+            ? form.access.join(', ')
+            : ''
+          : String(form[field as keyof typeof form] ?? '')}
+      </Text>
+    ) : field === 'access' ? (
+      <>
+        <View style={styles.accessContainer}>
+          {Array.isArray(form.access) &&
+            form.access.map((item, index) => (
+              <View key={index} style={styles.accessItem}>
+                <Text style={styles.accessText}>{item}</Text>
+                <Text
+                  style={styles.removeButton}
+                  onPress={() =>
+                    setForm({
+                      ...form,
+                      access: form.access.filter((_, i) => i !== index),
+                    })
+                  }
+                >
+                  ✕
+                </Text>
+              </View>
+            ))}
         </View>
-      ))}
+
+        <Picker
+          selectedValue=""
+          style={styles.picker}
+          onValueChange={(itemValue) => {
+            if (itemValue && !form.access.includes(itemValue)) {
+              setForm({ ...form, access: [...form.access, itemValue] });
+            }
+          }}
+        >
+          <Picker.Item label="Select access to add..." value="" />
+          {accessOptions.map((option) => (
+            <Picker.Item key={option.value} label={option.label} value={option.value} />
+          ))}
+        </Picker>
+      </>
+    ) : field === 'mobile' ? (
+      <TextInput
+        value={String(form.mobile ?? '')}
+        onChangeText={(text) => {
+          const onlyDigits = text.replace(/\D/g, '').slice(0, 10); // keep digits, cap at 10
+          setForm({ ...form, mobile: onlyDigits });
+        }}
+        keyboardType="number-pad"
+        // inputMode="numeric" // (optional, RN 0.71+) helps on web as well
+        maxLength={10}
+        style={styles.input}
+        editable={mode === 'edit'}
+        placeholder="10-digit mobile"
+      />
+    ) : (
+      <TextInput
+        value={
+          Array.isArray(form[field as keyof typeof form])
+            ? ''
+            : String(form[field as keyof typeof form] ?? '')
+        }
+        onChangeText={(text) => setForm({ ...form, [field]: text })}
+        style={styles.input}
+        editable={mode === 'edit'}
+      />
+    )}
+  </View>
+))}
+
+
+
 
       <View style={styles.buttonRow}>
         <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
@@ -406,6 +534,12 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
         keyExtractor={(item) => item.id}
         renderItem={renderStaffCard}
         contentContainerStyle={{ paddingBottom: 100 }}
+         ListEmptyComponent={
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 }}>
+      <Text style={{ fontSize: 16, color: '#6B7280' }}>No staff found.</Text>
+      <Text style={{ fontSize: 16, color: '#3B82F6', marginTop: 5 }}>Add staff</Text>
+    </View>
+  }
       />
     </View>
 
@@ -419,7 +553,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F0FDF4',
   },
 
 
@@ -614,7 +748,7 @@ overlay: {
   },
   value: {
     fontSize: 15,
-    color: '#222',
+    color: 'black',
     paddingVertical: 6,
   },
   input: {
@@ -624,6 +758,7 @@ overlay: {
     padding: 10,
     fontSize: 15,
     backgroundColor: '#f9fafb',
+    color:'black',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -704,6 +839,50 @@ dropdownText: {
   color: '#1E293B',
 },
 
+avatarContainer: {
+  width: 50,
+  height: 50,
+  borderRadius: 25,
+  backgroundColor: '#D1D5DB', // Light gray
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 12,
+},
 
+avatarImage: {
+  width: 50,
+  height: 50,
+  borderRadius: 25,
+},
+
+avatarText: {
+  color: '#1F2937', // Dark text
+  fontSize: 20,
+  fontWeight: 'bold',
+},
+accessContainer: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+  marginTop: 4,
+},
+accessItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#eee',
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 16,
+  marginRight: 8,
+  marginBottom: 8,
+},
+accessText: {
+  marginRight: 6,
+  color:'black'
+},
+removeButton: {
+  color: 'red',
+  fontWeight: 'bold',
+},
 });
 
