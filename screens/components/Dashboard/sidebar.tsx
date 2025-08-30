@@ -77,12 +77,14 @@ const menuItems = [
       icon: 'description',
       onPress: () => navigation.navigate('EPrescriptionList'),
     },
-  // {
-  //   key: 'labs',
-  //   label: 'Labs',
-  //   description: 'Labs',
-  //   icon: 'science',
-  // },
+  {
+    key: 'labs',
+    label: 'Labs',
+    description: 'Labs',
+    icon: 'science',
+      onPress: () => navigation.navigate('Labs'),
+
+  },
   // {
   //   key: 'pharmacy',
   //   label: 'Pharmacy',

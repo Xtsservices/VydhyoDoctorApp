@@ -13,6 +13,7 @@ import {
   Platform,
   Dimensions,
   SafeAreaView,
+  Button,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/AntDesign';
 import { Picker } from '@react-native-picker/picker';
@@ -20,6 +21,10 @@ import * as ImagePicker from 'react-native-image-picker';
 import DocumentPicker from '@react-native-documents/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { pick, types } from '@react-native-documents/picker';
+
+
 
 // API functions
 import { 
@@ -36,7 +41,7 @@ const languageOptions = [
   { label: 'Urdu', value: 'Urdu' },
 ];
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const DoctorProfileView = () => {
   const [loading, setLoading] = useState(false);
@@ -47,6 +52,9 @@ const DoctorProfileView = () => {
   const [formValues, setFormValues] = useState({});
   const [degrees, setDegrees] = useState([]);
   const [token, setToken] = useState(null);
+  const [panImage, setPanImage] = useState<{ uri: string, name: string, type?: string } | null>(null);
+  const [pancardUploaded, setPancardUploaded] = useState(false);
+  const [panNumber, setPanNumber] = useState('');
 
   // Retrieve token from AsyncStorage
   useEffect(() => {
@@ -305,6 +313,76 @@ const DoctorProfileView = () => {
         case 'bank':
           response = await AuthPost("/users/updateBankDetails", formValues.bankDetails, token);
           break;
+        case 'kyc':
+           try {
+       setLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      const userId = await AsyncStorage.getItem('userId');
+      console.log("userId", userId)
+      if (!token) {
+        Alert.alert('Error', 'Authentication token is missing. Please log in again.');
+        return;
+      }
+      if (!userId) {
+        Alert.alert('Error', 'User ID is missing. Please log in again.');
+        return;
+      }
+
+      if (!panImage?.uri) {
+        Alert.alert('Error', 'Please upload a Pancard document.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('userId', userId);
+      formData.append('panNumber', panNumber);
+     
+      if (panImage?.uri) {
+        formData.append('panFile', {
+          uri: panImage.uri,
+          name: panImage.name,
+          type: panImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+        } as any);
+      }
+
+      console.log('Submitting KYC data: addKYCDetails', formData);
+       const response = await UploadFiles('users/addKYCDetails', formData, token); 
+       
+       console.log(response, "response for upload")
+      if (response.status === 'success') {
+
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Profile updated successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        setTimeout(async () => {
+          setLoading(false)
+          await AsyncStorage.setItem('currentStep', 'ConfirmationScreen');
+        }, 2000);
+      } else {
+
+
+      Alert.alert(response?.message?.message ||'Error', 'Failed to submit KYC details. Please try again.');
+
+
+      handleEditModalClose();
+      setLoading(false); // 👉 Hide loader on failure
+      
+    }
+ } catch (error: any) {
+  console.log(error, "1234")
+  setLoading(false);
+  const errorMessage =
+    (error?.response?.data?.message as string) ||
+    (error?.message as string) ||
+    'Failed to submit KYC details. Please try again.';
+  Alert.alert('Error', errorMessage);
+  console.error('KYC submission error:', error);
+}
+break;
       }
       
       if (response.status === 'error') {
@@ -425,6 +503,100 @@ const DoctorProfileView = () => {
       </SafeAreaView>
     );
   }
+
+   const handlePancardUpload = async () => {
+    Alert.alert(
+      'Upload PAN Card',
+      'Choose an option',
+      [
+        {
+          text: 'Camera',
+          onPress: async () => {
+            try {
+              const result = await launchCamera({
+                mediaType: 'photo',
+                includeBase64: false,
+              });
+  
+              if (result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+  
+                setPanImage({
+                  uri: asset.uri!,
+                  name: asset.fileName || 'pan_camera.jpg',
+                  type: asset.type || 'image/jpeg',
+                });
+                setPancardUploaded(true);
+              } else {
+                Alert.alert('No image selected from camera');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Camera access failed.');
+              console.error('Camera error:', error);
+            }
+          },
+        },
+        {
+          text: 'Gallery',
+          onPress: async () => {
+            try {
+              const result = await launchImageLibrary({
+                mediaType: 'photo',
+                includeBase64: false,
+              });
+  
+              if (result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+  
+                setPanImage({
+                  uri: asset.uri!,
+                  name: asset.fileName || 'pan_gallery.jpg',
+                  type: asset.type || 'image/jpeg',
+                });
+                setPancardUploaded(true);
+              } else {
+                Alert.alert('No image selected from gallery');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Gallery access failed.');
+              console.error('Gallery error:', error);
+            }
+          },
+        },
+        {
+          text: 'Upload PDF',
+          onPress: async () => {
+            try {
+              const [res] = await pick({
+                type: [types.pdf, types.images],
+              });
+  
+              if (res && res.uri && res.name) {
+                setPanImage({
+                  uri: res.uri,
+                  name: res.name,
+                  type: res.type || 'application/pdf',
+                });
+                setPancardUploaded(true);
+              } else {
+                Alert.alert('Error', 'Invalid file selected. Please try again.');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'PDF selection failed.');
+              console.error('PDF error:', error);
+            }
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -575,8 +747,37 @@ const DoctorProfileView = () => {
                 <Text style={styles.cardTitle}>Working Locations</Text>
               </View>
             </View>
+
+            {doctorData.addresses?.map((each) => (
+              <View key={each._id} style={styles.locationCard}>
+                <View style={styles.locationInfo}>
+                  <View
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: getLocationColor(each.clinicName || `Clinic ${each._id}`),
+                      marginRight: SCREEN_WIDTH * 0.02,
+                      
+                    }}
+                  />
+                  <View style={styles.locationDetails}>
+                    <Text style={[styles.infoText, styles.bold]}>
+                      {each.clinicName || "N/A"}
+                    </Text>
+                    <Text style={styles.locationAddress}>
+                      {`${each.address}, ${each.city}, ${each.state}, ${each.country} - ${each.pincode}` || "N/A"}
+                    </Text>
+                    <Text style={styles.locationTimings}>
+                      <Text style={styles.bold}>Timings:</Text>{" "}
+                      {each.startTime || "N/A"} - {each.endTime || "N/A"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
             
-            {doctorData.workingLocations.length > 1 ? (
+            {/* {doctorData.addresses?.length > 0 ? (
               <Picker
                 selectedValue={doctorData.selectedLocationIndex}
                 onValueChange={(itemValue) => {
@@ -588,13 +789,13 @@ const DoctorProfileView = () => {
                 style={styles.picker}
               >
                 <Picker.Item label="Select a location" value="" />
-                {doctorData.workingLocations.map((location, index) => (
+                {doctorData?.addresses?.map((clinic, index) => (
                   <Picker.Item 
                     key={index} 
                     label={
                       <View style={styles.pickerItem}>
-                        <View style={[styles.colorDot, { backgroundColor: location.color }]} />
-                        <Text>{location.name || "N/A"}</Text>
+                        <View style={[styles.colorDot, { backgroundColor: clinic.color }]} />
+                        <Text>{clinic.clinicName || "N/A"}</Text>
                       </View>
                     } 
                     value={index} 
@@ -630,7 +831,7 @@ const DoctorProfileView = () => {
                   </View>
                 </View>
               </View>
-            )}
+            )} */}
           </View>
 
           {/* KYC Details */}
@@ -640,6 +841,9 @@ const DoctorProfileView = () => {
                 <Icon name="idcard" size={16} color="#1E88E5" />
                 <Text style={styles.cardTitle}>KYC Details</Text>
               </View>
+              <TouchableOpacity onPress={() => handleEditModalOpen('kyc')}>
+                <Icon name="edit" size={16} color="#1E88E5" />
+              </TouchableOpacity>
             </View>
             
             <View style={styles.kycItem}>
@@ -647,7 +851,7 @@ const DoctorProfileView = () => {
                 <Icon name="idcard" size={16} color="#333333" />
                 <Text style={styles.infoText}><Text style={styles.bold}>PAN Number:</Text> {doctorData.kycDetails.panNumber || "N/A"}</Text>
               </View>
-              {doctorData.kycDetails.panImage && (
+              {doctorData?.kycDetails?.panImage && (
                 <TouchableOpacity
                   onPress={() => showModal({ type: "pan", data: doctorData.kycDetails.panImage })}
                 >
@@ -787,14 +991,14 @@ const DoctorProfileView = () => {
                       />
                     </View>
                     
-                    <View style={styles.formGroup}>
+                    {/* <View style={styles.formGroup}>
                       <Text style={styles.label}>Medical Registration Number</Text>
                       <TextInput
                         style={styles.input}
                         value={formValues.medicalRegistrationNumber}
                         onChangeText={(text) => handleFormChange('medicalRegistrationNumber', text)}
                       />
-                    </View>
+                    </View> */}
                     
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Email</Text>
@@ -870,6 +1074,32 @@ const DoctorProfileView = () => {
                         keyboardType="numeric"
                       />
                     </View>
+                  </>
+                )}
+
+                 {editModalType === 'kyc' && (
+                  <>
+                   <Text style={styles.label}>Enter PAN Number </Text>
+                            <TextInput
+                              style={styles.input}
+                              value={panNumber}
+                              onChangeText={setPanNumber}
+                              placeholder="Enter 10-character PAN Number"
+                              keyboardType="default"
+                              maxLength={10}
+                              autoCapitalize="characters"
+                            />
+                     <Text style={styles.label}>Upload Pancard Proof</Text>
+                              <TouchableOpacity style={styles.uploadBox} onPress={handlePancardUpload}>
+                                <Icon name="card" size={SCREEN_WIDTH * 0.08} color="#00203F" style={styles.icon} />
+                                <Text style={styles.uploadText}>Upload</Text>
+                                <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
+                              </TouchableOpacity>
+                              {pancardUploaded && (
+                                <Text style={styles.successText}>
+                                  File uploaded: {panImage?.name || 'Pancard uploaded successfully!'}
+                                </Text>
+                              )}
                   </>
                 )}
                 
@@ -1114,6 +1344,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8EAF6', // Light indigo background for location card
     borderRadius: 8,
     padding: SCREEN_WIDTH * 0.03,
+    marginBottom: SCREEN_WIDTH * 0.02,
   },
   locationInfo: {
     flexDirection: 'row',
@@ -1267,6 +1498,40 @@ const styles = StyleSheet.create({
     fontSize: SCREEN_WIDTH * 0.04,
     color: '#333333', // Darker gray for loading text
     marginTop: 8,
+  },
+    acceptedText: {
+    fontSize: SCREEN_WIDTH * 0.03,
+    color: '#666',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  successText: {
+    color: '#00203F',
+    fontSize: SCREEN_WIDTH * 0.035,
+    marginTop: 4, // Replace height * 0.005 with a fixed value or use SCREEN_WIDTH if needed
+    marginBottom: 8, // Replace height * 0.01 with a fixed value or use SCREEN_WIDTH if needed
+    textAlign: 'center',
+  },
+   uploadBox: {
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    padding: SCREEN_WIDTH * 0.04,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginBottom: SCREEN_HEIGHT * 0.01,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+    uploadText: {
+    fontSize: SCREEN_WIDTH * 0.035,
+    color: '#00203F',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
 

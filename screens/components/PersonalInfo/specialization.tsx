@@ -31,92 +31,94 @@ import { Picker } from '@react-native-picker/picker';
 
 // Specialization options
 const specializationOptions = [
-  'General Medicine',
-  'Internal Medicine',
-  'Pediatrics',
-  'Obstetrics and Gynaecology',
-  'General Surgery',
-  'Family Medicine',
-  'Emergency Medicine',
-  'Geriatrics / Geriatric Medicine',
-  'Critical Care / Critical Care Medicine',
-  'Preventive Cardiology',
-  'Clinical Cardiology',
-  'Cardiology',
-  'Diabetology',
-  'Respiratory Medicine / Pulmonary & Critical Care Medicine',
-  'Psychiatry / Psychological Medicine',
-  'Dermatology, Venereology & Leprosy',
-  'Neurology',
-  'Nephrology',
-  'Endocrinology',
-  'Rheumatology',
-  'Infectious Diseases',
-  'Hepatology',
-  'Cardiothoracic and Vascular Surgery',
-  'Vascular Surgery',
-  'Surgical Gastroenterology',
-  'Surgical Oncology',
-  'Endocrine Surgery',
-  'Plastic & Reconstructive Surgery / Plastic Surgery',
-  'Pediatric Surgery',
-  'Neurosurgery',
-  'Urology',
-  'Hand Surgery',
-  'Trauma Surgery and Critical Care',
-  'Minimal Access Surgery and Robotic Surgery',
-  'Hepato-Pancreato-Biliary Surgery',
-  'Breast and Endocrine Surgery',
-  'Gynaecologic Oncology',
-  'Reproductive Medicine',
-  'Maternal & Fetal Medicine',
-  'Radiodiagnosis / Medical Radiodiagnosis / Radio Diagnosis',
-  'Nuclear Medicine',
-  'Interventional Radiology',
-  'Pathology / Clinical Pathology / Oral Pathology and Microbiology',
-  'Biochemistry',
-  'Microbiology',
-  'Pharmacology / Clinical Pharmacology',
-  'Clinical Immunology / Immunology and Immunopathology',
   'Anatomy',
-  'Physiology',
-  'Forensic Medicine',
-  'Hematology',
-  'Medical Genetics',
-  'Community Medicine',
-  'Public Health / Public Health Dentistry',
-  'Industrial Health',
-  'Health Administration / Hospital Administration',
-  'Occupational Health',
-  'Lifestyle Medicine (IBLM)',
-  'Tropical Medicine / Tropical Medicine and Health',
-  'Medical Oncology',
-  'Medical Gastroenterology',
-  'Ophthalmology / Ophthalmic Medicine and Surgery',
-  'ENT / Otorhinolaryngology (ENT)',
-  'Tuberculosis and Chest Diseases',
-  'Sports Medicine',
-  'Immunohematology & Blood Transfusion',
-  'Pain Medicine',
-  'Palliative Medicine / Onco-Anesthesia and Palliative Medicine',
-  'Clinical Nutrition',
-  'Pediatric Cardiology',
-  'Pediatric Neurology',
-  'Pediatric Nephrology',
-  'Pediatric Gastroenterology',
-  'Neonatology',
-  'Child Health',
   'Ayurveda',
+  'Biochemistry',
+  'Breast and Endocrine Surgery',
+  'Cardiology',
+  'Cardiothoracic and Vascular Surgery',
+  'Child Health',
+  'Clinical Cardiology',
+  'Clinical Immunology / Immunology and Immunopathology',
+  'Clinical Nutrition',
+  'Community Medicine',
+  'Conservative Dentistry and Endodontics',
+  'Critical Care / Critical Care Medicine',
+  'Dermatology, Venereology & Leprosy',
+  'Diabetology',
+  'ENT / Otorhinolaryngology (ENT)',
+  'Emergency Medicine',
+  'Endocrine Surgery',
+  'Endocrinology',
+  'Family Medicine',
+  'Forensic Medicine',
+  'General Medicine',
+  'General Surgery',
+  'Geriatrics / Geriatric Medicine',
+  'Gynaecologic Oncology',
+  'Hand Surgery',
+  'Health Administration / Hospital Administration',
+  'Hematology',
+  'Hepato-Pancreato-Biliary Surgery',
+  'Hepatology',
   'Homeopathy',
-  'Yoga and Naturopathy',
-  'Unani',
+  'Immunohematology & Blood Transfusion',
+  'Industrial Health',
+  'Infectious Diseases',
+  'Internal Medicine',
+  'Interventional Radiology',
+  'Lifestyle Medicine (IBLM)',
+  'Maternal & Fetal Medicine',
+  'Medical Gastroenterology',
+  'Medical Genetics',
+  'Medical Oncology',
+  'Microbiology',
+  'Minimal Access Surgery and Robotic Surgery',
+  'Neonatology',
+  'Nephrology',
+  'Neurology',
+  'Neurosurgery',
+  'Nuclear Medicine',
+  'Obstetrics and Gynaecology',
+  'Occupational Health',
+  'Ophthalmology / Ophthalmic Medicine and Surgery',
+  'Oral Medicine and Radiology',
   'Oral and Maxillofacial Surgery',
   'Orthodontics and Dentofacial Orthopedics',
-  'Prosthodontics and Crown & Bridge',
-  'Conservative Dentistry and Endodontics',
+  'Pain Medicine',
+  'Palliative Medicine / Onco-Anesthesia and Palliative Medicine',
+  'Pathology / Clinical Pathology / Oral Pathology and Microbiology',
+  'Pediatric Cardiology',
+  'Pediatric Gastroenterology',
+  'Pediatric Nephrology',
+  'Pediatric Neurology',
+  'Pediatric Surgery',
+  'Pediatrics',
   'Pedodontics and Preventive Dentistry',
-  'Oral Medicine and Radiology'
+  'Pharmacology / Clinical Pharmacology',
+  'Physiology',
+  'Physiotherapist',
+  'Plastic & Reconstructive Surgery / Plastic Surgery',
+  'Preventive Cardiology',
+  'Prosthodontics and Crown & Bridge',
+  'Psychiatry / Psychological Medicine',
+  'Public Health / Public Health Dentistry',
+  'Radiodiagnosis / Medical Radiodiagnosis / Radio Diagnosis',
+  'Reproductive Medicine',
+  'Respiratory Medicine / Pulmonary & Critical Care Medicine',
+  'Rheumatology',
+  'Sports Medicine',
+  'Surgical Gastroenterology',
+  'Surgical Oncology',
+  'Trauma Surgery and Critical Care',
+  'Tropical Medicine / Tropical Medicine and Health',
+  'Tuberculosis and Chest Diseases',
+  'Unani',
+  'Urology',
+  'Vascular Surgery',
+  'Yoga and Naturopathy',
 ];
+
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -408,7 +410,12 @@ const SpecializationDetails = () => {
           setFormData({
             degree: userData?.specialization?.degree || '',
             specialization: userData?.specialization?.name || '',
-            yearsExperience: userData?.specialization?.experience || '',
+            yearsExperience:
+   userData?.specialization?.experience !== undefined &&
+   userData?.specialization?.experience !== null
+     ? String(userData.specialization.experience)
+     : '',
+            // yearsExperience: String(userData?.specialization?.experience || '') ,
             bio: userData?.specialization?.bio || '',
             customDegree: userData?.specialization?.customDegree || '',
             degrees: userData?.specialization?.degrees && 'uploaded successfully' || null,
@@ -453,9 +460,11 @@ const SpecializationDetails = () => {
                 onPress={() => !isLoading && setModalVisible(true)}
                 disabled={isLoading}
               >
-                <Text style={styles.dropdownText}>
-                  {formData.degree || 'Select degrees'}
-                </Text>
+               
+  <Text style={styles.dropdownText}>
+    {formData.degree || 'Select degrees'}
+  </Text>
+
               </TouchableOpacity>
               <Modal
                 visible={modalVisible}
@@ -520,7 +529,7 @@ const SpecializationDetails = () => {
               <Text style={styles.label}>Years of Experience *</Text>
               <TextInput
                 style={styles.input}
-                value={formData.yearsExperience}
+                value={formData?.yearsExperience}
                 onChangeText={(text) => setFormData({ ...formData, yearsExperience: text })}
                 keyboardType="numeric"
                 placeholder="e.g. 5"
@@ -672,6 +681,16 @@ const styles = StyleSheet.create({
     height: height * 0.06,
     color: '#333',
   },
+  dropdownBox: {
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 8,
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  flexWrap: 'wrap',       // allows wrapping text
+  minHeight: 40,          // minimum height for small text
+  justifyContent: 'center',
+},
   uploadContainer: {
     borderWidth: 1,
     borderColor: '#E0E0E0',

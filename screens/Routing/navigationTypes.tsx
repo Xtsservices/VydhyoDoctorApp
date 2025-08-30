@@ -34,4 +34,6 @@ export type RootStackParamList = {
   Profile: undefined;
   PreviousPrescription: undefined;
   EPrescriptionList: undefined;
+  // Labs:undefined;
+  // LabPatientManagement: undefined;
 };

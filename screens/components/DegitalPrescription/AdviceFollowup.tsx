@@ -39,6 +39,9 @@ const AdviceScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <View>   
+        
+      
       <View style={styles.header}>
         <Text style={styles.headerText}>Advice & Follow-Up</Text>
         <Text style={styles.stepText}>Step 5 of 5</Text>

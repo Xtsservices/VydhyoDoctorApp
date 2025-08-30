@@ -24,6 +24,7 @@ import Appointments from "../components/Dashboard/Appointments";
 // import dashboard from "../components/Dashboard/dashboard";
 import Accounts from "../components/Revenue/Accounts";
 import expenditure from "../components/Revenue/expenditure";
+// import Labs from "../components/Dashboard/Labs";
 
 import Clinic from "../components/Dashboard/Clinic";
 import AddClinic from "../components/Dashboard/AddClinic";
@@ -38,6 +39,7 @@ import PrescriptionPreview from "../components/DegitalPrescription/PrescriptionP
 import Authloader from "../components/Authloader";
 import EPrescriptionList from "../components/DegitalPrescription/EPrescriptionList";
 import PreviousPrescription from "../components/DegitalPrescription/PreviousPrescription";
+// import LabPatientManagement from "../components/Dashboard/LabPatientManagement";
 
 // import Appointments from "../components/appointments/appointments";
 // import MyPatient from "../components/Dashboard/MyPatient";
@@ -74,6 +76,10 @@ const Routing = () => {
         <Stack.Screen name="expenditure" component={expenditure} />
 
         <Stack.Screen name="Clinic" component={Clinic} />
+        {/* <Stack.Screen name="Labs" component={Labs} /> */}
+        {/* <Stack.Screen name="LabPatientManagement" component={LabPatientManagement} /> */}
+
+
         <Stack.Screen name="AddClinic" component={AddClinic} options={{ title: "Clinic Management", headerTitleAlign: "center", }}/>
         <Stack.Screen name="Reviews" component={Reviews} options={{ headerShown: false }}/>
         <Stack.Screen name="DoctorDetails" component={DoctorDetails} options={{ title: "Consulting Physician", headerTitleAlign: "center", }}/>

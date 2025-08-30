@@ -284,11 +284,10 @@ const PatientDetails = () => {
           />
         </View>
 
-        <Text style={{ color: '#000' }}>{g}</Text>
-      </TouchableOpacity>
-    );
-  })}
-</View>
+        {/* <Text style={{ color: '#000' }}>{g}</Text> */}
+      
+    
+<View>
 
 
         <Text  style={styles.input}>{formData.patientInfo.age}</Text>

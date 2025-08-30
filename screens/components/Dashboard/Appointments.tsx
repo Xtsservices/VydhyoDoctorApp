@@ -593,7 +593,7 @@ const queryParams = new URLSearchParams({
     onPress={() => setActionMenuVisible(false)}
   >
     <View style={styles.dropdown}>
-      {['Prescription', 'Mark as Completed', 'Reschedule', 'Cancel'].map((status) => (
+      {['Prescription','View Previous Prescription', 'Mark as Completed', 'Reschedule', 'Cancel'].map((status) => (
         <Pressable
           key={status}
           style={styles.option}

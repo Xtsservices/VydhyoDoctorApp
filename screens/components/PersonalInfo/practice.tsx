@@ -522,8 +522,8 @@ const PracticeScreen = () => {
 
     const payload = opdAddresses.map(addr => ({
       ...addr,
-      startTime: convertTo24HourFormat(addr.startTime || '6:00 am'),
-      endTime: convertTo24HourFormat(addr.endTime || '9:00 pm'),
+      startTime: convertTo24HourFormat(addr?.startTime) || '06:00 ',
+      endTime: convertTo24HourFormat(addr?.endTime )|| '21:00 ',
     }));
 
     console.log('Payload for API:', payload);
@@ -624,7 +624,8 @@ const PracticeScreen = () => {
       console.log(response)
       if (response.data.status === 'success') {
         const userData = response.data.data;
-      console.log(userData.specialization.experience, "complete response")
+setOpdAddresses(userData?.addresses)
+      console.log(userData, "complete response")
 
        
       }
@@ -837,7 +838,7 @@ const PracticeScreen = () => {
                   style={styles.input}
                   placeholder="Enter Latitude"
                   placeholderTextColor="#999"
-                  value={addr.latitude}
+                  value={String(addr?.latitude)}
                   onChangeText={text =>
                     handleInputChange(index, 'latitude', text)
                   }
@@ -849,7 +850,7 @@ const PracticeScreen = () => {
                   style={styles.input}
                   placeholder="Enter Longitude"
                   placeholderTextColor="#999"
-                  value={addr.longitude}
+                  value={String(addr?.longitude)}
                   onChangeText={text =>
                     handleInputChange(index, 'longitude', text)
                   }
