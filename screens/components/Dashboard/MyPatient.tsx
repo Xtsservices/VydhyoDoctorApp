@@ -105,6 +105,8 @@ const MyPatients: React.FC = () => {
         return;
       }
 
+      console.log(selectedStatus, "selected")
+
       const queryParams = new URLSearchParams({
         doctorId: String(doctorId),
         ...(searchText && { searchText: String(searchText) }),
@@ -112,6 +114,8 @@ const MyPatients: React.FC = () => {
         page: String(page),
         limit: String(limit),
       });
+
+
 
       const res = await AuthFetch(`appointment/getAppointmentsByDoctorID/patients?${queryParams.toString()}`, token);
 
@@ -222,12 +226,12 @@ const MyPatients: React.FC = () => {
   );
 
   useEffect(() => {
-    if (currentUserDetails && doctorId && !hasFetchedPatients.current) {
+    
       console.log('Fetching patients for the first time');
       hasFetchedPatients.current = true;
       fetchPatients(1, pagination.pageSize);
-    }
-  }, [currentUserDetails, doctorId, pagination.pageSize]);
+    
+  }, [currentUserDetails, doctorId, pagination.pageSize, selectedStatus]);
 
   useEffect(() => {
     const filtered = patients.filter((patient) => {
@@ -323,8 +327,17 @@ const MyPatients: React.FC = () => {
     );
   };
 
+  const handleFilterSelect = (value: typeof selectedStatus) => {
+    console.log('Selected filter:', value);
+    setSelectedStatus(value);
+    setDropdownVisible(false);
+    setCurrentPage(1);
+    // Fetch immediately with the new status
+    // fetchPatients(1, pagination.pageSize, value);
+  };
 
-  console.log('No patients to render', filteredPatients, patients);
+
+  console.log('No patients to render', selectedStatus);
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -348,20 +361,32 @@ const MyPatients: React.FC = () => {
       {dropdownVisible && (
         <View style={styles.dropdown}>
           {options.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              onPress={() => {
-                setSelectedStatus(option.value as typeof selectedStatus);
-                setDropdownVisible(false);
-                setCurrentPage(1); // Reset to first page on filter change
-                fetchPatients(1, pagination.pageSize); // Fetch patients with new filter
-              }}
-              style={styles.dropdownOption}
-            >
-              <Text style={styles.dropdownText}>{option.label}</Text>
-            </TouchableOpacity>
+<TouchableOpacity
+  key={option.value}
+  onPress={() => handleFilterSelect(option.value as typeof selectedStatus)}
+  // onPress={() => {
+  //   setSelectedStatus(option.value);
+  //   setDropdownVisible(false);
+  //   setCurrentPage(1); // Reset to first page on filter change
+  //   fetchPatients(1, pagination.pageSize); // Fetch patients with new filter
+  // }}
+  style={[
+    styles.dropdownOption,
+    selectedStatus === option.value && styles.dropdownOptionSelected, // Highlight when active
+  ]}
+>
+  <Text
+    style={[
+      styles.dropdownText,
+      selectedStatus === option.value && styles.dropdownTextSelected, // Change text color
+    ]}
+  >
+    {option.label}
+  </Text>
+</TouchableOpacity>
+
           ))}
-          <View style={styles.searchFieldDropdown}>
+          {/* <View style={styles.searchFieldDropdown}>
             <Text style={styles.dropdownText}>Search by:</Text>
             {['all', 'name', 'id', 'department'].map((field) => (
               <TouchableOpacity
@@ -380,7 +405,7 @@ const MyPatients: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </View> */}
         </View>
       )}
 
@@ -820,8 +845,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   dropdownOption: {
+
+    backgroundColor: '#f9f9f9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
     paddingVertical: 8,
     paddingHorizontal: 12,
+  },
+
+   dropdownOptionSelected: {
+    backgroundColor: '#007bff', // Blue background
+  },
+  // dropdownText: {
+  //   fontSize: 16,
+  //   color: '#000',
+  // },
+  dropdownTextSelected: {
+    color: '#fff', // White text for selected option
+    fontWeight: '600',
   },
   dropdownText: {
     fontSize: 14,
