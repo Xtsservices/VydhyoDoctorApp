@@ -85,12 +85,13 @@ const menuItems = [
     onPress: () => navigation.navigate('labs'),
 
   },
-  // {
-  //   key: 'pharmacy',
-  //   label: 'Pharmacy',
-  //   description: 'Pharmacy',
-  //   icon: 'folder',
-  // },
+  {
+    key: 'pharmacy',
+    label: 'Pharmacy',
+    description: 'Pharmacy',
+    icon: 'folder',
+    onPress: () => navigation.navigate('Pharmacy'),
+  },
   {
     key: 'staff',
     label: 'Staff Management',
