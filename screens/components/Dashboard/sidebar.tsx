@@ -82,7 +82,7 @@ const menuItems = [
     label: 'Labs',
     description: 'Labs',
     icon: 'science',
-      onPress: () => navigation.navigate('Labs'),
+    onPress: () => navigation.navigate('labs'),
 
   },
   // {
@@ -118,6 +118,13 @@ const menuItems = [
     description: 'Accounts ',
     icon: 'receipt',
     onPress: () => navigation.navigate('Accounts'),
+  },
+  {
+    key: 'billing',
+    label: 'Billing',
+    description: 'All Bills ',
+    icon: 'receipt',
+    onPress: () => navigation.navigate('Billing'),
   },
   {
     key: 'reviews',
@@ -165,6 +172,8 @@ setDepartment (profileResponse.data.data.specialization.name)
     staff: 'staff',
     clinic: 'clinic',
     accounts: 'accounts',
+    billing: 'billing',
+
     reviews: 'reviews',
   };
   console.group( profileResponse.data.data.access)

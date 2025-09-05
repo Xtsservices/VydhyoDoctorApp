@@ -42,7 +42,8 @@
     "react-native-toast-message": "^2.3.0",
     "react-native-vector-icons": "^10.2.0",
     "react-redux": "^9.2.0",
-    "redux": "^5.0.1"
+    "redux": "^5.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -59,6 +60,7 @@
     "@types/moment": "^2.11.29",
     "@types/pdfmake": "^0.2.11",
     "@types/react": "^19.1.0",
+    "@types/react-native-html-to-pdf": "^0.8.3",
     "@types/react-native-svg-charts": "^5.0.16",
     "@types/react-native-vector-icons": "^6.4.18",
     "@types/react-test-renderer": "^19.1.0",
