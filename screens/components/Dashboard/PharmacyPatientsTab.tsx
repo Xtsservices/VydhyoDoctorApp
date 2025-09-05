@@ -21,6 +21,7 @@ import RNFS from 'react-native-fs';
 import { captureRef } from 'react-native-view-shot';
 import FileViewer from 'react-native-file-viewer';
 import XLSX from 'xlsx';
+import RNHTMLtoPDF from 'react-native-html-to-pdf'; // Add this import
 
 interface PatientsTabProps {
   status: "pending" | "completed";
@@ -324,56 +325,93 @@ export default function PatientsTab({
     }
   };
 
+  // Android storage permission helper
+  const ensureAndroidWritePermission = async () => {
+    if (Platform.OS !== "android") return true;
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        {
+          title: "Storage permission",
+          message: "Allow saving invoices to your Downloads folder.",
+          buttonPositive: "Allow",
+        }
+      );
+      return (
+        granted === PermissionsAndroid.RESULTS.GRANTED ||
+        granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
+      );
+    } catch {
+      return false;
+    }
+  };
+
   const downloadInvoice = async (patient: Patient) => {
     try {
       setDownloading(prev => ({ ...prev, [patient.patientId]: true }));
       
-      // Generate invoice HTML content
-      const invoiceContent = generateInvoiceHTML(patient);
-      
-      // Create PDF file
-      const fileName = `Invoice_${patient.patientId}_${Date.now()}.pdf`;
-      const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-      
-      // For simplicity, we'll create a text file with HTML content
-      // In a real app, you'd use a proper PDF generation library
-      await RNFS.writeFile(filePath, invoiceContent, 'utf8');
-      
-      // Request storage permission on Android
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: "Storage Permission",
-            message: "App needs access to storage to download files",
-            buttonPositive: "OK"
-          }
-        );
-        
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+      // Check for Android permissions
+      if (Platform.OS === "android") {
+        const hasPermission = await ensureAndroidWritePermission();
+        if (!hasPermission) {
           throw new Error("Storage permission denied");
         }
       }
+
+      // Generate invoice HTML
+      const invoiceHTML = generateInvoiceHTML(patient);
       
-      // Move file to downloads folder
-      const downloadsPath = Platform.OS === 'android' 
-        ? RNFS.DownloadDirectoryPath 
-        : RNFS.DocumentDirectoryPath;
+      // Create PDF file name
+      const fileName = `Invoice_${patient.patientId}_${Date.now()}.pdf`;
       
-      const destinationPath = `${downloadsPath}/${fileName}`;
-      await RNFS.moveFile(filePath, destinationPath);
+      // Options for PDF generation
+      const options = {
+        html: invoiceHTML,
+        fileName: fileName,
+        directory: 'Documents',
+      };
       
-      // Open the file
-      try {
-        await FileViewer.open(destinationPath);
-      } catch (error) {
-        console.log("Cannot open file, but it was downloaded successfully");
+      // Generate PDF
+      const file = await RNHTMLtoPDF.convert(options);
+      
+      // Move to downloads folder on Android
+      if (Platform.OS === 'android' && file.filePath) {
+        const downloadsPath = RNFS.DownloadDirectoryPath;
+        const destinationPath = `${downloadsPath}/${fileName}`;
+        
+        // Check if file exists and delete it
+        const fileExists = await RNFS.exists(destinationPath);
+        if (fileExists) {
+          await RNFS.unlink(destinationPath);
+        }
+        
+        // Move the file to downloads
+        await RNFS.moveFile(file.filePath, destinationPath);
+        
+        Toast.show({
+          type: "success",
+          text1: "Invoice saved to Downloads",
+        });
+        
+        // Try to open the file
+        try {
+          await FileViewer.open(destinationPath);
+        } catch (error) {
+          console.log("File downloaded but cannot be opened");
+        }
+      } else if (file.filePath) {
+        // For iOS, just show success and try to open
+        Toast.show({
+          type: "success",
+          text1: "Invoice generated successfully",
+        });
+        
+        try {
+          await FileViewer.open(file.filePath);
+        } catch (error) {
+          console.log("File generated but cannot be opened");
+        }
       }
-      
-      Toast.show({
-        type: "success",
-        text1: "Invoice downloaded successfully",
-      });
     } catch (error: any) {
       console.error("Error downloading invoice:", error);
       Toast.show({

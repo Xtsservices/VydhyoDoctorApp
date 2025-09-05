@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,16 +11,15 @@ import {
   ScrollView,
   Alert,
   Platform,
-  PermissionsAndroid,
-  Linking,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
-import { AuthFetch, AuthPost } from "../../auth/auth";
+import { AuthFetch, AuthPost, authDelete } from "../../auth/auth";
+import Icon from "react-native-vector-icons/AntDesign";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import DocumentPicker from 'react-native-document-picker';
-import RNFS from 'react-native-fs';
-import ReactNativeBlobUtil from 'react-native-blob-util';
+import { pick, types } from "@react-native-documents/picker";
+import RNFS from "react-native-fs";
+import * as XLSX from "xlsx";
 
 interface Medicine {
   key: string;
@@ -56,7 +55,14 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const [form, setForm] = useState({ medName: "", quantity: "", price: "" });
-  const [bulkModalVisible, setBulkModalVisible] = useState(false);
+
+  // Bulk import states
+  const [bulkPreview, setBulkPreview] = useState<{ 
+    medName: string; 
+    quantity: number; 
+    price: number; 
+    row: number 
+  }[]>([]);
   const [uploading, setUploading] = useState(false);
 
   const currentuserDetails = useSelector((state: any) => state.currentUser);
@@ -193,138 +199,77 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
     setForm({ medName: "", quantity: "", price: "" });
   };
 
-  const handleBulkImport = async () => {
+  // Bulk import functionality
+  const pickExcel = async () => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      if (!token) {
-        Toast.show({ type: "error", text1: "Authentication error" });
-        return;
-      }
-
-      // Request storage permission for Android
-      if (Platform.OS === 'android') {
-        try {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-            {
-              title: "Storage Permission",
-              message: "App needs access to storage to select files",
-              buttonPositive: "OK"
-            }
-          );
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            Toast.show({ type: "error", text1: "Storage permission denied" });
-            return;
-          }
-        } catch (err) {
-          console.warn("Permission error:", err);
-        }
-      }
-
-      // Pick a document
-      const res = await DocumentPicker.pick({
-        type: [DocumentPicker.types.xlsx, DocumentPicker.types.xls, DocumentPicker.types.csv],
+      const result = await pick({
+        allowMultiSelection: false,
+        type: [types.allFiles],
+        copyTo: "cachesDirectory",
       });
 
-      if (res && res.length > 0) {
-        const file = res[0];
-        setUploading(true);
-        
-        // Create form data
-        const formData = new FormData();
-        formData.append('file', {
-          uri: file.uri,
-          name: file.name || 'medicines.xlsx',
-          type: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        } as any);
-        formData.append('doctorId', doctorId);
+      const file = Array.isArray(result) ? result[0] : result;
+      const uri = (file as any)?.fileCopyUri || (file as any)?.uri;
+      if (!uri) throw new Error("No file path returned by picker");
 
-        // Upload file
-        const response = await fetch('YOUR_BULK_UPLOAD_ENDPOINT', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData,
-        });
+      const path =
+        Platform.OS === "ios"
+          ? decodeURIComponent(uri.replace("file://", ""))
+          : uri;
 
-        const result = await response.json();
-        
-        if (response.ok && result.status === "success") {
-          Toast.show({ type: "success", text1: "Medicines imported successfully" });
-          fetchMedicines(); // Refresh the list
-          setBulkModalVisible(false);
-        } else {
-          throw new Error(result.message || "Failed to import medicines");
+      const fileData = await RNFS.readFile(path, "base64");
+      const wb = XLSX.read(fileData, { type: "base64" });
+      const sheet = wb.SheetNames[0];
+      const ws = wb.Sheets[sheet];
+      const json = XLSX.utils.sheet_to_json(ws) as any[];
+
+      const processed = json.map((row, idx) => {
+        if (row.medName == null || row.quantity == null || row.price == null) {
+          throw new Error('Excel must contain "medName", "quantity", and "price" columns');
         }
-      }
-    } catch (error: any) {
-      if (DocumentPicker.isCancel(error)) {
-        // User cancelled the picker
-        return;
-      }
-      console.error("Error importing medicines:", error);
-      Toast.show({
-        type: "error",
-        text1: error.message || "Failed to import medicines",
+        return { 
+          medName: String(row.medName), 
+          quantity: Number(row.quantity), 
+          price: Number(row.price), 
+          row: idx + 2 
+        };
       });
-    } finally {
-      setUploading(false);
+
+      setBulkPreview(processed);
+      Toast.show({ type: "success", text1: "Parsed file. Review preview below." });
+    } catch (e: any) {
+      if (e?.code && String(e.code).toLowerCase().includes("cancel")) return;
+      if (e?.message && String(e.message).toLowerCase().includes("cancel")) return;
+      Toast.show({ type: "error", text1: e?.message || "Could not read file" });
     }
   };
 
-  const downloadTemplate = async () => {
+  const uploadBulk = async () => {
+    if (!bulkPreview.length) return Toast.show({ type: "error", text1: "No data to upload" });
     try {
+      setUploading(true);
       const token = await AsyncStorage.getItem('authToken');
-      if (!token) {
-        Toast.show({ type: "error", text1: "Authentication error" });
-        return;
-      }
 
-      // For Android, request storage permission
-      if (Platform.OS === 'android') {
-        try {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-            {
-              title: "Storage Permission",
-              message: "App needs access to storage to download files",
-              buttonPositive: "OK"
-            }
-          );
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            Toast.show({ type: "error", text1: "Storage permission denied" });
-            return;
-          }
-        } catch (err) {
-          console.warn("Permission error:", err);
-        }
-      }
+      const resp = await AuthPost("pharmacy/addMedicine/bulkMobileJson", {
+        doctorId,
+        medicines: bulkPreview.map((x) => ({ 
+          medName: x.medName, 
+          quantity: x.quantity, 
+          price: x.price 
+        })),
+      }, token);
 
-      // Simple approach - open the template URL in browser
-      const templateUrl = 'YOUR_TEMPLATE_DOWNLOAD_URL';
-      const supported = await Linking.canOpenURL(templateUrl);
-      
-      if (supported) {
-        await Linking.openURL(templateUrl);
-        Toast.show({ 
-          type: "success", 
-          text1: "Opening template download",
-          text2: "Check your downloads folder" 
-        });
+      if (resp?.data?.status === "success") {
+        Toast.show({ type: "success", text1: `${bulkPreview.length} medicines added successfully` });
+        setBulkPreview([]);
+        fetchMedicines();
       } else {
-        Toast.show({ 
-          type: "error", 
-          text1: "Cannot open download link",
-          text2: "Please contact support" 
-        });
+        throw new Error(resp?.data?.message || "Failed to upload medicines");
       }
-    } catch (error: any) {
-      console.error("Error downloading template:", error);
-      Toast.show({
-        type: "error",
-        text1: error.message || "Failed to download template",
-      });
+    } catch (e: any) {
+      Toast.show({ type: "error", text1: e?.response?.data?.message || "Bulk upload failed" });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -349,10 +294,7 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.topBar}>
-        <TouchableOpacity 
-          style={styles.outlined} 
-          onPress={() => setBulkModalVisible(true)}
-        >
+        <TouchableOpacity style={styles.outlined} onPress={pickExcel}>
           <Text style={styles.outlinedText}>Bulk Import</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.primary} onPress={showModal}>
@@ -371,6 +313,34 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
           refreshing={loading}
           onRefresh={() => handleTableChange(1, pagination.pageSize)}
         />
+      )}
+
+      {/* Bulk preview panel */}
+      {bulkPreview.length > 0 && (
+        <View style={styles.bulkPanel}>
+          <Text style={styles.bulkTitle}>Preview ({bulkPreview.length})</Text>
+          <ScrollView style={{ maxHeight: 220 }}>
+            {bulkPreview.map((r) => (
+              <View key={r.row} style={styles.previewRow}>
+                <Text style={{ flex: 1 }}>{r.medName}</Text>
+                <Text style={{ width: 60, textAlign: "right" }}>Qty: {r.quantity}</Text>
+                <Text style={{ width: 90, textAlign: "right" }}>₹ {r.price}</Text>
+              </View>
+            ))}
+          </ScrollView>
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+            <TouchableOpacity style={[styles.outlined, { flex: 1 }]} onPress={() => setBulkPreview([])}>
+              <Text style={styles.outlinedText}>Clear</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.primary, { flex: 1, opacity: uploading ? 0.6 : 1 }]} 
+              disabled={uploading} 
+              onPress={uploadBulk}
+            >
+              <Text style={styles.primaryText}>{uploading ? "Uploading..." : "Upload Medicines"}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       {/* Pagination */}
@@ -465,45 +435,6 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
           </View>
         </View>
       </Modal>
-
-      {/* Bulk Import Modal */}
-      <Modal visible={bulkModalVisible} transparent animationType="fade" onRequestClose={() => setBulkModalVisible(false)}>
-        <View style={styles.modalWrap}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Bulk Import Medicines</Text>
-            
-            <Text style={styles.modalSubtitle}>
-              Upload an Excel file with medicine details. Download the template first to ensure proper formatting.
-            </Text>
-
-            <TouchableOpacity 
-              style={[styles.outlined, { marginBottom: 16 }]} 
-              onPress={downloadTemplate}
-            >
-              <Text style={styles.outlinedText}>Download Template</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.primary, uploading && styles.disabledBtn]} 
-              onPress={handleBulkImport}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryText}>Select Excel File</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.outlined, { marginTop: 16 }]} 
-              onPress={() => setBulkModalVisible(false)}
-            >
-              <Text style={styles.outlinedText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -547,8 +478,7 @@ const styles = StyleSheet.create({
     borderColor: "#1A3C6A", 
     borderRadius: 10, 
     paddingVertical: 10, 
-    paddingHorizontal: 14,
-    alignItems: 'center',
+    paddingHorizontal: 14 
   },
   outlinedText: { 
     color: "#1A3C6A", 
@@ -558,8 +488,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1A3C6A", 
     borderRadius: 10, 
     paddingVertical: 10, 
-    paddingHorizontal: 14,
-    alignItems: 'center',
+    paddingHorizontal: 14 
   },
   primaryText: { 
     color: "#fff", 
@@ -582,13 +511,7 @@ const styles = StyleSheet.create({
   modalTitle: { 
     fontWeight: "800", 
     fontSize: 18, 
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 16,
+    marginBottom: 8 
   },
   input: { 
     borderWidth: 1, 
@@ -645,7 +568,27 @@ const styles = StyleSheet.create({
   },
   activePageSizeText: {
     color: '#fff'
-  }
+  },
+  bulkPanel: { 
+    backgroundColor: "#fff", 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: "#e5e7eb", 
+    padding: 12, 
+    marginBottom: 10 
+  },
+  bulkTitle: { 
+    fontWeight: "800", 
+    marginBottom: 8, 
+    color: "#0f172a" 
+  },
+  previewRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    borderBottomWidth: 1, 
+    borderBottomColor: "#f1f5f9", 
+    paddingVertical: 8 
+  },
 });
 
 export default MedicinesTab;
