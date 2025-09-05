@@ -1262,8 +1262,8 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
   const footer = (
     <View style={styles.paginationBar}>
       <Text style={styles.paginationText}>
-        Showing {transformedPatients.length > 0 ? 1 : 0}-{transformedPatients.length} of{" "}
-        {pagination.totalItems || pagination.total * pagination.pageSize} patients
+        {/* {transformedPatients.length > 0 ? 1 : 0}-{transformedPatients.length} of{" "}
+        {pagination.totalItems || pagination.total * pagination.pageSize} patients */}
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <TouchableOpacity
@@ -1587,7 +1587,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     gap: 8,
   },
