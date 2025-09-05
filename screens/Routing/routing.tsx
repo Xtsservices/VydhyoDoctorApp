@@ -41,7 +41,9 @@ import PrescriptionPreview from "../components/DegitalPrescription/PrescriptionP
 import Authloader from "../components/Authloader";
 import EPrescriptionList from "../components/DegitalPrescription/EPrescriptionList";
 import PreviousPrescription from "../components/DegitalPrescription/PreviousPrescription";
-// import LabPatientManagement from "../components/Dashboard/LabPatientManagement";
+import labs from "../components/Dashboard/labs";
+import LabPatientManagement from "../components/Dashboard/LabPatientManagement";
+import Billing from "../components/Dashboard/Billing";
 
 // import Appointments from "../components/appointments/appointments";
 // import MyPatient from "../components/Dashboard/MyPatient";
@@ -78,9 +80,10 @@ const Routing = () => {
         <Stack.Screen name="expenditure" component={expenditure} />
 
         <Stack.Screen name="Clinic" component={Clinic} />
-        {/* <Stack.Screen name="Labs" component={Labs} /> */}
-        {/* <Stack.Screen name="LabPatientManagement" component={LabPatientManagement} /> */}
+        <Stack.Screen name="labs" component={labs} />
+        <Stack.Screen name="LabPatientManagement" component={LabPatientManagement} />
         
+        <Stack.Screen name="Billing" component={Billing} />
         <Stack.Screen name="Pharmacy" component={Pharmacy} options={{ headerShown: false }}/>
         <Stack.Screen name="PharmacyPatientsTab" component={PharmacyPatientsTab} />
         <Stack.Screen name="PharmacyMedicinesTab" component={PharmacyMedicinesTab} />

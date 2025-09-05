@@ -616,6 +616,7 @@ const PracticeScreen = () => {
   const handleBack = () => {
     navigation.navigate('Specialization');
   };
+  const [specialization,setSpecialization] = useState('')
 
    const fetchUserData = async () => {
     try {
@@ -624,6 +625,7 @@ const PracticeScreen = () => {
       console.log(response)
       if (response.data.status === 'success') {
         const userData = response.data.data;
+        setSpecialization(userData?.specialization[0]?.name)
 setOpdAddresses(userData?.addresses)
       console.log(userData, "complete response")
 
@@ -644,6 +646,14 @@ setOpdAddresses(userData?.addresses)
   useEffect(() => {
     fetchUserData();
   }, []);
+
+
+  // somewhere near your component state/props:
+const isPhysio =
+  Array.isArray(specialization)
+    ? specialization.some(s => s?.trim().toLowerCase() === 'physiotherapist')
+    : String(specialization ?? '').trim().toLowerCase() === 'physiotherapist';
+
 
   return (
     <KeyboardAvoidingView
@@ -678,12 +688,15 @@ setOpdAddresses(userData?.addresses)
         <View style={styles.addressSection}>
           <View style={styles.headerRow}>
             <Text style={styles.label}>OPD Address(es)</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddAddress}
-            >
-              <Text style={styles.addButtonText}>+ Add Location</Text>
-            </TouchableOpacity>
+<TouchableOpacity
+  style={[styles.addButton, isPhysio && styles.addButtonDisabled]}
+  onPress={isPhysio ? undefined : handleAddAddress}
+  disabled={isPhysio}
+  accessibilityState={{ disabled: isPhysio }}
+>
+  <Text style={styles.addButtonText}>+ Add Location</Text>
+</TouchableOpacity>
+
           </View>
 
           {opdAddresses.map((addr, index) => (
