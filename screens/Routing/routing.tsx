@@ -84,7 +84,7 @@ const Routing = () => {
         <Stack.Screen name="LabPatientManagement" component={LabPatientManagement} />
         
         <Stack.Screen name="Billing" component={Billing} />
-        <Stack.Screen name="Pharmacy" component={Pharmacy} options={{ headerShown: false }}/>
+        <Stack.Screen name="Pharmacy" component={Pharmacy} />
         <Stack.Screen name="PharmacyPatientsTab" component={PharmacyPatientsTab} />
         <Stack.Screen name="PharmacyMedicinesTab" component={PharmacyMedicinesTab} />
 

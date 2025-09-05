@@ -8,26 +8,19 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
-  Animated,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import Footer from './Footer';
-import Sidebar from './sidebar';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthFetch } from '../../auth/auth';
-import { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import dayjs from 'dayjs';
-import AntDesign from 'react-native-vector-icons/AntDesign';
 import { PieChart } from 'react-native-chart-kit';
 import Toast from 'react-native-toast-message';
 
-const StethoscopeIcon = require('../../assets/doc.png');
-const today_image = require('../../assets/Frame.png');
-const total = require('../../assets/i.png');
 const PLACEHOLDER_IMAGE = require('../../assets/img.png');
 const { width } = Dimensions.get('window');
 const screenWidth = Dimensions.get('window').width;
@@ -42,28 +35,29 @@ interface FormData {
   bank: string;
   accountNumber: string;
 }
+interface Clinic { addressId: string; clinicName: string; address: string; status: string; }
+interface Slot { _id: string; addressId: string; date: string; slots: { _id: string; time: string; status?: string }[]; }
+interface PatientAppointmentsProps { date: Date; doctorId: string; onDateChange: (date: Date) => void; }
 
-interface Clinic {
-  addressId: string;
-  clinicName: string;
-  address: string;
-  status: string;
-}
+/* ---------- Helpers to match web chips ---------- */
+const getStatusColors = (status: string) => {
+  const s = (status || '').toLowerCase();
+  if (s === 'scheduled') return { bg: '#e8f5e8', fg: '#16A34A' };
+  if (s === 'completed') return { bg: '#e3f2fd', fg: '#2563EB' };
+  if (s === 'rescheduled') return { bg: '#fff3e0', fg: '#F59E0B' };
+  if (s === 'canceled' || s === 'cancelled') return { bg: '#ffebee', fg: '#EF4444' };
+  return { bg: '#F3F4F6', fg: '#374151' };
+};
+const getTypeInfo = (type: string) => {
+  const t = (type || '').toLowerCase();
+  if (t === 'new-walkin' || t === 'home-visit') return { label: 'New', bg: '#DBEAFE', fg: '#1E40AF' };
+  if (t === 'follow-up' || t === 'followup') return { label: 'Follow-up', bg: '#e8f5e8', fg: '#16A34A' };
+  return { label: type || 'N/A', bg: '#F3F4F6', fg: '#374151' };
+};
+const fmtYYYYMMDD = (d: Date | string) => moment(d).format('YYYY-MM-DD');
+const fmtNice = (d?: string) => (d ? moment(d).format('MMM D, YYYY') : '—');
 
-interface Slot {
-  _id: string;
-  addressId: string;
-  date: string;
-  slots: { _id: string; time: string }[];
-}
-
-interface PatientAppointmentsProps {
-  date: Date;
-  doctorId: string;
-  onDateChange: (date: Date) => void;
-}
-
-// Sub-component for Patient Appointments
+/* ---------- Patient Appointments (with chips) ---------- */
 const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppointmentsProps) => {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [showPicker, setShowPicker] = useState(false);
@@ -80,16 +74,17 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
         storedToken
       );
 
-      if (response.status === 'success' && 'data' in response && response.data) {
+      if (response?.data?.status === 'success') {
         setAppointments(response.data.data?.appointments || []);
+      } else if (response?.status === 'success' && 'data' in response && response.data) {
+        // some services return {status:'success', data:{data:{appointments:[]}}}
+        setAppointments((response.data as any).data?.appointments || []);
       } else {
-        console.warn('Server responded with error, falling back to local appointments...');
         const storedData = await AsyncStorage.getItem('appointments');
         const fallbackData = storedData ? JSON.parse(storedData) : { totalAppointments: [] };
         setAppointments(fallbackData?.totalAppointments || []);
       }
     } catch (error) {
-      console.error('Fetch appointments error:', error);
       const storedData = await AsyncStorage.getItem('appointments');
       const fallbackData = storedData ? JSON.parse(storedData) : { totalAppointments: [] };
       setAppointments(fallbackData?.totalAppointments || []);
@@ -98,18 +93,13 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
     }
   }, [doctorId]);
 
-  useEffect(() => {
-    getAppointments(date);
-  }, [date, getAppointments]);
+  useEffect(() => { getAppointments(date); }, [date, getAppointments]);
 
-  const handleDateChange = useCallback(
-    (event: DateTimePickerEvent, selectedDate?: Date) => {
-      setShowPicker(false);
-      if (event.type === 'dismissed' || !selectedDate) return;
-      onDateChange(selectedDate);
-    },
-    [onDateChange]
-  );
+  const handleDateChange = useCallback((event: DateTimePickerEvent, selectedDate?: Date) => {
+    setShowPicker(false);
+    if (event.type === 'dismissed' || !selectedDate) return;
+    onDateChange(selectedDate);
+  }, [onDateChange]);
 
   return (
     <View style={styles.card}>
@@ -117,11 +107,13 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
         <Text style={styles.title}>Patient Appointments</Text>
         <Ionicons name="chevron-down" size={20} color="#555" />
       </TouchableOpacity>
+
       <TouchableOpacity style={styles.datePicker} onPress={() => setShowPicker(true)}>
         <Ionicons name="calendar" size={20} color="#333" />
         <Text style={styles.dateText}>{date.toDateString()}</Text>
       </TouchableOpacity>
       {showPicker && <DateTimePicker value={date} mode="date" display="default" onChange={handleDateChange} />}
+
       {loading ? (
         <ActivityIndicator size="small" color="#007bff" />
       ) : appointments.length > 0 ? (
@@ -131,21 +123,35 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
             <Text style={styles.headerCell}>Type</Text>
             <Text style={styles.headerCell}>Status</Text>
           </View>
-          {appointments.slice(0, viewAll ? appointments.length : 5).map((item, index) => (
-            <View key={index} style={styles.tableRow}>
-              <View style={styles.nameColumn}>
-                <Text style={styles.nameText}>{item.patientName}</Text>
-                <Text style={styles.datetimeText}>{dayjs(item.appointmentDate).format('YYYY-MM-DD')}</Text>
-                <Text style={styles.datetimeText}>{item.appointmentTime}</Text>
+
+          {appointments.slice(0, viewAll ? appointments.length : 5).map((item, index) => {
+            const typeInfo = getTypeInfo(item.appointmentType);
+            const statusInfo = getStatusColors(item.appointmentStatus);
+            return (
+              <View key={index} style={styles.tableRow}>
+                <View style={styles.nameColumn}>
+                  <Text style={styles.nameText}>{item.patientName || 'Unknown'}</Text>
+                  <Text style={styles.datetimeText}>{dayjs(item.appointmentDate).format('YYYY-MM-DD')}</Text>
+                  <Text style={styles.datetimeText}>{item.appointmentTime || ''}</Text>
+                </View>
+
+                <View style={[styles.nameColumn]}>
+                  <Text style={[styles.pillText, { color: typeInfo.fg }]}>{typeInfo.label}</Text>
+                </View>
+
+                <View style={[styles.pill, { backgroundColor: statusInfo.bg }]}>
+                  <Text style={[styles.pillText, { color: statusInfo.fg }]}>
+                    {item.appointmentStatus ? `${item.appointmentStatus[0].toUpperCase()}${item.appointmentStatus.slice(1)}` : 'Unknown'}
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.cell}>{item.appointmentType}</Text>
-              <Text style={styles.cell}>{item.appointmentStatus}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       ) : (
         <Text style={{ textAlign: 'center', marginTop: 20 }}>No appointments on this date.</Text>
       )}
+
       {appointments.length > 5 && !viewAll && (
         <TouchableOpacity style={styles.viewAllButton} onPress={() => setViewAll(true)}>
           <Text style={styles.viewAllText}>View All</Text>
@@ -155,68 +161,112 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
   );
 });
 
+/* ---------- Main Dashboard ---------- */
 const DoctorDashboard = () => {
   const navigation = useNavigation<any>();
   const [date, setDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
-    name: '',
-    email: '',
-    phone: '',
-    specialization: '',
-    practice: '',
-    consultationPreferences: '',
-    bank: '',
-    accountNumber: '',
+    name: '', email: '', phone: '', specialization: '', practice: '', consultationPreferences: '', bank: '', accountNumber: '',
   });
+
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [monthRevenue, setMonthRevenue] = useState(0);
+
+  // Revenue Summary (RN chart-kit shape)
   const [revenueSummaryData, setRevenueSummaryData] = useState([
     { name: 'Appointment', population: 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
     { name: 'Lab', population: 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
     { name: 'Pharmacy', population: 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
   ]);
+
+  // Parity: totals + percentage changes (already present)
   const [dashboardData, setDashboardData] = useState({
     appointmentCounts: { today: 0, newAppointments: 0, followUp: 0 },
     percentageChanges: { today: 0, newAppointments: 0, followUp: 0 },
   });
+
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [currentClinicIndex, setCurrentClinicIndex] = useState(0);
   const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
   const [nextAvailableSlot, setNextAvailableSlot] = useState<Slot[]>([]);
 
-  const slideAnim = useRef(new Animated.Value(width)).current;
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const doctorId = currentuserDetails?.role === 'doctor' ? currentuserDetails?.userId : currentuserDetails?.createdBy;
+
+  /* ---------- Revenue Summary RANGE (new) ---------- */
+  const today = fmtYYYYMMDD(new Date());
+  const [revenueStartDate, setRevenueStartDate] = useState<string>(today);
+  const [revenueEndDate, setRevenueEndDate] = useState<string>(today);
+  const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
 
   const getRevenueData = useCallback(async () => {
     try {
       const storedToken = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('finance/getTodayRevenuebyDoctorId', storedToken);
-      const revenue = response && 'data' in response && response.data && 'data' in response.data ? response.data.data : {};
-      setTodayRevenue(revenue.todayRevenue || 0);
-      setMonthRevenue(revenue.monthRevenue || 0);
+      const rev = response?.data?.data || (response?.data || {}).data || {};
+      setTodayRevenue(rev.todayRevenue || 0);
+      setMonthRevenue(rev.monthRevenue || 0);
     } catch (error) {
       console.error('Fetch revenue error:', error);
     }
   }, []);
 
-  const getRevenueSummary = useCallback(async () => {
+  // Old endpoint kept for fallback; primary will be range-aware below
+  const getRevenueSummaryThisMonth = useCallback(async () => {
     try {
       const storedToken = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('finance/getDoctorRevenueSummaryThismonth', storedToken);
-      if (response.data.status === 'success') {
+      if (response?.data?.status === 'success') {
         const data = response.data.data;
         setRevenueSummaryData([
           { name: 'Appointment', population: data.appointment || 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
           { name: 'Lab', population: data.lab || 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
           { name: 'Pharmacy', population: data.pharmacy || 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
         ]);
-      } else {
-        console.error('Revenue summary API response status is not success:', response.data);
       }
     } catch (error) {
-      console.error('Error fetching revenue summary:', error);
+      console.error('Error fetching revenue summary (month):', error);
+    }
+  }, []);
+
+  // NEW: range-aware summary (same API shape used by web)
+  const getRevenueSummaryRange = useCallback(async (start?: string, end?: string) => {
+    try {
+      if (!start || !end) {
+        setRevenueSummaryData([
+          { name: 'Appointment', population: 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+          { name: 'Lab', population: 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+          { name: 'Pharmacy', population: 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+        ]);
+        return;
+      }
+      const storedToken = await AsyncStorage.getItem('authToken');
+      const url = `finance/getDoctorRevenueSummaryThismonth?startDate=${start}&endDate=${end}`;
+      const response = await AuthFetch(url, storedToken);
+
+      if (response?.data?.status === 'success') {
+        const data = response.data.data;
+        setRevenueSummaryData([
+          { name: 'Appointment', population: data?.appointment || 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+          { name: 'Lab', population: data?.lab || 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+          { name: 'Pharmacy', population: data?.pharmacy || 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+        ]);
+      } else {
+        // normalize to zero
+        setRevenueSummaryData([
+          { name: 'Appointment', population: 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+          { name: 'Lab', population: 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+          { name: 'Pharmacy', population: 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching revenue summary (range):', error);
+      setRevenueSummaryData([
+        { name: 'Appointment', population: 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+        { name: 'Lab', population: 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+        { name: 'Pharmacy', population: 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+      ]);
     }
   }, []);
 
@@ -224,22 +274,20 @@ const DoctorDashboard = () => {
     try {
       const storedToken = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`appointment/getTodayAppointmentCount?doctorId=${doctorId}`, storedToken);
-      if (response?.data?.status === 'success') {
-        setDashboardData({
-          appointmentCounts: {
-            today: response?.data?.data?.totalAppointments?.today || 0,
-            newAppointments: response?.data?.data?.newAppointments?.today || 0,
-            followUp: response?.data?.data?.followupAppointments?.today || 0,
-          },
-          percentageChanges: {
-            today: response?.data?.data?.totalAppointments?.percentageChange || 0,
-            newAppointments: response?.data?.data?.newAppointments?.percentageChange || 0,
-            followUp: response?.data?.data?.followupAppointments?.percentageChange || 0,
-          },
-        });
-      } else {
-        Toast.show({ type: 'error', text1: 'Error', text2: response?.data?.message || 'Failed to fetch appointment count', position: 'top' });
-      }
+      const ok = response?.data?.status === 'success';
+      const dat = ok ? response.data.data : {};
+      setDashboardData({
+        appointmentCounts: {
+          today: dat?.totalAppointments?.today || 0,
+          newAppointments: dat?.newAppointments?.today || 0,
+          followUp: dat?.followupAppointments?.today || 0,
+        },
+        percentageChanges: {
+          today: dat?.totalAppointments?.percentageChange || 0,
+          newAppointments: dat?.newAppointments?.percentageChange || 0,
+          followUp: dat?.followupAppointments?.percentageChange || 0,
+        },
+      });
     } catch (error) {
       console.error("Error fetching today's appointment count:", error);
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch appointment count', position: 'top' });
@@ -257,12 +305,8 @@ const DoctorDashboard = () => {
 
       const userData = response.data.data;
       const rawMobile = userData.mobile || '';
-      const formattedPhone =
-        rawMobile.length === 10
-          ? `+91 ${rawMobile.slice(0, 3)} ${rawMobile.slice(3, 6)} ${rawMobile.slice(6, 10)}`
-          : '';
-      const maskAccountNumber = (accountNumber: string) =>
-        accountNumber ? `${'*'.repeat(accountNumber.length - 4)}${accountNumber.slice(-4)}` : '';
+      const formattedPhone = rawMobile.length === 10 ? `+91 ${rawMobile.slice(0, 3)} ${rawMobile.slice(3, 6)} ${rawMobile.slice(6, 10)}` : '';
+      const maskAccountNumber = (accountNumber: string) => accountNumber ? `${'*'.repeat(accountNumber.length - 4)}${accountNumber.slice(-4)}` : '';
 
       setFormData({
         name: `${userData.firstname || ''} ${userData.lastname || ''}`.trim(),
@@ -270,7 +314,7 @@ const DoctorDashboard = () => {
         phone: formattedPhone,
         specialization: userData.specialization?.name || '',
         practice: userData.addresses?.length > 0 ? userData.addresses[0] : '',
-        consultationPreferences: userData.consultationModeFee?.length > 0 ? userData.consultationModeFee.map((mode: any) => mode.type).join(', ') : '',
+        consultationPreferences: userData.consultationModeFee?.length > 0 ? userData.consultationModeFee.map((m: any) => m.type).join(', ') : '',
         bank: userData.bankDetails?.bankName || '',
         accountNumber: maskAccountNumber(userData.bankDetails?.accountNumber || ''),
       });
@@ -286,8 +330,8 @@ const DoctorDashboard = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`users/getClinicAddress?doctorId=${doctorId}`, token);
-      if (response.data.status === 'success') {
-        const activeClinics = response.data.data.filter((clinic: Clinic) => clinic.status === 'Active');
+      if (response?.data?.status === 'success') {
+        const activeClinics = (response.data.data || []).filter((clinic: Clinic) => clinic.status === 'Active');
         setClinics(activeClinics || []);
       }
     } catch (err) {
@@ -300,13 +344,12 @@ const DoctorDashboard = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`appointment/getNextAvailableSlotsByDoctor?doctorId=${doctorId}`, token);
-      console.log(response , "slots response")
-      if (response.data.status === 'success') {
-        const slotsData: Slot[] = response.data.data;
-        const today = moment().format('YYYY-MM-DD');
-        const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD');
-        setAvailableSlots(slotsData.filter((s) => s.date === today));
-        setNextAvailableSlot(slotsData.filter((s) => s.date === tomorrow));
+      if (response?.data?.status === 'success') {
+        const slotsData: Slot[] = response.data.data || [];
+        const todayStr = moment().format('YYYY-MM-DD');
+        const tomorrowStr = moment().add(1, 'day').format('YYYY-MM-DD');
+        setAvailableSlots(slotsData.filter((s) => s.date === todayStr));
+        setNextAvailableSlot(slotsData.filter((s) => s.date === tomorrowStr));
       }
     } catch (err) {
       console.error('Error fetching slots:', err);
@@ -314,43 +357,64 @@ const DoctorDashboard = () => {
   }, [doctorId, clinics]);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const bootstrap = async () => {
       setLoading(true);
       try {
-        await Promise.all([fetchUserData(), getRevenueData(), getRevenueSummary(), getTodayAppointmentCount(), fetchClinics()]);
-      } catch (error) {
-        console.error('Error during initial data fetch:', error);
+        await Promise.all([
+          fetchUserData(),
+          getRevenueData(),
+          getTodayAppointmentCount(),
+          fetchClinics(),
+        ]);
+        // Initialize range summary to "today - today" like web default
+        await getRevenueSummaryRange(revenueStartDate, revenueEndDate);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
     };
-    fetchInitialData();
-  }, [fetchUserData, getRevenueData, getRevenueSummary, getTodayAppointmentCount, fetchClinics]);
+    bootstrap();
+  }, [fetchUserData, getRevenueData, getTodayAppointmentCount, fetchClinics, getRevenueSummaryRange]);
 
-  useEffect(() => {
-    fetchAvailableSlots();
-  }, [fetchAvailableSlots]);
+  useEffect(() => { fetchAvailableSlots(); }, [fetchAvailableSlots]);
 
-  const handleDateChange = useCallback((newDate: Date) => {
-    setDate(newDate);
-  }, []);
+  /* ---------- Handlers ---------- */
+  const handleDateChange = useCallback((newDate: Date) => { setDate(newDate); }, []);
 
-  const handlePreviousClinic = () => setCurrentClinicIndex((prev) => (prev > 0 ? prev - 1 : clinics.length - 1));
-  const handleNextClinic = () => setCurrentClinicIndex((prev) => (prev < clinics.length - 1 ? prev + 1 : 0));
-  const formatSlotTime = (time: string) => moment(time, 'HH:mm').format('hh:mm A');
+  const handleRangePicked = useCallback((kind: 'start' | 'end') => (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (event.type === 'dismissed') { setWhichRangePicker(null); return; }
+    const iso = fmtYYYYMMDD(selectedDate || new Date());
+    if (kind === 'start') {
+      setRevenueStartDate(iso);
+      // if end already set and end >= new start, fetch
+      if (revenueEndDate && moment(iso).isAfter(revenueEndDate)) {
+        Toast.show({ type: 'error', text1: 'Invalid range', text2: 'Start date cannot be after end date', position: 'top' });
+      } else if (revenueEndDate) {
+        getRevenueSummaryRange(iso, revenueEndDate);
+      }
+    } else {
+      setRevenueEndDate(iso);
+      if (revenueStartDate && moment(iso).isBefore(revenueStartDate)) {
+        Toast.show({ type: 'error', text1: 'Invalid range', text2: 'End date cannot be before start date', position: 'top' });
+      } else if (revenueStartDate) {
+        getRevenueSummaryRange(revenueStartDate, iso);
+      }
+    }
+    setWhichRangePicker(null);
+  }, [revenueStartDate, revenueEndDate, getRevenueSummaryRange]);
 
-  const feedback = [
-    { name: 'Rani', avatar: 'https://i.pravatar.cc/150?img=12', rating: 4, comment: 'Very helpful and polite doctor.', daysAgo: 3 },
-    { name: 'Kiran', avatar: 'https://i.pravatar.cc/150?img=10', rating: 5, comment: 'Excellent service and guidance.', daysAgo: 1 },
-  ];
+  const clearRange = useCallback(() => {
+    setRevenueStartDate(today);
+    setRevenueEndDate(today);
+    getRevenueSummaryRange(today, today);
+  }, [getRevenueSummaryRange]);
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const handlePrev = () => setCurrentIndex((prev) => (prev === 0 ? feedback.length - 1 : prev - 1));
-  const handleNext = () => setCurrentIndex((prev) => (prev + 1) % feedback.length);
-
+  /* ---------- Render ---------- */
   const currentClinic = clinics[currentClinicIndex];
-  const selectedClinic = availableSlots.find((each) => each.addressId === currentClinic?.addressId);
-  const selectedClinicTomorrowSlots = nextAvailableSlot.find((each) => each.addressId === currentClinic?.addressId);
+  const selectedClinicToday = availableSlots.find((each) => each.addressId === currentClinic?.addressId);
+  const selectedClinicTomorrow = nextAvailableSlot.find((each) => each.addressId === currentClinic?.addressId);
+  const formatSlotTime = (time: string) => moment(time, 'HH:mm').format('hh:mm A');
 
   if (loading) {
     return (
@@ -363,31 +427,26 @@ const DoctorDashboard = () => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Sidebar')}>
-
-            <Ionicons style={styles.title} size={28} name="menu"  color="#000000"/>
-
+            <Ionicons style={styles.title} size={28} name="menu" color="#000000"/>
           </TouchableOpacity>
           <Text style={styles.headerText}>
-            {(() => {
-              const hour = new Date().getHours();
-              if (hour < 12) return 'Good Morning,';
-              if (hour < 17) return 'Good Afternoon,';
-              return 'Good Evening,';
-            })()}
-            {"\n"}Dr. {formData.name}
+            {(() => { const hour = new Date().getHours(); if (hour < 12) return 'Good Morning,'; if (hour < 17) return 'Good Afternoon,'; return 'Good Evening,'; })()}
+            {'\n'}Dr. {formData.name}
           </Text>
-          <View style={styles.rightIcons}>
-            {/* <Image source={PLACEHOLDER_IMAGE} style={{ width: 30, height: 30, marginLeft: 10 }} /> */}
-          </View>
+          <View style={styles.rightIcons} />
         </View>
+
+        {/* Add Appointment */}
         <View style={[styles.appointmentButton, { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }]}>
           <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddAppointment')}>
             <Text style={styles.addButtonText}>+ Add Appointment</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Counters & Revenue totals */}
         <View style={styles.container}>
           <View style={styles.appointmentsCard}>
             <View style={styles.centered}>
@@ -396,16 +455,12 @@ const DoctorDashboard = () => {
             </View>
             <View style={styles.gridRow}>
               <View style={styles.newCard}>
-                <View style={styles.trendBadge}>
-                  <Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.newAppointments}↑</Text>
-                </View>
+                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.newAppointments}↑</Text></View>
                 <Text style={styles.newNumber}>{dashboardData.appointmentCounts.newAppointments}</Text>
                 <Text style={styles.newLabel}>New Appointments</Text>
               </View>
               <View style={styles.followUpCard}>
-                <View style={styles.trendBadge}>
-                  <Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.followUp}↑</Text>
-                </View>
+                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.followUp}↑</Text></View>
                 <Text style={styles.followUpNumber}>{dashboardData.appointmentCounts.followUp}</Text>
                 <Text style={styles.followUpLabel}>Follow-ups</Text>
               </View>
@@ -426,49 +481,102 @@ const DoctorDashboard = () => {
           </View>
         </View>
 
+        {/* Patient Appointments (with date) */}
         <PatientAppointments date={date} doctorId={doctorId} onDateChange={handleDateChange} />
 
+        {/* Clinic Availability */}
         <View style={styles.card}>
           <Text style={styles.title}>Clinic Availability</Text>
           <View style={styles.clinicNavContainer}>
-            <TouchableOpacity onPress={handlePreviousClinic}>
+            <TouchableOpacity onPress={() => setCurrentClinicIndex((p) => (p > 0 ? p - 1 : clinics.length - 1))}>
               <AntDesign name="left" size={24} color="black" />
             </TouchableOpacity>
             <View style={styles.clinicInfo}>
               <Text style={styles.clinicName}>{currentClinic?.clinicName || 'N/A'}</Text>
             </View>
-            <TouchableOpacity onPress={handleNextClinic}>
+            <TouchableOpacity onPress={() => setCurrentClinicIndex((p) => (p < clinics.length - 1 ? p + 1 : 0))}>
               <AntDesign name="right" size={24} color="black" />
             </TouchableOpacity>
           </View>
+
           <Text style={styles.sectionLabel}>Available Slots (Today):</Text>
           <ScrollView horizontal contentContainerStyle={styles.slotContainer}>
-            {selectedClinic ? (
-              selectedClinic.slots.map((slot) => (
-                <View key={slot._id} style={styles.slot}>
-                  <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.unavailableText}>No slots available</Text>
-            )}
+            {selectedClinicToday ? (
+              selectedClinicToday.slots
+                .filter((s) => (s as any).status ? (s as any).status === 'available' : true)
+                .slice(0, 5)
+                .map((slot) => (
+                  <View key={slot._id} style={styles.slot}>
+                    <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
+                  </View>
+                ))
+            ) : (<Text style={styles.unavailableText}>No slots available</Text>)}
           </ScrollView>
+
           <Text style={styles.sectionLabel}>Next Available Slots (Tomorrow):</Text>
           <ScrollView horizontal contentContainerStyle={styles.slotContainer}>
-            {selectedClinicTomorrowSlots ? (
-              selectedClinicTomorrowSlots.slots.map((slot) => (
-                <View key={slot._id} style={styles.slot}>
-                  <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.unavailableText}>No slots available</Text>
-            )}
+            {selectedClinicTomorrow ? (
+              selectedClinicTomorrow.slots
+                .filter((s) => (s as any).status ? (s as any).status === 'available' : true)
+                .slice(0, 5)
+                .map((slot) => (
+                  <View key={slot._id} style={styles.slot}>
+                    <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
+                  </View>
+                ))
+            ) : (<Text style={styles.unavailableText}>No slots available</Text>)}
           </ScrollView>
         </View>
 
+        {/* Revenue Summary (with date range like web) */}
         <View style={[styles.card, { alignItems: 'flex-start', paddingLeft: 0 }]}>
-          <Text style={styles.title}>Revenue Summary</Text>
+          <View style={{ paddingHorizontal: 16, width: '100%' }}>
+            <Text style={styles.title}>Revenue Summary</Text>
+
+            {/* Range controls */}
+            <View style={styles.rangeRow}>
+              <Ionicons name="calendar" size={18} color="#1977f3" style={{ marginRight: 8 }} />
+
+              <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('start')}>
+                <Text style={styles.rangeBtnLabel}>Start</Text>
+                <Text style={styles.rangeBtnValue}>{fmtNice(revenueStartDate)}</Text>
+              </TouchableOpacity>
+
+              <Text style={{ marginHorizontal: 6, color: '#6b7280' }}>—</Text>
+
+              <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('end')}>
+                <Text style={styles.rangeBtnLabel}>End</Text>
+                <Text style={styles.rangeBtnValue}>{fmtNice(revenueEndDate)}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.clearBtn} onPress={clearRange}>
+                <Ionicons name="refresh" size={16} color="#6b7280" />
+                <Text style={styles.clearText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Native pickers (open one at a time) */}
+          {whichRangePicker === 'start' && (
+            <DateTimePicker
+              value={moment(revenueStartDate, 'YYYY-MM-DD').toDate()}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={handleRangePicked('start')}
+            />
+          )}
+          {whichRangePicker === 'end' && (
+            <DateTimePicker
+              value={moment(revenueEndDate, 'YYYY-MM-DD').toDate()}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={handleRangePicked('end')}
+            />
+          )}
+
+          {/* Pie */}
           <PieChart
             data={revenueSummaryData}
             width={screenWidth - 30}
@@ -479,177 +587,120 @@ const DoctorDashboard = () => {
             paddingLeft={'0'}
             hasLegend={true}
             absolute
-            style={{ alignSelf: 'flex-start', marginLeft: -10, paddingRight: 10 }}
+            style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
           />
         </View>
 
+        {/* Feedback (unchanged) */}
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Patient Feedback</Text>
             <View style={styles.navButtons}>
-              <TouchableOpacity onPress={handlePrev}>
-                <AntDesign name="left" size={16} color="#bfbfbf" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleNext}>
-                <AntDesign name="right" size={16} color="#bfbfbf" />
-              </TouchableOpacity>
+              <TouchableOpacity><AntDesign name="left" size={16} color="#bfbfbf" /></TouchableOpacity>
+              <TouchableOpacity><AntDesign name="right" size={16} color="#bfbfbf" /></TouchableOpacity>
             </View>
           </View>
           <ScrollView style={{ maxHeight: 200 }}>
-            {feedback.slice(currentIndex, currentIndex + 1).map((feedback, index) => (
-              <View key={index} style={styles.feedbackItem}>
+            {[{ name: 'Rani', avatar: 'https://i.pravatar.cc/150?img=12', rating: 4, comment: 'Very helpful and polite doctor.', daysAgo: 3 },
+              { name: 'Kiran', avatar: 'https://i.pravatar.cc/150?img=10', rating: 5, comment: 'Excellent service and guidance.', daysAgo: 1 }].map((fb, i) => (
+              <View key={i} style={styles.feedbackItem}>
                 <View style={styles.avatarRow}>
-                  <Image source={{ uri: feedback.avatar }} style={styles.avatar} />
+                  <Image source={{ uri: fb.avatar }} style={styles.avatar} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{feedback.name}</Text>
+                    <Text style={styles.name}>{fb.name}</Text>
                     <View style={styles.ratingRow}>
-                      {[...Array(feedback.rating)].map((_, i) => (
-                        <AntDesign key={i} name="star" size={14} color="#fbbf24" />
-                      ))}
+                      {[...Array(fb.rating)].map((_, j) => (<AntDesign key={j} name="star" size={14} color="#fbbf24" />))}
                     </View>
                   </View>
                 </View>
-                <Text style={styles.comment}>"{feedback.comment}"</Text>
-                <Text style={styles.dateText}>{feedback.daysAgo} days ago</Text>
+                <Text style={styles.comment}>"{fb.comment}"</Text>
+                <Text style={styles.dateText}>{fb.daysAgo} days ago</Text>
               </View>
             ))}
           </ScrollView>
         </View>
       </ScrollView>
-      {/* <Footer /> */}
     </View>
   );
 };
 
+/* ---------- Styles ---------- */
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#F0FDF4' },
   scrollView: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
   headerText: { color: '#000', fontSize: 20, fontWeight: 'bold' },
   rightIcons: { flexDirection: 'row', alignItems: 'center' },
-  appointmentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 0,
-    margin: 10,
-    borderRadius: 10,
-  },
-  appointmentsCard: {
-    backgroundColor: '#16a8a0',
-    borderRadius: 16,
-    padding: 10,
-    shadowColor: '#20d0c4',
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
+  appointmentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 0, margin: 10, borderRadius: 10 },
+  appointmentsCard: { backgroundColor: '#16a8a0', borderRadius: 16, padding: 10, shadowColor: '#20d0c4', shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
   centered: { alignItems: 'center', marginBottom: 10 },
   mainNumber: { fontSize: 30, fontWeight: 'bold', color: '#fff' },
   subText: { fontSize: 16, color: '#fff', marginTop: 5 },
   gridRow: { flexDirection: 'row', gap: 5, justifyContent: 'space-between' },
-  newCard: {
-    backgroundColor: '#F0FDF4',
-    flex: 1,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    position: 'relative',
-  },
-  trendBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
+  newCard: { backgroundColor: '#F0FDF4', flex: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 8, position: 'relative' },
+  trendBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   trendBadgeText: { fontSize: 12, color: '#166534', fontWeight: '600' },
   newNumber: { fontSize: 16, fontWeight: 'bold', color: '#16A34A' },
   newLabel: { color: '#16A34A', marginTop: 4 },
-  followUpCard: {
-    backgroundColor: '#EFF6FF',
-    flex: 1,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    position: 'relative',
-  },
+  followUpCard: { backgroundColor: '#EFF6FF', flex: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 8, position: 'relative' },
   followUpNumber: { fontSize: 16, fontWeight: 'bold', color: '#2563EB' },
   followUpLabel: { color: '#2563EB' },
   revenueCard: { marginTop: 10 },
   revenueRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  revenueBoxPurple: {
-    flex: 1,
-    backgroundColor: '#FAF5FF',
-    padding: 16,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  revenueBoxOrange: {
-    flex: 1,
-    backgroundColor: '#FFF7ED',
-    padding: 16,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
+  revenueBoxPurple: { flex: 1, backgroundColor: '#FAF5FF', padding: 16, borderRadius: 8, marginRight: 8 },
+  revenueBoxOrange: { flex: 1, backgroundColor: '#FFF7ED', padding: 16, borderRadius: 8, marginLeft: 8 },
   revenueSubLabel: { fontSize: 12, color: '#9333EA', marginBottom: 4 },
   revenueSubLabelOrange: { fontSize: 12, color: '#EA580C', marginBottom: 4 },
   revenueAmountPurple: { fontSize: 28, fontWeight: '700', color: '#9333EA' },
   revenueAmountOrange: { fontSize: 24, fontWeight: '700', color: '#EA580C' },
+
   addButton: { backgroundColor: '#007bff', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 },
   addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  card: {
-    backgroundColor: '#F9FBFC',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-    color: 'black',
-  },
+
+  card: { backgroundColor: '#F9FBFC', borderRadius: 12, padding: 16, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 3, color: 'black' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   title: { fontSize: 18, fontWeight: '600', color: 'black' },
+
   datePicker: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
   dateText: { fontSize: 14, color: '#333' },
+
   table: { marginTop: 10, borderTopWidth: 1, borderColor: '#ccc' },
   tableHeader: { flexDirection: 'row', backgroundColor: '#f0f0f0', paddingVertical: 8, paddingHorizontal: 10 },
   headerCell: { flex: 1, fontWeight: 'bold', color: '#333' },
-  tableRow: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'flex-start' },
+  tableRow: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' },
   nameColumn: { flex: 1 },
   nameText: { fontWeight: '600', fontSize: 14, color: '#0A2342' },
   datetimeText: { color: '#777', fontSize: 12 },
-  cell: { flex: 1, fontSize: 13, color: '#555' },
+  pill: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 16, alignSelf: 'flex-start' },
+  pillText: { fontSize: 12, fontWeight: '600' },
+
   viewAllButton: { marginTop: 12, alignSelf: 'flex-end' },
   viewAllText: { color: '#16a8a0', fontWeight: '600' },
+
   clinicNavContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   clinicInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   clinicName: { fontSize: 16, fontWeight: '600', color: '#0A2342' },
   sectionLabel: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 8, color:'black' },
   slotContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   slot: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#f0f8f0', borderRadius: 15, borderWidth: 1, borderColor: '#1b5e20' },
-  slotText: { fontSize: 12, fontWeight: '600', color: '#1b5e20', fontFamily: 'Poppins' },
-  unavailableText: { fontSize: 14, color: '#6c757d', fontWeight: '500', marginBottom: 12, fontFamily: 'Poppins' },
+  slotText: { fontSize: 12, fontWeight: '600', color: '#1b5e20' },
+  unavailableText: { fontSize: 14, color: '#6c757d', fontWeight: '500', marginBottom: 12 },
+
   navButtons: { flexDirection: 'row', gap: 8 },
   feedbackItem: { marginBottom: 8 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#f3f4f6' },
   name: { fontWeight: '600', fontSize: 14 },
   ratingRow: { flexDirection: 'row', marginTop: 4, gap: 2 },
-  comment: { fontSize: 14, color: '#6c757d', fontStyle: 'italic', fontFamily: 'Poppins', marginBottom: 8 },
+  comment: { fontSize: 14, color: '#6c757d', fontStyle: 'italic', marginBottom: 8 },
+
+  /* Range row styles (web parity) */
+  rangeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 6 },
+  rangeBtn: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, minWidth: 140 },
+  rangeBtnLabel: { fontSize: 11, color: '#6b7280', marginBottom: 2 },
+  rangeBtnValue: { fontSize: 14, color: '#111827', fontWeight: '500' },
+  clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, marginLeft: 'auto' },
+  clearText: { color: '#6b7280', fontSize: 13, fontWeight: '500' },
 });
 
 export default DoctorDashboard;
