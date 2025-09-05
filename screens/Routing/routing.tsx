@@ -25,7 +25,9 @@ import Appointments from "../components/Dashboard/Appointments";
 import Accounts from "../components/Revenue/Accounts";
 import expenditure from "../components/Revenue/expenditure";
 // import Labs from "../components/Dashboard/Labs";
-
+import Pharmacy from "../components/Dashboard/Pharmacy";
+import PharmacyPatientsTab from "../components/Dashboard/PharmacyMedicinesTab";
+import PharmacyMedicinesTab from "../components/Dashboard/PharmacyMedicinesTab"
 import Clinic from "../components/Dashboard/Clinic";
 import AddClinic from "../components/Dashboard/AddClinic";
 import Reviews from "../components/Dashboard/Reviews";
@@ -78,7 +80,10 @@ const Routing = () => {
         <Stack.Screen name="Clinic" component={Clinic} />
         {/* <Stack.Screen name="Labs" component={Labs} /> */}
         {/* <Stack.Screen name="LabPatientManagement" component={LabPatientManagement} /> */}
-
+        
+        <Stack.Screen name="Pharmacy" component={Pharmacy} options={{ headerShown: false }}/>
+        <Stack.Screen name="PharmacyPatientsTab" component={PharmacyPatientsTab} />
+        <Stack.Screen name="PharmacyMedicinesTab" component={PharmacyMedicinesTab} />
 
         <Stack.Screen name="AddClinic" component={AddClinic} options={{ title: "Clinic Management", headerTitleAlign: "center", }}/>
         <Stack.Screen name="Reviews" component={Reviews} options={{ headerShown: false }}/>
