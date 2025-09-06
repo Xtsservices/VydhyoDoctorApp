@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,24 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Dimensions,
+  PermissionsAndroid,
+  Linking,
 } from 'react-native';
+import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
+import Geolocation from '@react-native-community/geolocation';
+import Geocoder from 'react-native-geocoding';
 import { UploadFiles } from '../../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+
+// Initialize Geocoder with your Google Maps API key
+Geocoder.init('AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo');
+
+const { width, height } = Dimensions.get('window');
 
 const AddClinicForm = () => {
   const navigation = useNavigation<any>();
@@ -33,8 +44,8 @@ const AddClinicForm = () => {
     pincode: '',
     type: 'Clinic',
     country: 'India',
-    latitude: '56.1304',
-    longitude: '-106.3468',
+    latitude: '',
+    longitude: '',
     pharmacyName: '',
     pharmacyRegNum: '',
     pharmacyGST: '',
@@ -47,6 +58,19 @@ const AddClinicForm = () => {
     labAddress: '',
   });
 
+  // Map related states
+  const [region, setRegion] = useState<Region>({
+    latitude: 20.5937, // Default to India center
+    longitude: 78.9629,
+    latitudeDelta: 0.1,
+    longitudeDelta: 0.1,
+  });
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const mapRef = useRef<MapView>(null);
+
   const [headerFile, setHeaderFile] = useState<any>(null);
   const [headerPreview, setHeaderPreview] = useState<string | null>(null);
   const [signatureFile, setSignatureFile] = useState<any>(null);
@@ -57,6 +81,239 @@ const AddClinicForm = () => {
   const [labHeaderPreview, setLabHeaderPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Request location permission
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'This app needs access to your location to show your current position.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Permission error:', err);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Fetch address from coordinates
+  const fetchAddress = async (latitude: number, longitude: number) => {
+    setIsFetchingLocation(true);
+    try {
+      const response = await Geocoder.from(latitude, longitude);
+      
+      if (response.results && response.results.length > 0) {
+        const result = response.results[0];
+        const addressComponents = result.address_components || [];
+        
+        let street = '';
+        let city = '';
+        let state = '';
+        let country = 'India';
+        let pincode = '';
+        
+        for (const component of addressComponents) {
+          const types = component.types;
+          if (types.includes('route') || types.includes('street_number')) {
+            street = street ? `${street} ${component.long_name}` : component.long_name;
+          } else if (types.includes('locality')) {
+            city = component.long_name;
+          } else if (types.includes('administrative_area_level_1')) {
+            state = component.long_name;
+          } else if (types.includes('country')) {
+            country = component.long_name;
+          } else if (types.includes('postal_code')) {
+            pincode = component.long_name;
+          }
+        }
+        
+        const address = street || result.formatted_address;
+        
+        setForm(prev => ({
+          ...prev,
+          address,
+          city: city || prev.city,
+          state: state || prev.state,
+          country,
+          pincode: pincode || prev.pincode,
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+        }));
+        
+        setSearchQuery(address);
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
+  // Initialize map with current location
+  useEffect(() => {
+    const initLocation = async () => {
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Denied', 'Location permission is required to show your current location.');
+        return;
+      }
+
+      setIsFetchingLocation(true);
+      Geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newRegion = {
+            latitude,
+            longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          };
+          setRegion(newRegion);
+          mapRef.current?.animateToRegion(newRegion, 1000);
+          fetchAddress(latitude, longitude);
+        },
+        (error) => {
+          console.error('Location Error:', error);
+          Alert.alert(
+            'Location Error',
+            'Unable to fetch current location. Please ensure location services are enabled and try again, or select a location manually.',
+            [
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              { text: 'OK', style: 'cancel' },
+            ]
+          );
+          setIsFetchingLocation(false);
+        },
+        { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
+      );
+    };
+
+    initLocation();
+  }, []);
+
+  // Handle search input
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+
+    if (query.length < 3) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+          query
+        )}&key=AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo&components=country:in`
+      );
+
+      const data = await response.json();
+      if (data.status === 'OK') {
+        setSearchResults(data.predictions);
+        setShowSearchResults(true);
+      } else {
+        console.log('Autocomplete failed:', data.status);
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    }
+  };
+
+  // Handle selecting a search result
+  const handleSelectSearchResult = async (result: any) => {
+    setSearchQuery(result.description);
+    setShowSearchResults(false);
+    setIsFetchingLocation(true);
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${result.place_id}&key=AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo`
+      );
+
+      const data = await response.json();
+      if (data.status === 'OK') {
+        const place = data.result;
+        const location = place.geometry.location;
+        const latitude = location.lat;
+        const longitude = location.lng;
+
+        const newRegion = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(newRegion);
+        mapRef.current?.animateToRegion(newRegion, 500);
+        fetchAddress(latitude, longitude);
+      } else {
+        console.log('Place details failed:', data.status);
+      }
+    } catch (error) {
+      console.error('Place details error:', error);
+      Alert.alert('Error', 'Unable to fetch place details. Please try again.');
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
+  // Handle map press to select a location
+  const handleMapPress = (e: any) => {
+    const { coordinate } = e.nativeEvent;
+    const newRegion = {
+      ...region,
+      latitude: coordinate.latitude,
+      longitude: coordinate.longitude,
+    };
+    setRegion(newRegion);
+    mapRef.current?.animateToRegion(newRegion, 500);
+    fetchAddress(coordinate.latitude, coordinate.longitude);
+    setShowSearchResults(false);
+  };
+
+  // Move to current location
+  const handleMyLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission Denied', 'Location permission is required.');
+      return;
+    }
+
+    setIsFetchingLocation(true);
+    Geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const newRegion = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(newRegion);
+        mapRef.current?.animateToRegion(newRegion, 1000);
+        fetchAddress(latitude, longitude);
+        setShowSearchResults(false);
+      },
+      (error) => {
+        console.error('Location error:', error);
+        Alert.alert('Error', 'Unable to fetch current location.');
+        setIsFetchingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
+    );
+  };
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -134,8 +391,8 @@ const AddClinicForm = () => {
                     setHeaderFile(file);
                     setHeaderPreview(asset.uri!);
                   } else if (type === 'signature') {
-                    setSignatureFile(file);
-                    setSignaturePreview(asset.uri!);
+                        setSignatureFile(file);
+                        setSignaturePreview(asset.uri!);
                   } else if (type === 'pharmacyHeader') {
                     setPharmacyHeaderFile(file);
                     setPharmacyHeaderPreview(asset.uri!);
@@ -286,6 +543,20 @@ const AddClinicForm = () => {
     </View>
   );
 
+  const renderSearchItem = (result: any) => (
+    <TouchableOpacity
+      style={styles.searchItem}
+      onPress={() => handleSelectSearchResult(result)}
+    >
+      <Text style={styles.searchItemMainText}>
+        {result.structured_formatting.main_text}
+      </Text>
+      <Text style={styles.searchItemSecondaryText}>
+        {result.structured_formatting.secondary_text}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.keyboardAvoidingContainer}
@@ -294,6 +565,76 @@ const AddClinicForm = () => {
     >
       <ScrollView style={styles.container}>
         <Text style={styles.title}>Add New Clinic</Text>
+
+        {/* Map Section */}
+        <View style={styles.mapSection}>
+          <Text style={styles.label}>Location (Tap on map to select)</Text>
+          
+          {/* Search Input */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputContainer}>
+              <Icon name="magnify" size={20} color="#6B7280" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search for an address or location"
+                placeholderTextColor="#A0AEC0"
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  handleSearch(text);
+                }}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Icon name="close" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Search Results */}
+            {showSearchResults && searchResults.length > 0 && (
+              <View style={styles.searchResultsContainer}>
+                <ScrollView style={styles.searchResultsList}>
+                  {searchResults.map((result) => (
+                    <View key={result.place_id}>
+                      {renderSearchItem(result)}
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+
+          {/* Map */}
+          <View style={styles.mapContainer}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              region={region}
+              onPress={handleMapPress}
+              showsUserLocation={true}
+              showsMyLocationButton={false}
+              provider={PROVIDER_GOOGLE}
+            >
+              <Marker coordinate={{
+                latitude: region.latitude,
+                longitude: region.longitude
+              }} />
+            </MapView>
+            
+            {/* My Location Button */}
+            <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocation}>
+              <Icon name="crosshairs-gps" size={24} color="#3182CE" />
+            </TouchableOpacity>
+          </View>
+
+          {isFetchingLocation && (
+            <View style={styles.locationLoading}>
+              <ActivityIndicator size="small" color="#3182CE" />
+              <Text style={styles.locationLoadingText}>Fetching location...</Text>
+            </View>
+          )}
+        </View>
 
         <Text style={styles.label}>Clinic Name *</Text>
         <TextInput
@@ -670,5 +1011,103 @@ const styles = StyleSheet.create({
   confirmText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  // Map related styles
+  mapSection: {
+    marginBottom: 20,
+  },
+  searchContainer: {
+    position: 'relative',
+    zIndex: 10,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7FAFC',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#2D3748',
+  },
+  searchResultsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 4,
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 20,
+  },
+  searchResultsList: {
+    flex: 1,
+  },
+  searchItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  searchItemMainText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2D3748',
+  },
+  searchItemSecondaryText: {
+    fontSize: 12,
+    color: '#718096',
+    marginTop: 2,
+  },
+  mapContainer: {
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  myLocationButton: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 40,
+    height: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  locationLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  locationLoadingText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#718096',
   },
 });

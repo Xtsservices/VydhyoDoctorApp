@@ -92,6 +92,7 @@ const ClinicManagementScreen = () => {
   const [pharmacyHeaderPreview, setPharmacyHeaderPreview] = useState<string | null>(null);
   const [labHeaderFile, setLabHeaderFile] = useState<any>(null);
   const [labHeaderPreview, setLabHeaderPreview] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const [form, setForm] = useState({
     id: '',
@@ -121,6 +122,7 @@ const ClinicManagementScreen = () => {
     labPAN: '',
     labAddress: '',
   });
+  console.log("clincccccc",clinics)
 
   type FormKeys = keyof typeof form;
 
@@ -130,36 +132,37 @@ const ClinicManagementScreen = () => {
     editableInEdit?: boolean;
     multiline?: boolean;
     keyboardType?:
-      | 'default'
-      | 'phone-pad'
-      | 'numeric'
-      | 'email-address'
-      | 'number-pad'
-      | 'decimal-pad';
+    | 'default'
+    | 'phone-pad'
+    | 'numeric'
+    | 'email-address'
+    | 'number-pad'
+    | 'decimal-pad';
   }> = [
-    { key: 'name', label: 'Clinic Name' },
-    { key: 'status', label: 'Status', editableInEdit: false },
-    { key: 'type', label: 'Clinic Type' },
-    { key: 'mobile', label: 'Mobile', keyboardType: 'phone-pad' },
-    { key: 'address', label: 'Address', multiline: true },
-    { key: 'city', label: 'City' },
-    { key: 'state', label: 'State' },
-    { key: 'pincode', label: 'Pincode', keyboardType: 'number-pad' },
-    { key: 'country', label: 'Country' },
-    { key: 'pharmacyName', label: 'Pharmacy Name' },
-    { key: 'pharmacyRegNum', label: 'Pharmacy Registration Number' },
-    { key: 'pharmacyGST', label: 'Pharmacy GST Number' },
-    { key: 'pharmacyPAN', label: 'Pharmacy PAN Number' },
-    { key: 'pharmacyAddress', label: 'Pharmacy Address', multiline: true },
-    { key: 'labName', label: 'Lab Name' },
-    { key: 'labRegNum', label: 'Lab Registration Number' },
-    { key: 'labGST', label: 'Lab GST Number' },
-    { key: 'labPAN', label: 'Lab PAN Number' },
-    { key: 'labAddress', label: 'Lab Address', multiline: true },
-  ];
+      { key: 'name', label: 'Clinic Name' },
+      { key: 'status', label: 'Status', editableInEdit: false },
+      { key: 'type', label: 'Clinic Type' },
+      { key: 'mobile', label: 'Mobile', keyboardType: 'phone-pad' },
+      { key: 'address', label: 'Address', multiline: true },
+      { key: 'city', label: 'City' },
+      { key: 'state', label: 'State' },
+      { key: 'pincode', label: 'Pincode', keyboardType: 'number-pad' },
+      { key: 'country', label: 'Country' },
+      { key: 'pharmacyName', label: 'Pharmacy Name' },
+      { key: 'pharmacyRegNum', label: 'Pharmacy Registration Number' },
+      { key: 'pharmacyGST', label: 'Pharmacy GST Number' },
+      { key: 'pharmacyPAN', label: 'Pharmacy PAN Number' },
+      { key: 'pharmacyAddress', label: 'Pharmacy Address', multiline: true },
+      { key: 'labName', label: 'Lab Name' },
+      { key: 'labRegNum', label: 'Lab Registration Number' },
+      { key: 'labGST', label: 'Lab GST Number' },
+      { key: 'labPAN', label: 'Lab PAN Number' },
+      { key: 'labAddress', label: 'Lab Address', multiline: true },
+    ];
 
   const fetchClinics = async () => {
     try {
+      setInitialLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       const res = await AuthFetch('users/getClinicAddress', token);
 
@@ -211,6 +214,8 @@ const ClinicManagementScreen = () => {
       }
     } catch (error) {
       console.error('Error fetching appointments:', error);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -410,7 +415,7 @@ const ClinicManagementScreen = () => {
 
   const handleHeaderSubmit = async () => {
     if (!headerFile || !selectedClinic) return;
-    
+
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
@@ -546,7 +551,7 @@ const ClinicManagementScreen = () => {
 
   const handlePharmacySubmit = async () => {
     if (!selectedClinic) return;
-    
+
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
@@ -598,7 +603,7 @@ const ClinicManagementScreen = () => {
 
   const handleLabSubmit = async () => {
     if (!selectedClinic) return;
-    
+
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
@@ -816,11 +821,11 @@ const ClinicManagementScreen = () => {
                 <Icon name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView style={styles.modalContent}>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Header Image</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.uploadBox}
                   onPress={() => handleFileChange('header')}
                 >
@@ -837,7 +842,7 @@ const ClinicManagementScreen = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Digital Signature (Optional)</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.uploadBox}
                   onPress={() => handleFileChange('signature')}
                 >
@@ -854,14 +859,14 @@ const ClinicManagementScreen = () => {
             </ScrollView>
 
             <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={() => setHeaderModalVisible(false)}
               >
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.saveButton, !headerFile && styles.disabledButton]} 
+              <TouchableOpacity
+                style={[styles.saveButton, !headerFile && styles.disabledButton]}
                 onPress={handleHeaderSubmit}
                 disabled={!headerFile}
               >
@@ -887,7 +892,7 @@ const ClinicManagementScreen = () => {
                 <Icon name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView style={styles.modalContent}>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Pharmacy Name</Text>
@@ -942,7 +947,7 @@ const ClinicManagementScreen = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Pharmacy Header Image (Optional)</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.uploadBox}
                   onPress={() => handleFileChange('pharmacyHeader')}
                 >
@@ -959,14 +964,14 @@ const ClinicManagementScreen = () => {
             </ScrollView>
 
             <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={() => setPharmacyModalVisible(false)}
               >
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.saveButton} 
+              <TouchableOpacity
+                style={styles.saveButton}
                 onPress={handlePharmacySubmit}
               >
                 <Text style={styles.saveText}>Save Details</Text>
@@ -991,7 +996,7 @@ const ClinicManagementScreen = () => {
                 <Icon name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView style={styles.modalContent}>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Lab Name</Text>
@@ -1046,7 +1051,7 @@ const ClinicManagementScreen = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Lab Header Image (Optional)</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.uploadBox}
                   onPress={() => handleFileChange('labHeader')}
                 >
@@ -1063,14 +1068,14 @@ const ClinicManagementScreen = () => {
             </ScrollView>
 
             <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={() => setLabModalVisible(false)}
               >
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.saveButton} 
+              <TouchableOpacity
+                style={styles.saveButton}
                 onPress={handleLabSubmit}
               >
                 <Text style={styles.saveText}>Save Details</Text>
@@ -1096,15 +1101,15 @@ const ClinicManagementScreen = () => {
               </TouchableOpacity>
             </View>
             {selectedImage && (
-              <Image 
-                source={{ uri: selectedImage }} 
+              <Image
+                source={{ uri: selectedImage }}
                 style={styles.fullPreviewImage}
                 resizeMode="contain"
               />
             )}
             <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={() => setImagePreviewModalVisible(false)}
               >
                 <Text style={styles.cancelText}>Close</Text>
@@ -1115,174 +1120,189 @@ const ClinicManagementScreen = () => {
       </Modal>
 
       {/* Loading Overlay */}
-      {loading && (
-        <View style={styles.loaderOverlay}>
+      {initialLoading ? (
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00203F" />
-          <Text style={styles.loaderText}>Processing...</Text>
+          <Text style={styles.loadingText}>Loading clinics...</Text>
         </View>
-      )}
-
-      <ScrollView style={styles.clinicsContainer}>
-        {clinics.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Icon name="hospital-building" size={64} color="#9CA3AF" />
-            <Text style={styles.emptyStateText}>No clinics found</Text>
-            <Text style={styles.emptyStateSubtext}>Add your first clinic to get started</Text>
-          </View>
-        ) : (
-          clinics.map((clinic) => {
-            const statusStyle = getStatusStyle(clinic.status);
-            return (
-              <View key={clinic.id} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Image source={{ uri: clinic.Avatar }} style={styles.avatar} />
-                  <View style={styles.clinicInfo}>
-                    <Text style={styles.clinicName}>{clinic.name}</Text>
-                    <Text style={styles.clinicType}>{clinic.type}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: statusStyle.backgroundColor },
-                    ]}
-                  >
-                    <Text style={{ color: statusStyle.color, fontSize: 12, fontWeight: '600' }}>
-                      {clinic.status}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.clinicDetails}>
-                  <View style={styles.detailRow}>
-                    <Icon name="map-marker" size={16} color="#6B7280" />
-                    <Text style={styles.detailText}>{clinic.city}, {clinic.state}</Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Icon name="phone" size={16} color="#6B7280" />
-                    <Text style={styles.detailText}>{clinic.mobile}</Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Icon name="clock-outline" size={16} color="#6B7280" />
-                    <Text style={styles.detailText}>{clinic.startTime} - {clinic.endTime}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.actionsContainer}>
-                  <View style={styles.actionGroup}>
-                    <Text style={styles.actionGroupTitle}>Clinic Actions</Text>
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity 
-                        style={styles.actionButton} 
-                        onPress={() => openModal('view', clinic)}
-                      >
-                        <Icon name="eye-outline" size={18} color="#3B82F6" />
-                        <Text style={styles.actionButtonText}>View</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.actionButton} 
-                        onPress={() => openModal('edit', clinic)}
-                      >
-                        <Icon name="pencil-outline" size={18} color="#8B5CF6" />
-                        <Text style={styles.actionButtonText}>Edit</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.actionButton} 
-                        onPress={() => openHeaderModal(clinic)}
-                      >
-                        <Icon name="image-edit" size={18} color="#EC4899" />
-                        <Text style={styles.actionButtonText}>Header</Text>
-                      </TouchableOpacity>
-                      {clinic.headerImage && (
-                        <TouchableOpacity 
-                          style={styles.actionButton} 
-                          onPress={() => openImagePreview(clinic.headerImage!, 'Header Image')}
-                        >
-                          <Icon name="eye-outline" size={18} color="#10B981" />
-                          <Text style={styles.actionButtonText}>Preview</Text>
-                        </TouchableOpacity>
-                      )}
+      ) : (
+        <ScrollView style={styles.clinicsContainer}>
+          {clinics.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Icon name="hospital-building" size={64} color="#9CA3AF" />
+              <Text style={styles.emptyStateText}>No clinics found</Text>
+              <Text style={styles.emptyStateSubtext}>Add your first clinic to get started</Text>
+            </View>
+          ) : (
+            clinics.map((clinic) => {
+              console.log("cliiiiiiiiiiiiiii",clinic)
+              const statusStyle = getStatusStyle(clinic.status);
+              return (
+                <View key={clinic.id} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <Image source={{ uri: clinic.Avatar }} style={styles.avatar} />
+                    <View style={styles.clinicInfo}>
+                      <Text style={styles.clinicName}>{clinic.name}</Text>
+                      <Text style={styles.clinicType}>{clinic.type}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: statusStyle.backgroundColor },
+                      ]}
+                    >
+                      <Text style={{ color: statusStyle.color, fontSize: 12, fontWeight: '600' }}>
+                        {clinic.status}
+                      </Text>
                     </View>
                   </View>
 
-                  <View style={styles.actionGroup}>
-                    <Text style={styles.actionGroupTitle}>Pharmacy</Text>
-                    <View style={styles.actionButtons}>
-                      {clinic.pharmacyName ? (
-                        <>
-                          <TouchableOpacity 
-                            style={styles.actionButton} 
-                            onPress={() => openImagePreview(clinic.pharmacyHeaderImage || '', 'Pharmacy Header')}
+                  <View style={styles.clinicDetails}>
+                    <View style={styles.detailRow}>
+                      <Icon name="map-marker" size={16} color="#6B7280" />
+                      <Text style={styles.detailText}>{clinic.city}, {clinic.state}</Text>
+                    </View>
+
+                    <View style={styles.detailRow}>
+                      <Icon name="phone" size={16} color="#6B7280" />
+                      <Text style={styles.detailText}>{clinic.mobile}</Text>
+                    </View>
+
+                    <View style={styles.detailRow}>
+                      <Icon name="clock-outline" size={16} color="#6B7280" />
+                      <Text style={styles.detailText}>{clinic.startTime} - {clinic.endTime}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.actionsContainer}>
+                    <View style={styles.actionGroup}>
+                      <Text style={styles.actionGroupTitle}>Clinic Actions</Text>
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => openModal('view', clinic)}
+                        >
+                          <Text style={styles.actionButtonText}>View</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => openModal('edit', clinic)}
+                        >
+                          <Text style={styles.actionButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                        {(!clinic.headerImage || !clinic.digitalSignature) && (
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => openHeaderModal(clinic)}
                           >
-                            <Icon name="eye-outline" size={18} color="#10B981" />
-                            <Text style={styles.actionButtonText}>View</Text>
+                            <Text style={styles.actionButtonText}>
+                              {!clinic.headerImage && !clinic.digitalSignature
+                                ? 'Add Header & Signature'
+                                : !clinic.headerImage
+                                  ? 'Add Header'
+                                  : 'Add Signature'
+                              }
+                            </Text>
                           </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={styles.actionButton} 
+                        )}
+                        {clinic.headerImage && (
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => openImagePreview(clinic.headerImage!, 'Header Image')}
+                          >
+                            <Text style={styles.actionButtonText}>Preview Header</Text>
+                          </TouchableOpacity>
+                        )}
+                        {clinic.digitalSignature && (
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => openImagePreview(clinic.digitalSignature!, 'Digital Signature')}
+                          >
+                            <Text style={styles.actionButtonText}>Preview Signature</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+
+                    <View style={styles.actionGroup}>
+                      <Text style={styles.actionGroupTitle}>Pharmacy</Text>
+                      <View style={styles.actionButtons}>
+                        {clinic.pharmacyName ? (
+                          <>
+                            <TouchableOpacity
+                              style={styles.actionButton}
+                              onPress={() => openImagePreview(clinic.pharmacyHeaderImage || '', 'Pharmacy Header')}
+                            >
+                              {/* <Icon name="eye-outline" size={18} color="#10B981" /> */}
+                              <Text style={styles.actionButtonText}>View</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.actionButton}
+                              onPress={() => openPharmacyModal(clinic)}
+                            >
+                              {/* <Icon name="pencil-outline" size={18} color="#8B5CF6" /> */}
+                              <Text style={styles.actionButtonText}>Edit</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.addButtonSmall]}
                             onPress={() => openPharmacyModal(clinic)}
                           >
-                            <Icon name="pencil-outline" size={18} color="#8B5CF6" />
-                            <Text style={styles.actionButtonText}>Edit</Text>
+                            <Icon name="plus" size={18} color="#FFFFFF" />
+                            <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Add Pharmacy</Text>
                           </TouchableOpacity>
-                        </>
-                      ) : (
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.addButtonSmall]} 
-                          onPress={() => openPharmacyModal(clinic)}
-                        >
-                          <Icon name="plus" size={18} color="#FFFFFF" />
-                          <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Add Pharmacy</Text>
-                        </TouchableOpacity>
-                      )}
+                        )}
+                      </View>
                     </View>
-                  </View>
 
-                  <View style={styles.actionGroup}>
-                    <Text style={styles.actionGroupTitle}>Lab</Text>
-                    <View style={styles.actionButtons}>
-                      {clinic.labName ? (
-                        <>
-                          <TouchableOpacity 
-                            style={styles.actionButton} 
-                            onPress={() => openImagePreview(clinic.labHeaderImage || '', 'Lab Header')}
-                          >
-                            <Icon name="eye-outline" size={18} color="#10B981" />
-                            <Text style={styles.actionButtonText}>View</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={styles.actionButton} 
+                    <View style={styles.actionGroup}>
+                      <Text style={styles.actionGroupTitle}>Lab</Text>
+                      <View style={styles.actionButtons}>
+                        {clinic.labName ? (
+                          <>
+                            <TouchableOpacity
+                              style={styles.actionButton}
+                              onPress={() => openImagePreview(clinic.labHeaderImage || '', 'Lab Header')}
+                            >
+                              {/* <Icon name="eye-outline" size={18} color="#10B981" /> */}
+                              <Text style={styles.actionButtonText}>View</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.actionButton}
+                              onPress={() => openLabModal(clinic)}
+                            >
+                              {/* <Icon name="pencil-outline" size={18} color="#8B5CF6" /> */}
+                              <Text style={styles.actionButtonText}>Edit</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.addButtonSmall]}
                             onPress={() => openLabModal(clinic)}
                           >
-                            <Icon name="pencil-outline" size={18} color="#8B5CF6" />
-                            <Text style={styles.actionButtonText}>Edit</Text>
+                            <Icon name="plus" size={18} color="#FFFFFF" />
+                            <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Add Lab</Text>
                           </TouchableOpacity>
-                        </>
-                      ) : (
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.addButtonSmall]} 
-                          onPress={() => openLabModal(clinic)}
-                        >
-                          <Icon name="plus" size={18} color="#FFFFFF" />
-                          <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Add Lab</Text>
-                        </TouchableOpacity>
-                      )}
+                        )}
+                      </View>
                     </View>
-                  </View>
 
-                  <TouchableOpacity
-                    style={styles.deleteAction}
-                    onPress={() => openModal('delete', clinic)}
-                  >
-                    <Icon name="delete-outline" size={20} color="#EF4444" />
-                    <Text style={styles.deleteActionText}>Delete Clinic</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteAction}
+                      onPress={() => openModal('delete', clinic)}
+                    >
+                      <Icon name="delete-outline" size={20} color="#EF4444" />
+                      <Text style={styles.deleteActionText}>Delete Clinic</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            );
-          })
-        )}
-      </ScrollView>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
+
     </View>
   );
 };
@@ -1351,6 +1371,17 @@ const styles = StyleSheet.create({
   clinicsContainer: {
     flex: 1,
     padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
   },
   card: {
     backgroundColor: '#FFFFFF',
