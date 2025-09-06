@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
@@ -50,12 +51,46 @@ const getStatusColors = (status: string) => {
 };
 const getTypeInfo = (type: string) => {
   const t = (type || '').toLowerCase();
-  if (t === 'new-walkin' || t === 'home-visit') return { label: 'New', bg: '#DBEAFE', fg: '#1E40AF' };
+  if (t === 'new-walkin' || t === 'home-visit' || t === 'new') return { label: 'New', bg: '#DBEAFE', fg: '#1E40AF' };
   if (t === 'follow-up' || t === 'followup') return { label: 'Follow-up', bg: '#e8f5e8', fg: '#16A34A' };
   return { label: type || 'N/A', bg: '#F3F4F6', fg: '#374151' };
 };
 const fmtYYYYMMDD = (d: Date | string) => moment(d).format('YYYY-MM-DD');
 const fmtNice = (d?: string) => (d ? moment(d).format('MMM D, YYYY') : '—');
+
+/** Robust formatter → "6 Sep 2025 11:45AM" */
+const formatApptDateTime = (dateStr?: string, timeStr?: string) => {
+  const timeNorm = (timeStr || '').toUpperCase().replace(/\s+/g, ''); // "9:00AM" / "09:00" etc.
+  const join = (d?: string, t?: string) => [d || '', t || ''].filter(Boolean).join(' ');
+
+  const candidates = [
+    join(dateStr, timeNorm),
+    dateStr || '',
+    timeNorm || '',
+  ].filter(Boolean);
+
+  const fmts = [
+    'DD-MMM-YYYY h:mmA',
+    'D-MMM-YYYY h:mmA',
+    'YYYY-MM-DD h:mmA',
+    'YYYY-MM-DD HH:mm',
+    moment.ISO_8601 as any,
+    'DD/MM/YYYY h:mmA',
+    'D/M/YYYY h:mmA',
+  ];
+
+  for (const c of candidates) {
+    const m = moment(c, fmts, true);
+    if (m.isValid()) return m.format('D MMM YYYY h:mmA'); // e.g., "6 Sep 2025 11:45AM"
+  }
+
+  // last try (non-strict)
+  const m2 = moment(join(dateStr, timeStr));
+  if (m2.isValid()) return m2.format('D MMM YYYY h:mmA');
+
+  // fallback: show combined raw
+  return join(dateStr, timeStr);
+};
 
 /* ---------- Patient Appointments (with chips) ---------- */
 const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppointmentsProps) => {
@@ -77,7 +112,6 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
       if (response?.data?.status === 'success') {
         setAppointments(response.data.data?.appointments || []);
       } else if (response?.status === 'success' && 'data' in response && response.data) {
-        // some services return {status:'success', data:{data:{appointments:[]}}}
         setAppointments((response.data as any).data?.appointments || []);
       } else {
         const storedData = await AsyncStorage.getItem('appointments');
@@ -105,7 +139,6 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
     <View style={styles.card}>
       <TouchableOpacity style={styles.cardHeader} onPress={() => setShowPicker(true)}>
         <Text style={styles.title}>Patient Appointments</Text>
-        <Ionicons name="chevron-down" size={20} color="#555" />
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.datePicker} onPress={() => setShowPicker(true)}>
@@ -131,8 +164,10 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
               <View key={index} style={styles.tableRow}>
                 <View style={styles.nameColumn}>
                   <Text style={styles.nameText}>{item.patientName || 'Unknown'}</Text>
-                  <Text style={styles.datetimeText}>{dayjs(item.appointmentDate).format('YYYY-MM-DD')}</Text>
-                  <Text style={styles.datetimeText}>{item.appointmentTime || ''}</Text>
+                  {/* unified date+time: "6 Sep 2025 11:45AM" */}
+                  <Text style={styles.datetimeText}>
+                    {formatApptDateTime(item.appointmentDate, item.appointmentTime)}
+                  </Text>
                 </View>
 
                 <View style={[styles.nameColumn]}>
@@ -141,7 +176,9 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
 
                 <View style={[styles.pill, { backgroundColor: statusInfo.bg }]}>
                   <Text style={[styles.pillText, { color: statusInfo.fg }]}>
-                    {item.appointmentStatus ? `${item.appointmentStatus[0].toUpperCase()}${item.appointmentStatus.slice(1)}` : 'Unknown'}
+                    {item.appointmentStatus
+                      ? `${item.appointmentStatus[0].toUpperCase()}${item.appointmentStatus.slice(1)}`
+                      : 'Unknown'}
                   </Text>
                 </View>
               </View>
@@ -190,6 +227,15 @@ const DoctorDashboard = () => {
   const [currentClinicIndex, setCurrentClinicIndex] = useState(0);
   const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
   const [nextAvailableSlot, setNextAvailableSlot] = useState<Slot[]>([]);
+
+  const [reviews, setReviews] = useState<Array<{
+    id: string;
+    patientName: string;
+    date?: string;
+    rating: number;
+    review: string;
+    avatar?: string;
+  }>>([]);
 
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const doctorId = currentuserDetails?.role === 'doctor' ? currentuserDetails?.userId : currentuserDetails?.createdBy;
@@ -253,7 +299,6 @@ const DoctorDashboard = () => {
           { name: 'Pharmacy', population: data?.pharmacy || 0, color: '#fbbc04', legendFontColor: '#7F7F7F', legendFontSize: 15 },
         ]);
       } else {
-        // normalize to zero
         setRevenueSummaryData([
           { name: 'Appointment', population: 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
           { name: 'Lab', population: 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
@@ -356,6 +401,35 @@ const DoctorDashboard = () => {
     }
   }, [doctorId, clinics]);
 
+  /** NEW: Dynamic feedback loader */
+  const fetchReviews = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) return;
+      const response = await AuthFetch(`users/getFeedbackByDoctorId/${doctorId}`, token);
+
+      // Normalize a couple of possible shapes
+      const ok = response?.data?.status === 'success' || response?.status === 'success';
+      const doctorData =
+        ok && response?.data?.doctor
+          ? response.data.doctor
+          : (response?.data?.data && response.data.data.doctor) ? response.data.data.doctor : null;
+
+      const fbArr = (doctorData?.feedback || []).map((f: any, idx: number) => ({
+        id: f.feedbackId || f.id || String(idx),
+        patientName: f.patientName || 'Unknown User',
+        date: f.date || f.createdAt,
+        rating: typeof f.rating === 'number' ? f.rating : Number(f.rating || 0),
+        review: f.comment || f.review || 'No review provided',
+        avatar: f.avatar || undefined,
+      }));
+
+      setReviews(fbArr);
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+    }
+  }, [doctorId]);
+
   useEffect(() => {
     const bootstrap = async () => {
       setLoading(true);
@@ -365,8 +439,9 @@ const DoctorDashboard = () => {
           getRevenueData(),
           getTodayAppointmentCount(),
           fetchClinics(),
+          fetchReviews(),
         ]);
-        // Initialize range summary to "today - today" like web default
+        // Initialize range summary to "today - today"
         await getRevenueSummaryRange(revenueStartDate, revenueEndDate);
       } catch (e) {
         console.error(e);
@@ -375,7 +450,7 @@ const DoctorDashboard = () => {
       }
     };
     bootstrap();
-  }, [fetchUserData, getRevenueData, getTodayAppointmentCount, fetchClinics, getRevenueSummaryRange]);
+  }, [fetchUserData, getRevenueData, getTodayAppointmentCount, fetchClinics, getRevenueSummaryRange, fetchReviews]);
 
   useEffect(() => { fetchAvailableSlots(); }, [fetchAvailableSlots]);
 
@@ -387,7 +462,6 @@ const DoctorDashboard = () => {
     const iso = fmtYYYYMMDD(selectedDate || new Date());
     if (kind === 'start') {
       setRevenueStartDate(iso);
-      // if end already set and end >= new start, fetch
       if (revenueEndDate && moment(iso).isAfter(revenueEndDate)) {
         Toast.show({ type: 'error', text1: 'Invalid range', text2: 'Start date cannot be after end date', position: 'top' });
       } else if (revenueEndDate) {
@@ -424,6 +498,8 @@ const DoctorDashboard = () => {
     );
   }
 
+  const isSmallDevice = width < 360;
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
@@ -451,7 +527,14 @@ const DoctorDashboard = () => {
           <View style={styles.appointmentsCard}>
             <View style={styles.centered}>
               <Text style={styles.mainNumber}>{dashboardData.appointmentCounts.today}</Text>
-              <Text style={styles.subText}>Today's Appointments</Text>
+              {/* FIX: always visible on small devices / large font scales */}
+              <Text
+                style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
+                numberOfLines={2}
+                allowFontScaling={false}
+              >
+                Today&apos;s Appointments
+              </Text>
             </View>
             <View style={styles.gridRow}>
               <View style={styles.newCard}>
@@ -471,7 +554,7 @@ const DoctorDashboard = () => {
             <View style={styles.revenueRow}>
               <View style={styles.revenueBoxPurple}>
                 <Text style={styles.revenueAmountPurple}>₹{todayRevenue}</Text>
-                <Text style={styles.revenueSubLabel}>Today's Revenue</Text>
+                <Text style={styles.revenueSubLabel}>Today&apos;s Revenue</Text>
               </View>
               <View style={styles.revenueBoxOrange}>
                 <Text style={styles.revenueAmountOrange}>₹{monthRevenue}</Text>
@@ -591,7 +674,7 @@ const DoctorDashboard = () => {
           />
         </View>
 
-        {/* Feedback (unchanged) */}
+        {/* Patient Feedback (dynamic) */}
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Patient Feedback</Text>
@@ -600,23 +683,31 @@ const DoctorDashboard = () => {
               <TouchableOpacity><AntDesign name="right" size={16} color="#bfbfbf" /></TouchableOpacity>
             </View>
           </View>
-          <ScrollView style={{ maxHeight: 200 }}>
-            {[{ name: 'Rani', avatar: 'https://i.pravatar.cc/150?img=12', rating: 4, comment: 'Very helpful and polite doctor.', daysAgo: 3 },
-              { name: 'Kiran', avatar: 'https://i.pravatar.cc/150?img=10', rating: 5, comment: 'Excellent service and guidance.', daysAgo: 1 }].map((fb, i) => (
-              <View key={i} style={styles.feedbackItem}>
-                <View style={styles.avatarRow}>
-                  <Image source={{ uri: fb.avatar }} style={styles.avatar} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{fb.name}</Text>
-                    <View style={styles.ratingRow}>
-                      {[...Array(fb.rating)].map((_, j) => (<AntDesign key={j} name="star" size={14} color="#fbbf24" />))}
+          <ScrollView style={{ maxHeight: 220 }}>
+            {reviews.length === 0 ? (
+              <Text style={{ color: '#6c757d' }}>No reviews yet.</Text>
+            ) : (
+              reviews.slice(0, 10).map((fb, i) => {
+                const daysAgo = fb.date ? moment(fb.date).fromNow() : '';
+                return (
+                  <View key={fb.id || i} style={styles.feedbackItem}>
+                    <View style={styles.avatarRow}>
+                      <Image source={fb.avatar ? { uri: fb.avatar } : PLACEHOLDER_IMAGE} style={styles.avatar} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.name}>{fb.patientName}</Text>
+                        <View style={styles.ratingRow}>
+                          {[...Array(Math.max(0, Math.min(5, fb.rating || 0)))].map((_, j) => (
+                            <AntDesign key={j} name="star" size={14} color="#fbbf24" />
+                          ))}
+                        </View>
+                      </View>
                     </View>
+                    <Text style={styles.comment}>"{fb.review}"</Text>
+                    {!!daysAgo && <Text style={styles.dateText}>{daysAgo}</Text>}
                   </View>
-                </View>
-                <Text style={styles.comment}>"{fb.comment}"</Text>
-                <Text style={styles.dateText}>{fb.daysAgo} days ago</Text>
-              </View>
-            ))}
+                );
+              })
+            )}
           </ScrollView>
         </View>
       </ScrollView>
@@ -632,10 +723,10 @@ const styles = StyleSheet.create({
   headerText: { color: '#000', fontSize: 20, fontWeight: 'bold' },
   rightIcons: { flexDirection: 'row', alignItems: 'center' },
   appointmentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 0, margin: 10, borderRadius: 10 },
-  appointmentsCard: { backgroundColor: '#16a8a0', borderRadius: 16, padding: 10, shadowColor: '#20d0c4', shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
-  centered: { alignItems: 'center', marginBottom: 10 },
+  appointmentsCard: { backgroundColor: '#16a8a0', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 10, shadowColor: '#20d0c4', shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 8, minHeight: 130 },
+  centered: { alignItems: 'center', marginBottom: 10, width: '100%' },
   mainNumber: { fontSize: 30, fontWeight: 'bold', color: '#fff' },
-  subText: { fontSize: 16, color: '#fff', marginTop: 5 },
+  subText: { fontSize: 16, color: '#fff', marginTop: 5, textAlign: 'center', lineHeight: 20 },
   gridRow: { flexDirection: 'row', gap: 5, justifyContent: 'space-between' },
   newCard: { backgroundColor: '#F0FDF4', flex: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 8, position: 'relative' },
   trendBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
@@ -704,3 +795,4 @@ const styles = StyleSheet.create({
 });
 
 export default DoctorDashboard;
+ 
