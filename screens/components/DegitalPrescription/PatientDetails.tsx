@@ -220,7 +220,7 @@ const PatientDetails = () => {
 
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📘 Patient History</Text>
+          <Text style={styles.sectionTitle}>📘 Patient Historysssss</Text>
           <Text style={styles.subtitle}>Complete medical history documentation</Text>
           <TextInput
             placeholder="Chief Complaint"
@@ -283,95 +283,6 @@ const PatientDetails = () => {
             }
           />
         </View>
-
-        {/* <Text style={{ color: '#000' }}>{g}</Text> */}
-      
-    
-<View>
-
-
-        <Text  style={styles.input}>{formData.patientInfo.age}</Text>
-        <Text style={styles.input} > {formData.patientInfo.mobileNumber}</Text>
-      </View>
-
-      {/* Patient History Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📘 Patient History</Text>
-        <Text style={styles.subtitle}>Complete medical history documentation</Text>
-
-       <TextInput
-  placeholder="Chief Complaint"
-  style={styles.textArea}
-  multiline
-  value={formData.patientInfo.chiefComplaint}
-  onChangeText={(text) =>
-    setFormData((prev) => ({
-      ...prev,
-      patientInfo: {
-        ...prev.patientInfo,
-        chiefComplaint: text,
-      },
-    }))
-  }
-      placeholderTextColor="#9CA3AF"
-
-/>
-
-<TextInput
-  placeholder="Past Medical History"
-  style={styles.textArea}
-  multiline
-  value={formData.patientInfo.pastMedicalHistory}
-  onChangeText={(text) =>
-    setFormData((prev) => ({
-      ...prev,
-      patientInfo: {
-        ...prev.patientInfo,
-        pastMedicalHistory: text,
-      },
-    }))
-  }
-      placeholderTextColor="#9CA3AF"
-
-/>
-
-<TextInput
-  placeholder="Family Medical History"
-  style={styles.textArea}
-  multiline
-  value={formData.patientInfo.familyMedicalHistory}
-  onChangeText={(text) =>
-    setFormData((prev) => ({
-      ...prev,
-      patientInfo: {
-        ...prev.patientInfo,
-        familyMedicalHistory: text,
-      },
-    }))
-  }
-      placeholderTextColor="#9CA3AF"
-/>
-
-<TextInput
-  placeholder="Physical Examination"
-  style={styles.textArea}
-  multiline
-  value={formData.patientInfo.physicalExamination}
-  onChangeText={(text) =>
-    setFormData((prev) => ({
-      ...prev,
-      patientInfo: {
-        ...prev.patientInfo,
-        physicalExamination: text,
-      },
-    }))
-  }
-      placeholderTextColor="#9CA3AF"
-
-/>
-
-      </View>
-
 
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.cancelButton}>

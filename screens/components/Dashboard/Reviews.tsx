@@ -31,7 +31,7 @@ const ReviewsScreen = () => {
         setToken(storedToken);
       } catch (error) {
         console.error('Error fetching token:', error);
-        Alert.alert('Error', 'Failed to retrieve authentication token');
+        Alert.alert('Error', JSON.stringify(error) || 'Failed to retrieve authentication token');
       }
     };
     fetchToken();
@@ -44,32 +44,26 @@ const ReviewsScreen = () => {
 
       setLoading(true);
       const response = await AuthFetch(`users/getFeedbackByDoctorId/${doctorId}`, token);
-      console.log('API Response:', response.data);
+      console.log('API Response:', response);
 
       if (response.status === 'success' && response.data && response.data.doctor) {
         const doctorData = response.data.doctor;
-        console.log("ggggggggggg",doctorData)
+        console.log("ggggggggggg", doctorData);
         setOverallRating(doctorData.overallRating || 0); // Set the overall rating from the response
 
         // Map the feedback array to reviews
         const formattedReviews = (doctorData.feedback || []).map((feedback) => ({
-          id: feedback.feedbackId || feedback.id, // Use feedbackId if id is not provided
-          user: feedback.user || 'Unknown User',
-          avatar: feedback.avatar || 'https://randomuser.me/api/portraits/men/32.jpg',
-          date: feedback.date || 'N/A',
+          id: feedback.feedbackId || feedback.id, // Use feedbackId as id since appointmentId is not present
+          user: feedback.patientName || 'Unknown User',
+          avatar: 'https://randomuser.me/api/portraits/men/32.jpg', // Default avatar
+          date: feedback.createdAt || 'N/A',
           rating: feedback.rating || 0,
-          review: feedback.review || 'No review provided',
-          reply: feedback.reply
-            ? {
-                by: feedback.reply.by || 'Unknown Doctor',
-                timeAgo: feedback.reply.timeAgo || 'N/A',
-                message: feedback.reply.message || 'No reply',
-              }
-            : null,
+          review: feedback.comment || 'No review provided',
+          reply: null, // No reply data in the console output
         }));
         setReviews(formattedReviews);
       } else {
-        Alert.alert('Error', response.message || 'Failed to fetch reviews or invalid response');
+        Alert.alert('Error', JSON.stringify(response.message) || 'Failed to fetch reviews or invalid response');
       }
       setLoading(false);
     };
@@ -89,29 +83,42 @@ const ReviewsScreen = () => {
       message: replyText[feedbackId],
     };
 
-    const response = await AuthPost('users/submitDoctorReply', payload, token, {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.log('Submitting payload:', payload); // Log stringified payload for clarity
 
-    if (response.status === 'success') {
-      setReviews((prevReviews) =>
-        prevReviews.map((review) =>
-          review.id === feedbackId
-            ? {
-                ...review,
-                reply: {
-                  by: currentuserDetails.name || '',
-                  timeAgo: 'Just now',
-                  message: replyText[feedbackId],
-                },
-              }
-            : review
-        )
-      );
-      setReplyText((prev) => ({ ...prev, [feedbackId]: '' }));
-      Alert.alert('Success', 'Reply submitted successfully');
-    } else {
-      Alert.alert('Error', response.message || 'Failed to submit reply');
+    try {
+      const response = await AuthPost('users/submitDoctorReply', payload, token, {
+        headers: { 'Content-Type': 'application/json' }, // Ensure JSON content type
+      });
+      console.log('Reply submission response:', response);
+
+      if (response.status === 'success') {
+        setReviews((prevReviews) =>
+          prevReviews.map((review) =>
+            review.id === feedbackId
+              ? {
+                  ...review,
+                  reply: {
+                    by: currentuserDetails.name || '',
+                    timeAgo: 'Just now',
+                    message: replyText[feedbackId],
+                  },
+                }
+              : review
+          )
+        );
+        setReplyText((prev) => ({ ...prev, [feedbackId]: '' }));
+        Alert.alert('Success', 'Reply submitted successfully');
+      } else {
+        Alert.alert('Error', JSON.stringify(response.message) || 'Failed to submit reply');
+      }
+    } catch (error) {
+      console.error('Error submitting reply:', error);
+      if (error.response) {
+        console.error('Server response:', error.response.data);
+        Alert.alert('Error', JSON.stringify(error.response.data.message) || 'Unknown error');
+      } else {
+        Alert.alert('Error', 'An unexpected error occurred while submitting the reply');
+      }
     }
   };
 

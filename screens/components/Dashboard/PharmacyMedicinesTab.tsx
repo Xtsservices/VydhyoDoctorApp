@@ -294,9 +294,9 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.outlined} onPress={pickExcel}>
+        {/* <TouchableOpacity style={styles.outlined} onPress={pickExcel}>
           <Text style={styles.outlinedText}>Bulk Import</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TouchableOpacity style={styles.primary} onPress={showModal}>
           <Text style={styles.primaryText}>Add Medicine</Text>
         </TouchableOpacity>

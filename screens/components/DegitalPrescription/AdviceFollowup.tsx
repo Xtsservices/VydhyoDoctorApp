@@ -29,13 +29,14 @@ const AdviceScreen = () => {
     }));
   };
 
-  const onChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      const formatted = moment(selectedDate).format('MM/DD/YYYY');
-      handleChange('followUpDate', formatted);
-    }
-  };
+const onChange = (event, selectedDate) => {
+  setShowDatePicker(false);
+  if (selectedDate) {
+    // Change format to YYYY-MM-DD which is universally parsable
+    const formatted = moment(selectedDate).format('YYYY-MM-DD');
+    handleChange('followUpDate', formatted);
+  }
+};
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -75,32 +76,6 @@ const AdviceScreen = () => {
           placeholderTextColor={"#9CA3AF"}
         />
       </View>
-
-      <View style={styles.cardGreen}>
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>📅</Text>
-        </View>
-        <Text style={styles.cardTitle}>Follow-Ups</Text>
-        <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-          <TextInput
-            style={styles.input}
-            placeholder="mm/dd/yyyy"
-            value={formData.advice.followUpDate || ''}
-            editable={false}
-            pointerEvents="none"
-          />
-        </TouchableOpacity>
-        {showDatePicker && (
-          <DateTimePicker
-            value={new Date()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            minimumDate={new Date()}
-            onChange={onChange}
-          />
-        )}
-      </View>
-
 
       <Text style={styles.cardTitle}>Follow-Ups</Text>
 

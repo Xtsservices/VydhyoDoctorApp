@@ -168,8 +168,25 @@ const AddClinicForm = () => {
       }
 
       setIsFetchingLocation(true);
+      
+      // Set a timeout to handle cases where location fetching takes too long
+      const timeoutId = setTimeout(() => {
+        if (isFetchingLocation) {
+          setIsFetchingLocation(false);
+          Alert.alert(
+            'Location Timeout',
+            'Unable to fetch current location. Please ensure location services are enabled and try again, or select a location manually.',
+            [
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              { text: 'OK', style: 'cancel' },
+            ]
+          );
+        }
+      }, 15000); // 15 seconds timeout
+
       Geolocation.getCurrentPosition(
         (position) => {
+          clearTimeout(timeoutId);
           const { latitude, longitude } = position.coords;
           const newRegion = {
             latitude,
@@ -182,6 +199,7 @@ const AddClinicForm = () => {
           fetchAddress(latitude, longitude);
         },
         (error) => {
+          clearTimeout(timeoutId);
           console.error('Location Error:', error);
           Alert.alert(
             'Location Error',
@@ -193,7 +211,11 @@ const AddClinicForm = () => {
           );
           setIsFetchingLocation(false);
         },
-        { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
+        { 
+          enableHighAccuracy: true, 
+          timeout: 10000, 
+          maximumAge: 10000 
+        }
       );
     };
 
@@ -292,8 +314,18 @@ const AddClinicForm = () => {
     }
 
     setIsFetchingLocation(true);
+    
+    // Set a timeout for the location request
+    const timeoutId = setTimeout(() => {
+      if (isFetchingLocation) {
+        setIsFetchingLocation(false);
+        Alert.alert('Error', 'Unable to fetch current location. Please try again.');
+      }
+    }, 10000); // 10 seconds timeout
+
     Geolocation.getCurrentPosition(
       (position) => {
+        clearTimeout(timeoutId);
         const { latitude, longitude } = position.coords;
         const newRegion = {
           latitude,
@@ -307,11 +339,16 @@ const AddClinicForm = () => {
         setShowSearchResults(false);
       },
       (error) => {
+        clearTimeout(timeoutId);
         console.error('Location error:', error);
         Alert.alert('Error', 'Unable to fetch current location.');
         setIsFetchingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
+      { 
+        enableHighAccuracy: true, 
+        timeout: 10000, 
+        maximumAge: 10000 
+      }
     );
   };
 

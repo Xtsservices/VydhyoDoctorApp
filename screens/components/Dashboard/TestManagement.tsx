@@ -185,9 +185,9 @@ export default function TestManagement() {
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.outlined} onPress={pickExcel}>
+        {/* <TouchableOpacity style={styles.outlined} onPress={pickExcel}>
           <Text style={styles.outlinedText}>Bulk Import</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TouchableOpacity style={styles.primary} onPress={openAdd}>
           <Text style={styles.primaryText}>Add Test</Text>
         </TouchableOpacity>

@@ -950,18 +950,34 @@ patientsContainer: {
   },
   label: { marginBottom: 5, color: 'black' },
   radioRow: {
-    flexDirection: 'row', marginBottom: 16,
-  },
-  radioItem: {
-    flexDirection: 'row', alignItems: 'center', marginRight: 16,
-  },
+  flexDirection: 'row', 
+  flexWrap: 'wrap', // Allow items to wrap to next line if needed
+  marginBottom: 16,
+  justifyContent: 'flex-start', // Or 'space-between' for even spacing
+},
+radioItem: {
+  flexDirection: 'row', 
+  alignItems: 'center', 
+  flex: 1, // Each item takes equal width
+  justifyContent: 'center', // Center content
+  marginBottom: 8,
+},
   timeSlotContainer: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 10,
-  },
-  timeSlot: {
-    borderWidth: 1, borderColor: '#ccc', padding: 10,
-    borderRadius: 8,
-  },
+  flexDirection: 'row', 
+  flexWrap: 'wrap', 
+  gap: 10, 
+  marginVertical: 10,
+  justifyContent: 'flex-start', // Ensure proper alignment
+},
+ timeSlot: {
+  borderWidth: 1, 
+  borderColor: '#ccc', 
+  padding: 10,
+  borderRadius: 8,
+  minWidth: 100, // Add minimum width
+  alignItems: 'center', // Center content horizontally
+  justifyContent: 'center', // Center content vertically
+},
   timeSlotSelected: {
     backgroundColor: '#0a84ff', borderColor: '#0bc148ff',
   },

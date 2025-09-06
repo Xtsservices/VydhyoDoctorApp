@@ -9,6 +9,8 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
+  Image,
+  Share
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
@@ -29,6 +31,7 @@ const PrescriptionPreview = () => {
 
   const [error, setError] = useState(null);
   const [selectedClinic, setSelectedClinic] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   function transformEprescriptionData(formData) {
     const { doctorInfo, patientInfo, vitals, diagnosis, advice } = formData;
@@ -50,7 +53,7 @@ const PrescriptionPreview = () => {
         physicalExamination: patientInfo.physicalExamination || null,
       },
       vitals: {
-        bp: `${vitals?.bpSystolic}/${vitals?.bpDiastolic}` || null,
+        bp: `${vitals?.bpSystolic || ''}/${vitals?.bpDiastolic || ''}` || null,
         pulseRate: vitals.pulseRate || null,
         respiratoryRate: vitals.respiratoryRate || null,
         temperature: vitals.temperature || null,
@@ -66,20 +69,21 @@ const PrescriptionPreview = () => {
         PrescribeMedNotes: diagnosis.medicationNotes || null,
         selectedTests: Array.isArray(diagnosis.selectedTests)
           ? diagnosis.selectedTests.map((test) => ({
-              testName: test.testName,
-              testInventoryId: test.testInventoryId,
+              testName: test.testName || test,
+              testInventoryId: test.testInventoryId || null,
             }))
           : [],
         medications: Array.isArray(diagnosis?.medications)
           ? diagnosis?.medications?.map((med) => ({
-              medInventoryId: med.medInventoryId,
-              medName: med.medName,
-              quantity: med.quantity,
-              medicineType: med.medicineType,
-              dosage: med.dosage,
-              duration: med.duration,
-              timings: med.timings,
-              frequency: med.frequency,
+              medInventoryId: med.medInventoryId || null,
+              medName: med.medName || med.name || "Not specified",
+              quantity: med.quantity || 0,
+              medicineType: med.medicineType || "Not specified",
+              dosage: med.dosage || med.dosagePattern || "As directed",
+              duration: med.duration || "Not specified",
+              timings: med.timings || [med.timing] || [],
+              frequency: med.frequency || "Not specified",
+              notes: med.notes || "Not specified",
             }))
           : [],
       },
@@ -89,7 +93,7 @@ const PrescriptionPreview = () => {
         PrescribeMedNotes: advice.medicationNotes || null,
       },
       createdBy: currentuserDetails.userId || doctorInfo.doctorId,
-      updatedBy: currentuserDetails.userId || doctorInfo.doctorId,
+      updatedBy: currentuserDetails.userId || doctorInfo.doctoId,
     };
   }
 
@@ -118,6 +122,13 @@ const PrescriptionPreview = () => {
     const adviceItems = data?.advice?.advice
       ? data.advice.advice.split('\n').map(item => item.trim() ? `<li style="margin-bottom: 4px;"><span style="margin-right: 8px;">•</span>${item}</li>` : '').join('')
       : '';
+
+    // Format date and time if available
+    const appointmentDate = data.doctorInfo?.appointmentDate 
+      ? dayjs(data.doctorInfo.appointmentDate).format('DD MMM YYYY') 
+      : null;
+      
+    const appointmentTime = data.doctorInfo?.appointmentStartTime || null;
 
     return `
       <html>
@@ -157,17 +168,31 @@ const PrescriptionPreview = () => {
             .follow-up-date { font-size: 14px; }
             .signature { margin-top: 20px; text-align: right; }
             .prescription-footer { font-size: 12px; color: #6b7280; text-align: center; margin-top: 20px; }
+            .appointment-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 8px; background: #f8f9fa; border-radius: 4px; }
           </style>
         </head>
         <body>
           <div class="prescription-container">
-            <div class="prescription-header">
-              <div class="clinic-info">${selectedClinic?.clinicName || 'Clinic Name'}</div>
-              <div class="contact-info">
-                <div>📍 ${selectedClinic?.address || 'Address not provided'}</div>
-                <div>📞 ${selectedClinic?.mobile || 'Contact not provided'}</div>
+            ${selectedClinic?.headerImage ? `
+              <div class="prescription-header">
+                <img src="${selectedClinic.headerImage}" alt="Clinic Header" style="width: 100%; max-height: 120px; object-fit: contain; display: block; margin: 0 auto;" />
               </div>
-            </div>
+            ` : `
+              <div class="prescription-header">
+                <div class="clinic-info">${selectedClinic?.clinicName || 'Clinic Name'}</div>
+                <div class="contact-info">
+                  <div>📍 ${selectedClinic?.address || 'Address not provided'}</div>
+                  <div>📞 ${selectedClinic?.mobile || 'Contact not provided'}</div>
+                </div>
+              </div>
+            `}
+
+            ${(appointmentDate || appointmentTime) ? `
+              <div class="appointment-info">
+                ${appointmentDate ? `<div>📅 Date: ${appointmentDate}</div>` : ''}
+                ${appointmentTime ? `<div>⏰ Time: ${appointmentTime}</div>` : ''}
+              </div>
+            ` : ''}
 
             <div class="doctor-patient-container">
               <div class="doctor-info">
@@ -188,48 +213,76 @@ const PrescriptionPreview = () => {
               </div>
             </div>
 
-            <div class="prescription-section">
-              <div class="section-header">📋 PATIENT HISTORY</div>
-              <div class="history-row">
-                <div class="detail-item">
-                  <div class="detail-label">Chief Complaint:</div>
-                  <div class="detail-value">${patient.chiefComplaint || 'Not provided'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Past History:</div>
-                  <div class="detail-value">${patient.pastMedicalHistory || 'Not provided'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Family History:</div>
-                  <div class="detail-value">${patient.familyMedicalHistory || 'Not provided'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Examination:</div>
-                  <div class="detail-value">${patient.physicalExamination || 'Not provided'}</div>
+            ${(patient.chiefComplaint || patient.pastMedicalHistory || patient.familyMedicalHistory || patient.physicalExamination) ? `
+              <div class="prescription-section">
+                <div class="section-header">📋 PATIENT HISTORY</div>
+                <div class="history-row">
+                  ${patient.chiefComplaint ? `
+                    <div class="detail-item">
+                      <div class="detail-label">Chief Complaint:</div>
+                      <div class="detail-value">${patient.chiefComplaint}</div>
+                    </div>
+                  ` : ''}
+                  ${patient.pastMedicalHistory ? `
+                    <div class="detail-item">
+                      <div class="detail-label">Past History:</div>
+                      <div class="detail-value">${patient.pastMedicalHistory}</div>
+                    </div>
+                  ` : ''}
+                  ${patient.familyMedicalHistory ? `
+                    <div class="detail-item">
+                      <div class="detail-label">Family History:</div>
+                      <div class="detail-value">${patient.familyMedicalHistory}</div>
+                    </div>
+                  ` : ''}
+                  ${patient.physicalExamination ? `
+                    <div class="detail-item">
+                      <div class="detail-label">Examination:</div>
+                      <div class="detail-value">${patient.physicalExamination}</div>
+                    </div>
+                  ` : ''}
                 </div>
               </div>
-            </div>
+            ` : ''}
 
-            <div class="prescription-section">
-              <div class="section-header">🩺 VITALS</div>
-              <div class="vitals-container">
-                <div class="vital-item"><span class="vital-label">BP:</span><span class="vital-value">${vitals.bp || 'Not provided'} mmHg</span></div>
-                <div class="vital-separator">|</div>
-                <div class="vital-item"><span class="vital-label">Pulse:</span><span class="vital-value">${vitals.pulseRate || 'Not provided'} BPM</span></div>
-                <div class="vital-separator">|</div>
-                <div class="vital-item"><span class="vital-label">Temp:</span><span class="vital-value">${vitals.temperature || 'Not provided'}°F</span></div>
-                <div class="vital-separator">|</div>
-                <div class="vital-item"><span class="vital-label">SpO2:</span><span class="vital-value">${vitals.spo2 || 'Not provided'}%</span></div>
-                <div class="vital-separator">|</div>
-                <div class="vital-item"><span class="vital-label">RR:</span><span class="vital-value">${vitals.respiratoryRate || 'Not provided'} breaths/min</span></div>
-                <div class="vital-separator">|</div>
-                <div class="vital-item"><span class="vital-label">Height:</span><span class="vital-value">${vitals.height || 'Not provided'} cm</span></div>
-                <div class="vital-separator">|</div>
-                <div class="vital-item"><span class="vital-label">Weight:</span><span class="vital-value">${vitals.weight || 'Not provided'} kg</span></div>
-                <div class="vital-separator">|</div>
-                <div class="vital-item"><span class="vital-label">BMI:</span><span class="vital-value">${vitals.bmi || 'Not provided'}</span></div>
+            ${(vitals.bp || vitals.pulseRate || vitals.temperature || vitals.spo2 || vitals.respiratoryRate || vitals.height || vitals.weight || vitals.bmi) ? `
+              <div class="prescription-section">
+                <div class="section-header">🩺 VITALS</div>
+                <div class="vitals-container">
+                  ${vitals.bp ? `
+                    <div class="vital-item"><span class="vital-label">BP:</span><span class="vital-value">${vitals.bp} mmHg</span></div>
+                    <div class="vital-separator">|</div>
+                  ` : ''}
+                  ${vitals.pulseRate ? `
+                    <div class="vital-item"><span class="vital-label">Pulse:</span><span class="vital-value">${vitals.pulseRate} BPM</span></div>
+                    <div class="vital-separator">|</div>
+                  ` : ''}
+                  ${vitals.temperature ? `
+                    <div class="vital-item"><span class="vital-label">Temp:</span><span class="vital-value">${vitals.temperature}°F</span></div>
+                    <div class="vital-separator">|</div>
+                  ` : ''}
+                  ${vitals.spo2 ? `
+                    <div class="vital-item"><span class="vital-label">SpO2:</span><span class="vital-value">${vitals.spo2}%</span></div>
+                    <div class="vital-separator">|</div>
+                  ` : ''}
+                  ${vitals.respiratoryRate ? `
+                    <div class="vital-item"><span class="vital-label">RR:</span><span class="vital-value">${vitals.respiratoryRate} breaths/min</span></div>
+                    <div class="vital-separator">|</div>
+                  ` : ''}
+                  ${vitals.height ? `
+                    <div class="vital-item"><span class="vital-label">Height:</span><span class="vital-value">${vitals.height} cm</span></div>
+                    <div class="vital-separator">|</div>
+                  ` : ''}
+                  ${vitals.weight ? `
+                    <div class="vital-item"><span class="vital-label">Weight:</span><span class="vital-value">${vitals.weight} kg</span></div>
+                    <div class="vital-separator">|</div>
+                  ` : ''}
+                  ${vitals.bmi ? `
+                    <div class="vital-item"><span class="vital-label">BMI:</span><span class="vital-value">${vitals.bmi}</span></div>
+                  ` : ''}
+                </div>
               </div>
-            </div>
+            ` : ''}
 
             ${data?.diagnosis?.selectedTests?.length > 0 ? `
               <div class="prescription-section">
@@ -286,16 +339,14 @@ const PrescriptionPreview = () => {
                 <ul class="advice-list">${adviceItems}</ul>
               </div>
             ` : ''}
-
-            ${data?.advice?.followUpDate ? `
-              <div class="prescription-section">
-                <div class="section-header">📅 FOLLOW-UP</div>
-                <div class="follow-up-container">
-                  <div class="follow-up-date">Next Visit: ${dayjs(data.advice.followUpDate).format('DD MMM YYYY')}</div>
-                </div>
-              </div>
-            ` : ''}
-
+${data?.advice?.followUpDate ? `
+  <div class="prescription-section">
+    <div class="section-header">📅 FOLLOW-UP</div>
+    <div class="follow-up-container">
+      <div class="follow-up-date">Next Visit: ${dayjs(data.advice.followUpDate).format('DD MMM YYYY')}</div>
+    </div>
+  </div>
+` : ''}
             <div class="signature">
               ${selectedClinic?.digitalSignature ? `
                 <img src="${selectedClinic.digitalSignature}" alt="Digital Signature" style="max-width: 150px; max-height: 48px;" />
@@ -354,24 +405,74 @@ const PrescriptionPreview = () => {
 
       Alert.alert('Success', `Prescription saved in Downloads as ${fileName}.pdf`);
       console.log('PDF saved at:', downloadPath);
+      return { filePath: downloadPath, fileName: `${fileName}.pdf` };
     } catch (err) {
       console.error('Download error:', err);
       Alert.alert('Error', 'Failed to generate and save PDF.');
+      throw err;
     }
   };
 
+const shareViaWhatsApp = async (pdfPath, fileName) => {
+  try {
+    const patientNumber = formData.patientInfo?.mobileNumber;
+    
+    if (!patientNumber) {
+      Toast.show({ type: 'error', text1: 'Patient mobile number not available' });
+      return;
+    }
+    
+    // Clean the phone number (remove any non-digit characters)
+    const cleanedNumber = patientNumber.replace(/\D/g, '');
+    
+    const message = `Here's my medical prescription from ${selectedClinic?.clinicName || "Clinic"}\n` +
+      `Patient: ${formData.patientInfo?.patientName || "N/A"}\n` +
+      `Doctor: ${formData.doctorInfo?.doctorName || "N/A"}\n` +
+      `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}`;
+
+    // For Android, we need to use content:// URI instead of file://
+    let fileUri = pdfPath;
+    if (Platform.OS === 'android') {
+      fileUri = `file://${pdfPath}`;
+    }
+    
+    // Create WhatsApp share URL with the patient's number
+    const whatsappUrl = `whatsapp://send?phone=${cleanedNumber}&text=${encodeURIComponent(message)}`;
+    
+    // Try to open WhatsApp directly with the patient's number
+    Linking.canOpenURL(whatsappUrl).then(supported => {
+      if (supported) {
+        Linking.openURL(whatsappUrl);
+      } else {
+        // Fallback: Use regular share dialog if WhatsApp is not installed
+        Share.share({
+          title: 'Share Prescription',
+          message: `${message}\n\n`,
+          url: fileUri,
+          type: 'application/pdf',
+        });
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error sharing via WhatsApp:', error);
+    Toast.show({ type: 'error', text1: 'Failed to share prescription' });
+  }
+};
+
   const handlePrescriptionAction = async (type) => {
     try {
+      setIsSaving(true);
       const formattedData = transformEprescriptionData(formData);
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthPost('pharmacy/addPrescription', formattedData, token);
 
       if (response?.status === 'success') {
+        Toast.show({ type: 'success', text1: 'Prescription successfully added' });
+        
         if (type === 'download') {
-          Toast.show({ type: 'success', text1: 'Prescription successfully added' });
           await downloadPDF();
         } else if (type === 'save') {
-          Toast.show({ type: 'success', text1: 'Saved successfully' });
           navigation.navigate('DoctorDashboard');
         } else if (type === 'share') {
           const prescriptionId = response?.data?.prescriptionId;
@@ -381,46 +482,34 @@ const PrescriptionPreview = () => {
             return;
           }
 
-          const html = generatePDFContent(formData);
-          const timestamp = dayjs().format('YYYYMMDD_HHmmss');
-          const fileName = `Prescription_${timestamp}`;
-          const pdf = await RNHTMLtoPDF.convert({
-            html,
-            fileName,
-            base64: false,
-          });
-
-          const uploadFormData = new FormData();
-          uploadFormData.append("file", {
-            uri: Platform.OS === 'android' ? `file://${pdf.filePath}` : pdf.filePath,
-            type: 'application/pdf',
-            name: 'e-prescription.pdf',
-          });
-          uploadFormData.append("prescriptionId", prescriptionId);
-          uploadFormData.append("appointmentId", patientDetails?.id || "");
-          uploadFormData.append("patientId", patientDetails?.patientId || "");
-          uploadFormData.append("mobileNumber", formData.patientInfo?.mobileNumber || "");
-
-          const uploadResponse = await UploadFiles(
-            "pharmacy/addattachprescription",
-            uploadFormData,
-            token
-          );
-
-          if (uploadResponse?.status === 200) {
-            Toast.show({ type: 'success', text1: 'Shared successfully' });
-            const message = `Here's my medical prescription from ${selectedClinic?.clinicName || "Clinic"}\n` +
-              `Patient: ${formData.patientInfo?.patientName || "N/A"}\n` +
-              `Doctor: ${formData.doctorInfo?.doctorName || "N/A"}\n` +
-              `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}`;
-            const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-            Linking.openURL(url).catch(err => {
-              console.error('Failed to open WhatsApp:', err);
-              Toast.show({ type: 'error', text1: 'Failed to open WhatsApp' });
+          // Download the PDF first
+          const pdf = await downloadPDF();
+          
+          // Upload to server (optional)
+          try {
+            const uploadFormData = new FormData();
+            uploadFormData.append("file", {
+              uri: Platform.OS === 'android' ? `file://${pdf.filePath}` : pdf.filePath,
+              type: 'application/pdf',
+              name: 'e-prescription.pdf',
             });
-          } else {
-            Toast.show({ type: 'error', text1: uploadResponse?.data?.message || "Failed to upload attachment" });
+            uploadFormData.append("prescriptionId", prescriptionId);
+            uploadFormData.append("appointmentId", patientDetails?.id || "");
+            uploadFormData.append("patientId", patientDetails?.patientId || "");
+            uploadFormData.append("mobileNumber", formData.patientInfo?.mobileNumber || "");
+
+            await UploadFiles(
+              "pharmacy/addattachprescription",
+              uploadFormData,
+              token
+            );
+          } catch (uploadError) {
+            console.error('Upload error:', uploadError);
+            // Continue with sharing even if upload fails
           }
+          
+          // Share via WhatsApp
+          await shareViaWhatsApp(pdf.filePath, pdf.fileName);
         }
       } else {
         Toast.show({ type: 'error', text1: response?.data?.message || 'Failed to add prescription' });
@@ -428,6 +517,8 @@ const PrescriptionPreview = () => {
     } catch (error) {
       console.error('Error in handlePrescriptionAction:', error);
       Toast.show({ type: 'error', text1: error.response?.data?.message || 'Failed to add prescription' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -457,7 +548,7 @@ const PrescriptionPreview = () => {
       }
     };
     fetchClinics();
-  }, []);
+  }, [doctorId]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -471,140 +562,234 @@ const PrescriptionPreview = () => {
         </View>
       </View>
 
+      {/* Appointment Date and Time */}
+      {(formData.doctorInfo?.appointmentDate || formData.doctorInfo?.appointmentStartTime) && (
+        <View style={styles.appointmentSection}>
+          {/* {formData.doctorInfo?.appointmentDate && (
+            <Text style={styles.appointmentText}>
+              Date: {dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY')}
+            </Text>
+          )} */}
+          {formData.doctorInfo?.appointmentStartTime && (
+            <Text style={styles.appointmentText}>
+              Time: {formData.doctorInfo.appointmentStartTime}
+            </Text>
+          )}
+        </View>
+      )}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Dr. {formData?.doctorInfo?.doctorName}</Text>
-
         <Text>
           {formData?.doctorInfo?.qualifications || 'Qualifications not provided'} | {formData?.doctorInfo?.specialization || 'Specialist'}
         </Text>
         <Text>Medical Registration No: {formData?.doctorInfo?.medicalRegistrationNumber || 'Not provided'}</Text>
-
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Patient Details</Text>
-
         <Text style={{ color: 'black' }}>Name: {formData?.patientInfo?.patientName}</Text>
         <Text style={{ color: 'black' }}>Age: {formData?.patientInfo?.age} Years</Text>
         <Text style={{ color: 'black' }}>Gender: {formData?.patientInfo?.gender} </Text>
         <Text style={{ color: 'black' }}>Mobile: {formData?.patientInfo?.mobileNumber}</Text>
-
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Patient History</Text>
-
-
-        <Text style={{ color: 'black' }}>Chief Complaint: {formData.patientInfo.
-chiefComplaint}</Text>
-<Text style={{ color: 'black' }}>Past History: {formData.patientInfo.
-pastMedicalHistory
-}</Text>
-<Text style={{ color: 'black' }}>Family History: {formData.patientInfo.
-familyMedicalHistory}</Text>
-<Text style={{ color: 'black' }}>Examination: {formData.patientInfo.
-physicalExamination}</Text>
-
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Vitals</Text>
-
-         <View style={styles.row}>
- <Text style={{ color: 'black' }}>BP: {formData.vitals.bpDiastolic
-}/{formData.vitals.bpSystolic
-}</Text>
-        <Text style={{ color: 'black' }}>Pulse: {formData.vitals.pulseRate}</Text>
-         <Text style={{ color: 'black' }}>Temp:  {formData.vitals.temperature}</Text>
-         </View>
-        <View style={styles.row}>
-<Text style={{ color: 'black' }}>RR
-:  {formData.vitals.respiratoryRate
-}</Text>
-<Text style={{ color: 'black' }}>Spo2
-:  {formData.vitals.spo2
-}</Text>
-<Text style={{ color: 'black' }}>BMI
-:  {formData.vitals.bmi
-}</Text>
-
+      {(formData.patientInfo?.chiefComplaint || formData.patientInfo?.pastMedicalHistory || 
+        formData.patientInfo?.familyMedicalHistory || formData.patientInfo?.physicalExamination) && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Patient History</Text>
+          {formData.patientInfo.chiefComplaint && (
+            <Text style={{ color: 'black' }}>Chief Complaint: {formData.patientInfo.chiefComplaint}</Text>
+          )}
+          {formData.patientInfo.pastMedicalHistory && (
+            <Text style={{ color: 'black' }}>Past History: {formData.patientInfo.pastMedicalHistory}</Text>
+          )}
+          {formData.patientInfo.familyMedicalHistory && (
+            <Text style={{ color: 'black' }}>Family History: {formData.patientInfo.familyMedicalHistory}</Text>
+          )}
+          {formData.patientInfo.physicalExamination && (
+            <Text style={{ color: 'black' }}>Examination: {formData.patientInfo.physicalExamination}</Text>
+          )}
         </View>
-      </View>
+      )}
 
-      <View style={styles.section}>
-
-        <Text  style={styles.sectionTitle}>Tests</Text>
-         {formData?.diagnosis?.selectedTests?.map((test: string, index: number) => (
-          <Text style={{ color: 'black' }} key={index}>{test.testName}</Text>
-
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Prescribed Medications</Text>
-        {formData?.diagnosis?.medications?.map((med, index) => (
-          <View key={index} style={styles.medItem}>
-            <Text style={{ color: 'black' }}>Medicine #{index + 1}</Text>
-            <View style={styles.row}>
-
-              <Text style={{ color: 'black' }}>Name: {med.medName}</Text>
-            <Text style={{ color: 'black' }}>Type: {med.medicineType}</Text>
-            <Text style={{ color: 'black' }}>Dosage: {med.dosage}</Text>
-            </View>
-            <View style={styles.row}>
- <Text style={{ color: 'black' }}>Duration: {med.
-duration
-}</Text>
-            <Text style={{ color: 'black' }}>Frequency: {med.
-frequency
-}</Text>
-            
-            </View>
-            <Text style={{ color: 'black' }}>Timing: {med.
-timings?.join(', ')}</Text>
-
-           
-  
-
+      {(formData.vitals?.bpSystolic || formData.vitals?.bpDiastolic || formData.vitals?.pulseRate || 
+        formData.vitals?.temperature || formData.vitals?.spo2 || formData.vitals?.respiratoryRate || 
+        formData.vitals?.height || formData.vitals?.weight || formData.vitals?.bmi) && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Vitals</Text>
+          <View style={styles.row}>
+            {(formData.vitals.bpSystolic || formData.vitals.bpDiastolic) && (
+              <Text style={{ color: 'black' }}>BP: {formData.vitals.bpSystolic}/{formData.vitals.bpDiastolic}</Text>
+            )}
+            {formData.vitals.pulseRate && (
+              <Text style={{ color: 'black' }}>Pulse: {formData.vitals.pulseRate}</Text>
+            )}
+            {formData.vitals.temperature && (
+              <Text style={{ color: 'black' }}>Temp: {formData.vitals.temperature}</Text>
+            )}
           </View>
-        ))}
+          <View style={styles.row}>
+            {formData.vitals.respiratoryRate && (
+              <Text style={{ color: 'black' }}>RR: {formData.vitals.respiratoryRate}</Text>
+            )}
+            {formData.vitals.spo2 && (
+              <Text style={{ color: 'black' }}>Spo2: {formData.vitals.spo2}</Text>
+            )}
+            {formData.vitals.bmi && (
+              <Text style={{ color: 'black' }}>BMI: {formData.vitals.bmi}</Text>
+            )}
+          </View>
+          {(formData.vitals.height || formData.vitals.weight) && (
+            <View style={styles.row}>
+              {formData.vitals.height && (
+                <Text style={{ color: 'black' }}>Height: {formData.vitals.height} cm</Text>
+              )}
+              {formData.vitals.weight && (
+                <Text style={{ color: 'black' }}>Weight: {formData.vitals.weight} kg</Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
+      {formData?.diagnosis?.selectedTests?.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Tests</Text>
+          {formData.diagnosis.selectedTests.map((test, index) => (
+            <Text style={{ color: 'black' }} key={index}>
+              • {test.testName || test}
+            </Text>
+          ))}
+          {formData.diagnosis?.testNotes && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={{ fontWeight: '600', color: '#6b7280' }}>Test Findings:</Text>
+              <Text>{formData.diagnosis.testNotes}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {formData.diagnosis?.diagnosisList && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Diagnosis</Text>
+          <View style={styles.diagnosisContainer}>
+            {formData.diagnosis.diagnosisList.split(',').map((diagnosis, index) => (
+              diagnosis.trim() && (
+                <View key={index} style={styles.diagnosisTag}>
+                  <Text style={styles.diagnosisText}>{diagnosis.trim().toUpperCase()}</Text>
+                </View>
+              )
+            ))}
+          </View>
+        </View>
+      )}
+
+      {(formData?.diagnosis?.medications?.length > 0 || formData.advice?.medicationNotes) && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Medication</Text>
+          {formData.diagnosis?.medications?.map((med, index) => (
+            <View key={index} style={styles.medItem}>
+              <Text style={{ color: 'black', fontWeight: '600' }}>Medicine #{index + 1}</Text>
+              <View style={styles.row}>
+                <Text style={{ color: 'black' }}>Name: {med.medName || med.name}</Text>
+                <Text style={{ color: 'black' }}>Type: {med.medicineType}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={{ color: 'black' }}>Dosage: {med.dosage || med.dosagePattern}</Text>
+                <Text style={{ color: 'black' }}>Frequency: {med.frequency}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={{ color: 'black' }}>Duration: {med.duration}</Text>
+                <Text style={{ color: 'black' }}>Timing: {med.timings?.join(', ') || med.timing}</Text>
+              </View>
+              {med.notes && (
+                <Text style={{ color: 'black' }}>Notes: {med.notes}</Text>
+              )}
+            </View>
+          ))}
+          {formData.advice?.medicationNotes && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={{ fontWeight: '600', color: '#6b7280' }}>General Notes:</Text>
+              <Text>{formData.advice.medicationNotes}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {formData.advice?.advice && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Advice</Text>
+          {formData.advice.advice.split('\n').map((item, index) => (
+            item.trim() && (
+              <Text key={index} style={{ color: 'black', marginLeft: 8 }}>
+                • {item}
+              </Text>
+            )
+          ))}
+        </View>
+      )}
+
+      {formData.advice?.followUpDate && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Follow-Up</Text>
+          <Text style={{ color: 'black' }}>
+            Date: {dayjs(formData.advice.followUpDate).format('DD MMM YYYY')}
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.signatureSection}>
+        {selectedClinic?.digitalSignature ? (
+          <Image 
+            source={{ uri: selectedClinic.digitalSignature }} 
+            style={styles.signatureImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <View>
+            <View style={{ height: 48 }} />
+            <Text style={{ fontWeight: 'bold' }}>
+              DR. {formData.doctorInfo?.doctorName || 'Unknown Doctor'}
+            </Text>
+          </View>
+        )}
+        <Text style={{ fontSize: 12, marginTop: 4 }}>
+          ✔ Digitally Signed
+        </Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>General Notes</Text>
-        <Text>{formData.advice.medicationNotes}</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Advice</Text>
-        <Text style={{ color: 'black' }}>{formData.advice.advice}</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Follow-Ups</Text>
-
-        <Text style={{ color: 'black' }}>Date:{formData.advice.followUpDate} </Text>
-
-      </View>
+      <Text style={styles.footerText}>
+        This prescription is computer generated and does not require physical signature
+      </Text>
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
-          style={styles.downloadButton}
-          onPress={() => handlePrescriptionAction('download')}
-        >
-          <Text style={styles.downloadText}>Download</Text>
-        </TouchableOpacity>
+  style={[styles.downloadButton, isSaving && styles.disabledButton]}
+  onPress={() => handlePrescriptionAction('share')}
+  disabled={isSaving}
+>
+  <Text style={styles.downloadText}>
+    {isSaving ? 'Processing...' : 'Share via WhatsApp'}
+  </Text>
+</TouchableOpacity>
         <TouchableOpacity
-          style={styles.downloadButton}
+          style={[styles.downloadButton, isSaving && styles.disabledButton]}
           onPress={() => handlePrescriptionAction('share')}
+          disabled={isSaving}
         >
-          <Text style={styles.downloadText}>Share</Text>
+          <Text style={styles.downloadText}>
+            {isSaving ? 'Processing...' : 'Share via WhatsApp'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.saveButton}
+          style={[styles.saveButton, isSaving && styles.disabledButton]}
           onPress={() => handlePrescriptionAction('save')}
+          disabled={isSaving}
         >
-          <Text style={styles.saveText}>Save</Text>
+          <Text style={styles.saveText}>
+            {isSaving ? 'Processing...' : 'Save'}
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -622,13 +807,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     backgroundColor: '#2563eb',
-    color: 'white',
+    padding: 16,
+    borderRadius: 10,
   },
   headerText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
-    color: '#fff',
+  },
+  appointmentSection: {
+    backgroundColor: '#e8f4fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  appointmentText: {
+    color: '#0c4a6e',
+    fontWeight: '500',
   },
   section: {
     backgroundColor: '#fff',
@@ -644,37 +841,85 @@ const styles = StyleSheet.create({
     color: '#0A2342',
   },
   medItem: {
-    marginBottom: 8,
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  diagnosisContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  diagnosisTag: {
+    backgroundColor: '#e5e7eb',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  diagnosisText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  signatureSection: {
+    alignItems: 'flex-end',
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    elevation: 2,
+  },
+  signatureImage: {
+    width: 150,
+    height: 48,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontStyle: 'italic',
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
     marginBottom: 24,
   },
   downloadButton: {
     backgroundColor: '#007bff',
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
   },
   saveButton: {
     backgroundColor: '#28a745',
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  disabledButton: {
+    backgroundColor: '#6c757d',
+    opacity: 0.7,
   },
   downloadText: {
     color: '#fff',
     fontWeight: '600',
+    textAlign: 'center',
   },
   saveText: {
     color: '#fff',
     fontWeight: '600',
+    textAlign: 'center',
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8,
+    flexWrap: 'wrap',
   },
 });
