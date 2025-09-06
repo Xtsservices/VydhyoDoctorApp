@@ -476,8 +476,8 @@ const PracticeScreen = () => {
 
     const payload = opdAddresses.map(addr => ({
       ...addr,
-      startTime: convertTo24HourFormat(addr?.startTime) || '06:00 ',
-      endTime: convertTo24HourFormat(addr?.endTime )|| '21:00 ',
+      startTime: convertTo24HourFormat(addr?.startTime) || '06:00',
+      endTime: convertTo24HourFormat(addr?.endTime )|| '21:00',
     }));
 
     console.log('Payload for API:', payload);

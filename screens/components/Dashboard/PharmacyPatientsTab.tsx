@@ -18,7 +18,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import RNFS from 'react-native-fs';
-import { captureRef } from 'react-native-view-shot';
+// import { captureRef } from 'react-native-view-shot';
 import FileViewer from 'react-native-file-viewer';
 import XLSX from 'xlsx';
 import RNHTMLtoPDF from 'react-native-html-to-pdf'; // Add this import

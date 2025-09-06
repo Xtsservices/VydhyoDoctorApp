@@ -635,10 +635,7 @@ const DoctorProfileView: React.FC = () => {
             </View>
 
             <View style={styles.infoSection}>
-              <View style={styles.infoItem}>
-                <Icon name="idcard" size={16} color="#333" />
-                <Text style={styles.infoText}><Text style={styles.bold}>Medical Registration:</Text> {doctorData.medicalRegistrationNumber}</Text>
-              </View>
+
               <View style={styles.infoItem}>
                 <Icon name="mobile1" size={16} color="#333" />
                 <Text style={styles.infoText}><Text style={styles.bold}>Mobile Number:</Text> {doctorData.mobile}</Text>
@@ -680,6 +677,11 @@ const DoctorProfileView: React.FC = () => {
                 <Icon name="edit" size={18} color="#3b82f6" />
               </TouchableOpacity>
             </View>
+
+                          <View style={styles.infoItem}>
+                {/* <Icon name="idcard" size={16} color="#333" /> */}
+                <Text style={styles.infoText}><Text style={styles.bold}>Medical Registration:</Text> {doctorData.medicalRegistrationNumber}</Text>
+              </View>
 
             <View style={styles.infoSection}>
               <View style={styles.infoItem}>
@@ -730,7 +732,7 @@ const DoctorProfileView: React.FC = () => {
                   <View key={index} style={styles.certificationItem}>
                     <View style={styles.certificationInfo}>
                       <Text style={styles.certificationName}>{cert.name || 'N/A'}</Text>
-                      <Text style={styles.certificationNumber}>{cert.registrationNo || 'N/A'}</Text>
+                      {/* <Text style={styles.certificationNumber}>{cert.registrationNo || 'N/A'}</Text> */}
                     </View>
                     <View style={styles.certificationActions}>
                       {!!cert.image && (
@@ -1136,7 +1138,7 @@ const DoctorProfileView: React.FC = () => {
                         keyboardType="numeric"
                       />
                     </View>
-                    <View style={{ width: 80 }}>
+                    {/* <View style={{ width: 80 }}>
                       <Text style={styles.label}>Curr</Text>
                       <TextInput
                         style={styles.input}
@@ -1148,22 +1150,11 @@ const DoctorProfileView: React.FC = () => {
                         }}
                         placeholder="₹ / INR"
                       />
-                    </View>
-                    <TouchableOpacity
-                      style={{ alignSelf: 'flex-end', padding: 8 }}
-                      onPress={() => setFormConsultation((list) => list.filter((_, i) => i !== idx))}
-                    >
-                      <Icon name="delete" size={18} color="#EF4444" />
-                    </TouchableOpacity>
+                    </View> */}
+                   
                   </View>
                 ))}
 
-                <TouchableOpacity
-                  style={[styles.addButton, { marginTop: 8 }]}
-                  onPress={() => setFormConsultation((list) => [...list, { type: '', fee: '', currency: '₹' }])}
-                >
-                  <Text style={styles.addButtonText}>Add Consultation Type</Text>
-                </TouchableOpacity>
               </ScrollView>
 
               <View style={styles.modalActions}>
@@ -1358,7 +1349,12 @@ const styles = StyleSheet.create({
   togglePillSelected: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
   togglePillText: { color: '#111827' },
 
-  consultationRow: { paddingVertical: 8 },
+  consultationRow: { paddingVertical: 8 , 
+    flexDirection: 'row',       
+    alignItems: 'flex-end',      
+    // paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',},
 });
 
 export default DoctorProfileView;

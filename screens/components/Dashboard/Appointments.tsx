@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { Key, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Key, ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -70,9 +70,9 @@ const parseApptMoment = (rawDate?: string, rawTime?: string) => {
 const AppointmentsScreen = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const doctorId =
-    currentuserDetails.role === 'doctor'
-      ? currentuserDetails.userId
-      : currentuserDetails.createdBy;
+    currentuserDetails?.role === 'doctor'
+      ? currentuserDetails?.userId
+      : currentuserDetails?.createdBy;
 
   const navigation = useNavigation<any>();
 
@@ -81,22 +81,21 @@ const AppointmentsScreen = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
+  // Action sheet (menu) + action modal
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const [patientDetails, setPatientDetails] = useState<Appointment | null>(null);
 
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [actionModalVisible, setActionModalVisible] = useState(false);
-  const [selectedAction, setSelectedAction] = useState('');
-  const [selected_Id, setSelected_Id] = useState('');
+  const [selectedAction, setSelectedAction] = useState<'Cancel' | 'Reschedule' | 'Mark as Completed' | ''>('');
+
+  // Reschedule / Cancel shared fields
   const [reason, setReason] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
-  const [medicines, setMedicines] = useState<{ medName: string; quantity: string }[]>([]);
-  const [tests, setTests] = useState<{ testName: string }[]>([]);
-  const [selectedName, setSelectedName] = useState<string | null>(null);
   const [selectedClinicId, setSelectedClinicId] = useState('');
   const [availableTimeSlots, setAvailableTimeSlots] = useState<{ time: string }[]>([]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Cards counts
   const [totalAppointmentsCount, setTotalAppointmentsCount] = useState(0);
@@ -114,7 +113,6 @@ const AppointmentsScreen = () => {
   // Date range for CARDS (like web)
   const thisMonthStart = moment().startOf('month').format('YYYY-MM-DD');
   const thisMonthEnd = moment().endOf('month').format('YYYY-MM-DD');
-
   const [startDate, setStartDate] = useState<string>(thisMonthStart);
   const [endDate, setEndDate] = useState<string>(thisMonthEnd);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
@@ -125,7 +123,7 @@ const AppointmentsScreen = () => {
   const fetchAppointments = async (page = 1, limit = 5) => {
     try {
       const queryParams = new URLSearchParams({
-        doctorId: String(doctorId),
+        doctorId: String(doctorId ?? ''),
         ...(search ? { searchText: String(search) } : {}),
         ...(selectedType && selectedType !== 'all' ? { status: String(selectedType) } : {}),
         page: String(page),
@@ -181,22 +179,21 @@ const AppointmentsScreen = () => {
 
       setAppointments(formatted);
 
-      // Fetch hasPrescriptions flags (like web)
+      // Precompute flags for "View Previous Prescription"
       try {
-        const token = await AsyncStorage.getItem('authToken');
+        const token2 = await AsyncStorage.getItem('authToken');
         const pairs = await Promise.all(
           formatted.map(async (a) => {
             if (!a.patientId) return [a.id, false] as const;
             try {
               const resp = await AuthFetch(
                 `pharmacy/getEPrescriptionByPatientId/${a.patientId}`,
-                token
+                token2
               );
-              // Accept both success shapes
+              // Support both success shapes
               const ok =
-                resp?.status === 200
-                  ? resp?.data?.success === true
-                  : resp?.data?.status === 'success';
+                resp?.data?.success === true ||
+                resp?.data?.status === 'success';
               const arr =
                 resp?.data?.data && Array.isArray(resp.data.data)
                   ? resp.data.data
@@ -222,7 +219,15 @@ const AppointmentsScreen = () => {
     if (currentuserDetails && doctorId) {
       fetchAppointments();
     }
-  }, [currentuserDetails, doctorId, search, selectedType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (currentuserDetails && doctorId) {
+      fetchAppointments(pagination.current, pagination.pageSize);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, selectedType]);
 
   const getAppointmentsCount = async () => {
     try {
@@ -234,14 +239,13 @@ const AppointmentsScreen = () => {
         token
       );
 
-      // handle both shapes
-      const ok = response?.status === 'success' || response?.data?.status === 'success';
+      const ok = response?.data?.status === 'success';
       const count = ok ? response?.data?.data : null;
       if (count) {
-        setTotalAppointmentsCount(count.total || 0);
-        setScheduledAppointmentsCount(count.scheduled || 0);
-        setCompletedAppointmentsCount(count.completed || 0);
-        setCancledAppointmentsCount(count.cancelled || 0);
+        setTotalAppointmentsCount(count.total ?? 0);
+        setScheduledAppointmentsCount(count.scheduled ?? 0);
+        setCompletedAppointmentsCount(count.completed ?? 0);
+        setCancledAppointmentsCount(count.cancelled ?? 0);
       } else {
         Alert.alert('Failed to fetch appointments count');
       }
@@ -254,12 +258,8 @@ const AppointmentsScreen = () => {
     if (currentuserDetails && doctorId) {
       getAppointmentsCount();
     }
-  }, [currentuserDetails, doctorId, startDate, endDate]);
-
-  // Also initial load
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate]);
 
   const fetchTimeSlots = async (date: string) => {
     try {
@@ -304,27 +304,74 @@ const AppointmentsScreen = () => {
     if (newDate && selectedClinicId) {
       fetchTimeSlots(newDate);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newDate, selectedClinicId]);
+
+  // --- Utilities ---
+  const fetchAndOpenPrevPrescriptions = async (patientId: string, patientName: string) => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch(`pharmacy/getEPrescriptionByPatientId/${patientId}`, token);
+      const ok =
+        response?.data?.success === true ||
+        response?.data?.status === 'success';
+      const list =
+        response?.data?.data && Array.isArray(response.data.data)
+          ? response?.data?.data
+          : [];
+
+      if (ok && list.length > 0) {
+        navigation.navigate('PreviousPrescription', {
+          prescriptions: list,
+          patientName,
+        });
+      } else {
+        Toast.show({ type: 'info', text1: 'No previous prescriptions found' });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Error opening prescriptions' });
+    }
+  };
 
   const handleStatusChange = async (
     id: string,
-    status: string,
+    status: 'Cancel' | 'Reschedule' | 'Mark as Completed' | 'Prescription' | 'View Previous Prescription',
     _id: string,
     patientName: string,
     patientId: string
   ) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const body = { appointmentId: id, reason };
 
+      if (status === 'Prescription') {
+        setActionModalVisible(false);
+        navigation.navigate('PatientDetails', { patientDetails });
+        return;
+      }
+
+      if (status === 'View Previous Prescription') {
+        setActionModalVisible(false);
+        await fetchAndOpenPrevPrescriptions(patientId, patientName);
+        return;
+      }
+
+      // Remaining: Cancel / Reschedule / Complete
       if (status === 'Cancel') {
-        const response = await AuthPost('appointment/cancelAppointment', body, token);
+        if (!reason.trim()) {
+          Toast.show({ type: 'error', text1: 'Enter a reason for cancellation' });
+          return;
+        }
+        const response = await AuthPost(
+          'appointment/cancelAppointment',
+          { appointmentId: id, reason },
+          token
+        );
         if (response?.data?.status === 'success') {
-          Toast.show({ type: 'success', text1: 'Success', text2: 'Appointment cancelled successfully', position: 'top', visibilityTime: 3000 });
+          Toast.show({ type: 'success', text1: 'Appointment cancelled' });
           fetchAppointments(pagination.current, pagination.pageSize);
           getAppointmentsCount();
         } else {
-          Alert.alert('Error', response?.message?.message || 'Failed to cancel appointment');
+          Alert.alert('Error', response?.data?.message?.message || 'Failed to cancel appointment');
         }
       } else if (status === 'Reschedule') {
         if (!newDate || !newTime) {
@@ -339,32 +386,32 @@ const AppointmentsScreen = () => {
         };
         const response = await AuthPost('appointment/rescheduleAppointment', rescheduleData, token);
         if (response?.data?.status === 'success') {
-          Toast.show({ type: 'success', text1: 'Success', text2: 'Successfully rescheduled appointment', position: 'top', visibilityTime: 3000 });
+          Toast.show({ type: 'success', text1: 'Appointment rescheduled' });
           fetchAppointments(pagination.current, pagination.pageSize);
           getAppointmentsCount();
         } else {
-          Alert.alert('Error', response?.message?.message || 'Failed to reschedule appointment');
+          Alert.alert('Error', response?.data?.message?.message || 'Failed to reschedule');
         }
       } else if (status === 'Mark as Completed') {
-        const response = await AuthPost('appointment/completeAppointment', body, token);
+        const response = await AuthPost(
+          'appointment/completeAppointment',
+          { appointmentId: id, reason },
+          token
+        );
         if (response?.data?.status === 'success') {
-          Toast.show({ type: 'success', text1: 'Success', text2: 'Successfully appointment completed', position: 'top', visibilityTime: 3000 });
+          Toast.show({ type: 'success', text1: 'Appointment marked completed' });
           fetchAppointments(pagination.current, pagination.pageSize);
           getAppointmentsCount();
         } else {
           Alert.alert('Error', response?.data?.message || 'Failed to complete appointment');
         }
-      } else if (status === 'Prescription') {
-        // Navigate to your prescription flow
-        navigation.navigate('PatientDetails', { patientDetails });
-      } else if (status === 'View Previous Prescription') {
-        // You can navigate to your PreviousPrescriptions if available, else toast
-        Toast.show({ type: 'info', text1: 'Info', text2: 'Previous prescriptions screen not wired', position: 'top' });
       }
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'An error occurred while processing the request');
     } finally {
+      // Reset action modal state
       setActionModalVisible(false);
+      setSelectedAction('');
       setNewDate('');
       setNewTime('');
       setReason('');
@@ -373,17 +420,25 @@ const AppointmentsScreen = () => {
   };
 
   const handleMenuPress = (appt: Appointment) => {
+    // Reset any stale action modal before opening the menu to avoid “double popup”
+    setActionModalVisible(false);
+    setSelectedAction('');
+    setReason('');
+    setNewDate('');
+    setNewTime('');
+    setAvailableTimeSlots([]);
+
     setSelectedAppointmentId(appt.id);
     setPatientDetails(appt);
-    setSelectedName(String(appt.patientName ?? ''));
-    setSelected_Id(appt._id);
-    setSelectedClinicId(appt.addressId);
+    setSelectedClinicId(appt.addressId || '');
     setActionMenuVisible(true);
   };
 
   const handlePageChange = (newPage: number) => {
-    fetchAppointments(newPage, pagination.pageSize);
-    setPagination((prev) => ({ ...prev, current: newPage }));
+    const totalPages = Math.max(1, Math.ceil((pagination.total || 1) / (pagination.pageSize || 1)));
+    const next = Math.min(Math.max(1, newPage), totalPages);
+    fetchAppointments(next, pagination.pageSize);
+    setPagination((prev) => ({ ...prev, current: next }));
   };
 
   // ----- DATE RANGE (cards) handlers -----
@@ -403,7 +458,7 @@ const AppointmentsScreen = () => {
       }
     } else {
       setEndDate(iso);
-      if (startDate && moment(iso).isBefore(startDate)) {
+      if (startDate && moment(iso).isAfter(endDate)) {
         Toast.show({ type: 'error', text1: 'Invalid range', text2: 'End date cannot be before start date' });
       }
     }
@@ -446,7 +501,7 @@ const AppointmentsScreen = () => {
     const disableReschedule = isCompleted || isCancelled;
     const disableCancel = isCompleted || isCancelled;
 
-    const hasPrev = !!hasPrescriptions[appt.id];
+    const hasPrev = !!hasPrescriptions[appt.id]; // FIX: correct boolean
     const disableViewPrev = !hasPrev || isPhysio;
 
     return {
@@ -493,7 +548,7 @@ const AppointmentsScreen = () => {
           </View>
         </View>
 
-        {/* Action modal per item */}
+        {/* Action modal for this item */}
         <Modal
           visible={actionModalVisible && selectedAppointmentId === appt.id}
           transparent
@@ -505,69 +560,21 @@ const AppointmentsScreen = () => {
             onPress={() => setActionModalVisible(false)}
           >
             <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>{selectedAction || 'Actions'}</Text>
+              <Text style={styles.modalTitle}>{selectedAction || 'Action'}</Text>
 
-              {(() => {
-                const dis = computeDisables(patientDetails || appt);
-
-                const ActionRow = ({
-                  label,
-                  disabled,
-                  onPress,
-                }: {
-                  label: string;
-                  disabled?: boolean;
-                  onPress: () => void;
-                }) => (
-                  <Pressable
-                    style={[
-                      styles.actionRow,
-                      disabled ? { opacity: 0.4 } : null,
-                    ]}
-                    onPress={() => {
-                      if (disabled) return;
-                      setSelectedAction(label);
-                      if (label === 'Prescription') {
-                        setActionModalVisible(false);
-                        handleStatusChange(appt.id, 'Prescription', appt._id, appt.patientName, appt.patientId);
-                      } else if (label === 'View Previous Prescription') {
-                        if (dis.disableViewPrev) {
-                          Toast.show({ type: 'info', text1: 'No previous prescriptions' });
-                          return;
-                        }
-                        setActionModalVisible(false);
-                        handleStatusChange(appt.id, 'View Previous Prescription', appt._id, appt.patientName, appt.patientId);
-                      } else {
-                        setActionModalVisible(true);
-                        setSelectedAction(label);
-                      }
-                    }}
-                  >
-                    <Text style={[styles.actionText, disabled && { color: '#9CA3AF' }]}>{label}</Text>
-                  </Pressable>
-                );
-
-                return (
-                  <>
-                    <ActionRow label="Prescription" disabled={dis.disablePrescription} onPress={() => {}} />
-                    <ActionRow label="View Previous Prescription" disabled={dis.disableViewPrev} onPress={() => {}} />
-                    <ActionRow label="Mark as Completed" disabled={dis.disableComplete} onPress={() => {}} />
-                    <ActionRow label="Reschedule" disabled={dis.disableReschedule} onPress={() => {}} />
-                    <ActionRow label="Cancel" disabled={dis.disableCancel} onPress={() => {}} />
-                  </>
-                );
-              })()}
-
-              {/* Conditional action bodies */}
+              {/* Body for the specific action ONLY (no duplicate action list) */}
               {selectedAction === 'Cancel' && (
-                <TextInput
-                  placeholder="Enter reason for cancellation"
-                  style={styles.input}
-                  value={reason}
-                  onChangeText={setReason}
-                  multiline
-                  placeholderTextColor={'gray'}
-                />
+                <>
+                  <Text style={styles.label}>Reason for cancellation</Text>
+                  <TextInput
+                    placeholder="Enter reason"
+                    style={styles.input}
+                    value={reason}
+                    onChangeText={setReason}
+                    multiline
+                    placeholderTextColor={'gray'}
+                  />
+                </>
               )}
 
               {selectedAction === 'Reschedule' && (
@@ -623,8 +630,9 @@ const AppointmentsScreen = () => {
                     <Text style={styles.infoText}>No available time slots for the selected date</Text>
                   )}
 
+                  <Text style={styles.label}>Reason (optional)</Text>
                   <TextInput
-                    placeholder="Enter reason for rescheduling"
+                    placeholder="Enter reason"
                     style={styles.input}
                     value={reason}
                     onChangeText={setReason}
@@ -639,25 +647,9 @@ const AppointmentsScreen = () => {
                 </Text>
               )}
 
-              {/* Confirm/Cancel buttons */}
+              {/* Confirm/Close */}
               {selectedAction ? (
                 <View style={styles.modalButtons}>
-                  <Pressable
-                    style={[styles.modalButton, styles.confirmButton]}
-                    onPress={() => {
-                      if (selectedAppointmentId) {
-                        handleStatusChange(
-                          selectedAppointmentId,
-                          selectedAction,
-                          selected_Id,
-                          selectedName ?? '',
-                          appt.patientId ?? ''
-                        );
-                      }
-                    }}
-                  >
-                    <Text style={styles.buttonText}>Confirm</Text>
-                  </Pressable>
                   <Pressable
                     style={[styles.modalButton, styles.cancelButton]}
                     onPress={() => {
@@ -671,6 +663,22 @@ const AppointmentsScreen = () => {
                   >
                     <Text style={styles.buttonText}>Close</Text>
                   </Pressable>
+                  <Pressable
+                    style={[styles.modalButton, styles.confirmButton]}
+                    onPress={() => {
+                      if (selectedAppointmentId) {
+                        handleStatusChange(
+                          selectedAppointmentId,
+                          selectedAction,
+                          appt._id,
+                          appt.patientName ?? '',
+                          appt.patientId ?? ''
+                        );
+                      }
+                    }}
+                  >
+                    <Text style={styles.buttonText}>Confirm</Text>
+                  </Pressable>
                 </View>
               ) : null}
             </View>
@@ -683,11 +691,7 @@ const AppointmentsScreen = () => {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#F0FDF4' }}>
       <View style={styles.container}>
-        {/* <Text style={styles.header}>Appointments</Text> */}
-
-       
-        <View style={styles.rangeWrap}>
- {/* Date Range for CARDS (web parity) */}
+        {/* Date Range for CARDS (web parity) */}
         <View style={styles.rangeWrap}>
           <Text style={styles.rangeHint}>{formattedRangeLabel}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -705,26 +709,26 @@ const AppointmentsScreen = () => {
               <Text style={styles.clearText}>X</Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        {whichRangePicker === 'start' && (
-          <DateTimePicker
-            value={moment(startDate, 'YYYY-MM-DD').toDate()}
-            mode="date"
-            display="default"
-            maximumDate={new Date()}
-            onChange={handleRangePicked('start')}
-          />
-        )}
-        {whichRangePicker === 'end' && (
-          <DateTimePicker
-            value={moment(endDate, 'YYYY-MM-DD').toDate()}
-            mode="date"
-            display="default"
-            maximumDate={new Date()}
-            onChange={handleRangePicked('end')}
-          />
-        )}
+          {whichRangePicker === 'start' && (
+            <DateTimePicker
+              value={moment(startDate, 'YYYY-MM-DD').toDate()}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={handleRangePicked('start')}
+            />
+          )}
+          {whichRangePicker === 'end' && (
+            <DateTimePicker
+              value={moment(endDate, 'YYYY-MM-DD').toDate()}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={handleRangePicked('end')}
+            />
+          )}
+        </View>
 
         {/* Summary cards */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -747,8 +751,6 @@ const AppointmentsScreen = () => {
             </View>
           </View>
         </ScrollView>
-
-        </View>
 
         {/* Search + Filter */}
         <View style={styles.searchContainer}>
@@ -773,7 +775,7 @@ const AppointmentsScreen = () => {
         >
           <Pressable style={styles.modalOverlay} onPress={() => setDropdownVisible(false)}>
             <View style={styles.dropdown}>
-              {['all', 'scheduled', 'cancelled'].map((status) => (
+              {['all', 'scheduled', 'completed', 'cancelled'].map((status) => (
                 <Pressable
                   key={status}
                   style={styles.option}
@@ -791,7 +793,7 @@ const AppointmentsScreen = () => {
           </Pressable>
         </Modal>
 
-        {/* Action menu (overlay) */}
+        {/* Action sheet (menu) */}
         <Modal
           visible={actionMenuVisible}
           transparent={true}
@@ -807,43 +809,76 @@ const AppointmentsScreen = () => {
                 const MenuItem = ({
                   label,
                   disabled,
+                  onPress,
                 }: {
                   label: string;
                   disabled?: boolean;
+                  onPress: () => void;
                 }) => (
                   <Pressable
                     key={label}
                     style={[styles.option, disabled ? { opacity: 0.4 } : null]}
                     onPress={() => {
-                      if (disabled || !appt) return;
-                      setSelectedAction(label);
-                      setActionMenuVisible(false);
-                      if (label === 'Prescription') {
-                        setActionModalVisible(true);
-                        // immediately handle in modal confirm
-                      } else if (label === 'View Previous Prescription') {
-                        if (dis.disableViewPrev) {
-                          Toast.show({ type: 'info', text1: 'No previous prescriptions' });
-                          return;
-                        }
-                        // If you have a screen, navigate here; for now show toast:
-                        Toast.show({ type: 'info', text1: 'Open previous prescriptions screen here' });
-                      } else {
-                        setActionModalVisible(true);
-                      }
+                      if (disabled) return;
+                      onPress();
                     }}
                   >
                     <Text style={{ color: '#000' }}>{label}</Text>
                   </Pressable>
                 );
 
+                if (!appt) {
+                  return <Text style={{ padding: 10, color: '#000' }}>No appointment selected</Text>;
+                }
+
                 return (
                   <>
-                    <MenuItem label="Prescription" disabled={dis.disablePrescription} />
-                    <MenuItem label="View Previous Prescription" disabled={dis.disableViewPrev} />
-                    <MenuItem label="Mark as Completed" disabled={dis.disableComplete} />
-                    <MenuItem label="Reschedule" disabled={dis.disableReschedule} />
-                    <MenuItem label="Cancel" disabled={dis.disableCancel} />
+                    {/* Navigate immediately for these two */}
+                    <MenuItem
+                      label="Prescription"
+                      disabled={dis.disablePrescription}
+                      onPress={() => {
+                        setActionMenuVisible(false);
+                        handleStatusChange(appt.id, 'Prescription', appt._id, appt.patientName, appt.patientId);
+                      }}
+                    />
+                    <MenuItem
+                      label="View Previous Prescription"
+                      disabled={dis.disableViewPrev}
+                      onPress={() => {
+                        setActionMenuVisible(false);
+                        handleStatusChange(appt.id, 'View Previous Prescription', appt._id, appt.patientName, appt.patientId);
+                      }}
+                    />
+
+                    {/* Open a single action modal for the rest */}
+                    <MenuItem
+                      label="Mark as Completed"
+                      disabled={dis.disableComplete}
+                      onPress={() => {
+                        setActionMenuVisible(false);
+                        setSelectedAction('Mark as Completed');
+                        setActionModalVisible(true);
+                      }}
+                    />
+                    <MenuItem
+                      label="Reschedule"
+                      disabled={dis.disableReschedule}
+                      onPress={() => {
+                        setActionMenuVisible(false);
+                        setSelectedAction('Reschedule');
+                        setActionModalVisible(true);
+                      }}
+                    />
+                    <MenuItem
+                      label="Cancel"
+                      disabled={dis.disableCancel}
+                      onPress={() => {
+                        setActionMenuVisible(false);
+                        setSelectedAction('Cancel');
+                        setActionModalVisible(true);
+                      }}
+                    />
                   </>
                 );
               })()}
@@ -875,17 +910,17 @@ const AppointmentsScreen = () => {
           </TouchableOpacity>
 
           <Text style={{ alignSelf: 'center', fontSize: 16, marginHorizontal: 10 }}>
-            Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize || 1)}
+            Page {pagination.current} of {Math.max(1, Math.ceil((pagination.total || 1) / (pagination.pageSize || 1)))}
           </Text>
 
           <TouchableOpacity
             onPress={() => handlePageChange(pagination.current + 1)}
-            disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize || 1)}
+            disabled={pagination.current >= Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))}
             style={{
               padding: 10,
               marginHorizontal: 5,
               backgroundColor:
-                pagination.current >= Math.ceil(pagination.total / pagination.pageSize || 1)
+                pagination.current >= Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
                   ? '#e5e7eb'
                   : '#3b82f6',
               borderRadius: 6,
@@ -894,7 +929,7 @@ const AppointmentsScreen = () => {
             <Text
               style={{
                 color:
-                  pagination.current >= Math.ceil(pagination.total / pagination.pageSize || 1)
+                  pagination.current >= Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
                     ? '#9ca3af'
                     : '#fff',
               }}
@@ -916,12 +951,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4',
     paddingHorizontal: 16,
     paddingTop: 10,
-  },
-  header: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: 'black',
   },
   rangeWrap: {
     borderWidth: 1,
@@ -1023,7 +1052,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 15, textAlign: 'center' },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 16, color: '#333' },
-  nameTxt: { fontSize: 16, color: '#555', marginBottom: 6 },
   label: { fontSize: 16, fontWeight: '500', color: '#444', marginTop: 10, marginBottom: 6 },
   datePickerButton: { padding: 10, backgroundColor: '#f0f0f0', borderRadius: 5, marginTop: 8 },
   datePickerText: { color: '#333' },
@@ -1038,7 +1066,4 @@ const styles = StyleSheet.create({
 
   dropdown: { width: '80%', backgroundColor: '#fff', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 15, elevation: 5 },
   option: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-
-  actionRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  actionText: { color: '#000', fontSize: 16 },
 });
