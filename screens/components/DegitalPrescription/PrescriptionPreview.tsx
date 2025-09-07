@@ -97,6 +97,20 @@ const PrescriptionPreview = () => {
     };
   }
 
+  // Fallback builder so addattachprescription never fails if selectedClinic hasn't loaded
+  const buildSelectedClinicPayload = () => {
+    if (selectedClinic) return selectedClinic;
+    const di = formData?.doctorInfo || {};
+    return {
+      clinicName: di.clinicName || di.primaryClinicName || 'Clinic',
+      address: di.clinicAddress || di.address || di.selectedClinicAddress || '',
+      mobile: di.clinicPhone || di.mobile || '',
+      headerImage: di.headerImage || di.clinicHeaderImage || null,
+      digitalSignature: di.digitalSignature || null,
+      addressId: di.selectedClinicId || di.addressId || null,
+    };
+  };
+
   const generatePDFContent = (data) => {
     const vitals = data?.vitals || {};
     const patient = data.patientInfo || {};
@@ -123,11 +137,9 @@ const PrescriptionPreview = () => {
       ? data.advice.advice.split('\n').map(item => item.trim() ? `<li style="margin-bottom: 4px;"><span style="margin-right: 8px;">•</span>${item}</li>` : '').join('')
       : '';
 
-    // Format date and time if available
     const appointmentDate = data.doctorInfo?.appointmentDate 
       ? dayjs(data.doctorInfo.appointmentDate).format('DD MMM YYYY') 
       : null;
-      
     const appointmentTime = data.doctorInfo?.appointmentStartTime || null;
 
     return `
@@ -413,110 +425,141 @@ ${data?.advice?.followUpDate ? `
     }
   };
 
-const shareViaWhatsApp = async (pdfPath, fileName) => {
-  try {
-    const patientNumber = formData.patientInfo?.mobileNumber;
-    
-    if (!patientNumber) {
-      Toast.show({ type: 'error', text1: 'Patient mobile number not available' });
-      return;
-    }
-    
-    // Clean the phone number (remove any non-digit characters)
-    const cleanedNumber = patientNumber.replace(/\D/g, '');
-    
-    const message = `Here's my medical prescription from ${selectedClinic?.clinicName || "Clinic"}\n` +
-      `Patient: ${formData.patientInfo?.patientName || "N/A"}\n` +
-      `Doctor: ${formData.doctorInfo?.doctorName || "N/A"}\n` +
-      `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}`;
-
-    // For Android, we need to use content:// URI instead of file://
-    let fileUri = pdfPath;
-    if (Platform.OS === 'android') {
-      fileUri = `file://${pdfPath}`;
-    }
-    
-    // Create WhatsApp share URL with the patient's number
-    const whatsappUrl = `whatsapp://send?phone=${cleanedNumber}&text=${encodeURIComponent(message)}`;
-    
-    // Try to open WhatsApp directly with the patient's number
-    Linking.canOpenURL(whatsappUrl).then(supported => {
-      if (supported) {
-        Linking.openURL(whatsappUrl);
-      } else {
-        // Fallback: Use regular share dialog if WhatsApp is not installed
-        Share.share({
-          title: 'Share Prescription',
-          message: `${message}\n\n`,
-          url: fileUri,
-          type: 'application/pdf',
-        });
+  const shareViaWhatsApp = async (pdfPath, fileName) => {
+    try {
+      const patientNumber = formData.patientInfo?.mobileNumber;
+      if (!patientNumber) {
+        Toast.show({ type: 'error', text1: 'Patient mobile number not available' });
+        return;
       }
-    });
-    
-  } catch (error) {
-    console.error('Error sharing via WhatsApp:', error);
-    Toast.show({ type: 'error', text1: 'Failed to share prescription' });
-  }
-};
+      const cleanedNumber = patientNumber.replace(/\D/g, '');
+      const message = `Here's my medical prescription from ${selectedClinic?.clinicName || "Clinic"}\n` +
+        `Patient: ${formData.patientInfo?.patientName || "N/A"}\n` +
+        `Doctor: ${formData.doctorInfo?.doctorName || "N/A"}\n` +
+        `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}`;
+
+      let fileUri = pdfPath;
+      if (Platform.OS === 'android') {
+        fileUri = `file://${pdfPath}`;
+      }
+
+      const whatsappUrl = `whatsapp://send?phone=${cleanedNumber}&text=${encodeURIComponent(message)}`;
+      Linking.canOpenURL(whatsappUrl).then(supported => {
+        if (supported) {
+          Linking.openURL(whatsappUrl);
+        } else {
+          Share.share({
+            title: 'Share Prescription',
+            message: `${message}\n\n`,
+            url: fileUri,
+            type: 'application/pdf',
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Error sharing via WhatsApp:', error);
+      Toast.show({ type: 'error', text1: 'Failed to share prescription' });
+    }
+  };
 
   const handlePrescriptionAction = async (type) => {
     try {
       setIsSaving(true);
-      const formattedData = transformEprescriptionData(formData);
+
+      const formattedData = transformEprescriptionData(formData, type);
       const token = await AsyncStorage.getItem('authToken');
+
       const response = await AuthPost('pharmacy/addPrescription', formattedData, token);
 
-      if (response?.status === 'success') {
-        Toast.show({ type: 'success', text1: 'Prescription successfully added' });
-        
-        if (type === 'download') {
-          await downloadPDF();
-        } else if (type === 'save') {
-          navigation.navigate('DoctorDashboard');
-        } else if (type === 'share') {
+      const statusVal = response?.status ?? response?.data?.statusCode ?? response?.data?.status;
+      const isOk = statusVal === 201 || statusVal === 200 || statusVal === 'success';
+
+      if (isOk) {
+        const warnings = response?.data?.data?.warnings ?? [];
+        const hasWarnings = Array.isArray(warnings) && warnings.length > 0;
+
+        if (!hasWarnings) {
+          const successMessage = type === 'save'
+            ? 'Prescription saved successfully'
+            : 'Prescription successfully added';
+          Toast.show({ type: 'success', text1: successMessage });
+        }
+
+        if (hasWarnings) {
+          warnings.forEach(w => {
+            if (w?.message) Toast.show({ type: 'info', text1: w.message });
+          });
+        }
+
+        if (type === 'print') {
+          return;
+        }
+
+        if (type === 'whatsapp' || type === 'share') {
           const prescriptionId = response?.data?.prescriptionId;
           if (!prescriptionId) {
-            console.error("Prescription ID is missing");
+            console.error('Prescription ID is missing');
             Toast.show({ type: 'error', text1: 'Failed to upload attachment: Prescription ID missing' });
             return;
           }
 
-          // Download the PDF first
-          const pdf = await downloadPDF();
-          
-          // Upload to server (optional)
-          try {
-            const uploadFormData = new FormData();
-            uploadFormData.append("file", {
-              uri: Platform.OS === 'android' ? `file://${pdf.filePath}` : pdf.filePath,
-              type: 'application/pdf',
-              name: 'e-prescription.pdf',
-            });
-            uploadFormData.append("prescriptionId", prescriptionId);
-            uploadFormData.append("appointmentId", patientDetails?.id || "");
-            uploadFormData.append("patientId", patientDetails?.patientId || "");
-            uploadFormData.append("mobileNumber", formData.patientInfo?.mobileNumber || "");
+          // IMPORTANT: backend expects selectedClinic — include it or build fallback
+          const payload = {
+            formData: { ...formData, prescriptionId },
+            selectedClinic: buildSelectedClinicPayload(),
+          };
 
-            await UploadFiles(
-              "pharmacy/addattachprescription",
-              uploadFormData,
-              token
-            );
-          } catch (uploadError) {
-            console.error('Upload error:', uploadError);
-            // Continue with sharing even if upload fails
+          try {
+            const uploadResponse = await AuthPost('pharmacy/addattachprescription', payload, token);
+            const uploadOk =
+              uploadResponse?.status === 200 ||
+              uploadResponse?.data?.status === 'success' ||
+              uploadResponse?.data?.statusCode === 200;
+
+            if (uploadOk) {
+              Toast.show({ type: 'success', text1: 'Attachment uploaded successfully' });
+
+              const message =
+                `Here's my medical prescription from ${formData?.doctorInfo?.clinicName || 'Clinic'}\n` +
+                `Patient: ${formData?.patientInfo?.patientName || 'N/A'}\n` +
+                `Doctor: ${formData?.doctorInfo?.doctorName || 'N/A'}\n` +
+                `Date: ${formData?.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : 'N/A'}`;
+
+              const schemeUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
+              const webUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+              const canOpen = await Linking.canOpenURL(schemeUrl);
+              await Linking.openURL(canOpen ? schemeUrl : webUrl);
+            } else {
+              const apiMsg =
+                uploadResponse?.data?.message ||
+                uploadResponse?.data?.error ||
+                'Failed to upload attachment';
+              Toast.show({ type: 'error', text1: apiMsg });
+            }
+          } catch (uploadErr) {
+            console.error('Upload error:', uploadErr);
+            Toast.show({ type: 'error', text1: 'Failed to upload attachment' });
           }
-          
-          // Share via WhatsApp
-          await shareViaWhatsApp(pdf.filePath, pdf.fileName);
+          return;
+        }
+
+        if (type === 'download') {
+          await downloadPDF();
+          return;
+        }
+
+        if (type === 'save') {
+          setTimeout(() => {
+            navigation.navigate('DoctorDashboard');
+          }, 3000);
+          return;
         }
       } else {
         Toast.show({ type: 'error', text1: response?.data?.message || 'Failed to add prescription' });
       }
     } catch (error) {
       console.error('Error in handlePrescriptionAction:', error);
-      Toast.show({ type: 'error', text1: error.response?.data?.message || 'Failed to add prescription' });
+      Toast.show({ type: 'error', text1: error?.response?.data?.message || 'Failed to add prescription' });
     } finally {
       setIsSaving(false);
     }
@@ -553,7 +596,7 @@ const shareViaWhatsApp = async (pdfPath, fileName) => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <View style={styles.row}>
+        <View className="row" style={styles.row}>
           <Text style={styles.headerText}>{selectedClinic?.clinicName}</Text>
           <View>
             <Text style={styles.headerText}>📍 {selectedClinic?.address}</Text>
@@ -562,14 +605,8 @@ const shareViaWhatsApp = async (pdfPath, fileName) => {
         </View>
       </View>
 
-      {/* Appointment Date and Time */}
       {(formData.doctorInfo?.appointmentDate || formData.doctorInfo?.appointmentStartTime) && (
         <View style={styles.appointmentSection}>
-          {/* {formData.doctorInfo?.appointmentDate && (
-            <Text style={styles.appointmentText}>
-              Date: {dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY')}
-            </Text>
-          )} */}
           {formData.doctorInfo?.appointmentStartTime && (
             <Text style={styles.appointmentText}>
               Time: {formData.doctorInfo.appointmentStartTime}
@@ -750,7 +787,7 @@ const shareViaWhatsApp = async (pdfPath, fileName) => {
           <View>
             <View style={{ height: 48 }} />
             <Text style={{ fontWeight: 'bold' }}>
-              DR. {formData.doctorInfo?.doctorName || 'Unknown Doctor'}
+              DR. {formData?.doctorInfo?.doctorName || 'Unknown Doctor'}
             </Text>
           </View>
         )}
@@ -765,14 +802,14 @@ const shareViaWhatsApp = async (pdfPath, fileName) => {
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
-  style={[styles.downloadButton, isSaving && styles.disabledButton]}
-  onPress={() => handlePrescriptionAction('share')}
-  disabled={isSaving}
->
-  <Text style={styles.downloadText}>
-    {isSaving ? 'Processing...' : 'Share via WhatsApp'}
-  </Text>
-</TouchableOpacity>
+          style={[styles.downloadButton, isSaving && styles.disabledButton]}
+          onPress={() => handlePrescriptionAction('share')}
+          disabled={isSaving}
+        >
+          <Text style={styles.downloadText}>
+            {isSaving ? 'Processing...' : 'Share via WhatsApp'}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.downloadButton, isSaving && styles.disabledButton]}
           onPress={() => handlePrescriptionAction('share')}
