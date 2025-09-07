@@ -220,7 +220,7 @@ const PatientDetails = () => {
 
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📘 Patient Historysssss</Text>
+          <Text style={styles.sectionTitle}>📘 Patient History</Text>
           <Text style={styles.subtitle}>Complete medical history documentation</Text>
           <TextInput
             placeholder="Chief Complaint"

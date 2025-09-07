@@ -604,19 +604,19 @@ console.log(formData, "complete form data")
       {mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
     </View>
 
-      <Text style={styles.label}>Gender</Text>
-      <View style={styles.radioRow}>
-        {['Male', 'Female', 'Other'].map((option) => (
-          <View key={option} style={styles.radioItem}>
-            <RadioButton
-              value={option}
-              status={patientformData.gender === option ? 'checked' : 'unchecked'}
-              onPress={() => setpatientFormData({ ...patientformData, gender: option })}
-            />
-            <Text  style={{ color: '#000' }}>{option}</Text>
-          </View>
-        ))}
-      </View>
+<Text style={styles.label}>Gender</Text>
+<View style={styles.radioRow}>
+  {['Male', 'Female', 'Other'].map((option) => (
+    <View key={option} style={styles.radioItem}>
+      <RadioButton
+        value={option}
+        status={patientformData.gender === option ? 'checked' : 'unchecked'}
+        onPress={() => setpatientFormData({ ...patientformData, gender: option })}
+      />
+      <Text style={styles.radioText}>{option}</Text>
+    </View>
+  ))}
+</View>
 
       <TouchableOpacity style={styles.addButton} onPress={handleAddPatient}>
         <Text style={styles.addButtonText}>Add Patient</Text>
@@ -751,33 +751,31 @@ clinicName}
 
       <Text style={styles.label}>Available Slots *</Text>
       <View style={styles.timeSlotContainer}>
-      {timeSlots.length > 0 ? (
-  timeSlots.map((slot) => (
-    <TouchableOpacity
-      key={slot}
-      onPress={() => setFormData({ ...formData, selectedTime: slot })}
-      style={[
-        styles.timeSlot,
-        formData.selectedTime === slot && styles.timeSlotSelected,
-      ]}
-    >
-      <Text
-        style={
-          formData.selectedTime === slot
-            ? styles.timeSelectedText
-            : styles.timeText
-        }
+  {timeSlots.length > 0 ? (
+    timeSlots.map((slot) => (
+      <TouchableOpacity
+        key={slot}
+        onPress={() => setFormData({ ...formData, selectedTime: slot })}
+        style={[
+          styles.timeSlot,
+          formData.selectedTime === slot && styles.timeSlotSelected,
+        ]}
       >
-        {slot}
-      </Text>
-    </TouchableOpacity>
-  ))
-) : (
-  <Text style={styles.errorMessage}>{message}</Text>
-)}
-
-       
-      </View>
+        <Text
+          style={
+            formData.selectedTime === slot
+              ? styles.timeSelectedText
+              : styles.timeText
+          }
+        >
+          {slot}
+        </Text>
+      </TouchableOpacity>
+    ))
+  ) : (
+    <Text style={styles.errorMessage}>{message}</Text>
+  )}
+</View>
       </View>
 
       {/* Appointment Summary */}
@@ -855,6 +853,13 @@ color:'#0c0c0cff'
   marginBottom: 20,
   gap: 10,
   alignItems: 'center',
+},
+timeSlotContainer: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  justifyContent: 'flex-start',
+  marginBottom: 16,
+  marginLeft:20
 },
 
 inputContainer: {
@@ -949,25 +954,24 @@ patientsContainer: {
     flexDirection: 'row', marginBottom: 10,
   },
   label: { marginBottom: 5, color: 'black' },
-  radioRow: {
-  flexDirection: 'row', 
-  flexWrap: 'wrap', // Allow items to wrap to next line if needed
+radioRow: {
+  flexDirection: 'row',
+  flexWrap: 'wrap', // Allows wrapping to next line on very small screens or large fonts
   marginBottom: 16,
-  justifyContent: 'flex-start', // Or 'space-between' for even spacing
+  justifyContent: 'flex-start', // Align left, no forced spacing constraints
+  paddingHorizontal: 5, // Optional: Light padding for edge breathing room
 },
 radioItem: {
-  flexDirection: 'row', 
-  alignItems: 'center', 
-  flex: 1, // Each item takes equal width
-  justifyContent: 'center', // Center content
-  marginBottom: 8,
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginRight: 30, // Adjustable spacing between items (increase if needed for your design)
+  marginBottom: 8, // Space if items wrap to next line
+  flexShrink: 0, // Prevent shrinking to avoid text clipping
 },
-  timeSlotContainer: {
-  flexDirection: 'row', 
-  flexWrap: 'wrap', 
-  gap: 10, 
-  marginVertical: 10,
-  justifyContent: 'flex-start', // Ensure proper alignment
+radioText: {
+  color: '#000',
+  fontSize: 16,
+  marginLeft: 8, // Space between radio button and text
 },
  timeSlot: {
   borderWidth: 1, 

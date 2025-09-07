@@ -114,7 +114,8 @@ android {
 }
 
 dependencies {
-    // The version of react-native is set by the React Native Gradle Plugin
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
+    implementation 'com.google.android.gms:play-services-maps:18.2.0' // Add this for react-native-maps
     implementation("com.facebook.react:react-android")
 
     if (hermesEnabled.toBoolean()) {

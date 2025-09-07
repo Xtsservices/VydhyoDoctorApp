@@ -529,11 +529,12 @@ const DoctorDashboard = () => {
               <Text style={styles.mainNumber}>{dashboardData.appointmentCounts.today}</Text>
               {/* FIX: always visible on small devices / large font scales */}
               <Text
-                style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
-                numberOfLines={2}
-                allowFontScaling={false}
+style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
+numberOfLines={2}
+adjustsFontSizeToFit={true}
+allowFontScaling={false}
               >
-                Today&apos;s Appointments
+                Today's Appointments
               </Text>
             </View>
             <View style={styles.gridRow}>
