@@ -252,7 +252,7 @@ const AccountsScreen = () => {
   return (
     <ScrollView>
       <View style={styles.container}>
-        <Text style={styles.header}>Accounts</Text>
+        {/* <Text style={styles.header}>Accounts</Text> */}
 
         {/* Summary Cards */}
         <View style={styles.summaryRow}>

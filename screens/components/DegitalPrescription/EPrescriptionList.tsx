@@ -470,7 +470,7 @@ const EPrescriptionList = () => {
       )}
       
       <View style={styles.header}>
-        <Text style={styles.title}>e-Prescriptions</Text>
+        {/* <Text style={styles.title}>e-Prescriptions</Text> */}
         <Text style={styles.subtitle}>
           Create and manage digital prescriptions for your patients
         </Text>

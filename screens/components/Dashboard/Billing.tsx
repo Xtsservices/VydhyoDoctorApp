@@ -1010,7 +1010,7 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
   if (!user || !doctorId) {
     return (
       <View style={styles.centerFill}>
-        <Text style={styles.h1}>Billing</Text>
+        {/* <Text style={styles.h1}>Billing</Text> */}
         <Text style={{ color: "#374151" }}>Waiting for user data to load...</Text>
       </View>
     );
@@ -1323,7 +1323,7 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.h1}>Billing</Text>
+      {/* <Text style={styles.h1}>Billing</Text> */}
 
       {/* Search (debounced, no reload every letter) */}
       <View style={styles.searchWrap}>

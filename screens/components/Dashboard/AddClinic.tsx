@@ -81,6 +81,8 @@ const AddClinicForm = () => {
   const [labHeaderPreview, setLabHeaderPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+const GOOGLE_MAPS_API_KEY = "AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo";
 
   // Request location permission
   const requestLocationPermission = async () => {
@@ -184,39 +186,56 @@ const AddClinicForm = () => {
         }
       }, 15000); // 15 seconds timeout
 
-      Geolocation.getCurrentPosition(
-        (position) => {
-          clearTimeout(timeoutId);
-          const { latitude, longitude } = position.coords;
-          const newRegion = {
-            latitude,
-            longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          };
-          setRegion(newRegion);
-          mapRef.current?.animateToRegion(newRegion, 1000);
-          fetchAddress(latitude, longitude);
-        },
-        (error) => {
-          clearTimeout(timeoutId);
-          console.error('Location Error:', error);
-          Alert.alert(
-            'Location Error',
-            'Unable to fetch current location. Please ensure location services are enabled and try again, or select a location manually.',
-            [
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-              { text: 'OK', style: 'cancel' },
-            ]
-          );
-          setIsFetchingLocation(false);
-        },
-        { 
-          enableHighAccuracy: true, 
-          timeout: 10000, 
-          maximumAge: 10000 
-        }
+const isInIndia = (latitude, longitude) => {
+  return (
+    latitude >= 6.554607 &&
+    latitude <= 35.674545 &&
+    longitude >= 68.111378 &&
+    longitude <= 97.395561
+  );
+};
+
+Geolocation.getCurrentPosition(
+  (position) => {
+    clearTimeout(timeoutId);
+    const { latitude, longitude } = position.coords;
+
+    if (!isInIndia(latitude, longitude)) {
+      Alert.alert(
+        'Invalid Location',
+        'Failed to fetch location. Please ensure location services are enabled or try to search.',
+        [{ text: 'OK', style: 'cancel' }]
       );
+      setIsFetchingLocation(false);
+      return;
+    }
+
+    const newRegion = {
+      latitude,
+      longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+    setRegion(newRegion);
+    mapRef.current?.animateToRegion(newRegion, 1000);
+    fetchAddress(latitude, longitude);
+  },
+  (error) => {
+    clearTimeout(timeoutId);
+    console.error('Location error:', error);
+    Alert.alert('Error', 'Unable to fetch current location. Please try again.', [
+      { text: 'OK', style: 'cancel' }
+    ]);
+    setIsFetchingLocation(false);
+  },
+  {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 10000
+  }
+);
+
+
     };
 
     initLocation();
@@ -254,42 +273,59 @@ const AddClinicForm = () => {
   };
 
   // Handle selecting a search result
-  const handleSelectSearchResult = async (result: any) => {
-    setSearchQuery(result.description);
-    setShowSearchResults(false);
-    setIsFetchingLocation(true);
+const handleSelectSearchResult = async (result: any) => {
+  setSearchQuery(result.description);
+  setShowSearchResults(false);
+  setIsFetchingLocation(true);
 
-    try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${result.place_id}&key=AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo`
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${result.place_id}&key=${GOOGLE_MAPS_API_KEY}`
+    );
+
+    const data = await response.json();
+    if (data.status === 'OK') {
+      const place = data.result;
+      const location = place.geometry.location;
+      const latitude = location.lat;
+      const longitude = location.lng;
+
+      // Check if the location is in India
+      const countryComponent = place.address_components.find(component =>
+        component.types.includes('country')
       );
 
-      const data = await response.json();
-      if (data.status === 'OK') {
-        const place = data.result;
-        const location = place.geometry.location;
-        const latitude = location.lat;
-        const longitude = location.lng;
-
-        const newRegion = {
-          latitude,
-          longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        };
-        setRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion, 500);
-        fetchAddress(latitude, longitude);
-      } else {
-        console.log('Place details failed:', data.status);
+      if (!countryComponent || countryComponent.short_name !== 'IN') {
+        Alert.alert(
+          'Invalid Location',
+          'Failed to fetch location. Please select a location within India.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
+        setIsFetchingLocation(false);
+        return;
       }
-    } catch (error) {
-      console.error('Place details error:', error);
-      Alert.alert('Error', 'Unable to fetch place details. Please try again.');
-    } finally {
-      setIsFetchingLocation(false);
+
+      const newRegion = {
+        latitude,
+        longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      setRegion(newRegion);
+      mapRef.current?.animateToRegion(newRegion, 500);
+      fetchAddress(latitude, longitude);
+    } else {
+      console.log('Place details failed:', data.status);
+      Alert.alert('Error', 'Failed to fetch location details.');
     }
-  };
+  } catch (error) {
+    console.error('Place details error:', error);
+    Alert.alert('Error', 'Unable to fetch place details. Please try again.');
+  } finally {
+    setIsFetchingLocation(false);
+  }
+};
+
 
   // Handle map press to select a location
   const handleMapPress = (e: any) => {
@@ -323,33 +359,56 @@ const AddClinicForm = () => {
       }
     }, 10000); // 10 seconds timeout
 
-    Geolocation.getCurrentPosition(
-      (position) => {
-        clearTimeout(timeoutId);
-        const { latitude, longitude } = position.coords;
-        const newRegion = {
-          latitude,
-          longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        };
-        setRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion, 1000);
-        fetchAddress(latitude, longitude);
-        setShowSearchResults(false);
-      },
-      (error) => {
-        clearTimeout(timeoutId);
-        console.error('Location error:', error);
-        Alert.alert('Error', 'Unable to fetch current location.');
-        setIsFetchingLocation(false);
-      },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 10000, 
-        maximumAge: 10000 
-      }
-    );
+const isInIndia = (latitude, longitude) => {
+  return (
+    latitude >= 6.554607 &&
+    latitude <= 35.674545 &&
+    longitude >= 68.111378 &&
+    longitude <= 97.395561
+  );
+};
+
+Geolocation.getCurrentPosition(
+  (position) => {
+    clearTimeout(timeoutId);
+    const { latitude, longitude } = position.coords;
+
+    if (!isInIndia(latitude, longitude)) {
+      Alert.alert(
+        'Invalid Location',
+        'Failed to fetch location. Please ensure location services are enabled and try again.',
+        [{ text: 'OK', style: 'cancel' }]
+      );
+      setIsFetchingLocation(false);
+      return;
+    }
+
+    const newRegion = {
+      latitude,
+      longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+    setRegion(newRegion);
+    mapRef.current?.animateToRegion(newRegion, 1000);
+    fetchAddress(latitude, longitude);
+  },
+  (error) => {
+    clearTimeout(timeoutId);
+    console.error('Location error:', error);
+    Alert.alert('Error', 'Unable to fetch current location. Please try again.', [
+      { text: 'OK', style: 'cancel' }
+    ]);
+    setIsFetchingLocation(false);
+  },
+  {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 10000
+  }
+);
+
+
   };
 
   const handleChange = (field: string, value: string) => {
@@ -477,9 +536,9 @@ const AddClinicForm = () => {
     if (!form.longitude) newErrors.longitude = 'Longitude is required';
     else if (isNaN(Number(form.longitude))) newErrors.longitude = 'Longitude must be a valid number';
     
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = 'Enter a valid email address';
-    }
+    // if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    //   newErrors.email = 'Enter a valid email address';
+    // }
     
     if (form.pincode && !/^\d{6}$/.test(form.pincode)) {
       newErrors.pincode = 'Enter a valid 6-digit pincode';
@@ -601,7 +660,7 @@ const AddClinicForm = () => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView style={styles.container}>
-        <Text style={styles.title}>Add New Clinic</Text>
+        {/* <Text style={styles.title}>Add New Clinic</Text> */}
 
         {/* Map Section */}
         <View style={styles.mapSection}>
@@ -658,6 +717,13 @@ const AddClinicForm = () => {
                 longitude: region.longitude
               }} />
             </MapView>
+            
+            {/* Custom marker in center of map */}
+            <View style={styles.markerFixed}>
+              <View style={styles.marker}>
+                <View style={styles.markerInner} />
+              </View>
+            </View>
             
             {/* My Location Button */}
             <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocation}>
@@ -732,7 +798,7 @@ const AddClinicForm = () => {
         />
         {errors.mobile && <Text style={styles.errorText}>{errors.mobile}</Text>}
 
-        <Text style={styles.label}>Email</Text>
+        {/* <Text style={styles.label}>Email</Text>
         <TextInput
           style={[styles.input, errors.email && styles.inputError]}
           placeholder="Enter email address"
@@ -741,7 +807,7 @@ const AddClinicForm = () => {
           onChangeText={(text) => handleChange('email', text)}
           placeholderTextColor="gray"
         />
-        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>} */}
 
         <Text style={styles.label}>Pin Code</Text>
         <TextInput
@@ -1120,6 +1186,34 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+  },
+  // Custom marker styles
+  markerFixed: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    marginLeft: -24,
+    marginTop: -48,
+    zIndex: 15,
+  },
+  marker: {
+    height: 48,
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerInner: {
+    height: 24,
+    width: 24,
+    backgroundColor: '#3182CE',
+    borderWidth: 3,
+    borderColor: 'white',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 4,
   },
   myLocationButton: {
     position: 'absolute',

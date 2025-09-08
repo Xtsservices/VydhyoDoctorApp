@@ -832,6 +832,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     marginBottom: 2,
     color: '#333',
+    paddingLeft: 5,
   },
   periodButton: {
     marginLeft: 8,

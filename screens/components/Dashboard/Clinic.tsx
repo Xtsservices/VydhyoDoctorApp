@@ -20,6 +20,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthFetch, AuthPost, AuthPut, UploadFiles } from '../../auth/auth';
 import Toast from 'react-native-toast-message';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { useSelector } from 'react-redux';
 
 const { width, height } = Dimensions.get('window');
 
@@ -93,8 +94,12 @@ const ClinicManagementScreen = () => {
   const [labHeaderFile, setLabHeaderFile] = useState<any>(null);
   const [labHeaderPreview, setLabHeaderPreview] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-
-  const [form, setForm] = useState({
+    const userId = useSelector((state: any) => state.currentUserId);
+    const currentuserDetails =  useSelector((state: any) => state.currentUser);
+    const isPhysiotherapist = currentuserDetails?.specialization?.name === "Physiotherapist";
+    const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+    console.log(currentuserDetails, "currentuserDetails")// Make sure your Redux state has currentUser with firstname and lastname
+    const [form, setForm] = useState({
     id: '',
     name: '',
     type: 'General',
@@ -704,14 +709,16 @@ const ClinicManagementScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
-        <Text style={styles.header}>Clinic Management</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate('AddClinic')}
-        >
-          <Icon name="plus" size={20} color="#fff" />
-          <Text style={styles.addButtonText}>Add Clinic</Text>
-        </TouchableOpacity>
+        <Text style={styles.header}></Text>
+        {!isPhysiotherapist && (
+  <TouchableOpacity
+    style={styles.addButton}
+    onPress={() => navigation.navigate('AddClinic')}
+  >
+    <Icon name="plus" size={20} color="#fff" />
+    <Text style={styles.addButtonText}>Add Clinic</Text>
+  </TouchableOpacity>
+)}
       </View>
 
       <View style={styles.searchContainer}>
@@ -1648,3 +1655,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

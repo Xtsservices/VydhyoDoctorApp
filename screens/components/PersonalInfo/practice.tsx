@@ -89,7 +89,7 @@ const PracticeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResultsPerAddress, setSearchResultsPerAddress] = useState<{[key: number]: any[]}>({});
   const [showSearchResults, setShowSearchResults] = useState(false);
   const mapRefs = useRef<MapView[]>([]);
   const [searchQueryPerAddress, setSearchQueryPerAddress] = useState<{[key: number]: string}>({});
@@ -248,7 +248,7 @@ const PracticeScreen = () => {
     );
   };
 
-  // Handle search input
+  // Update handleSearch function:
   const handleSearch = async (query: string, index: number) => {
     setSearchQueryPerAddress(prev => ({
       ...prev,
@@ -256,7 +256,10 @@ const PracticeScreen = () => {
     }));
 
     if (query.length < 3) {
-      setSearchResults([]);
+      setSearchResultsPerAddress(prev => ({
+        ...prev,
+        [index]: []
+      }));
       setShowSearchResultsPerAddress(prev => ({
         ...prev,
         [index]: false
@@ -273,18 +276,27 @@ const PracticeScreen = () => {
 
       const data = await response.json();
       if (data.status === 'OK') {
-        setSearchResults(data.predictions);
+        setSearchResultsPerAddress(prev => ({
+          ...prev,
+          [index]: data.predictions
+        }));
         setShowSearchResultsPerAddress(prev => ({
           ...prev,
           [index]: true
         }));
       } else {
         console.log('Autocomplete failed:', data.status);
-        setSearchResults([]);
+        setSearchResultsPerAddress(prev => ({
+          ...prev,
+          [index]: []
+        }));
       }
     } catch (error) {
       console.error('Search error:', error);
-      setSearchResults([]);
+      setSearchResultsPerAddress(prev => ({
+        ...prev,
+        [index]: []
+      }));
     }
   };
 
@@ -515,28 +527,34 @@ const PracticeScreen = () => {
   
   const [specialization, setSpecialization] = useState('')
 
-  const fetchUserData = async () => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthFetch('users/getUser', token);
-      console.log(response)
-      if (response.data.status === 'success') {
-        const userData = response.data.data;
-        setSpecialization(userData?.specialization[0]?.name)
-        setOpdAddresses(userData?.addresses)
-        console.log(userData, "complete response")
+const fetchUserData = async () => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    const response = await AuthFetch('users/getUser', token);
+    console.log(response)
+    if (response.data.status === 'success') {
+      const userData = response.data.data;
+      setSpecialization(userData?.specialization[0]?.name)
+      
+      // Only set addresses if the user actually has addresses
+      if (userData?.addresses && userData.addresses.length > 0) {
+        setOpdAddresses(userData.addresses)
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to fetch user data.',
-        position: 'top',
-        visibilityTime: 4000,
-      });
+      // Otherwise, keep the initial address form that was already set
+      
+      console.log(userData, "complete response")
     }
-  };
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Failed to fetch user data.',
+      position: 'top',
+      visibilityTime: 4000,
+    }); 
+  }
+};
 
   useEffect(() => {
     fetchUserData();
@@ -636,10 +654,10 @@ const PracticeScreen = () => {
                   </View>
 
                   {/* Search Results */}
-                  {showSearchResultsPerAddress[index] && searchResults.length > 0 && (
+                  {showSearchResultsPerAddress[index] && searchResultsPerAddress[index] && searchResultsPerAddress[index].length > 0 && (
                     <View style={styles.searchResultsContainer}>
                       <ScrollView style={styles.searchResultsList}>
-                        {searchResults.map((result) => (
+                        {searchResultsPerAddress[index].map((result) => (
                           <View key={result.place_id}>
                             {renderSearchItem(result, index)}
                           </View>
@@ -651,8 +669,10 @@ const PracticeScreen = () => {
                 
                 <View style={styles.mapContainer}>
                   <MapView
-                    ref={ref => {
-                      if (ref) mapRefs.current[index] = ref;
+                    ref={(ref) => {
+                      if (ref) {
+                        mapRefs.current[index] = ref;
+                      }
                     }}
                     style={styles.map}
                     provider={PROVIDER_GOOGLE}
@@ -675,6 +695,13 @@ const PracticeScreen = () => {
                       }}
                     />
                   </MapView>
+                  
+                  {/* Custom center marker - placed outside MapView */}
+                  <View style={styles.markerFixed}>
+                    <View style={styles.marker}>
+                      <View style={styles.markerInner} />
+                    </View>
+                  </View>
                   
                   <TouchableOpacity 
                     style={styles.myLocationButton} 
@@ -980,6 +1007,35 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
+  // Custom marker styles
+  markerFixed: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    marginLeft: -12, // Half the width of markerInner
+    marginTop: -24, // Height of marker (48) divided by 2
+    zIndex: 15,
+    pointerEvents: 'none', // Allow clicks to pass through to map
+  },
+  marker: {
+    height: 48,
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerInner: {
+    height: 24,
+    width: 24,
+    backgroundColor: '#3182CE',
+    borderWidth: 3,
+    borderColor: 'white',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 4,
+  },
   myLocationButton: {
     position: 'absolute',
     bottom: 10,
@@ -995,6 +1051,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    zIndex: 20,
   },
   locationLoading: {
     flexDirection: 'row',
