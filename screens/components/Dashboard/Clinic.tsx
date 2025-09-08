@@ -709,7 +709,7 @@ const ClinicManagementScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
-        <Text style={styles.header}>Clinic Management</Text>
+        <Text style={styles.header}></Text>
         {!isPhysiotherapist && (
   <TouchableOpacity
     style={styles.addButton}

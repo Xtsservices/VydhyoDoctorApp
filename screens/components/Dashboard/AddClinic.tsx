@@ -660,7 +660,7 @@ Geolocation.getCurrentPosition(
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView style={styles.container}>
-        <Text style={styles.title}>Add New Clinic</Text>
+        {/* <Text style={styles.title}>Add New Clinic</Text> */}
 
         {/* Map Section */}
         <View style={styles.mapSection}>

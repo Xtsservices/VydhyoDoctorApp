@@ -374,7 +374,7 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Staff Management</Text>
+      {/* <Text style={styles.header}>Staff Management</Text> */}
 
       {/* Search Bar */}
       <View style={styles.searchRow}>

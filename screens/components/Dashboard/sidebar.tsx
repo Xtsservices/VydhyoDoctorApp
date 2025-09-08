@@ -357,6 +357,7 @@ const styles = StyleSheet.create({
   },
 
   header: {
+    marginTop: 30,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,

@@ -859,7 +859,9 @@ timeSlotContainer: {
   flexWrap: 'wrap',
   justifyContent: 'flex-start',
   marginBottom: 16,
-  marginLeft:20
+  marginLeft: 20,
+  gap: 10,           // Add this for spacing between slots
+  rowGap: 10,        // Add this for vertical spacing between rows
 },
 
 inputContainer: {

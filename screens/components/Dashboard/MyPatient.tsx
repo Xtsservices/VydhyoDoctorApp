@@ -340,9 +340,9 @@ const MyPatients: React.FC = () => {
   console.log('No patients to render', selectedStatus);
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <Text style={styles.title}>My Patients</Text>
-      </View>
+      </View> */}
 
       <View style={styles.searchContainer}>
         <Icon name="magnify" size={20} color="#999" style={styles.searchIcon} />

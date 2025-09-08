@@ -13,9 +13,10 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
 import { AuthFetch, AuthPost } from '../../auth/auth';
-
 const ReviewsScreen = () => {
+  const navigation = useNavigation();
   const currentuserDetails = useSelector((state) => state.currentUser);
   const doctorId = currentuserDetails.role === 'doctor' ? currentuserDetails.userId : currentuserDetails.createdBy;
   const [reviews, setReviews] = useState([]);
@@ -87,6 +88,7 @@ const ReviewsScreen = () => {
           
           setReviews(formattedReviews);
         } else {
+          console.log('Unexpected API response structure:', response);
           Alert.alert('Error', JSON.stringify(response.message) || 'Failed to fetch reviews or invalid response');
         }
       } catch (error) {
@@ -121,7 +123,7 @@ const ReviewsScreen = () => {
       const response = await AuthPost('users/submitDoctorReply', payload, token, {
         headers: { 'Content-Type': 'application/json' },
       });
-      console.log('Reply submission response:', response);
+      console.log('Reply submission response:', response.message.message);
 
       if (response.status === 'success') {
         // Refresh the conversation for this specific review
@@ -153,7 +155,7 @@ const ReviewsScreen = () => {
         setReplyText((prev) => ({ ...prev, [feedbackId]: '' }));
         Alert.alert('Success', 'Reply submitted successfully');
       } else {
-        Alert.alert('Error', JSON.stringify(response.message) || 'Failed to submit reply');
+        Alert.alert('Alert!', response.message.message || 'Failed to submit reply');
       }
     } catch (error) {
       console.error('Error submitting reply:', error);
@@ -194,13 +196,16 @@ const ReviewsScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Icon name="arrow-left" size={24} color="#1F2937" />
-        </TouchableOpacity>
+       <TouchableOpacity 
+  style={styles.backButton}
+  onPress={() => navigation.goBack()}
+>
+  <Icon name="arrow-left" size={24} color="#1F2937" />
+</TouchableOpacity>
         <Text style={styles.headerTitle}>Patient Reviews</Text>
         <Image
-          source={{ uri: currentuserDetails.avatar || 'https://randomuser.me/api/portraits/men/10.jpg' }}
-          style={styles.profileImage}
+          // source={{ uri: currentuserDetails.avatar || 'https://randomuser.me/api/portraits/men/10.jpg' }}
+          // style={styles.profileImage}
         />
       </View>
 

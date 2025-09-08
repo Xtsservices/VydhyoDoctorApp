@@ -720,7 +720,7 @@ allowFontScaling={false}
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#F0FDF4' },
   scrollView: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 ,marginTop: 20},
   headerText: { color: '#000', fontSize: 20, fontWeight: 'bold' },
   rightIcons: { flexDirection: 'row', alignItems: 'center' },
   appointmentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 0, margin: 10, borderRadius: 10 },
