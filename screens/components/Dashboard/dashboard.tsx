@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo,useMemo } from 'react';
 import {
   ActivityIndicator,
   View,
@@ -59,38 +59,39 @@ const fmtYYYYMMDD = (d: Date | string) => moment(d).format('YYYY-MM-DD');
 const fmtNice = (d?: string) => (d ? moment(d).format('MMM D, YYYY') : '—');
 
 /** Robust formatter → "6 Sep 2025 11:45AM" */
+// Assumes moment is available. If you use moment-timezone and want to force IST,
+// you can set: moment.tz.setDefault('Asia/Kolkata');
+
 const formatApptDateTime = (dateStr?: string, timeStr?: string) => {
-  const timeNorm = (timeStr || '').toUpperCase().replace(/\s+/g, ''); // "9:00AM" / "09:00" etc.
-  const join = (d?: string, t?: string) => [d || '', t || ''].filter(Boolean).join(' ');
-
-  const candidates = [
-    join(dateStr, timeNorm),
-    dateStr || '',
-    timeNorm || '',
-  ].filter(Boolean);
-
-  const fmts = [
-    'DD-MMM-YYYY h:mmA',
-    'D-MMM-YYYY h:mmA',
-    'YYYY-MM-DD h:mmA',
-    'YYYY-MM-DD HH:mm',
-    moment.ISO_8601 as any,
-    'DD/MM/YYYY h:mmA',
-    'D/M/YYYY h:mmA',
+  const j = (a?: string, b?: string) => [a, b].filter(Boolean).join(' ');
+  const s = (x?: string) => (x || '').trim();
+  const D = s(dateStr), T = s(timeStr), TN = T ? T.toUpperCase().replace(/\s+/g, '') : '';
+  const hasTime = !!TN || /(\d{1,2}:\d{2})|\b[AP]M\b/i.test(D);
+  const OUT = hasTime ? 'D MMM YYYY h:mmA' : 'D MMM YYYY';
+  const ISOZ = (x: string) => /T\d{2}:\d{2}|Z$|[+-]\d{2}:?\d{2}$/.test(x);
+  const FDT = [
+    'DD-MMM-YYYY h:mmA','D-MMM-YYYY h:mmA','DD-MMM-YYYY h:mm A','D-MMM-YYYY h:mm A',
+    'YYYY-MM-DD HH:mm','YYYY-MM-DD h:mmA','YYYY-MM-DD h:mm A',
+    'DD/MM/YYYY h:mmA','D/M/YYYY h:mmA','DD/MM/YYYY h:mm A','D/M/YYYY h:mm A',
+    'h:mmA','h:mm A','HH:mm'
   ];
+  const FD = ['DD-MMM-YYYY','D-MMM-YYYY','YYYY-MM-DD','DD/MM/YYYY','D/M/YYYY'];
+  const C = j(D, TN);
 
-  for (const c of candidates) {
-    const m = moment(c, fmts, true);
-    if (m.isValid()) return m.format('D MMM YYYY h:mmA'); // e.g., "6 Sep 2025 11:45AM"
-  }
+  if (C && ISOZ(C)) { const z = moment.parseZone(C); if (z.isValid()) return z.local().format(OUT); }
 
-  // last try (non-strict)
-  const m2 = moment(join(dateStr, timeStr));
-  if (m2.isValid()) return m2.format('D MMM YYYY h:mmA');
+  let m = hasTime ? moment(C, FDT, true) : moment(D, FD, true);
+  if (!m.isValid() && hasTime) m = moment(D, FDT, true);
+  if (!m.isValid() && !D && TN) m = moment(TN, ['h:mmA','h:mm A','HH:mm'], true);
+  if (m.isValid()) return m.format(OUT);
 
-  // fallback: show combined raw
-  return join(dateStr, timeStr);
+  if (!hasTime && /^\d{4}-\d{2}-\d{2}$/.test(D)) return moment(D, 'YYYY-MM-DD', true).format(OUT);
+
+  const m2 = moment(j(D, T), hasTime ? FDT : FD, false);
+  return m2.isValid() ? m2.format(OUT) : j(D, T).trim();
 };
+
+
 
 /* ---------- Patient Appointments (with chips) ---------- */
 const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppointmentsProps) => {
@@ -245,6 +246,19 @@ const DoctorDashboard = () => {
   const [revenueStartDate, setRevenueStartDate] = useState<string>(today);
   const [revenueEndDate, setRevenueEndDate] = useState<string>(today);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
+
+
+  // right above your return(...)
+const pieState = useMemo(() => {
+  const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
+  if (total <= 0) {
+    // show equal thirds visually, but don't lie with absolute numbers
+    const equalData = revenueSummaryData.map(d => ({ ...d, _display: 1 }));
+    return { data: equalData, accessor: '_display', absolute: false }; // show 33% labels
+  }
+  return { data: revenueSummaryData, accessor: 'population', absolute: true }; // your current behavior
+}, [revenueSummaryData]);
+
 
   const getRevenueData = useCallback(async () => {
     try {
@@ -510,7 +524,7 @@ const DoctorDashboard = () => {
           </TouchableOpacity>
           <Text style={styles.headerText}>
             {(() => { const hour = new Date().getHours(); if (hour < 12) return 'Good Morning,'; if (hour < 17) return 'Good Afternoon,'; return 'Good Evening,'; })()}
-            {'\n'}Dr. {formData.name}
+            {'\n'}{currentuserDetails?.role === 'doctor' && 'Dr. '}{formData?.name}
           </Text>
           <View style={styles.rightIcons} />
         </View>
@@ -550,19 +564,19 @@ allowFontScaling={false}
               </View>
             </View>
           </View>
-
+{currentuserDetails.role === "doctor" && 
           <View style={styles.revenueCard}>
             <View style={styles.revenueRow}>
               <View style={styles.revenueBoxPurple}>
                 <Text style={styles.revenueAmountPurple}>₹{todayRevenue}</Text>
-                <Text style={styles.revenueSubLabel}>Today&apos;s Revenue</Text>
+                <Text style={styles.revenueSubLabel}>Today's Revenue</Text>
               </View>
               <View style={styles.revenueBoxOrange}>
                 <Text style={styles.revenueAmountOrange}>₹{monthRevenue}</Text>
                 <Text style={styles.revenueSubLabelOrange}>This Month</Text>
               </View>
             </View>
-          </View>
+          </View>}
         </View>
 
         {/* Patient Appointments (with date) */}
@@ -613,6 +627,7 @@ allowFontScaling={false}
         </View>
 
         {/* Revenue Summary (with date range like web) */}
+        {currentuserDetails.role === 'doctor' && 
         <View style={[styles.card, { alignItems: 'flex-start', paddingLeft: 0 }]}>
           <View style={{ paddingHorizontal: 16, width: '100%' }}>
             <Text style={styles.title}>Revenue Summary</Text>
@@ -661,19 +676,22 @@ allowFontScaling={false}
           )}
 
           {/* Pie */}
-          <PieChart
-            data={revenueSummaryData}
-            width={screenWidth - 30}
-            height={200}
-            chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
-            accessor={'population'}
-            backgroundColor={'transparent'}
-            paddingLeft={'0'}
-            hasLegend={true}
-            absolute
-            style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
-          />
-        </View>
+          
+         <PieChart
+  data={pieState.data}
+  width={screenWidth - 30}
+  height={200}
+  chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
+  accessor={pieState.accessor}
+  backgroundColor={'transparent'}
+  paddingLeft={'0'}
+  hasLegend={true}
+  absolute={pieState.absolute}
+  style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
+/>
+
+
+        </View>}
 
         {/* Patient Feedback (dynamic) */}
         <View style={styles.card}>
@@ -757,7 +775,7 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 14, color: '#333' },
 
   table: { marginTop: 10, borderTopWidth: 1, borderColor: '#ccc' },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#f0f0f0', paddingVertical: 8, paddingHorizontal: 10 },
+  tableHeader: { flexDirection: 'row', backgroundColor: '#f0f0f0', paddingVertical: 8, paddingHorizontal: 10,  },
   headerCell: { flex: 1, fontWeight: 'bold', color: '#333' },
   tableRow: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' },
   nameColumn: { flex: 1 },

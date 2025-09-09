@@ -258,7 +258,7 @@ export default function Pharmacy() {
 
   return (
     <View style={styles.container}>
-      <Toast />
+      
 
       {/* Header */}
       <View style={styles.headerRow}>
@@ -493,6 +493,7 @@ export default function Pharmacy() {
           </View>
         </View>
       </Modal>
+      <Toast />
     </View>
   );
 }

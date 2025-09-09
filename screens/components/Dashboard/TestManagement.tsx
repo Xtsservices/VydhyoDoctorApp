@@ -83,18 +83,19 @@ export default function TestManagement() {
 
       const resp = await AuthPost("lab/addtest", { testName: name.trim(), testPrice: p, doctorId }, token);
       console.log("response of test", resp)
-      if (resp?.data?.status === 'success') {
+      if (resp?.status === 'success') {
         Toast.show({ type: "success", text1: "Test added" });
         setAddOpen(false);
         fetchTests(1);
       } else {
-        throw new Error(resp?.data?.message?.message);
+        Alert.alert("Error", resp?.message?.message)
+        // throw new Error(resp?.message?.message);
       }
     } catch (e: any) {
         console.log(e?.response, "error response")
       const msg = e?.response?.status === 400 && e?.response?.data?.message?.message === "A test with this name already exists"
         ? "A test with this name already exists"
-        : (e?.response?.data?.message?.message || "Failed to add test");
+        : (e?.response?.data?.message?.message || "Failed to   ");
         Alert.alert("Error", e)
       Toast.show({ type: "error", text1: msg });
     } finally {

@@ -485,7 +485,7 @@ console.log(formData, "complete form data")
               setPatientSelectModalVisible(false);
             }}
           >
-            <Text>{patient.firstname} {patient.lastname} </Text>
+            <Text  style={styles.patientText}>{patient.firstname} {patient.lastname} </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -905,6 +905,10 @@ patientOption: {
   borderBottomWidth: 1,
   borderBottomColor: '#ccc',
 },
+patientText:{
+  color:'black'
+},
+
 cancelButton: {
   marginTop: 15,
   backgroundColor: '#e74c3c',

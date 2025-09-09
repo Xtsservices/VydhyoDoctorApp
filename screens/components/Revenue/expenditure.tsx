@@ -496,6 +496,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D9D9D9',
     marginBottom: 16,
+    color:'black'
   },
   textArea: {
     height: 80,
@@ -506,6 +507,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D9D9D9',
     marginBottom: 16,
+    color:'black'
   },
   modalButtons: {
     flexDirection: 'row',
