@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Alert, View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Platform,
-  Modal,ActivityIndicator
+  Modal, ActivityIndicator
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -36,6 +36,7 @@ const AddAppointment = () => {
     // Valid formats: 6m, 2y, 15d, 1y 2m, 3m 15d, etc.
     return /^(\d+[myd])(\s\d+[myd])*$/i.test(age.replace(/\s+/g, ' ').trim());
   };
+  const [noSlotsModalVisible, setNoSlotsModalVisible] = useState(false);
   const calculateAgeFromDOB = (dob: string): string => {
     if (!dob) return "";
 
@@ -524,43 +525,28 @@ const AddAppointment = () => {
         console.log(availableSlots);
 
         if (availableSlots.length === 0) {
-          Alert.alert('No slots available for the selected clinic on the selected date');
+          // Show the modal when no slots are available
+          setNoSlotsModalVisible(true);
         }
 
         setTimeSlots(availableSlots);
       } else if (response.status === "success") {
         setTimeSlots([]);
-        Toast.show({
-          type: 'Error',
-          text1: 'Error',
-          text2: 'No Time Slots Found For this Clinic For the selected Date',
-          position: 'top',
-          visibilityTime: 3000,
-        });
+        // Show the modal when no slots are found
+        setNoSlotsModalVisible(true);
       } else if (response.status === 'error') {
         console.log("no slots found");
         setMessage(`*${response?.message?.message}` || "*No slots Found");
-        Toast.show({
-          type: 'error',
-          text1: 'error',
-          text2: 'No Time Slots Found For this Clinic For the selected Date',
-          position: 'top',
-          visibilityTime: 3000,
-        });
+        // Show the modal when there's an error indicating no slots
+        setNoSlotsModalVisible(true);
       }
     } catch (error) {
       console.error("Error fetching time slots:", error);
-      Toast.show({
-        type: 'error',
-        text1: 'error',
-        text2: 'No Time Slots Found For this Clinic For the selected Date',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      // Show the modal when there's an error
+      setNoSlotsModalVisible(true);
       setTimeSlots([]);
     }
   }, []);
-
 
 
   const calculateAge = useCallback((dob: string): string => {
@@ -606,6 +592,46 @@ const AddAppointment = () => {
           <Text style={styles.searchButtonText}>Search</Text>
         </TouchableOpacity>
       </View>
+      {/* No Slots Available Modal */}
+<Modal
+  visible={noSlotsModalVisible}
+  animationType="slide"
+  transparent={true}
+  onRequestClose={() => setNoSlotsModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContainer}>
+      {/* Close button in top right corner */}
+      <TouchableOpacity 
+        style={styles.closeButton}
+        onPress={() => setNoSlotsModalVisible(false)}
+      >
+        <Ionicons name="close" size={24} color="#6B7280" />
+      </TouchableOpacity>
+      
+      <View style={styles.modalHeader}>
+        <Ionicons name="warning" size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
+        <Text style={styles.modalTitle}>No Slots Available</Text>
+      </View>
+      
+      <Text style={styles.modalMessage}>
+        There are no available time slots for the selected clinic on the selected date.
+        Please choose a different date or clinic.
+      </Text>
+      
+      {/* Single action button */}
+      <TouchableOpacity
+        style={styles.singleActionButton}
+        onPress={() => {
+          setNoSlotsModalVisible(false);
+          navigation.navigate('Availability');
+        }}
+      >
+        <Text style={styles.singleActionButtonText}>Go to Availability Settings</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
 
       <Modal
         visible={isPatientSelectModalVisible}
@@ -628,7 +654,7 @@ const AddAppointment = () => {
                     setPatientSelectModalVisible(false);
                   }}
                 >
-                  <Text  style={styles.patientText}>{patient.firstname} {patient.lastname} </Text>
+                  <Text style={styles.patientText}>{patient.firstname} {patient.lastname} </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -980,9 +1006,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabledButton: {
-  backgroundColor: '#ccc', // Gray out when disabled
-  opacity: 0.7,
-},
+    backgroundColor: '#ccc', // Gray out when disabled
+    opacity: 0.7,
+  },
   timeSlotContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -991,6 +1017,90 @@ const styles = StyleSheet.create({
     marginLeft: 20,
     gap: 10,           // Add this for spacing between slots
     rowGap: 10,        // Add this for vertical spacing between rows
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 10,
+    color: '#1f2937',
+  },
+  modalMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#374151',
+    lineHeight: 22,
+  },
+  closeButton: {
+  position: 'absolute',
+  top: 15,
+  right: 15,
+  zIndex: 1,
+},
+singleActionButton: {
+  backgroundColor: '#2563EB',
+  paddingVertical: 12,
+  paddingHorizontal: 20,
+  borderRadius: 8,
+  alignItems: 'center',
+  marginTop: 20,
+  width: '100%',
+},
+singleActionButtonText: {
+  color: 'white',
+  fontWeight: '600',
+  fontSize: 16,
+},
+  modalButtonContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  width: '100%',
+  marginTop: 15,
+},
+modalSecondaryButton: {
+  backgroundColor: '#6B7280',
+  flex: 1,
+  marginRight: 10,
+},
+modalPrimaryButton: {
+  backgroundColor: '#2563EB',
+  flex: 1,
+},
+modalPrimaryButtonText: {
+  color: 'white',
+  fontWeight: '600',
+  fontSize: 14,
+},
+modalButton: {
+  paddingVertical: 12,
+  paddingHorizontal: 20,
+  borderRadius: 8,
+  alignItems: 'center',
+},
+  modalButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
   },
 
   inputContainer: {
@@ -1034,9 +1144,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
   },
-patientText:{
-  color:'black'
-},
+  patientText: {
+    color: 'black'
+  },
 
   cancelButton: {
     marginTop: 15,
