@@ -564,7 +564,7 @@ allowFontScaling={false}
               </View>
             </View>
           </View>
-{currentuserDetails.role === "doctor" && 
+{currentuserDetails?.role === "doctor" && 
           <View style={styles.revenueCard}>
             <View style={styles.revenueRow}>
               <View style={styles.revenueBoxPurple}>
@@ -627,7 +627,7 @@ allowFontScaling={false}
         </View>
 
         {/* Revenue Summary (with date range like web) */}
-        {currentuserDetails.role === 'doctor' && 
+        {currentuserDetails?.role === 'doctor' && 
         <View style={[styles.card, { alignItems: 'flex-start', paddingLeft: 0 }]}>
           <View style={{ paddingHorizontal: 16, width: '100%' }}>
             <Text style={styles.title}>Revenue Summary</Text>
@@ -697,10 +697,10 @@ allowFontScaling={false}
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Patient Feedback</Text>
-            <View style={styles.navButtons}>
+            {/* <View style={styles.navButtons}>
               <TouchableOpacity><AntDesign name="left" size={16} color="#bfbfbf" /></TouchableOpacity>
               <TouchableOpacity><AntDesign name="right" size={16} color="#bfbfbf" /></TouchableOpacity>
-            </View>
+            </View> */}
           </View>
           <ScrollView style={{ maxHeight: 220 }}>
             {reviews.length === 0 ? (

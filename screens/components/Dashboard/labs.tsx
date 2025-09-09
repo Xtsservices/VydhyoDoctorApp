@@ -111,7 +111,7 @@ export default function LabsScreen() {
             style={[styles.tab, active === t && styles.tabActive]}
           >
             <Text style={[styles.tabText, active === t && styles.tabTextActive]}>
-              {t === "Patients" ? "Patients" : t === "Completed" ? "Completed" : "Tests"}
+              {t === "Patients" ? "Pending" : t === "Completed" ? "Completed" : "Tests"}
             </Text>
           </TouchableOpacity>
         ))}

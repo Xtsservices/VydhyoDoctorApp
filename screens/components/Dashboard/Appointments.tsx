@@ -521,7 +521,7 @@ const AppointmentsScreen = () => {
       <View style={styles.apptCard}>
         <View style={styles.row}>
            <View style={styles.placeholderCircle}>
-        <Text style={styles.placeholderText}>{appt.patientName[0] || ""}</Text>
+        <Text style={styles.placeholderText}>{appt.patientName[0].toUpperCase() || ""}</Text>
       </View>
           {/* <Image source={{ uri: appt.avatar }} style={styles.avatar} /> */}
           <View style={{ flex: 1 }}>

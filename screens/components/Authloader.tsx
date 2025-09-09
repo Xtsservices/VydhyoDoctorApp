@@ -44,7 +44,7 @@ const AuthLoader = () => {
           dispatch({ type: 'currentUserID', payload: { userId: storedUserId } });
 
           if (userData.role !== 'doctor') {
-            navigation.replace('AccountVerified');
+            navigation.replace('DoctorDashboard');
             return;
           }
 
@@ -72,11 +72,13 @@ const AuthLoader = () => {
   const determineNextScreen = async (userData: any): Promise<{ screen: string; params?: any }> => {
     console.log(userData, "complete user data")
     if (userData?.role !== 'doctor') {
-      return { screen: 'AccountVerified' };
+      return { screen: 'DoctorDashboard' };
     }
 
-    if (userData?.status === 'approved') {
+    if (userData?.status === 'approved' && userData.isFirstLogin===true) {
       return { screen: 'AccountVerified' };
+    }else{
+      return { screen: 'DoctorDashboard' };
     }
 
     const storedStep = await AsyncStorage.getItem('currentStep');

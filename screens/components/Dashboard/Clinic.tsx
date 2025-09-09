@@ -173,7 +173,7 @@ const ClinicManagementScreen = () => {
 
       let data: any[] | undefined;
       if ('data' in res && Array.isArray(res.data?.data)) {
-        data = res.data.data;
+        data = res.data?.data?.reverse();
       } else {
         data = undefined;
       }
@@ -725,7 +725,7 @@ const ClinicManagementScreen = () => {
         <View style={styles.searchBox}>
           <Icon name="magnify" size={20} color="#6B7280" style={styles.searchIcon} />
           <TextInput
-            placeholder="Search by Clinic Name or ID"
+            placeholder="Search by Clinic Name "
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
@@ -1142,12 +1142,15 @@ const ClinicManagementScreen = () => {
             </View>
           ) : (
             clinics.map((clinic) => {
-              console.log("cliiiiiiiiiiiiiii",clinic)
               const statusStyle = getStatusStyle(clinic.status);
               return (
                 <View key={clinic.id} style={styles.card}>
                   <View style={styles.cardHeader}>
-                    <Image source={{ uri: clinic.Avatar }} style={styles.avatar} />
+
+                    <View style={styles.placeholderCircle}>
+                            <Text style={styles.placeholderText}>{clinic.name[0].toUpperCase() || ""}</Text>
+                          </View>
+                    {/* <Image source={{ uri: clinic.Avatar }} style={styles.avatar} /> */}
                     <View style={styles.clinicInfo}>
                       <Text style={styles.clinicName}>{clinic.name}</Text>
                       <Text style={styles.clinicType}>{clinic.type}</Text>
@@ -1320,7 +1323,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -1654,5 +1657,10 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
   },
+     placeholderCircle: {
+    width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
+    justifyContent: 'center', alignItems: 'center', marginRight: 16,
+  },
+  placeholderText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
 });
 

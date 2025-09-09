@@ -34,7 +34,10 @@ interface UserState {
 }
 
 const TotalExpenditureScreen: React.FC = () => {
-  const user = useSelector((state: UserState) => state.currentUserData);
+    const user = useSelector((state: any) => state.currentUser);
+  // const user = useSelector((state: UserState) => state.currentUserData);
+  // console.log(currentUserDetails, "1234qwe")
+
   const userId = user?.userId;
   const [searchText, setSearchText] = useState('');
   const [selectedDate, setSelectedDate] = useState(moment());
@@ -66,7 +69,7 @@ const TotalExpenditureScreen: React.FC = () => {
       }
       const token = await AsyncStorage.getItem('authToken');
 
-      const response = await AuthFetch(`finance/getExpense?startDate=${startDate}&endDate=${endDate}`, token);
+      const response = await AuthFetch(`finance/getExpense/${user.userId}?startDate=${startDate}&endDate=${endDate}`, token);
       console.log(response, "expenditure response")
       
       if (response.data.success) {

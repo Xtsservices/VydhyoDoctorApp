@@ -520,7 +520,7 @@ const isPastSlot = (slotTimeStr, fromDate) => {
             <Picker.Item label="Select Clinic" value="" />
             {clinics?.length > 0 &&
               clinics.map((clinic) => (
-                <Picker.Item key={clinic.value} label={clinic.label} value={clinic.value} style={{ color: '#979393ff' }} />
+                <Picker.Item key={clinic.value} label={clinic.label} value={clinic.value} style={{ color: '#171515ff' }} />
               ))}
           </Picker>
         </View>
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     width: '100%',
-    color:' #3f3e3eff',
+    color:' #2e2c2cff',
   },
   row: {
     flexDirection: 'row',
@@ -824,15 +824,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   arrowButton: {
-    width: 30,
+    width: 20,
     height: 20,
+    display:'flex',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#ddd',
     marginBottom: 2,
     color: '#333',
-    paddingLeft: 5,
+    paddingLeft: 2,
   },
   periodButton: {
     marginLeft: 8,
@@ -881,6 +882,8 @@ const styles = StyleSheet.create({
   },
   slotGrid: {
     flexDirection: 'row',
+    alignItems:'center',
+    justifyContent:'center',
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 20,
