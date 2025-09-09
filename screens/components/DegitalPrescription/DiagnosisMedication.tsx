@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { AuthPost, AuthFetch } from '../../auth/auth';
@@ -212,14 +213,19 @@ const PrescriptionScreen = () => {
   const validateDosage = (dosage: string) => (/^\d+\s*(mg|ml|g|tablet|tab|capsule|cap|spoon|drop)s?$/i).test(dosage);
 
   const validateMedication = (med: any) => {
-    if (!med.name.trim()) return Toast.show({ type: 'error', text1: 'Enter a valid medicine name' }), false;
-    if (!med.type) return Toast.show({ type: 'error', text1: 'Select a medicine type' }), false;
-    if (!med.dosage.trim() || !validateDosage(med.dosage)) return Toast.show({ type: 'error', text1: 'Enter valid dosage' }), false;
-    if (med.duration === null || med.duration <= 0) return Toast.show({ type: 'error', text1: 'Duration must be > 0' }), false;
-    if (!med.frequency) return Toast.show({ type: 'error', text1: 'Select a frequency' }), false;
+    if (!med.name.trim()) return Alert.alert('error', 'Enter a valid medicine name' ), false;
+    if (!med.type) return Alert.alert('error', 'Select a medicine type' ), false;
+    if (!med.dosage.trim() || !validateDosage(med.dosage)){
+      console.log("dosage")
+      Alert.alert("Error", 'Enter valid dosage Ex:100mg')
+      return;
+//  return Toast.show({ type: 'error', text1: 'Enter valid dosage' }), false;
+    }
+    if (med.duration === null || med.duration <= 0) return Alert.alert('error', 'Duration must be > 0' ), false;
+    if (!med.frequency) return Alert.alert('error',  'Select a frequency' ), false;
     const required = med.frequency === 'SOS' ? 0 : med.frequency.split('-').filter((x) => x === '1').length;
-    if (med.timing.length !== required) return Toast.show({ type: 'error', text1: `Select ${required} timing(s)` }), false;
-    if (med.quantity <= 0) return Toast.show({ type: 'error', text1: 'Quantity must be greater than 0' }), false;
+    if (med.timing.length !== required) return Alert.alert('error', `Select ${required} timing(s)` ), false;
+    if (med.quantity <= 0) return Alert.alert('error',  'Quantity must be greater than 0' ), false;
     return true;
   };
 
@@ -234,7 +240,10 @@ const PrescriptionScreen = () => {
   };
 
   const handleNext = () => {
-    if (medications.length > 0 && !validateMedication(medications[medications.length - 1])) return;
+    if (medications.length > 0 && !validateMedication(medications[medications.length - 1])){
+      console.log("123456")
+return;
+    } 
     navigation.navigate('AdviceFollowup', { patientDetails, formData });
   };
 

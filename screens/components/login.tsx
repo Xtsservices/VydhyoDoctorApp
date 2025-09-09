@@ -61,18 +61,18 @@ const DoctorLoginScreen = () => {
     try {
       const response = await UsePost('auth/login', {
         mobile,
-        userType: 'doctor',
+        // userType: 'doctor',
         language: 'tel',
       });
 
-      if (response.status === 'success' && response.data) {
-        setUserId(response.data.userId);
+      if (response?.status === 'success' && response?.data) {
+        setUserId(response?.data?.userId);
         setShowOtp(true);
         setTimeout(() => otpRefs.current[0]?.focus(), 100);
         Toast.show({
           type: 'success',
           text1: 'Success',
-          text2: response.data.message || 'OTP sent successfully',
+          text2: response?.data?.message || 'OTP sent successfully',
           position: 'top',
         });
       } else {

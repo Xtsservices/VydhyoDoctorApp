@@ -75,7 +75,8 @@ const AuthLoader = () => {
       return { screen: 'DoctorDashboard' };
     }
 
-    if (userData?.status === 'approved' && userData.isFirstLogin===true) {
+    if (userData?.status === 'approved' && userData?.isFirstLogin===true) {
+      console.log("12qw")
       return { screen: 'AccountVerified' };
     }else{
       return { screen: 'DoctorDashboard' };

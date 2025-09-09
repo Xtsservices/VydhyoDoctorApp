@@ -65,13 +65,14 @@ const EPrescriptionList = () => {
   };
 
   const handleEPrescription = (appointment) => {
+    console.log(appointment, "appointmentDetails")
     const patientDetails = {
       doctorId: appointment.doctorId,
-      patientId: appointment.userId || appointment.appointmentId,
+      patientId: appointment?.userId || appointment?.appointmentId,
       patientName: appointment.patientName,
       appointmentDate: appointment.appointmentDate,
       appointmentType: appointment.appointmentType,
-      appointmentId: appointment.appointmentId,
+      appointmentId: appointment?.appointmentId,
       phone: appointment.patientDetails?.mobile || 'N/A',
       clinic: appointment.clinicName || 'Unknown Clinic',
       type: appointment.appointmentType,

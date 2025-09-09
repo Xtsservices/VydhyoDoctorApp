@@ -22,6 +22,7 @@ const AdviceScreen = () => {
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
+
       advice: {
         ...prev.advice,
         [name]: value,

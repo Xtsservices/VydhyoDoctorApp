@@ -157,9 +157,9 @@ const PatientDetails = () => {
             ...prev,
             patientInfo: {
               ...prev.patientInfo,
-              appointmentId: patientDetails.id,
-              patientName: patientFormDetails.firstname,
-              patientId: patientDetails.patientId,
+              appointmentId: patientDetails?.appointmentId||  patientDetails?.id,
+              patientName: patientFormDetails?.firstname,
+              patientId: patientDetails?.patientId,
               age: patientFormDetails.age,
               gender: patientFormDetails.gender,
               mobileNumber: patientFormDetails.mobile,
