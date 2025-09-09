@@ -153,9 +153,9 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
       ) : appointments.length > 0 ? (
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.headerCell}>Name</Text>
-            <Text style={styles.headerCell}>Type</Text>
-            <Text style={styles.headerCell}>Status</Text>
+            <Text style={[styles.headerCell, { flex: 1 }]}>Name</Text>
+            <Text style={[styles.headerCell, { flex: 1 }]}>Type</Text>
+            <Text style={[styles.headerCell, { flex: 1 }]}>Status</Text>
           </View>
 
           {appointments.slice(0, viewAll ? appointments.length : 5).map((item, index) => {
@@ -163,19 +163,18 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
             const statusInfo = getStatusColors(item.appointmentStatus);
             return (
               <View key={index} style={styles.tableRow}>
-                <View style={styles.nameColumn}>
+                <View style={[styles.nameColumn, { flex: 2 }]}>
                   <Text style={styles.nameText}>{item.patientName || 'Unknown'}</Text>
-                  {/* unified date+time: "6 Sep 2025 11:45AM" */}
                   <Text style={styles.datetimeText}>
                     {formatApptDateTime(item.appointmentDate, item.appointmentTime)}
                   </Text>
                 </View>
 
-                <View style={[styles.nameColumn]}>
+                <View style={[styles.nameColumn, { flex: 1 }]}>
                   <Text style={[styles.pillText, { color: typeInfo.fg }]}>{typeInfo.label}</Text>
                 </View>
 
-                <View style={[styles.pill, { backgroundColor: statusInfo.bg }]}>
+                <View style={[styles.pill, { flex: 1, backgroundColor: statusInfo.bg }]}>
                   <Text style={[styles.pillText, { color: statusInfo.fg }]}>
                     {item.appointmentStatus
                       ? `${item.appointmentStatus[0].toUpperCase()}${item.appointmentStatus.slice(1)}`
@@ -520,7 +519,7 @@ const pieState = useMemo(() => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Sidebar')}>
-            <Ionicons style={styles.title} size={28} name="menu" color="#000000"/>
+            <Ionicons style={styles.title} size={28} name="menu" color="#000000" />
           </TouchableOpacity>
           <Text style={styles.headerText}>
             {(() => { const hour = new Date().getHours(); if (hour < 12) return 'Good Morning,'; if (hour < 17) return 'Good Afternoon,'; return 'Good Evening,'; })()}
@@ -543,10 +542,10 @@ const pieState = useMemo(() => {
               <Text style={styles.mainNumber}>{dashboardData.appointmentCounts.today}</Text>
               {/* FIX: always visible on small devices / large font scales */}
               <Text
-style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
-numberOfLines={2}
-adjustsFontSizeToFit={true}
-allowFontScaling={false}
+                style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
+                numberOfLines={2}
+                adjustsFontSizeToFit={true}
+                allowFontScaling={false}
               >
                 Today's Appointments
               </Text>
@@ -697,10 +696,8 @@ allowFontScaling={false}
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Patient Feedback</Text>
-            {/* <View style={styles.navButtons}>
-              <TouchableOpacity><AntDesign name="left" size={16} color="#bfbfbf" /></TouchableOpacity>
-              <TouchableOpacity><AntDesign name="right" size={16} color="#bfbfbf" /></TouchableOpacity>
-            </View> */}
+            <View style={styles.navButtons}>
+            </View>
           </View>
           <ScrollView style={{ maxHeight: 220 }}>
             {reviews.length === 0 ? (
@@ -738,7 +735,7 @@ allowFontScaling={false}
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#F0FDF4' },
   scrollView: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 ,marginTop: 20},
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, marginTop: 20 },
   headerText: { color: '#000', fontSize: 20, fontWeight: 'bold' },
   rightIcons: { flexDirection: 'row', alignItems: 'center' },
   appointmentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 0, margin: 10, borderRadius: 10 },
@@ -775,10 +772,28 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 14, color: '#333' },
 
   table: { marginTop: 10, borderTopWidth: 1, borderColor: '#ccc' },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#f0f0f0', paddingVertical: 8, paddingHorizontal: 10,  },
-  headerCell: { flex: 1, fontWeight: 'bold', color: '#333' },
-  tableRow: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' },
-  nameColumn: { flex: 1 },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 8,
+    paddingHorizontal: 10
+  },
+  headerCell: {
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center'
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+    alignItems: 'center'
+  },
+  nameColumn: {
+    paddingRight: 8
+  },
   nameText: { fontWeight: '600', fontSize: 14, color: '#0A2342' },
   datetimeText: { color: '#777', fontSize: 12 },
   pill: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 16, alignSelf: 'flex-start' },
@@ -790,7 +805,7 @@ const styles = StyleSheet.create({
   clinicNavContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   clinicInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   clinicName: { fontSize: 16, fontWeight: '600', color: '#0A2342' },
-  sectionLabel: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 8, color:'black' },
+  sectionLabel: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 8, color: 'black' },
   slotContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   slot: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#f0f8f0', borderRadius: 15, borderWidth: 1, borderColor: '#1b5e20' },
   slotText: { fontSize: 12, fontWeight: '600', color: '#1b5e20' },
@@ -814,4 +829,3 @@ const styles = StyleSheet.create({
 });
 
 export default DoctorDashboard;
- 
