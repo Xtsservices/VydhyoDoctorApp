@@ -37,15 +37,15 @@ const AccountsScreen = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [selectedTxn, setSelectedTxn] = useState(null);
   const [showTxnModal, setShowTxnModal] = useState(false);
-    const navigation = useNavigation<any>();
-   
+  const navigation = useNavigation<any>();
+
 
   const handleViewTxn = (txn) => {
     setSelectedTxn(txn);
     setShowTxnModal(true);
   };
 
-   const [accountSummary, setAccountSummary] = useState({
+  const [accountSummary, setAccountSummary] = useState({
     totalReceived: 0,
     totalExpenditure: 0,
     pendingTransactions: 0,
@@ -58,7 +58,7 @@ const AccountsScreen = () => {
       const response = await AuthFetch(`finance/getDoctorRevenue?${doctorId}`, token);
       console.log(response, 'revenue summery')
       if (response.status === 'success') {
-         const apiData = response.data.data;
+        const apiData = response.data.data;
 
         setAccountSummary((prev) => ({
           ...prev,
@@ -161,29 +161,29 @@ const AccountsScreen = () => {
     }
   };
 
- const exportTransactionsToPDF = async (transactions: any[]) => {
-  try {
-    if (Platform.OS === 'android' && Platform.Version < 29) {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
-      );
-      if (granted === PermissionsAndroid.RESULTS.DENIED) {
-        Alert.alert('Permission Denied', 'Storage permission is required to save the PDF.');
-        return;
-      } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-        Alert.alert(
-          'Permission Required',
-          'Storage permission is required to save the PDF. Please enable it in Settings > Apps > Your App > Permissions.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
-          ]
+  const exportTransactionsToPDF = async (transactions: any[]) => {
+    try {
+      if (Platform.OS === 'android' && Platform.Version < 29) {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
         );
-        return;
+        if (granted === PermissionsAndroid.RESULTS.DENIED) {
+          Alert.alert('Permission Denied', 'Storage permission is required to save the PDF.');
+          return;
+        } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+          Alert.alert(
+            'Permission Required',
+            'Storage permission is required to save the PDF. Please enable it in Settings > Apps > Your App > Permissions.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]
+          );
+          return;
+        }
       }
-    }
 
-    const htmlContent = `
+      const htmlContent = `
       <html>
         <head>
           <style>
@@ -206,8 +206,8 @@ const AccountsScreen = () => {
               <th>Time</th>
             </tr>
             ${transactions
-              .map(
-                (txn) => `
+          .map(
+            (txn) => `
                   <tr>
                     <td>${txn.patientName || '-'}</td>
                     <td>${txn.paymentId || '-'}</td>
@@ -216,36 +216,36 @@ const AccountsScreen = () => {
                     <td>${dayjs(txn.paidAt || txn.updatedAt).format('HH:mm')}</td>
                   </tr>
                 `
-              )
-              .join('')}
+          )
+          .join('')}
           </table>
         </body>
       </html>
     `;
 
 
-   const timestamp = dayjs().format('YYYYMMDD_HHmmss');
-    const fileName = `Transaction_Report_${timestamp}.pdf`;
+      const timestamp = dayjs().format('YYYYMMDD_HHmmss');
+      const fileName = `Transaction_Report_${timestamp}.pdf`;
 
-    // Step 1: Generate PDF in temporary path
-    const pdf = await RNHTMLtoPDF.convert({
-      html: htmlContent,
-      fileName: `Transaction_Report_${timestamp}`,
-      base64: false,
-    });
+      // Step 1: Generate PDF in temporary path
+      const pdf = await RNHTMLtoPDF.convert({
+        html: htmlContent,
+        fileName: `Transaction_Report_${timestamp}`,
+        base64: false,
+      });
 
-    // Step 2: Move it to the actual Downloads folder
-    const downloadsPath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-    await RNFS.moveFile(pdf.filePath!, downloadsPath);
+      // Step 2: Move it to the actual Downloads folder
+      const downloadsPath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+      await RNFS.moveFile(pdf.filePath!, downloadsPath);
 
-    Alert.alert('Success', `PDF saved in Files > Downloads as ${fileName}`);
-    console.log('Saved at:', downloadsPath);
- 
-  } catch (error) {
-    console.error('PDF export failed:', error);
-    Alert.alert('Error', 'Failed to generate PDF.');
-  }
-};
+      Alert.alert('Success', `PDF saved in Files > Downloads as ${fileName}`);
+      console.log('Saved at:', downloadsPath);
+
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      Alert.alert('Error', 'Failed to generate PDF.');
+    }
+  };
 
   console.log(searchText, 'patient id or transaction id');
 
@@ -262,13 +262,13 @@ const AccountsScreen = () => {
             <Text style={{ color: '#333' }}>Total Amount Received</Text>
           </View>
           <TouchableOpacity
-  style={[styles.summaryCard, { borderColor: '#EF4444' }]}
-  onPress={() => navigation.navigate('expenditure')}
->
-  <Icon name="cash-remove" size={24} color="#EF4444" />
-  <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
-  <Text style={{ color: '#333' }}>Total Expenditure</Text>
-</TouchableOpacity>
+            style={[styles.summaryCard, { borderColor: '#EF4444' }]}
+            onPress={() => navigation.navigate('expenditure')}
+          >
+            <Icon name="cash-remove" size={24} color="#EF4444" />
+            <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
+            <Text style={{ color: '#333' }}>Total Expenditure</Text>
+          </TouchableOpacity>
           {/* <View style={[styles.summaryCard, { borderColor: '#EF4444' }]}>
             <Icon name="cash-remove" size={24} color="#EF4444" />
             <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
@@ -440,13 +440,13 @@ const AccountsScreen = () => {
                     <View style={styles.column}>
                       <Text style={styles.modalLabel}>Paid At:</Text>
                       <Text style={styles.modalValue}>
-                        {dayjs(selectedTxn.paidAt).format('YYYY-MM-DD HH:mm')}
+                        {dayjs(selectedTxn.paidAt).format('YY-MMM-YYYY h:mm A')}
                       </Text>
                     </View>
                     <View style={styles.column}>
                       <Text style={styles.modalLabel}>Created At:</Text>
                       <Text style={styles.modalValue}>
-                        {dayjs(selectedTxn?.createdAt).format('YYYY-MM-DD HH:mm')}
+                        {dayjs(selectedTxn?.createdAt).format('YY-MMM-YYYY h:mm A')}
                       </Text>
                     </View>
                   </View>
