@@ -20,23 +20,24 @@ import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import dayjs from 'dayjs';
 import Toast from 'react-native-toast-message';
 import { AuthPost, AuthFetch, UploadFiles } from '../../auth/auth';
- 
+
 const PrescriptionPreview = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { patientDetails, formData } = route.params;
- 
+
   const currentuserDetails = useSelector((state) => state.currentUser);
   const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy;
- 
+
   const [error, setError] = useState(null);
   const [selectedClinic, setSelectedClinic] = useState(null);
+  const [isSharing, setIsSharing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
- 
+
   function transformEprescriptionData(formData) {
     const { doctorInfo, patientInfo, vitals, diagnosis, advice } = formData;
     const appointmentId = patientDetails?.id;
- 
+
     return {
       appointmentId: appointmentId,
       userId: patientInfo.patientId,
@@ -69,22 +70,22 @@ const PrescriptionPreview = () => {
         PrescribeMedNotes: diagnosis.medicationNotes || null,
         selectedTests: Array.isArray(diagnosis.selectedTests)
           ? diagnosis.selectedTests.map((test) => ({
-              testName: test.testName || test,
-              testInventoryId: test.testInventoryId || null,
-            }))
+            testName: test.testName || test,
+            testInventoryId: test.testInventoryId || null,
+          }))
           : [],
         medications: Array.isArray(diagnosis?.medications)
           ? diagnosis?.medications?.map((med) => ({
-              medInventoryId: med.medInventoryId || null,
-              medName: med.medName || med.name || "Not specified",
-              quantity: med.quantity || 0,
-              medicineType: med.medicineType || "Not specified",
-              dosage: med.dosage || med.dosagePattern || "As directed",
-              duration: med.duration || "Not specified",
-              timings: med.timings || [med.timing] || [],
-              frequency: med.frequency || "Not specified",
-              notes: med.notes || "Not specified",
-            }))
+            medInventoryId: med.medInventoryId || null,
+            medName: med.medName || med.name || "Not specified",
+            quantity: med.quantity || 0,
+            medicineType: med.medicineType || "Not specified",
+            dosage: med.dosage || med.dosagePattern || "As directed",
+            duration: med.duration || "Not specified",
+            timings: med.timings || [med.timing] || [],
+            frequency: med.frequency || "Not specified",
+            notes: med.notes || "Not specified",
+          }))
           : [],
       },
       advice: {
@@ -96,7 +97,7 @@ const PrescriptionPreview = () => {
       updatedBy: currentuserDetails.userId || doctorInfo.doctoId,
     };
   }
- 
+
   // Fallback builder so addattachprescription never fails if selectedClinic hasn't loaded
   const buildSelectedClinicPayload = () => {
     if (selectedClinic) return selectedClinic;
@@ -110,12 +111,12 @@ const PrescriptionPreview = () => {
       addressId: di.selectedClinicId || di.addressId || null,
     };
   };
- 
+
   const generatePDFContent = (data) => {
     const vitals = data?.vitals || {};
     const patient = data.patientInfo || {};
     const doctorInfo = data.doctorInfo || {};
- 
+
     const medRows = data?.diagnosis?.medications?.map(
       (med, i) => `
         <tr>
@@ -128,20 +129,20 @@ const PrescriptionPreview = () => {
         </tr>
       `
     ).join('') || '';
- 
+
     const diagnosisTags = data?.diagnosis?.diagnosisList
       ? data.diagnosis.diagnosisList.split(',').map(d => `<span style="background: #e5e7eb; padding: 4px 8px; border-radius: 12px; margin-right: 8px; text-transform: uppercase;">${d.trim()}</span>`).join('')
       : 'Not provided';
- 
+
     const adviceItems = data?.advice?.advice
       ? data.advice.advice.split('\n').map(item => item.trim() ? `<li style="margin-bottom: 4px;"><span style="margin-right: 8px;">•</span>${item}</li>` : '').join('')
       : '';
- 
+
     const appointmentDate = data.doctorInfo?.appointmentDate
       ? dayjs(data.doctorInfo.appointmentDate).format('DD MMM YYYY')
       : null;
     const appointmentTime = data.doctorInfo?.appointmentStartTime || null;
- 
+
     return `
       <html>
         <head>
@@ -377,14 +378,14 @@ ${data?.advice?.followUpDate ? `
       </html>
     `;
   };
- 
+
   const downloadPDF = async () => {
     try {
       if (Platform.OS === 'android' && Platform.Version < 33) {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
         );
- 
+
         if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
           Alert.alert(
             'Permission Required',
@@ -396,13 +397,13 @@ ${data?.advice?.followUpDate ? `
           );
           return;
         }
- 
+
         if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
           Alert.alert('Permission Denied', 'Cannot save PDF without storage permission.');
           return;
         }
       }
- 
+
       const html = generatePDFContent(formData);
       const timestamp = dayjs().format('YYYYMMDD_HHmmss');
       const fileName = `Prescription_${timestamp}`;
@@ -411,10 +412,10 @@ ${data?.advice?.followUpDate ? `
         fileName,
         base64: false,
       });
- 
+
       const downloadPath = `${RNFS.DownloadDirectoryPath}/${fileName}.pdf`;
       await RNFS.moveFile(pdf.filePath, downloadPath);
- 
+
       Alert.alert('Success', `Prescription saved in Downloads as ${fileName}.pdf`);
       console.log('PDF saved at:', downloadPath);
       return { filePath: downloadPath, fileName: `${fileName}.pdf` };
@@ -424,7 +425,7 @@ ${data?.advice?.followUpDate ? `
       throw err;
     }
   };
- 
+
   const shareViaWhatsApp = async (pdfPath, fileName) => {
     try {
       const patientNumber = formData.patientInfo?.mobileNumber;
@@ -437,12 +438,12 @@ ${data?.advice?.followUpDate ? `
         `Patient: ${formData.patientInfo?.patientName || "N/A"}\n` +
         `Doctor: ${formData.doctorInfo?.doctorName || "N/A"}\n` +
         `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}`;
- 
+
       let fileUri = pdfPath;
       if (Platform.OS === 'android') {
         fileUri = `file://${pdfPath}`;
       }
- 
+
       const whatsappUrl = `whatsapp://send?phone=${cleanedNumber}&text=${encodeURIComponent(message)}`;
       Linking.canOpenURL(whatsappUrl).then(supported => {
         if (supported) {
@@ -461,40 +462,42 @@ ${data?.advice?.followUpDate ? `
       Toast.show({ type: 'error', text1: 'Failed to share prescription' });
     }
   };
- 
+
   const handlePrescriptionAction = async (type) => {
     try {
-      setIsSaving(true);
- 
+
+      if (type === 'whatsapp') setIsSharing(true);
+      if (type === 'save') setIsSaving(true);
+
       const formattedData = transformEprescriptionData(formData, type);
       const token = await AsyncStorage.getItem('authToken');
- 
+
       const response = await AuthPost('pharmacy/addPrescription', formattedData, token);
- 
+
       const statusVal = response?.status ?? response?.data?.statusCode ?? response?.data?.status;
       const isOk = statusVal === 201 || statusVal === 200 || statusVal === 'success';
- 
+
       if (isOk) {
         const warnings = response?.data?.data?.warnings ?? [];
         const hasWarnings = Array.isArray(warnings) && warnings.length > 0;
- 
+
         if (!hasWarnings) {
           const successMessage = type === 'save'
             ? 'Prescription saved successfully'
             : 'Prescription successfully added';
           Toast.show({ type: 'success', text1: successMessage });
         }
- 
+
         if (hasWarnings) {
           warnings.forEach(w => {
             if (w?.message) Toast.show({ type: 'info', text1: w.message });
           });
         }
- 
+
         if (type === 'print') {
           return;
         }
- 
+
         if (type === 'whatsapp' || type === 'share') {
           const prescriptionId = response?.data?.prescriptionId;
           if (!prescriptionId) {
@@ -502,29 +505,29 @@ ${data?.advice?.followUpDate ? `
             Toast.show({ type: 'error', text1: 'Failed to upload attachment: Prescription ID missing' });
             return;
           }
- 
+
           // IMPORTANT: backend expects selectedClinic — include it or build fallback
           const payload = {
             formData: { ...formData, prescriptionId },
             selectedClinic: buildSelectedClinicPayload(),
           };
- 
+
           try {
             const uploadResponse = await AuthPost('pharmacy/addattachprescription', payload, token);
             const uploadOk =
               uploadResponse?.status === 200 ||
               uploadResponse?.data?.status === 'success' ||
               uploadResponse?.data?.statusCode === 200;
- 
+
             if (uploadOk) {
               Toast.show({ type: 'success', text1: 'Attachment uploaded successfully' });
- 
+
               const message =
                 `Here's my medical prescription from ${formData?.doctorInfo?.clinicName || 'Clinic'}\n` +
                 `Patient: ${formData?.patientInfo?.patientName || 'N/A'}\n` +
                 `Doctor: ${formData?.doctorInfo?.doctorName || 'N/A'}\n` +
                 `Date: ${formData?.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : 'N/A'}`;
- 
+
               const schemeUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
               const webUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
               const canOpen = await Linking.canOpenURL(schemeUrl);
@@ -542,15 +545,15 @@ ${data?.advice?.followUpDate ? `
           }
           return;
         }
- 
+
         if (type === 'download') {
           await downloadPDF();
           return;
         }
- 
+
         if (type === 'save') {
           setTimeout(() => {
-            navigation.navigate('DoctorDashboard');
+            navigation.navigate('Appointments');
           }, 3000);
           return;
         }
@@ -562,9 +565,10 @@ ${data?.advice?.followUpDate ? `
       Toast.show({ type: 'error', text1: error?.response?.data?.message || 'Failed to add prescription' });
     } finally {
       setIsSaving(false);
+      setIsSharing(false);
     }
   };
- 
+
   useEffect(() => {
     const fetchClinics = async () => {
       if (!doctorId) {
@@ -572,12 +576,12 @@ ${data?.advice?.followUpDate ? `
         setError("No doctor ID available");
         return;
       }
- 
+
       try {
         console.log("Fetching clinics for doctorId:", doctorId);
         const token = await AsyncStorage.getItem('authToken');
         const response = await AuthFetch(`users/getClinicAddress?doctorId=${doctorId}`, token);
- 
+
         if (response.data?.status === "success") {
           const allClinics = response.data.data || [];
           const activeClinics = allClinics.filter((clinic) => clinic.addressId === formData.doctorInfo.selectedClinicId);
@@ -592,19 +596,46 @@ ${data?.advice?.followUpDate ? `
     };
     fetchClinics();
   }, [doctorId]);
- 
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
+<ScrollView contentContainerStyle={styles.container}>
+      {/* Header with conditional background and padding */}
+      <View style={[
+        styles.header, 
+        !selectedClinic?.headerImage && styles.headerNoImagePadding,
+        selectedClinic?.headerImage && styles.headerWithImageBackground
+      ]}>
+        {selectedClinic?.headerImage && (
+          <Image
+            source={{ uri: selectedClinic.headerImage }}
+            style={styles.headerImage}
+            resizeMode="contain"
+          />
+        )}
         <View className="row" style={styles.row}>
-          <Text style={styles.headerText}>{selectedClinic?.clinicName}</Text>
+          <Text style={[
+            styles.headerText,
+            selectedClinic?.headerImage && styles.headerTextWithImage
+          ]}>
+            {selectedClinic?.clinicName}
+          </Text>
           <View>
-            <Text style={styles.headerText}>📍 {selectedClinic?.address}</Text>
-            <Text style={styles.headerText}>📞 {selectedClinic?.mobile}</Text>
+            <Text style={[
+              styles.headerText,
+              selectedClinic?.headerImage && styles.headerTextWithImage
+            ]}>
+              📍 {selectedClinic?.address}
+            </Text>
+            <Text style={[
+              styles.headerText,
+              selectedClinic?.headerImage && styles.headerTextWithImage
+            ]}>
+              📞 {selectedClinic?.mobile}
+            </Text>
           </View>
         </View>
       </View>
- 
+      
       {(formData.doctorInfo?.appointmentDate || formData.doctorInfo?.appointmentStartTime) && (
         <View style={styles.appointmentSection}>
           {formData.doctorInfo?.appointmentStartTime && (
@@ -614,7 +645,7 @@ ${data?.advice?.followUpDate ? `
           )}
         </View>
       )}
- 
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Dr. {formData?.doctorInfo?.doctorName}</Text>
         <Text>
@@ -622,7 +653,7 @@ ${data?.advice?.followUpDate ? `
         </Text>
         <Text>Medical Registration No: {formData?.doctorInfo?.medicalRegistrationNumber || 'Not provided'}</Text>
       </View>
- 
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Patient Details</Text>
         <Text style={{ color: 'black' }}>Name: {formData?.patientInfo?.patientName}</Text>
@@ -630,66 +661,66 @@ ${data?.advice?.followUpDate ? `
         <Text style={{ color: 'black' }}>Gender: {formData?.patientInfo?.gender} </Text>
         <Text style={{ color: 'black' }}>Mobile: {formData?.patientInfo?.mobileNumber}</Text>
       </View>
- 
+
       {(formData.patientInfo?.chiefComplaint || formData.patientInfo?.pastMedicalHistory ||
         formData.patientInfo?.familyMedicalHistory || formData.patientInfo?.physicalExamination) && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Patient History</Text>
-          {formData.patientInfo.chiefComplaint && (
-            <Text style={{ color: 'black' }}>Chief Complaint: {formData.patientInfo.chiefComplaint}</Text>
-          )}
-          {formData.patientInfo.pastMedicalHistory && (
-            <Text style={{ color: 'black' }}>Past History: {formData.patientInfo.pastMedicalHistory}</Text>
-          )}
-          {formData.patientInfo.familyMedicalHistory && (
-            <Text style={{ color: 'black' }}>Family History: {formData.patientInfo.familyMedicalHistory}</Text>
-          )}
-          {formData.patientInfo.physicalExamination && (
-            <Text style={{ color: 'black' }}>Examination: {formData.patientInfo.physicalExamination}</Text>
-          )}
-        </View>
-      )}
- 
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Patient History</Text>
+            {formData.patientInfo.chiefComplaint && (
+              <Text style={{ color: 'black' }}>Chief Complaint: {formData.patientInfo.chiefComplaint}</Text>
+            )}
+            {formData.patientInfo.pastMedicalHistory && (
+              <Text style={{ color: 'black' }}>Past History: {formData.patientInfo.pastMedicalHistory}</Text>
+            )}
+            {formData.patientInfo.familyMedicalHistory && (
+              <Text style={{ color: 'black' }}>Family History: {formData.patientInfo.familyMedicalHistory}</Text>
+            )}
+            {formData.patientInfo.physicalExamination && (
+              <Text style={{ color: 'black' }}>Examination: {formData.patientInfo.physicalExamination}</Text>
+            )}
+          </View>
+        )}
+
       {(formData.vitals?.bpSystolic || formData.vitals?.bpDiastolic || formData.vitals?.pulseRate ||
         formData.vitals?.temperature || formData.vitals?.spo2 || formData.vitals?.respiratoryRate ||
         formData.vitals?.height || formData.vitals?.weight || formData.vitals?.bmi) && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Vitals</Text>
-          <View style={styles.row}>
-            {(formData.vitals.bpSystolic || formData.vitals.bpDiastolic) && (
-              <Text style={{ color: 'black' }}>BP: {formData.vitals.bpSystolic}/{formData.vitals.bpDiastolic}</Text>
-            )}
-            {formData.vitals.pulseRate && (
-              <Text style={{ color: 'black' }}>Pulse: {formData.vitals.pulseRate}</Text>
-            )}
-            {formData.vitals.temperature && (
-              <Text style={{ color: 'black' }}>Temp: {formData.vitals.temperature}</Text>
-            )}
-          </View>
-          <View style={styles.row}>
-            {formData.vitals.respiratoryRate && (
-              <Text style={{ color: 'black' }}>RR: {formData.vitals.respiratoryRate}</Text>
-            )}
-            {formData.vitals.spo2 && (
-              <Text style={{ color: 'black' }}>Spo2: {formData.vitals.spo2}</Text>
-            )}
-            {formData.vitals.bmi && (
-              <Text style={{ color: 'black' }}>BMI: {formData.vitals.bmi}</Text>
-            )}
-          </View>
-          {(formData.vitals.height || formData.vitals.weight) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Vitals</Text>
             <View style={styles.row}>
-              {formData.vitals.height && (
-                <Text style={{ color: 'black' }}>Height: {formData.vitals.height} cm</Text>
+              {(formData.vitals.bpSystolic || formData.vitals.bpDiastolic) && (
+                <Text style={{ color: 'black' }}>BP: {formData.vitals.bpSystolic}/{formData.vitals.bpDiastolic}</Text>
               )}
-              {formData.vitals.weight && (
-                <Text style={{ color: 'black' }}>Weight: {formData.vitals.weight} kg</Text>
+              {formData.vitals.pulseRate && (
+                <Text style={{ color: 'black' }}>Pulse: {formData.vitals.pulseRate}</Text>
+              )}
+              {formData.vitals.temperature && (
+                <Text style={{ color: 'black' }}>Temp: {formData.vitals.temperature}</Text>
               )}
             </View>
-          )}
-        </View>
-      )}
- 
+            <View style={styles.row}>
+              {formData.vitals.respiratoryRate && (
+                <Text style={{ color: 'black' }}>RR: {formData.vitals.respiratoryRate}</Text>
+              )}
+              {formData.vitals.spo2 && (
+                <Text style={{ color: 'black' }}>Spo2: {formData.vitals.spo2}</Text>
+              )}
+              {formData.vitals.bmi && (
+                <Text style={{ color: 'black' }}>BMI: {formData.vitals.bmi}</Text>
+              )}
+            </View>
+            {(formData.vitals.height || formData.vitals.weight) && (
+              <View style={styles.row}>
+                {formData.vitals.height && (
+                  <Text style={{ color: 'black' }}>Height: {formData.vitals.height} cm</Text>
+                )}
+                {formData.vitals.weight && (
+                  <Text style={{ color: 'black' }}>Weight: {formData.vitals.weight} kg</Text>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
       {formData?.diagnosis?.selectedTests?.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tests</Text>
@@ -706,7 +737,7 @@ ${data?.advice?.followUpDate ? `
           )}
         </View>
       )}
- 
+
       {formData.diagnosis?.diagnosisList && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Diagnosis</Text>
@@ -721,7 +752,7 @@ ${data?.advice?.followUpDate ? `
           </View>
         </View>
       )}
- 
+
       {(formData?.diagnosis?.medications?.length > 0 || formData.advice?.medicationNotes) && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Medication</Text>
@@ -753,7 +784,7 @@ ${data?.advice?.followUpDate ? `
           )}
         </View>
       )}
- 
+
       {formData.advice?.advice && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Advice</Text>
@@ -766,7 +797,7 @@ ${data?.advice?.followUpDate ? `
           ))}
         </View>
       )}
- 
+
       {formData.advice?.followUpDate && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Follow-Up</Text>
@@ -775,7 +806,7 @@ ${data?.advice?.followUpDate ? `
           </Text>
         </View>
       )}
- 
+
       <View style={styles.signatureSection}>
         {selectedClinic?.digitalSignature ? (
           <Image
@@ -795,34 +826,26 @@ ${data?.advice?.followUpDate ? `
           ✔ Digitally Signed
         </Text>
       </View>
- 
+
       <Text style={styles.footerText}>
         This prescription is computer generated and does not require physical signature
       </Text>
- 
+
       <View style={styles.buttonRow}>
+
         <TouchableOpacity
-          style={[styles.downloadButton, isSaving && styles.disabledButton]}
-          onPress={() => handlePrescriptionAction('share')}
-          disabled={isSaving}
+          style={[styles.downloadButton, (isSharing || isSaving) && styles.disabledButton]}
+          onPress={() => handlePrescriptionAction('whatsapp')}
+          disabled={isSharing || isSaving}
         >
           <Text style={styles.downloadText}>
-            {isSaving ? 'Processing...' : 'Share via WhatsApp'}
+            {isSharing ? 'Processing...' : 'Share via WhatsApp'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.downloadButton, isSaving && styles.disabledButton]}
-          onPress={() => handlePrescriptionAction('share')}
-          disabled={isSaving}
-        >
-          <Text style={styles.downloadText}>
-            {isSaving ? 'Processing...' : 'Share via WhatsApp'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.saveButton, isSaving && styles.disabledButton]}
+          style={[styles.saveButton, (isSaving || isSharing) && styles.disabledButton]}
           onPress={() => handlePrescriptionAction('save')}
-          disabled={isSaving}
+          disabled={isSaving || isSharing}
         >
           <Text style={styles.saveText}>
             {isSaving ? 'Processing...' : 'Save'}
@@ -832,9 +855,9 @@ ${data?.advice?.followUpDate ? `
     </ScrollView>
   );
 };
- 
+
 export default PrescriptionPreview;
- 
+
 const styles = StyleSheet.create({
   container: {
     padding: 16,
@@ -844,8 +867,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     backgroundColor: '#2563eb',
-    padding: 16,
     borderRadius: 10,
+    justifyContent: 'center',
+  },
+   headerNoImagePadding: {
+    padding: 16, 
   },
   headerText: {
     fontSize: 18,
@@ -907,6 +933,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     elevation: 2,
   },
+  
+  headerImage: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'contain',
+  },
   signatureImage: {
     width: 150,
     height: 48,
@@ -960,4 +992,3 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
 });
- 
