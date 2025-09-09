@@ -435,16 +435,19 @@ const PracticeScreen = () => {
     return hours * 60;
   };
 
-  const handleInputChange = (
-    index: number,
-    field: keyof Address,
-    value: string,
-  ) => {
-    const updatedAddresses = [...opdAddresses];
-    (updatedAddresses[index][field] as string) = value;
-    setOpdAddresses(updatedAddresses);
-  };
+const handleInputChange = (index: number, field: keyof Address, value: string) => {
+  const updatedAddresses = [...opdAddresses];
+  (updatedAddresses[index][field] as string) = value;
+  setOpdAddresses(updatedAddresses);
 
+  // If address field is being updated, also update the search query
+  if (field === 'address') {
+    setSearchQueryPerAddress(prev => ({
+      ...prev,
+      [index]: value
+    }));
+  }
+};
   const handleNext = async () => {
     const token = await AsyncStorage.getItem('authToken');
     const hasInvalidAddress = opdAddresses.some(
@@ -757,7 +760,6 @@ const fetchUserData = async () => {
                   onChangeText={text =>
                     handleInputChange(index, 'address', text)
                   }
-                  editable={false}
                 />
               </View>
               
@@ -773,7 +775,6 @@ const fetchUserData = async () => {
                     handleInputChange(index, 'pincode', text)
                   }
                   keyboardType="numeric"
-                  editable={false}
                 />
               </View>
               
@@ -785,7 +786,6 @@ const fetchUserData = async () => {
                   placeholderTextColor="#999"
                   value={addr.city}
                   onChangeText={text => handleInputChange(index, 'city', text)}
-                  editable={false}
                 />
               </View>
               
@@ -797,7 +797,6 @@ const fetchUserData = async () => {
                   placeholderTextColor="#999"
                   value={addr.state}
                   onChangeText={text => handleInputChange(index, 'state', text)}
-                  editable={false}
                 />
               </View>
               
@@ -811,7 +810,6 @@ const fetchUserData = async () => {
                   onChangeText={text =>
                     handleInputChange(index, 'country', text)
                   }
-                  editable={false}
                 />
               </View>
               

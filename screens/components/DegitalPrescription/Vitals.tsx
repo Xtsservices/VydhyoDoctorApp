@@ -244,7 +244,7 @@ const VitalsScreen = () => {
 
 
         {/* Investigation Section */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>🧪 Investigation</Text>
           <Text style={styles.subtitle}>Clinical examination findings and observations</Text>
           <TextInput
@@ -263,7 +263,7 @@ const VitalsScreen = () => {
             }
             placeholderTextColor="#9CA3AF"
           />
-        </View>
+        </View> */}
 
         {/* Buttons */}
 
