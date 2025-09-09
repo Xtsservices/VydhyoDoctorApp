@@ -856,7 +856,7 @@ avatarImage: {
 },
 
 avatarText: {
-  color: '#1F2937', // Dark text
+  color: '#f6f8fcff', // Dark text
   fontSize: 20,
   fontWeight: 'bold',
 },

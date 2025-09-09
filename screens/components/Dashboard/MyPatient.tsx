@@ -300,7 +300,7 @@ const MyPatients: React.FC = () => {
       <View style={styles.card}>
         {/* <View style={}> */}
                      <View style={styles.placeholderCircle}>
-                  <Text style={styles.placeholderText}>{item.name[0] || ""}</Text>
+                  <Text style={styles.placeholderText}>{item.name[0].toUpperCase() || ""}</Text>
                 </View>
           {/* {item.avatar ? (
             <Image source={{ uri: item.avatar }} style={styles.avatarImage} />

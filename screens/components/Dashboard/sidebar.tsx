@@ -271,10 +271,13 @@ console.log(department, 'departmetn')
       >
       {/* Profile Header */}
       <View style={styles.header}>
-        <Image
+         <View style={styles.placeholderCircle}>
+                <Text style={styles.placeholderText}>{currentuserDetails?.firstname[0].toUpperCase() || ""}</Text>
+              </View>
+        {/* <Image
           source={PLACEHOLDER_IMAGE} // Replace with actual profile image
           style={styles.profileImage}
-        />
+        /> */}
         <View style={styles.headerText}>
           <Text style={styles.name}>{name}</Text>
           <Text style={styles.title}>{department}</Text>
@@ -380,6 +383,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
   },
+  placeholderCircle: {
+    width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
+    justifyContent: 'center', alignItems: 'center', marginRight: 16,
+  },
+  placeholderText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   profileButton: {
     flexDirection: 'row',
     backgroundColor: '#F0F8FF',

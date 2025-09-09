@@ -177,12 +177,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     backgroundColor: '#fff',
+    color:'black'
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     marginBottom: 24,
+    marginTop:20,
   },
   cancelButton: {
     backgroundColor: '#ccc',

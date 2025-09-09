@@ -817,7 +817,7 @@ ${data?.advice?.followUpDate ? `
         ) : (
           <View>
             <View style={{ height: 48 }} />
-            <Text style={{ fontWeight: 'bold' }}>
+            <Text style={{ fontWeight: 'bold', color:'black' }}>
               DR. {formData?.doctorInfo?.doctorName || 'Unknown Doctor'}
             </Text>
           </View>

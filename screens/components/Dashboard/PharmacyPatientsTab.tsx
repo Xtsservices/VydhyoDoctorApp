@@ -686,9 +686,9 @@ export default function PatientsTab({
             <Text style={styles.pid}>Patient ID: {item.patientId}</Text>
             <Text style={styles.pname}>{item.name}</Text>
           </View>
-          <View style={[styles.tag, { backgroundColor: sts.color + "22", borderColor: sts.color }]}>
+          {/* <View style={[styles.tag, { backgroundColor: sts.color + "22", borderColor: sts.color }]}>
             <Text style={{ color: sts.color, fontWeight: "700" }}>{sts.label}</Text>
-          </View>
+          </View> */}
         </View>
 
         {/* Medicines */}
