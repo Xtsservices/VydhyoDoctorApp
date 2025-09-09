@@ -375,15 +375,15 @@ const SpecializationDetails = () => {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('catalogue/degree/getAllDegrees', token);
       console.log(response, "get all degrees");
-       console.log(response, "get all degrees");
-    const data = response?.data?.data || [];
+      console.log(response, "get all degrees");
+      const data = response?.data?.data || [];
 
-    // Sort alphabetically by 'name'
-    const sortedData = data.sort((a: { degreeName: string; }, b: { degreeName: any; }) =>
-      a.degreeName.localeCompare(b.degreeName)
-    );
+      // Sort alphabetically by 'name'
+      const sortedData = data.sort((a: { degreeName: string; }, b: { degreeName: any; }) =>
+        a.degreeName.localeCompare(b.degreeName)
+      );
 
-    setDegrees(sortedData);
+      setDegrees(sortedData);
       // const data = response?.data?.data || [];
       // setDegrees(data);
     } catch (error) {
@@ -411,10 +411,10 @@ const SpecializationDetails = () => {
             degree: userData?.specialization?.degree || '',
             specialization: userData?.specialization?.name || '',
             yearsExperience:
-   userData?.specialization?.experience !== undefined &&
-   userData?.specialization?.experience !== null
-     ? String(userData.specialization.experience)
-     : '',
+              userData?.specialization?.experience !== undefined &&
+                userData?.specialization?.experience !== null
+                ? String(userData.specialization.experience)
+                : '',
             // yearsExperience: String(userData?.specialization?.experience || '') ,
             bio: userData?.specialization?.bio || '',
             customDegree: userData?.specialization?.customDegree || '',
@@ -460,10 +460,10 @@ const SpecializationDetails = () => {
                 onPress={() => !isLoading && setModalVisible(true)}
                 disabled={isLoading}
               >
-               
-  <Text style={styles.dropdownText}>
-    {formData.degree || 'Select degrees'}
-  </Text>
+
+                <Text style={styles.dropdownText}>
+                  {formData.degree || 'Select degrees'}
+                </Text>
 
               </TouchableOpacity>
               <Modal
@@ -475,12 +475,30 @@ const SpecializationDetails = () => {
                 <View style={styles.modalContainer}>
                   <View style={styles.modalContent}>
                     <Text style={styles.modalTitle}>Select Degrees</Text>
-                    <FlatList
-                      data={degreeList}
-                      renderItem={renderDegreeItem}
-                      keyExtractor={(item) => item.id}
-                      style={styles.flatList}
-                    />
+
+                    {/* Replace FlatList with ScrollView for better control */}
+                    <ScrollView
+                      style={styles.listContainer}
+                      keyboardShouldPersistTaps="handled"
+                      bounces={false}
+                    >
+                      {degreeList.map((item) => (
+                        <Pressable
+                          key={item.id}
+                          style={styles.checkboxContainer}
+                          onPress={() => handleDegreeChange(item.degreeName)}
+                        >
+                          <CheckBox
+                            value={tempDegrees.includes(item.degreeName)}
+                            onValueChange={() => handleDegreeChange(item.degreeName)}
+                            disabled={isLoading}
+                            tintColors={{ true: '#00203F', false: '#999' }}
+                          />
+                          <Text style={styles.checkboxLabel}>{item.degreeName}</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+
                     {tempDegrees.includes('Others') && (
                       <TextInput
                         style={[styles.input, styles.textInput]}
@@ -491,6 +509,7 @@ const SpecializationDetails = () => {
                         editable={!isLoading}
                       />
                     )}
+
                     <View style={styles.modalButtons}>
                       <TouchableOpacity style={styles.modalButton} onPress={handleCancel} disabled={isLoading}>
                         <Text style={styles.modalButtonText}>Cancel</Text>
@@ -682,15 +701,15 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   dropdownBox: {
-  borderWidth: 1,
-  borderColor: '#ccc',
-  borderRadius: 8,
-  paddingHorizontal: 10,
-  paddingVertical: 6,
-  flexWrap: 'wrap',       // allows wrapping text
-  minHeight: 40,          // minimum height for small text
-  justifyContent: 'center',
-},
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexWrap: 'wrap',       // allows wrapping text
+    minHeight: 40,          // minimum height for small text
+    justifyContent: 'center',
+  },
   uploadContainer: {
     borderWidth: 1,
     borderColor: '#E0E0E0',
@@ -717,6 +736,10 @@ const styles = StyleSheet.create({
   },
   uploadIcon: {
     marginHorizontal: width * 0.02,
+  },
+  listContainer: {
+    maxHeight: 300,
+    marginBottom: 10,
   },
   buttonContainer: {
     paddingHorizontal: width * 0.05,
@@ -779,12 +802,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    width: width * 0.9,
-    maxHeight: '80%',
-  },
+  backgroundColor: '#fff',
+  borderRadius: 10,
+  padding: 20,
+  width: width * 0.9,
+  maxHeight: '80%',
+  justifyContent: 'flex-start',
+},
   modalTitle: {
     fontSize: width * 0.05,
     fontWeight: '600',
