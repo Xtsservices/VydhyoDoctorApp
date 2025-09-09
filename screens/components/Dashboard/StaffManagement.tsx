@@ -843,7 +843,7 @@ avatarContainer: {
   width: 50,
   height: 50,
   borderRadius: 25,
-  backgroundColor: '#D1D5DB', // Light gray
+  backgroundColor: '#1e3a5f', // Light gray
   justifyContent: 'center',
   alignItems: 'center',
   marginRight: 12,
