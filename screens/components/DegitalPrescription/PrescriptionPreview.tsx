@@ -39,7 +39,7 @@ const PrescriptionPreview = () => {
     const appointmentId = patientDetails?.id;
 
     return {
-      appointmentId: appointmentId,
+      appointmentId: appointmentId|| patientDetails.appointmentId,
       userId: patientInfo.patientId,
       doctorId: doctorInfo.doctorId,
       addressId: doctorInfo.selectedClinicId,
@@ -470,9 +470,11 @@ ${data?.advice?.followUpDate ? `
       if (type === 'save') setIsSaving(true);
 
       const formattedData = transformEprescriptionData(formData, type);
+      console.log(formattedData, "123")
       const token = await AsyncStorage.getItem('authToken');
 
       const response = await AuthPost('pharmacy/addPrescription', formattedData, token);
+      console.log(response, "pre response")
 
       const statusVal = response?.status ?? response?.data?.statusCode ?? response?.data?.status;
       const isOk = statusVal === 201 || statusVal === 200 || statusVal === 'success';
@@ -485,7 +487,8 @@ ${data?.advice?.followUpDate ? `
           const successMessage = type === 'save'
             ? 'Prescription saved successfully'
             : 'Prescription successfully added';
-          Toast.show({ type: 'success', text1: successMessage });
+            Alert.alert('success',successMessage )
+          // Toast.show({ type: 'success', text1: successMessage });
         }
 
         if (hasWarnings) {
@@ -558,7 +561,8 @@ ${data?.advice?.followUpDate ? `
           return;
         }
       } else {
-        Toast.show({ type: 'error', text1: response?.data?.message || 'Failed to add prescription' });
+        Alert.alert("Error", response?.message?.errors[0])
+        // Toast.show({ type: 'error', text1: response?.data?.message || 'Failed to add prescription' });
       }
     } catch (error) {
       console.error('Error in handlePrescriptionAction:', error);
@@ -612,7 +616,9 @@ ${data?.advice?.followUpDate ? `
             resizeMode="contain"
           />
         )}
-        <View className="row" style={styles.row}>
+
+        {!selectedClinic?.headerImage && (
+<View className="row" style={styles.row}>
           <Text style={[
             styles.headerText,
             selectedClinic?.headerImage && styles.headerTextWithImage
@@ -634,6 +640,8 @@ ${data?.advice?.followUpDate ? `
             </Text>
           </View>
         </View>
+        )}
+        
       </View>
       
       {(formData.doctorInfo?.appointmentDate || formData.doctorInfo?.appointmentStartTime) && (

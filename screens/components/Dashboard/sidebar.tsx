@@ -154,12 +154,12 @@ const menuItems = [
             const storedUserId = await AsyncStorage.getItem('userId');
             // const storedStep = await AsyncStorage.getItem('currentStep');
       
-            if (storedToken && storedUserId) {
-              const profileResponse = await AuthFetch(`users/getUser/${doctorId}`, storedToken);
+            if (storedToken ) {
+              const profileResponse = await AuthFetch(`users/getUser?userId=${doctorId}`, storedToken);
               console.log('Profile response:', profileResponse);
-              if (profileResponse.status === 'success') {
-                if (profileResponse.data.data.role !== 'doctor'){
-                  console.log(profileResponse.data.data.specialization.name, "department")
+              if (profileResponse?.status === 'success') {
+                if (profileResponse?.data?.data?.role !== 'doctor'){
+                  console.log(profileResponse?.data?.data?.specialization?.name, "department")
 setDepartment (profileResponse.data.data.specialization.name)
                 }
                 if (profileResponse.data.data.access && Array.isArray(profileResponse.data.data.access)) {
