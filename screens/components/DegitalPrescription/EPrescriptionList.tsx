@@ -65,13 +65,14 @@ const EPrescriptionList = () => {
   };
 
   const handleEPrescription = (appointment) => {
+    console.log(appointment, "appointmentDetails")
     const patientDetails = {
       doctorId: appointment.doctorId,
-      patientId: appointment.userId || appointment.appointmentId,
+      patientId: appointment?.userId || appointment?.appointmentId,
       patientName: appointment.patientName,
       appointmentDate: appointment.appointmentDate,
       appointmentType: appointment.appointmentType,
-      appointmentId: appointment.appointmentId,
+      appointmentId: appointment?.appointmentId,
       phone: appointment.patientDetails?.mobile || 'N/A',
       clinic: appointment.clinicName || 'Unknown Clinic',
       type: appointment.appointmentType,
@@ -98,10 +99,10 @@ const EPrescriptionList = () => {
         token
       );
 
-      return response.status === 'success' && 
-             response.data.success && 
-             response.data.data && 
-             response.data.data.length > 0;
+      return response.status === 'success' &&
+        response.data.success &&
+        response.data.data &&
+        response.data.data.length > 0;
     } catch (error) {
       console.error('Error checking prescriptions:', error);
       return false;
@@ -182,7 +183,7 @@ const EPrescriptionList = () => {
 
     const modalWidth = 200;
     const xPos = pageX + modalWidth > width ? pageX - modalWidth : pageX - 50;
-    
+
     setMenuPosition({
       x: Math.max(0, Math.min(xPos, width - modalWidth)),
       y: pageY + 10,
@@ -385,7 +386,7 @@ const EPrescriptionList = () => {
       <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
         <View style={styles.modalOverlay} />
       </TouchableWithoutFeedback>
-      
+
       <View style={[styles.menuContainer, { left: menuPosition.x, top: menuPosition.y }]}>
         <TouchableOpacity
           style={styles.menuItem}
@@ -394,9 +395,9 @@ const EPrescriptionList = () => {
           <Icon name="edit" size={18} color="#007AFF" />
           <Text style={styles.menuItemText}>Create Prescription</Text>
         </TouchableOpacity>
-        
+
         <View style={styles.menuDivider} />
-        
+
         <TouchableOpacity
           style={[styles.menuItem, !hasPreviousPrescriptions && styles.disabledMenuItem]}
           onPress={() => hasPreviousPrescriptions && handleViewPreviousPrescriptions(selectedAppointment)}
@@ -420,7 +421,7 @@ const EPrescriptionList = () => {
             <Text style={styles.patientName}>{item.patientName}</Text>
             <Text style={styles.department}>{item.appointmentDepartment}</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.menuButton}
             onPress={(event) => openMenu(item, event)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -428,7 +429,7 @@ const EPrescriptionList = () => {
             <IconMore name="more-vertical" size={20} color="#6B7280" />
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.cardBody}>
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
@@ -442,7 +443,7 @@ const EPrescriptionList = () => {
               </View>
             </View>
           </View>
-          
+
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Date</Text>
@@ -452,7 +453,9 @@ const EPrescriptionList = () => {
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Time</Text>
-              <Text style={styles.infoValue}>{item.appointmentTime}</Text>
+              <Text style={styles.infoValue}>
+                {moment(item.appointmentTime, 'HH:mm').format('hh:mm A')}
+              </Text>
             </View>
           </View>
         </View>
@@ -468,7 +471,7 @@ const EPrescriptionList = () => {
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       )}
-      
+
       <View style={styles.header}>
         {/* <Text style={styles.title}>e-Prescriptions</Text> */}
         <Text style={styles.subtitle}>
@@ -557,8 +560,8 @@ const EPrescriptionList = () => {
               <Icon name="calendar" size={48} color="#D1D5DB" />
               <Text style={styles.emptyTitle}>No appointments found</Text>
               <Text style={styles.emptySubtitle}>
-                {searchText 
-                  ? 'Try adjusting your search or filters' 
+                {searchText
+                  ? 'Try adjusting your search or filters'
                   : 'Schedule appointments will appear here'}
               </Text>
             </View>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo,useMemo } from 'react';
 import {
   ActivityIndicator,
   View,
@@ -59,38 +59,39 @@ const fmtYYYYMMDD = (d: Date | string) => moment(d).format('YYYY-MM-DD');
 const fmtNice = (d?: string) => (d ? moment(d).format('MMM D, YYYY') : '—');
 
 /** Robust formatter → "6 Sep 2025 11:45AM" */
+// Assumes moment is available. If you use moment-timezone and want to force IST,
+// you can set: moment.tz.setDefault('Asia/Kolkata');
+
 const formatApptDateTime = (dateStr?: string, timeStr?: string) => {
-  const timeNorm = (timeStr || '').toUpperCase().replace(/\s+/g, ''); // "9:00AM" / "09:00" etc.
-  const join = (d?: string, t?: string) => [d || '', t || ''].filter(Boolean).join(' ');
-
-  const candidates = [
-    join(dateStr, timeNorm),
-    dateStr || '',
-    timeNorm || '',
-  ].filter(Boolean);
-
-  const fmts = [
-    'DD-MMM-YYYY h:mmA',
-    'D-MMM-YYYY h:mmA',
-    'YYYY-MM-DD h:mmA',
-    'YYYY-MM-DD HH:mm',
-    moment.ISO_8601 as any,
-    'DD/MM/YYYY h:mmA',
-    'D/M/YYYY h:mmA',
+  const j = (a?: string, b?: string) => [a, b].filter(Boolean).join(' ');
+  const s = (x?: string) => (x || '').trim();
+  const D = s(dateStr), T = s(timeStr), TN = T ? T.toUpperCase().replace(/\s+/g, '') : '';
+  const hasTime = !!TN || /(\d{1,2}:\d{2})|\b[AP]M\b/i.test(D);
+  const OUT = hasTime ? 'D MMM YYYY h:mmA' : 'D MMM YYYY';
+  const ISOZ = (x: string) => /T\d{2}:\d{2}|Z$|[+-]\d{2}:?\d{2}$/.test(x);
+  const FDT = [
+    'DD-MMM-YYYY h:mmA','D-MMM-YYYY h:mmA','DD-MMM-YYYY h:mm A','D-MMM-YYYY h:mm A',
+    'YYYY-MM-DD HH:mm','YYYY-MM-DD h:mmA','YYYY-MM-DD h:mm A',
+    'DD/MM/YYYY h:mmA','D/M/YYYY h:mmA','DD/MM/YYYY h:mm A','D/M/YYYY h:mm A',
+    'h:mmA','h:mm A','HH:mm'
   ];
+  const FD = ['DD-MMM-YYYY','D-MMM-YYYY','YYYY-MM-DD','DD/MM/YYYY','D/M/YYYY'];
+  const C = j(D, TN);
 
-  for (const c of candidates) {
-    const m = moment(c, fmts, true);
-    if (m.isValid()) return m.format('D MMM YYYY h:mmA'); // e.g., "6 Sep 2025 11:45AM"
-  }
+  if (C && ISOZ(C)) { const z = moment.parseZone(C); if (z.isValid()) return z.local().format(OUT); }
 
-  // last try (non-strict)
-  const m2 = moment(join(dateStr, timeStr));
-  if (m2.isValid()) return m2.format('D MMM YYYY h:mmA');
+  let m = hasTime ? moment(C, FDT, true) : moment(D, FD, true);
+  if (!m.isValid() && hasTime) m = moment(D, FDT, true);
+  if (!m.isValid() && !D && TN) m = moment(TN, ['h:mmA','h:mm A','HH:mm'], true);
+  if (m.isValid()) return m.format(OUT);
 
-  // fallback: show combined raw
-  return join(dateStr, timeStr);
+  if (!hasTime && /^\d{4}-\d{2}-\d{2}$/.test(D)) return moment(D, 'YYYY-MM-DD', true).format(OUT);
+
+  const m2 = moment(j(D, T), hasTime ? FDT : FD, false);
+  return m2.isValid() ? m2.format(OUT) : j(D, T).trim();
 };
+
+
 
 /* ---------- Patient Appointments (with chips) ---------- */
 const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppointmentsProps) => {
@@ -152,9 +153,9 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
       ) : appointments.length > 0 ? (
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.headerCell}>Name</Text>
-            <Text style={styles.headerCell}>Type</Text>
-            <Text style={styles.headerCell}>Status</Text>
+            <Text style={[styles.headerCell, { flex: 1 }]}>Name</Text>
+            <Text style={[styles.headerCell, { flex: 1 }]}>Type</Text>
+            <Text style={[styles.headerCell, { flex: 1 }]}>Status</Text>
           </View>
 
           {appointments.slice(0, viewAll ? appointments.length : 5).map((item, index) => {
@@ -162,19 +163,18 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
             const statusInfo = getStatusColors(item.appointmentStatus);
             return (
               <View key={index} style={styles.tableRow}>
-                <View style={styles.nameColumn}>
+                <View style={[styles.nameColumn, { flex: 2 }]}>
                   <Text style={styles.nameText}>{item.patientName || 'Unknown'}</Text>
-                  {/* unified date+time: "6 Sep 2025 11:45AM" */}
                   <Text style={styles.datetimeText}>
                     {formatApptDateTime(item.appointmentDate, item.appointmentTime)}
                   </Text>
                 </View>
 
-                <View style={[styles.nameColumn]}>
+                <View style={[styles.nameColumn, { flex: 1 }]}>
                   <Text style={[styles.pillText, { color: typeInfo.fg }]}>{typeInfo.label}</Text>
                 </View>
 
-                <View style={[styles.pill, { backgroundColor: statusInfo.bg }]}>
+                <View style={[styles.pill, { flex: 1, backgroundColor: statusInfo.bg }]}>
                   <Text style={[styles.pillText, { color: statusInfo.fg }]}>
                     {item.appointmentStatus
                       ? `${item.appointmentStatus[0].toUpperCase()}${item.appointmentStatus.slice(1)}`
@@ -245,6 +245,19 @@ const DoctorDashboard = () => {
   const [revenueStartDate, setRevenueStartDate] = useState<string>(today);
   const [revenueEndDate, setRevenueEndDate] = useState<string>(today);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
+
+
+  // right above your return(...)
+const pieState = useMemo(() => {
+  const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
+  if (total <= 0) {
+    // show equal thirds visually, but don't lie with absolute numbers
+    const equalData = revenueSummaryData.map(d => ({ ...d, _display: 1 }));
+    return { data: equalData, accessor: '_display', absolute: false }; // show 33% labels
+  }
+  return { data: revenueSummaryData, accessor: 'population', absolute: true }; // your current behavior
+}, [revenueSummaryData]);
+
 
   const getRevenueData = useCallback(async () => {
     try {
@@ -506,11 +519,11 @@ const DoctorDashboard = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Sidebar')}>
-            <Ionicons style={styles.title} size={28} name="menu" color="#000000"/>
+            <Ionicons style={styles.title} size={28} name="menu" color="#000000" />
           </TouchableOpacity>
           <Text style={styles.headerText}>
             {(() => { const hour = new Date().getHours(); if (hour < 12) return 'Good Morning,'; if (hour < 17) return 'Good Afternoon,'; return 'Good Evening,'; })()}
-            {'\n'}Dr. {formData.name}
+            {'\n'}{currentuserDetails?.role === 'doctor' && 'Dr. '}{formData?.name}
           </Text>
           <View style={styles.rightIcons} />
         </View>
@@ -529,10 +542,10 @@ const DoctorDashboard = () => {
               <Text style={styles.mainNumber}>{dashboardData.appointmentCounts.today}</Text>
               {/* FIX: always visible on small devices / large font scales */}
               <Text
-style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
-numberOfLines={2}
-adjustsFontSizeToFit={true}
-allowFontScaling={false}
+                style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
+                numberOfLines={2}
+                adjustsFontSizeToFit={true}
+                allowFontScaling={false}
               >
                 Today's Appointments
               </Text>
@@ -550,19 +563,19 @@ allowFontScaling={false}
               </View>
             </View>
           </View>
-
+{currentuserDetails?.role === "doctor" && 
           <View style={styles.revenueCard}>
             <View style={styles.revenueRow}>
               <View style={styles.revenueBoxPurple}>
                 <Text style={styles.revenueAmountPurple}>₹{todayRevenue}</Text>
-                <Text style={styles.revenueSubLabel}>Today&apos;s Revenue</Text>
+                <Text style={styles.revenueSubLabel}>Today's Revenue</Text>
               </View>
               <View style={styles.revenueBoxOrange}>
                 <Text style={styles.revenueAmountOrange}>₹{monthRevenue}</Text>
                 <Text style={styles.revenueSubLabelOrange}>This Month</Text>
               </View>
             </View>
-          </View>
+          </View>}
         </View>
 
         {/* Patient Appointments (with date) */}
@@ -613,6 +626,7 @@ allowFontScaling={false}
         </View>
 
         {/* Revenue Summary (with date range like web) */}
+        {currentuserDetails?.role === 'doctor' && 
         <View style={[styles.card, { alignItems: 'flex-start', paddingLeft: 0 }]}>
           <View style={{ paddingHorizontal: 16, width: '100%' }}>
             <Text style={styles.title}>Revenue Summary</Text>
@@ -661,27 +675,28 @@ allowFontScaling={false}
           )}
 
           {/* Pie */}
-          <PieChart
-            data={revenueSummaryData}
-            width={screenWidth - 30}
-            height={200}
-            chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
-            accessor={'population'}
-            backgroundColor={'transparent'}
-            paddingLeft={'0'}
-            hasLegend={true}
-            absolute
-            style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
-          />
-        </View>
+          
+         <PieChart
+  data={pieState.data}
+  width={screenWidth - 30}
+  height={200}
+  chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
+  accessor={pieState.accessor}
+  backgroundColor={'transparent'}
+  paddingLeft={'0'}
+  hasLegend={true}
+  absolute={pieState.absolute}
+  style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
+/>
+
+
+        </View>}
 
         {/* Patient Feedback (dynamic) */}
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Patient Feedback</Text>
             <View style={styles.navButtons}>
-              <TouchableOpacity><AntDesign name="left" size={16} color="#bfbfbf" /></TouchableOpacity>
-              <TouchableOpacity><AntDesign name="right" size={16} color="#bfbfbf" /></TouchableOpacity>
             </View>
           </View>
           <ScrollView style={{ maxHeight: 220 }}>
@@ -720,7 +735,7 @@ allowFontScaling={false}
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#F0FDF4' },
   scrollView: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 ,marginTop: 20},
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, marginTop: 20 },
   headerText: { color: '#000', fontSize: 20, fontWeight: 'bold' },
   rightIcons: { flexDirection: 'row', alignItems: 'center' },
   appointmentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 0, margin: 10, borderRadius: 10 },
@@ -757,10 +772,28 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 14, color: '#333' },
 
   table: { marginTop: 10, borderTopWidth: 1, borderColor: '#ccc' },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#f0f0f0', paddingVertical: 8, paddingHorizontal: 10 },
-  headerCell: { flex: 1, fontWeight: 'bold', color: '#333' },
-  tableRow: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' },
-  nameColumn: { flex: 1 },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 8,
+    paddingHorizontal: 10
+  },
+  headerCell: {
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center'
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+    alignItems: 'center'
+  },
+  nameColumn: {
+    paddingRight: 8
+  },
   nameText: { fontWeight: '600', fontSize: 14, color: '#0A2342' },
   datetimeText: { color: '#777', fontSize: 12 },
   pill: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 16, alignSelf: 'flex-start' },
@@ -772,7 +805,7 @@ const styles = StyleSheet.create({
   clinicNavContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   clinicInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   clinicName: { fontSize: 16, fontWeight: '600', color: '#0A2342' },
-  sectionLabel: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 8, color:'black' },
+  sectionLabel: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 8, color: 'black' },
   slotContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   slot: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#f0f8f0', borderRadius: 15, borderWidth: 1, borderColor: '#1b5e20' },
   slotText: { fontSize: 12, fontWeight: '600', color: '#1b5e20' },
@@ -796,4 +829,3 @@ const styles = StyleSheet.create({
 });
 
 export default DoctorDashboard;
- 

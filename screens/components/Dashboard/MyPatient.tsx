@@ -298,13 +298,16 @@ const MyPatients: React.FC = () => {
     const { container, text } = getStatusStyles(item.status);
     return (
       <View style={styles.card}>
-        <View style={styles.avatarContainer}>
-          {item.avatar ? (
+        {/* <View style={}> */}
+                     <View style={styles.placeholderCircle}>
+                  <Text style={styles.placeholderText}>{item.name[0].toUpperCase() || ""}</Text>
+                </View>
+          {/* {item.avatar ? (
             <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
           ) : (
             <Text style={styles.avatarText}>{item.name[0]?.toUpperCase() || 'N'}</Text>
-          )}
-        </View>
+          )} */}
+        {/* </View> */}
         <View style={styles.info}>
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.id}>ID: {item.id}</Text>
@@ -718,6 +721,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+    placeholderCircle: {
+    width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
+    justifyContent: 'center', alignItems: 'center', marginRight: 16,
+  },
+  placeholderText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   title: {
     fontSize: 20,
     fontWeight: '600',

@@ -106,6 +106,8 @@ export default function Pharmacy() {
         { headers: { "Content-Type": "application/json" } }
       );
 
+      console.log(response, "123")
+
       if (response.status === "success" || response.data?.status === "success") {
         setForm({ medName: "", dosage: "", quantity: "", price: "", cgst: "", gst: "" });
         setErrors({});
@@ -115,13 +117,16 @@ export default function Pharmacy() {
         setRefreshTrigger((prev) => prev + 1);
         setActiveTab("medicines");
       } else {
-        throw new Error(response.message || response.data?.message || "Failed to add medicine");
+        Alert.alert("Alert", response?.message?.message || response?.data?.message || "Failed to add medicine")
+        // throw new Error(response.message || response.data?.message || "Failed to add medicine");
       }
     } catch (error: any) {
       console.error("Error adding medicine:", error);
       if (error.response?.status === 409 && error.response?.data?.message?.message === "Medicine already exists") {
+      // Alert.alert("Error", "Medicine already exists")
         Toast.show({ type: "error", text1: "Medicine already exists" });
       } else {
+        // Alert.alert("Error",  error.message || "Failed to add medicine")
         Toast.show({
           type: "error",
           text1: error.message || "Failed to add medicine",
@@ -258,7 +263,7 @@ export default function Pharmacy() {
 
   return (
     <View style={styles.container}>
-      <Toast />
+      
 
       {/* Header */}
       <View style={styles.headerRow}>
@@ -345,7 +350,7 @@ export default function Pharmacy() {
           />
         )}
       </View>
-
+ 
       {/* Add Medicine Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
@@ -493,6 +498,7 @@ export default function Pharmacy() {
           </View>
         </View>
       </Modal>
+     <Toast />
     </View>
   );
 }

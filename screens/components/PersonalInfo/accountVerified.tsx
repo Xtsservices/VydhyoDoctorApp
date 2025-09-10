@@ -1,7 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { AuthPost } from '../../auth/auth';
+import Toast from 'react-native-toast-message';
 const { width, height } = Dimensions.get('window');
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); // Replace with your asset path
 
@@ -16,13 +19,40 @@ const AccountVerified = () => {
 
      console.log("go to dashboard")
 
-      const handleGoToDashboard = () => {
+ const handleGoToDashboard = async () => {
+  try {
     setLoading(true);
-    setTimeout(() => {
-      navigation.navigate('DoctorDashboard' as never);
-      setLoading(false);
-    }, 1500); // simulate loading delay
-  };
+    const token = await AsyncStorage.getItem('authToken');
+    if (!token) {
+      Toast.show({ type: 'error', text1: 'Authentication token not found' });
+      return;
+    }
+
+    const response = await AuthPost('users/updateFirstLogin', {}, token);
+    console.log('updateFirstLogin response:', response);
+
+    const statusVal = response?.status ?? response?.data?.statusCode ?? response?.data?.status;
+    const isOk = statusVal === 200 || statusVal === 201 || statusVal === 'success';
+
+    if (isOk) {
+      navigation.navigate('DoctorDashboard');
+      return;
+    }
+
+    Toast.show({
+      type: 'error',
+      text1: response?.data?.message || 'Failed to update first login',
+    });
+  } catch (error) {
+    console.error('Error in handleGoToDashboard:', error);
+    Toast.show({
+      type: 'error',
+      text1: error?.response?.data?.message || 'Failed to update first login',
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleViewProfile = () => {
     setLoading(true);
@@ -54,7 +84,7 @@ const AccountVerified = () => {
           <Text style={styles.buttonText}>View Profile</Text>
         )}
       </TouchableOpacity> */}
-      <TouchableOpacity style={styles.goToDashboardButton} onPress={() => navigation.navigate('DoctorDashboard' as never)}>
+      <TouchableOpacity style={styles.goToDashboardButton} onPress={handleGoToDashboard}>
         {/* <Text style={styles.buttonText2}>Go to Dashboard</Text> */}
          {loading ? (
           <ActivityIndicator color="#00203F" />

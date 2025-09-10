@@ -24,6 +24,7 @@ import moment from 'moment';
 
 // API functions (keep your implementations)
 import { AuthFetch, AuthPut, UploadFiles, AuthPost } from '../../auth/auth';
+import { useSelector } from 'react-redux';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -129,6 +130,7 @@ const isDigits = (v: string) => /^[0-9]+$/.test(v);
 
 const DoctorProfileView: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const currentuserDetails = useSelector((state: any) => state.currentUser);
 
   // Data
   const [token, setToken] = useState<string | null>(null);
@@ -631,7 +633,7 @@ const DoctorProfileView: React.FC = () => {
                   {(doctorData.firstname?.[0] ?? 'D').toUpperCase()}
                 </Text>
               </View>
-              <Text style={styles.doctorName}>Dr. {doctorData.firstname} {doctorData.lastname}</Text>
+              <Text style={styles.doctorName}>{currentuserDetails.role==='doctor' &&'Dr. '}{doctorData.firstname} {doctorData.lastname}</Text>
             </View>
 
             <View style={styles.infoSection}>
@@ -667,6 +669,7 @@ const DoctorProfileView: React.FC = () => {
           </View>
 
           {/* Professional Summary */}
+          {currentuserDetails.role === 'doctor' && 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleContainer}>
@@ -753,6 +756,7 @@ const DoctorProfileView: React.FC = () => {
               )}
             </View>
           </View>
+          }
         </View>
 
         {/* Row 2: Working Locations + KYC */}
@@ -823,8 +827,10 @@ const DoctorProfileView: React.FC = () => {
         </View>
 
         {/* Row 3: Consultation Charges + Bank Details */}
+                
         <View style={styles.row}>
           {/* Consultation Charges */}
+            {currentuserDetails.role === 'doctor' && 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleContainer}>
@@ -851,7 +857,7 @@ const DoctorProfileView: React.FC = () => {
                 </Text>
               </View>
             ))}
-          </View>
+          </View>}
 
           {/* Bank Details */}
           <View style={styles.card}>

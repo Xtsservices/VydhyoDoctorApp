@@ -22,6 +22,7 @@ const AdviceScreen = () => {
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
+
       advice: {
         ...prev.advice,
         [name]: value,
@@ -49,10 +50,7 @@ const onChange = (event, selectedDate) => {
       </View>
 
       <View style={styles.card}>
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>⚕️</Text>
-        </View>
-        <Text style={styles.cardTitle}>General Notes</Text>
+        <Text style={styles.cardTitle}>ℹ️ General Notes</Text>
         <TextInput
           style={styles.textArea}
           placeholder="Enter general notes..."
@@ -63,10 +61,7 @@ const onChange = (event, selectedDate) => {
       </View>
 
       <View style={styles.card}>
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>⚕️</Text>
-        </View>
-        <Text style={styles.cardTitle}>Advice</Text>
+        <Text style={styles.cardTitle}>💡 Advice</Text>
         <TextInput
           style={styles.textArea}
           placeholder="Enter findings from clinical examination..."
@@ -154,7 +149,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007bff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -184,12 +178,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     backgroundColor: '#fff',
+    color:'black'
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     marginBottom: 24,
+    marginTop:20,
   },
   cancelButton: {
     backgroundColor: '#ccc',

@@ -520,7 +520,10 @@ const AppointmentsScreen = () => {
     return (
       <View style={styles.apptCard}>
         <View style={styles.row}>
-          <Image source={{ uri: appt.avatar }} style={styles.avatar} />
+           <View style={styles.placeholderCircle}>
+        <Text style={styles.placeholderText}>{appt.patientName[0].toUpperCase() || ""}</Text>
+      </View>
+          {/* <Image source={{ uri: appt.avatar }} style={styles.avatar} /> */}
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>{appt.patientName}</Text>
             <Text style={styles.phone}>{appt.phone}</Text>
@@ -952,6 +955,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
   },
+   placeholderCircle: {
+    width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
+    justifyContent: 'center', alignItems: 'center', marginRight: 16,
+  },
+  placeholderText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   rangeWrap: {
     borderWidth: 1,
     borderColor: '#d9d9d9',
