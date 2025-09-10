@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Platform 
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -20,7 +20,7 @@ const AdviceScreen = () => {
   const [formData, setFormData] = useState(initialFormData);
 
   const handleChange = (name: string, value: string) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
 
       advice: {
@@ -30,78 +30,87 @@ const AdviceScreen = () => {
     }));
   };
 
-const onChange = (event, selectedDate) => {
-  setShowDatePicker(false);
-  if (selectedDate) {
-    // Change format to YYYY-MM-DD which is universally parsable
-    const formatted = moment(selectedDate).format('YYYY-MM-DD');
-    handleChange('followUpDate', formatted);
-  }
-};
+  const onChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      // Store in YYYY-MM-DD format for consistency
+      const formatted = moment(selectedDate).format('YYYY-MM-DD');
+      handleChange('followUpDate', formatted);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View>   
-        
-      
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Advice & Follow-Up</Text>
-        <Text style={styles.stepText}>Step 5 of 5</Text>
+      <View>
+        <View style={styles.header}>
+          <Text style={styles.headerText}>Advice & Follow-Up</Text>
+          <Text style={styles.stepText}>Step 5 of 5</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>ℹ️ General Notes</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Enter general notes..."
+            multiline
+            value={formData.advice.medicationNotes || ''}
+            onChangeText={text => handleChange('medicationNotes', text)}
+          />
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>💡 Advice</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Enter findings from clinical examination..."
+            multiline
+            value={formData.advice.advice || ''}
+            onChangeText={text => handleChange('advice', text)}
+            placeholderTextColor={'#9CA3AF'}
+          />
+        </View>
+
+        <Text style={styles.cardTitle}>Follow-Ups</Text>
+
+        <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+          <TextInput
+            style={styles.input}
+            placeholder="mm/dd/yyyy"
+            value={
+              formData.advice.followUpDate
+                ? moment(formData.advice.followUpDate).format('DD-MMM-YYYY')
+                : ''
+            }
+            editable={false}
+            pointerEvents="none"
+            placeholderTextColor={'#9CA3AF'}
+          />
+        </TouchableOpacity>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            minimumDate={new Date()} // disable past dates
+            onChange={onChange}
+          />
+        )}
       </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>ℹ️ General Notes</Text>
-        <TextInput
-          style={styles.textArea}
-          placeholder="Enter general notes..."
-          multiline
-          value={formData.advice.medicationNotes || ''}
-          onChangeText={(text) => handleChange('medicationNotes', text)}
-        />
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>💡 Advice</Text>
-        <TextInput
-          style={styles.textArea}
-          placeholder="Enter findings from clinical examination..."
-          multiline
-          value={formData.advice.advice || ''}
-          onChangeText={(text) => handleChange('advice', text)}
-          placeholderTextColor={"#9CA3AF"}
-        />
-      </View>
-
-      <Text style={styles.cardTitle}>Follow-Ups</Text>
-
-      <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-        <TextInput
-          style={styles.input}
-          placeholder="mm/dd/yyyy"
-          value={formData.advice.followUpDate}
-          editable={false}
-          pointerEvents="none"
-          placeholderTextColor={"#9CA3AF"}
-        />
-      </TouchableOpacity>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          minimumDate={new Date()} // disable past dates
-          onChange={onChange}
-        />
-      )}
-    </View>
-
 
       <View style={styles.buttonRow}>
         <TouchableOpacity style={styles.cancelButton}>
           <Text style={styles.buttonText}>Cancel</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.nextButton} onPress={() => navigation.navigate('PrescriptionPreview', { patientDetails, formData })}>
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={() =>
+            navigation.navigate('PrescriptionPreview', {
+              patientDetails,
+              formData,
+            })
+          }
+        >
           <Text style={styles.buttonText}>Confirm</Text>
         </TouchableOpacity>
       </View>
@@ -178,14 +187,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     backgroundColor: '#fff',
-    color:'black'
+    color: 'black',
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     marginBottom: 24,
-    marginTop:20,
+    marginTop: 20,
   },
   cancelButton: {
     backgroundColor: '#ccc',

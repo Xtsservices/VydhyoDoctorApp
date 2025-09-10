@@ -196,9 +196,9 @@ setDepartment (profileResponse.data.data.specialization.name)
                 profileResponse.data
               ) {
                 const userData = profileResponse.data.data;
-            dispatch({ type: 'currentUser', payload: userData });
+            dispatch({ type: 'currentDoctor', payload: userData });
 
-                dispatch({ type: 'currentUserID', payload: storedUserId });
+                // dispatch({ type: 'currentUserID', payload: storedUserId });
           
       
                 // Toast.show({
@@ -260,7 +260,7 @@ setDepartment (profileResponse.data.data.specialization.name)
       });
     }
   };
-
+console.log(currentuserDetails, 'currentuserDetails')
   const name = currentuserDetails?.role === 'doctor' ? `Dr.${currentuserDetails?.firstname} ${currentuserDetails?.lastname}` : `${currentuserDetails?.firstname} ${currentuserDetails?.lastname}`
 console.log(department, 'departmetn')
   return (
