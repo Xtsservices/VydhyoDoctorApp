@@ -61,10 +61,10 @@ const DoctorLoginScreen = () => {
     try {
       const response = await UsePost('auth/login', {
         mobile,
-        // userType: 'doctor',
+        userType: 'doctor',
         language: 'tel',
       });
-
+      console.log("responselogin", response);
       if (response?.status === 'success' && response?.data) {
         setUserId(response?.data?.userId);
         setShowOtp(true);

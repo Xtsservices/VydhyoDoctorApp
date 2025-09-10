@@ -127,6 +127,19 @@ const PrescriptionScreen = () => {
     setActiveDropdown(null);
   };
 
+  const handleRemoveTest = (index: number) => {
+    const updatedTests = [...(formData?.diagnosis?.selectedTests || [])];
+    updatedTests.splice(index, 1);
+    setFormData((prev) => ({
+      ...prev,
+      diagnosis: {
+        ...prev.diagnosis,
+        selectedTests: updatedTests,
+      },
+    }));
+    Toast.show({ type: 'success', text1: 'Test removed' });
+  };
+
   const handleAddMedicine = () => {
     if (medications.length > 0 && !validateMedication(medications[medications.length - 1])) return;
     const newMedication = { 
@@ -219,7 +232,6 @@ const PrescriptionScreen = () => {
       console.log("dosage")
       Alert.alert("Error", 'Enter valid dosage Ex:100mg')
       return;
-//  return Toast.show({ type: 'error', text1: 'Enter valid dosage' }), false;
     }
     if (med.duration === null || med.duration <= 0) return Alert.alert('error', 'Duration must be > 0' ), false;
     if (!med.frequency) return Alert.alert('error',  'Select a frequency' ), false;
@@ -242,7 +254,7 @@ const PrescriptionScreen = () => {
   const handleNext = () => {
     if (medications.length > 0 && !validateMedication(medications[medications.length - 1])){
       console.log("123456")
-return;
+      return;
     } 
     navigation.navigate('AdviceFollowup', { patientDetails, formData });
   };
@@ -278,8 +290,17 @@ return;
         <TouchableOpacity style={styles.addButton} onPress={() => handleAddTest(testInput)}>
           <Text style={styles.addButtonText}>+ Add Test</Text>
         </TouchableOpacity>
+        
         {formData?.diagnosis?.selectedTests?.map((test: any, index: number) => (
-          <Text key={index} style={styles.testTag}>{test.testName}</Text>
+          <View key={index} style={styles.testItemContainer}>
+            <Text style={styles.testTag}>{test.testName}</Text>
+            <TouchableOpacity 
+              onPress={() => handleRemoveTest(index)}
+              style={styles.deleteButton}
+            >
+              <Text style={styles.deleteText}>✕</Text>
+            </TouchableOpacity>
+          </View>
         ))}
       </View>
 
@@ -295,7 +316,6 @@ return;
             diagnosis: { ...prev.diagnosis, diagnosisList: text.toUpperCase() },
           }))}
           placeholderTextColor="#9CA3AF"
-
         />
       </View>
 
@@ -303,11 +323,46 @@ return;
         <View style={styles.medHeader}>
           <Text style={styles.sectionTitle}>💊 Prescribed Medications</Text>
         </View>
+        
         {formData?.diagnosis?.medications?.map((med: any, index: number) => (
-          <View key={index} style={styles.row}>
-            <Text style={styles.testTag}>Name: {med.medName}</Text>
-            <Text style={styles.testTag}>Duration: {med.duration}</Text>
-            <Text style={styles.testTag}>Dosage: {med.dosage}</Text>
+          <View key={index} style={styles.medicationItemContainer}>
+            <View style={styles.row}>
+              <Text style={styles.testTag}>Name: {med.medName}</Text>
+              <Text style={styles.testTag}>Duration: {med.duration}</Text>
+              <Text style={styles.testTag}>Dosage: {med.dosage}</Text>
+            </View>
+            <TouchableOpacity 
+              onPress={() => {
+                // Remove from both medications array and formData
+                const updatedMeds = [...medications];
+                updatedMeds.splice(index, 1);
+                setMedications(updatedMeds);
+                
+                const transformed = updatedMeds.map((med) => ({
+                  medInventoryId: medInventory.find(m => m.medName === med.name)?._id || null,
+                  medName: med.name,
+                  quantity: med.quantity,
+                  medicineType: med.type,
+                  dosage: med.dosage,
+                  duration: med.duration,
+                  frequency: med.frequency,
+                  timings: med.timing || [],
+                }));
+                
+                setFormData((prev) => ({
+                  ...prev,
+                  diagnosis: {
+                    ...prev.diagnosis,
+                    medications: transformed,
+                  },
+                }));
+                
+                Toast.show({ type: 'success', text1: 'Medicine removed' });
+              }}
+              style={styles.deleteButton}
+            >
+              <Text style={styles.deleteText}>✕</Text>
+            </TouchableOpacity>
           </View>
         ))}
 
@@ -359,7 +414,6 @@ return;
               value={med.dosage}
               onChangeText={(text) => handleMedicineChange(index, 'dosage', text)}
               placeholderTextColor="#9CA3AF"
-
             />
             <TextInput
               placeholder="Duration (days)"
@@ -429,10 +483,9 @@ return;
                 style={[styles.input, { backgroundColor: '#eaeaea' }]}
                 value={med.quantity?.toString() || ''}
                 editable={false}
-                   placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#9CA3AF"
               />
             )}
-
 
             <TextInput
               placeholder="Notes"
@@ -473,10 +526,8 @@ const styles = StyleSheet.create({
   textArea: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, minHeight: 80, textAlignVertical: 'top', backgroundColor: '#fff', marginBottom: 10, color: 'black' },
   addButton: { backgroundColor: '#007bff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 },
   addButtonText: { color: '#fff', fontWeight: '600' },
-
-  testTag: { backgroundColor: '#e2e2e2', padding: 6, borderRadius: 6, marginTop: 4, color:'black' },
+  testTag: { backgroundColor: '#e2e2e2', padding: 6, borderRadius: 6, marginTop: 4, color: 'black' },
   dropdown: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 6, maxHeight: 150, overflow: 'scroll' },
-
   dropdownItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
   medHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   blueButton: { backgroundColor: '#007bff', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
@@ -492,5 +543,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8,
+    flex: 1,
+  },
+  testItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  medicationItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    backgroundColor: '#f0f0f0',
+    padding: 8,
+    borderRadius: 6,
+  },
+  deleteButton: {
+    backgroundColor: '#ff4d4d',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  deleteText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });

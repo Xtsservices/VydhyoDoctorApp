@@ -238,6 +238,7 @@ const DoctorDashboard = () => {
   }>>([]);
 
   const currentuserDetails = useSelector((state: any) => state.currentUser);
+  console.log("currentuserDetails000",currentuserDetails)
   const doctorId = currentuserDetails?.role === 'doctor' ? currentuserDetails?.userId : currentuserDetails?.createdBy;
 
   /* ---------- Revenue Summary RANGE (new) ---------- */

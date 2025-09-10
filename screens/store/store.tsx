@@ -4,6 +4,7 @@ import { createStore } from "redux";
 const initialData = {
   currentUserID: null,
   currentUser: null,
+  currentDoctor: null,
 
 };
 
@@ -21,6 +22,13 @@ function Reducer(state = initialData, action: Action) {
       return {
         ...state,
         currentUser: action.payload,
+       
+      };
+
+      case "currentDoctor":
+      return {
+        ...state,
+        currentDoctor: action.payload,
        
       };
 
