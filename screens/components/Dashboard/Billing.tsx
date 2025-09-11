@@ -438,50 +438,74 @@ const Billing: React.FC = () => {
     fetchPatients(page, pagination.pageSize, debouncedSearch);
   };
 
-  const handleViewClick = async (patientKeyId: number) => {
-    const isCurrentlyExpanded = viewModePatientId === patientKeyId;
-    setViewModePatientId(isCurrentlyExpanded ? null : patientKeyId);
-    if (isCurrentlyExpanded) return;
+const handleViewClick = async (patientKeyId: number) => {
+  const isCurrentlyExpanded = viewModePatientId === patientKeyId;
+  setViewModePatientId(isCurrentlyExpanded ? null : patientKeyId);
 
-    const patient = transformedPatients.find((p) => p.id === patientKeyId);
-    if (!patient) {
-      Toast.show({ type: "error", text1: "Patient not found." });
-      return;
-    }
+  // Reset expanded sections when collapsing
+  if (isCurrentlyExpanded) {
+    setExpandedSections((prev) => {
+      const newState = { ...prev };
+      delete newState[`${patientKeyId}-pharmacy`];
+      delete newState[`${patientKeyId}-labs`];
+      delete newState[`${patientKeyId}-appointments`];
+      return newState;
+    });
+    return;
+  }
 
-    setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: true }));
-    try {
-      const prescriptionId = patient.prescriptionId;
-      // if (!prescriptionId) throw new Error("Prescription ID not found for this patient.");
-      const token = await AsyncStorage.getItem("authToken");
+  // Fetch data for the expanded view
+  const patient = transformedPatients.find((p) => p.id === patientKeyId);
+  if (!patient) {
+    Toast.show({ type: "error", text1: "Patient not found." });
+    return;
+  }
 
-      const res = await AuthFetch(
-        `receptionist/fetchDoctorPatientDetails/${doctorId}/${patient.patientId}/${prescriptionId}`,
-        token
+  setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: true }));
+  try {
+    const prescriptionId = patient.prescriptionId;
+    const token = await AsyncStorage.getItem("authToken");
+
+    const res = await AuthFetch(
+      `receptionist/fetchDoctorPatientDetails/${doctorId}/${patient.patientId}/${prescriptionId}`,
+      token
+    );
+
+    const ok = res?.status === "success" || res?.data?.status === "success";
+    const arr = res?.data?.data || [];
+    if (ok && Array.isArray(arr) && arr.length > 0) {
+      const detailed = arr[0] as RawPatient;
+      // Log the fetched data for debugging
+      console.log("Fetched patient details:", JSON.stringify(detailed, null, 2));
+
+      // Update patientsRaw with the fetched data
+      setPatientsRaw((prev) =>
+        prev.map((p) => (p.patientId === patient.patientId ? { ...p, ...detailed } : p))
       );
 
-      console.log("timeeeeeeeeeee", res);
-
-      const ok = res?.status === "success" || res?.data?.status === "success";
-      const arr = res?.data?.data || [];
-      if (ok && Array.isArray(arr) && arr.length > 0) {
-        const detailed = arr[0] as RawPatient;
-        setPatientsRaw((prev) => prev.map((p) => (p.patientId === patient.patientId ? (detailed as any) : p)));
-        setExpandedSections((prev) => ({
-          ...prev,
-          [`${patientKeyId}-pharmacy`]: true,
-          [`${patientKeyId}-labs`]: true,
-          [`${patientKeyId}-appointments`]: true,
-        }));
-      } else {
-        throw new Error("No detailed patient data found.");
-      }
-    } catch (e: any) {
-      Toast.show({ type: "error", text1: e?.message || "Failed to load details." });
-    } finally {
-      setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: false }));
+      // Explicitly set expandedSections for all sections
+      setExpandedSections((prev) => ({
+        ...prev,
+        [`${patientKeyId}-pharmacy`]: detailed.medicines && detailed.medicines.length > 0,
+        [`${patientKeyId}-labs`]: detailed.tests && detailed.tests.length > 0,
+        [`${patientKeyId}-appointments`]: detailed.appointments && detailed.appointments.length > 0,
+      }));
+    } else {
+      throw new Error("No detailed patient data found.");
     }
-  };
+  } catch (e: any) {
+    Toast.show({ type: "error", text1: e?.message || "Failed to load details." });
+    // Set expanded sections even on error, based on existing data
+    setExpandedSections((prev) => ({
+      ...prev,
+      [`${patientKeyId}-pharmacy`]: patient.medicines.length > 0,
+      [`${patientKeyId}-labs`]: patient.tests.length > 0,
+      [`${patientKeyId}-appointments`]: patient.appointmentDetails.length > 0,
+    }));
+  } finally {
+    setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: false }));
+  }
+};
 
   const handleSectionExpand = (patientKeyId: number, section: "pharmacy" | "labs" | "appointments") => {
     const key = `${patientKeyId}-${section}`;
