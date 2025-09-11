@@ -36,10 +36,11 @@ const PrescriptionPreview = () => {
 
   function transformEprescriptionData(formData) {
     const { doctorInfo, patientInfo, vitals, diagnosis, advice } = formData;
+    console.log("formDataaaaaaaaaaa", formData)
     const appointmentId = patientDetails?.id;
 
     return {
-      appointmentId: appointmentId|| patientDetails.appointmentId,
+      appointmentId: appointmentId || patientDetails.appointmentId,
       userId: patientInfo.patientId,
       doctorId: doctorInfo.doctorId,
       addressId: doctorInfo.selectedClinicId,
@@ -203,8 +204,14 @@ const PrescriptionPreview = () => {
             ${(appointmentDate || appointmentTime) ? `
               <div class="appointment-info">
                 ${appointmentDate ? `<div>📅 Date: ${appointmentDate}</div>` : ''}
-                ${appointmentTime ? `<div>⏰ Time: ${appointmentTime}</div>` : ''}
-              </div>
+${appointmentTime ? `<div>⏰ Time: ${new Date(`2000-01-01T${appointmentTime}`)
+          .toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+          .replace('AM', ' AM')
+          .replace('PM', ' PM')}</div>` : ''}              </div>
             ` : ''}
  
             <div class="doctor-patient-container">
@@ -437,8 +444,15 @@ ${data?.advice?.followUpDate ? `
       const message = `Here's my medical prescription from ${selectedClinic?.clinicName || "Clinic"}\n` +
         `Patient: ${formData.patientInfo?.patientName || "N/A"}\n` +
         `Doctor: ${formData.doctorInfo?.doctorName || "N/A"}\n` +
-        `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}`;
-
+        `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}` +
+        `${formData.doctorInfo?.appointmentStartTime ? `\nTime: ${new Date(`2000-01-01T${formData.doctorInfo.appointmentStartTime}`)
+          .toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+          .replace('AM', ' AM')
+          .replace('PM', ' PM')}` : ''}`;
       let fileUri = pdfPath;
       if (Platform.OS === 'android') {
         fileUri = `file://${pdfPath}`;
@@ -487,7 +501,7 @@ ${data?.advice?.followUpDate ? `
           const successMessage = type === 'save'
             ? 'Prescription saved successfully'
             : 'Prescription successfully added';
-            Alert.alert('success',successMessage )
+          Alert.alert('success', successMessage)
           // Toast.show({ type: 'success', text1: successMessage });
         }
 
@@ -529,8 +543,15 @@ ${data?.advice?.followUpDate ? `
                 `Here's my medical prescription from ${formData?.doctorInfo?.clinicName || 'Clinic'}\n` +
                 `Patient: ${formData?.patientInfo?.patientName || 'N/A'}\n` +
                 `Doctor: ${formData?.doctorInfo?.doctorName || 'N/A'}\n` +
-                `Date: ${formData?.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : 'N/A'}`;
-
+                `Date: ${formData?.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : 'N/A'}` +
+                `${formData.doctorInfo?.appointmentStartTime ? `\nTime: ${new Date(`2000-01-01T${formData.doctorInfo.appointmentStartTime}`)
+                  .toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                  })
+                  .replace('AM', ' AM')
+                  .replace('PM', ' PM')}` : ''}`;
               const schemeUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
               const webUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
               const canOpen = await Linking.canOpenURL(schemeUrl);
@@ -602,10 +623,10 @@ ${data?.advice?.followUpDate ? `
   }, [doctorId]);
 
   return (
-<ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       {/* Header with conditional background and padding */}
       <View style={[
-        styles.header, 
+        styles.header,
         !selectedClinic?.headerImage && styles.headerNoImagePadding,
         selectedClinic?.headerImage && styles.headerWithImageBackground
       ]}>
@@ -618,37 +639,44 @@ ${data?.advice?.followUpDate ? `
         )}
 
         {!selectedClinic?.headerImage && (
-<View className="row" style={styles.row}>
-          <Text style={[
-            styles.headerText,
-            selectedClinic?.headerImage && styles.headerTextWithImage
-          ]}>
-            {selectedClinic?.clinicName}
-          </Text>
-          <View>
+          <View className="row" style={styles.row}>
             <Text style={[
               styles.headerText,
               selectedClinic?.headerImage && styles.headerTextWithImage
             ]}>
-              📍 {selectedClinic?.address}
+              {selectedClinic?.clinicName}
             </Text>
-            <Text style={[
-              styles.headerText,
-              selectedClinic?.headerImage && styles.headerTextWithImage
-            ]}>
-              📞 {selectedClinic?.mobile}
-            </Text>
+            <View>
+              <Text style={[
+                styles.headerText,
+                selectedClinic?.headerImage && styles.headerTextWithImage
+              ]}>
+                📍 {selectedClinic?.address}
+              </Text>
+              <Text style={[
+                styles.headerText,
+                selectedClinic?.headerImage && styles.headerTextWithImage
+              ]}>
+                📞 {selectedClinic?.mobile}
+              </Text>
+            </View>
           </View>
-        </View>
         )}
-        
+
       </View>
-      
+
       {(formData.doctorInfo?.appointmentDate || formData.doctorInfo?.appointmentStartTime) && (
         <View style={styles.appointmentSection}>
           {formData.doctorInfo?.appointmentStartTime && (
             <Text style={styles.appointmentText}>
-              Time: {formData.doctorInfo.appointmentStartTime}
+              Time: {new Date(`2000-01-01T${formData.doctorInfo.appointmentStartTime}`)
+                .toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
+                })
+                .replace('AM', ' AM')
+                .replace('PM', ' PM')}
             </Text>
           )}
         </View>
@@ -825,7 +853,7 @@ ${data?.advice?.followUpDate ? `
         ) : (
           <View>
             <View style={{ height: 48 }} />
-            <Text style={{ fontWeight: 'bold', color:'black' }}>
+            <Text style={{ fontWeight: 'bold', color: 'black' }}>
               DR. {formData?.doctorInfo?.doctorName || 'Unknown Doctor'}
             </Text>
           </View>
@@ -878,8 +906,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
   },
-   headerNoImagePadding: {
-    padding: 16, 
+  headerNoImagePadding: {
+    padding: 16,
   },
   headerText: {
     fontSize: 18,
@@ -941,7 +969,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     elevation: 2,
   },
-  
+
   headerImage: {
     width: '100%',
     height: 120,
@@ -962,37 +990,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
+    gap: 8,
   },
   downloadButton: {
     backgroundColor: '#007bff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 14, // Increased for better touch targets
     borderRadius: 8,
     flex: 1,
-    marginHorizontal: 4,
+    justifyContent: 'center', // Centers content vertically
+    alignItems: 'center', // Centers content horizontally
+    minHeight: 48, // Ensures consistent height
   },
   saveButton: {
     backgroundColor: '#28a745',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 14, // Increased for better touch targets
     borderRadius: 8,
     flex: 1,
-    marginHorizontal: 4,
+    justifyContent: 'center', // Centers content vertically
+    alignItems: 'center', // Centers content horizontally
+    minHeight: 48, // Ensures consistent height
   },
   disabledButton: {
     backgroundColor: '#6c757d',
     opacity: 0.7,
   },
-  downloadText: {
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  saveText: {
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+downloadText: {
+  color: '#fff',
+  fontWeight: '600',
+  textAlign: 'center',
+  includeFontPadding: false, // Removes extra font padding
+  textAlignVertical: 'center', // Ensures vertical centering on Android
+},
+saveText: {
+  color: '#fff',
+  fontWeight: '600',
+  textAlign: 'center',
+  includeFontPadding: false, // Removes extra font padding
+  textAlignVertical: 'center', // Ensures vertical centering on Android
+},
+
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',

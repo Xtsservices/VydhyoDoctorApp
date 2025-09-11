@@ -22,7 +22,10 @@ const AddAppointment = () => {
   const userId = useSelector((state: any) => state.currentUserId);
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy
-  console.log(currentuserDetails.consultationModeFee[0]?.fee, "currentuserDetails")// Make sure your Redux state has currentUser with firstname and lastname
+  console.log(currentuserDetails, "currentuserDetails")// Make sure your Redux state has currentUser with firstname and lastname
+  const currentDoctor = useSelector((state: any) => state.currentDoctor);
+  console.log(currentDoctor, "currentDoctor")
+
   const [gender, setGender] = useState('Male');
   const [selectedTime, setSelectedTime] = useState('10:30 AM');
   const [paymentMethod, setPaymentMethod] = useState('UPI');
@@ -95,7 +98,7 @@ const AddAppointment = () => {
     age: '',
     gender: '',
     appointmentType: '',
-    department: currentuserDetails?.specialization?.name || '',
+    department: currentuserDetails?.specialization?.name || currentDoctor?.specialization?.name || '',
     appointmentDate: '',
     selectedTime: '',
     paymentMethod: 'UPI Payment',
@@ -104,6 +107,7 @@ const AddAppointment = () => {
     clinicName: '',
     clinicAddressId: ''
   });
+  console.log(formData, "formData")
   const [patientId, setPatientId] = useState<string>('');
   const [userData, setUserDate] = useState<any>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
