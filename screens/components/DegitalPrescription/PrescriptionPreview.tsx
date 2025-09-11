@@ -859,7 +859,7 @@ ${data?.advice?.followUpDate ? `
             </Text>
           </View>
         )}
-        <Text style={{ fontSize: 12, marginTop: 4 }}>
+        <Text style={{ fontSize: 12, marginTop: 4, color:'black' }}>
           ✔ Digitally Signed
         </Text>
       </View>
@@ -903,7 +903,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 16,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#F0FDF4',
     borderRadius: 10,
     justifyContent: 'center',
   },

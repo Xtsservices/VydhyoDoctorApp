@@ -189,7 +189,7 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
           })}
         </View>
       ) : (
-        <Text style={{ textAlign: 'center', marginTop: 20 }}>No appointments on this date.</Text>
+        <Text style={{ textAlign: 'center', marginTop: 20, color:'black' }}>No appointments on this date.</Text>
       )}
 
       {appointments.length > 5 && !viewAll && (

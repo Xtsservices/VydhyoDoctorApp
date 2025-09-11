@@ -520,12 +520,13 @@ const [button, setButton] = useState(false)
     const status = (appt.status || '').toLowerCase();
     const isCompleted = status === 'completed';
     const isCancelled = status === 'cancelled' || status === 'canceled';
-    const isPhysio = (appt.appointmentDepartment || '').toLowerCase() === 'physiotherapist';
+    const isPhysio = (appt.appointmentDepartment || '') === 'Physiotherapist';
+    const notADoctor = currentuserDetails?.role !== 'doctor'
 
     const m = parseApptMoment(appt.rawDate, appt.appointmentTime);
     const disabledByTime = !m ? true : moment().isBefore(m.clone().subtract(1, 'hour'));
 
-    const disablePrescription = isCompleted || isCancelled || disabledByTime || isPhysio;
+    const disablePrescription = isCompleted || isCancelled || disabledByTime || isPhysio ||notADoctor;
     const disableComplete = isCompleted || isCancelled || disabledByTime;
     const disableReschedule = isCompleted || isCancelled;
     const disableCancel = isCompleted || isCancelled;

@@ -76,13 +76,16 @@ const [form, setForm] = useState({
 });
 
 const accessOptions = [
-  { label: 'View Patients', value: 'viewPatients' },
-  { label: 'Pharmacy', value: 'pharmacy' },
-  { label: 'Availability', value: 'availability' },
-  { label: 'Dashboard', value: 'dashboard' },
-  { label: 'Labs', value: 'labs' },
-  { label: 'Appointments', value: 'appointments' },
-  { label: 'New Appointments', value: 'New appointments' },
+    { value: "my-patients", label: "My Patients" },
+    { value: "appointments", label: "Appointments" },
+    { value: "labs", label: "Labs" },
+    { value: "dashboard", label: "Dashboard" },
+    { value: "pharmacy", label: "Pharmacy" },
+    { value: "availability", label: "Availability" },
+    { value: "staff-management", label: "Staff Management" },
+    { value: "clinic-management", label: "Clinic Management" },
+    { value: "billing", label: "Billing" },
+    { value: "reviews", label: "Reviews" },
 ];
 
   const [staffData, setStaffData] = React.useState<Staff[]>([]);
@@ -461,7 +464,7 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
         </View>
 
         <Picker
-          selectedValue=""
+          selectedValue="Add Access"
           style={styles.picker}
           onValueChange={(itemValue) => {
             if (itemValue && !form.access.includes(itemValue)) {
@@ -469,7 +472,7 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
             }
           }}
         >
-          <Picker.Item label="Select access to add..." value="" />
+          <Picker.Item label="Select access to add..." value=""  style={{color:"black"}}/>
           {accessOptions.map((option) => (
             <Picker.Item key={option.value} label={option.label} value={option.value} />
           ))}

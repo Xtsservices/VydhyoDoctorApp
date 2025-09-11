@@ -47,10 +47,12 @@ const PatientDetails = () => {
   const [allClinics, setAllClinics] = useState({});
 
   const fetchPrescription = async () => {
-    if (!patientDetails?.id) return;
+    const appointmentId = patientDetails?.appointmentId ||patientDetails?.id
+    if (!appointmentId) return;
+
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthFetch(`pharmacy/getEPrescriptionByAppointmentId/${patientDetails.id}`, token);
+      const response = await AuthFetch(`pharmacy/getEPrescriptionByAppointmentId/${appointmentId}`, token);
       if (response?.data?.success && response.data.data) {
         const prescription = response.data.data[0];
         const bpParts = prescription.vitals?.bp?.split('/') || [];

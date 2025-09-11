@@ -217,13 +217,24 @@ const AddStaffScreen = () => {
 
 <Text style={styles.label}>Access</Text>
 {[
-  { label: 'View Patients', value: 'viewPatients' },
-  { label: 'Pharmacy', value: 'pharmacy' },
-  { label: 'Availability', value: 'availability' },
-  { label: 'Dashboard', value: 'dashboard' },
-  { label: 'Labs', value: 'labs' },
-  { label: 'Appointments', value: 'appointments' },
-  { label: ' New Appointments', value: 'New appointments' },
+
+      { value: "my-patients", label: "My Patients" },
+    { value: "appointments", label: "Appointments" },
+    { value: "labs", label: "Labs" },
+    { value: "dashboard", label: "Dashboard" },
+    { value: "pharmacy", label: "Pharmacy" },
+    { value: "availability", label: "Availability" },
+    { value: "staff-management", label: "Staff Management" },
+    { value: "clinic-management", label: "Clinic Management" },
+    { value: "billing", label: "Billing" },
+    { value: "reviews", label: "Reviews" },
+  // { label: 'View Patients', value: 'viewPatients' },
+  // { label: 'Pharmacy', value: 'pharmacy' },
+  // { label: 'Availability', value: 'availability' },
+  // { label: 'Dashboard', value: 'dashboard' },
+  // { label: 'Labs', value: 'labs' },
+  // { label: 'Appointments', value: 'appointments' },
+  // { label: ' New Appointments', value: 'New appointments' },
 
 ].map((item) => (
   <TouchableOpacity

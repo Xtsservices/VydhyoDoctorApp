@@ -302,10 +302,19 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
         </TouchableOpacity>
       </View>
 
-      {loading && medicines.length === 0 ? (
-        <View style={styles.loader}><ActivityIndicator /></View>
+      {loading  ? (
+        <View style={styles.spinningContainer}>
+                                        <ActivityIndicator size="large" color="#007bff" />
+                                        <Text style={{color:'black'}}>Loading List...</Text>
+                                        </View>
       ) : (
-        <FlatList
+         medicines?.length === 0 ? (
+                          <View style={styles.spinningContainer}>
+                  <Text style={{color:'black'}}>No Data Found</Text>
+                          </View>
+                        
+                        ) : (
+                             <FlatList
           data={medicines}
           keyExtractor={(item) => item.key}
           renderItem={renderMedicineItem}
@@ -313,6 +322,8 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
           refreshing={loading}
           onRefresh={() => handleTableChange(1, pagination.pageSize)}
         />
+                        )
+     
       )}
 
       {/* Bulk preview panel */}
@@ -588,6 +599,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, 
     borderBottomColor: "#f1f5f9", 
     paddingVertical: 8 
+  },
+     spinningContainer : {
+ flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+ padding: 10,
   },
 });
 
