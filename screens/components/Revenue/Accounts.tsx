@@ -306,7 +306,7 @@ const AccountsScreen = () => {
               >
                 <Icon name="calendar" size={18} color="#6B7280" />
                 <Text style={styles.dateText}>
-                  {startDate ? moment(startDate).format('MM/DD/YYYY') : 'mm/dd/yyyy'}
+                  {startDate ? moment(startDate).format('DD/MM/YYYY') : 'dd/mm/yyyy'}
                 </Text>
               </TouchableOpacity>
 
@@ -316,7 +316,7 @@ const AccountsScreen = () => {
               >
                 <Icon name="calendar" size={18} color="#6B7280" />
                 <Text style={styles.dateText}>
-                  {endDate ? moment(endDate).format('MM/DD/YYYY') : 'mm/dd/yyyy'}
+                  {endDate ? moment(endDate).format('DD/MM/YYYY') : 'dd/mm/yyyy'}
                 </Text>
               </TouchableOpacity>
 

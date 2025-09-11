@@ -94,10 +94,30 @@ const PracticeScreen = () => {
   const mapRefs = useRef<MapView[]>([]);
   const [searchQueryPerAddress, setSearchQueryPerAddress] = useState<{[key: number]: string}>({});
   const [showSearchResultsPerAddress, setShowSearchResultsPerAddress] = useState<{[key: number]: boolean}>({});
+  const [locationRetryCount, setLocationRetryCount] = useState(0);
+  const locationRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setCurrentOpdIndex(opdAddresses.length - 1);
   }, [opdAddresses.length]);
+
+  // Initialize location for all addresses when component mounts
+  useEffect(() => {
+    const initializeAllLocations = async () => {
+      for (let i = 0; i < opdAddresses.length; i++) {
+        await initLocation(i);
+      }
+    };
+    
+    initializeAllLocations();
+    
+    // Clean up any pending timeouts when component unmounts
+    return () => {
+      if (locationRetryTimeoutRef.current) {
+        clearTimeout(locationRetryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Request location permission
   const requestLocationPermission = async () => {
@@ -176,6 +196,9 @@ const PracticeScreen = () => {
           ...prev,
           [index]: address
         }));
+        
+        // Reset retry count on success
+        setLocationRetryCount(0);
       } else {
         Toast.show({
           type: 'error',
@@ -203,11 +226,26 @@ const PracticeScreen = () => {
   const initLocation = async (index: number) => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
-      Alert.alert('Permission Denied', 'Location permission is required to show your current location.');
+      Alert.alert(
+        'Permission Denied', 
+        'Location permission is required to show your current location.',
+        [
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          { text: 'OK', style: 'cancel' },
+        ]
+      );
       return;
     }
 
     setIsFetchingLocation(true);
+    
+    // Configure high accuracy for better indoor positioning
+    const locationOptions = {
+      enableHighAccuracy: true,
+      timeout: 15000, // 15 seconds timeout
+      maximumAge: 10000, // Accept cached location up to 10 seconds old
+    };
+
     Geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
@@ -234,17 +272,102 @@ const PracticeScreen = () => {
       },
       (error) => {
         console.error('Location Error:', error);
-        Alert.alert(
-          'Location Error',
-          'Unable to fetch current location. Please ensure location services are enabled and try again, or select a location manually.',
-          [
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            { text: 'OK', style: 'cancel' },
-          ]
-        );
+        
+        // Handle different error codes
+        let errorMessage = 'Unable to fetch current location.';
+        
+        if (error.code === error.PERMISSION_DENIED) {
+          errorMessage = 'Location permission denied. Please enable location permissions in settings.';
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          errorMessage = 'Location information is unavailable. This might be due to being indoors or poor signal.';
+        } else if (error.code === error.TIMEOUT) {
+          errorMessage = 'Location request timed out. Please try again.';
+        }
+        
+        // If we're indoors or have poor GPS, try again with a different approach
+        if (locationRetryCount < 3) {
+          setLocationRetryCount(prev => prev + 1);
+          
+          Toast.show({
+            type: 'info',
+            text1: 'Getting Location',
+            text2: `Trying again... Attempt ${locationRetryCount + 1} of 3`,
+            position: 'top',
+            visibilityTime: 2000,
+          });
+          
+          // Retry after a delay with different settings
+          locationRetryTimeoutRef.current = setTimeout(() => {
+            initLocationWithRetry(index);
+          }, 2000);
+        } else {
+          Alert.alert(
+            'Location Error',
+            `${errorMessage} Please ensure location services are enabled and try again, or select a location manually.`,
+            [
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              { text: 'Try Again', onPress: () => {
+                setLocationRetryCount(0);
+                initLocation(index);
+              }},
+              { text: 'Select Manually', style: 'cancel' },
+            ]
+          );
+        }
+        
         setIsFetchingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
+      locationOptions
+    );
+  };
+
+  // Alternative method for getting location with different settings
+  const initLocationWithRetry = async (index: number) => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) return;
+
+    // Use different settings for retry
+    const retryOptions = {
+      enableHighAccuracy: locationRetryCount > 1, // Try high accuracy on second retry
+      timeout: 20000, // Longer timeout
+      maximumAge: 30000, // Accept older locations
+    };
+
+    Geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const newRegion = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        
+        const updatedAddresses = [...opdAddresses];
+        updatedAddresses[index] = {
+          ...updatedAddresses[index],
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+        };
+        setOpdAddresses(updatedAddresses);
+        
+        if (mapRefs.current[index]) {
+          mapRefs.current[index].animateToRegion(newRegion, 1000);
+        }
+        
+        fetchAddressDetails(latitude, longitude, index);
+      },
+      (error) => {
+        console.error('Location Retry Error:', error);
+        setIsFetchingLocation(false);
+        
+        // If this retry also failed, try the original method again
+        if (locationRetryCount < 3) {
+          setLocationRetryCount(prev => prev + 1);
+          setTimeout(() => initLocation(index), 2000);
+        }
+      },
+      retryOptions
     );
   };
 
@@ -385,6 +508,7 @@ const PracticeScreen = () => {
 
   // Move to current location
   const handleMyLocation = async (index: number) => {
+    setLocationRetryCount(0);
     await initLocation(index);
   };
 
@@ -404,6 +528,11 @@ const PracticeScreen = () => {
       longitude: '78.9629',
     };
     setOpdAddresses([...opdAddresses, newAddress]);
+    
+    // Initialize location for the new address
+    setTimeout(() => {
+      initLocation(opdAddresses.length);
+    }, 100);
   };
 
   const handleRemoveAddress = (index: number) => {
@@ -542,6 +671,13 @@ const fetchUserData = async () => {
       // Only set addresses if the user actually has addresses
       if (userData?.addresses && userData.addresses.length > 0) {
         setOpdAddresses(userData.addresses)
+        
+        // Initialize locations for existing addresses
+        setTimeout(() => {
+          userData.addresses.forEach((_, index) => {
+            initLocation(index);
+          });
+        }, 500);
       }
       // Otherwise, keep the initial address form that was already set
       
@@ -631,6 +767,19 @@ const fetchUserData = async () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Location on Map</Text>
                 
+                {/* Location status indicator */}
+                {isFetchingLocation && (
+                  <View style={styles.locationStatus}>
+                    <ActivityIndicator size="small" color="#3182CE" />
+                    <Text style={styles.locationStatusText}>
+                      {locationRetryCount > 0 
+                        ? `Getting location (attempt ${locationRetryCount + 1})...` 
+                        : 'Getting your location...'
+                      }
+                    </Text>
+                  </View>
+                )}
+                
                 {/* Search Input */}
                 <View style={styles.searchContainer}>
                   <View style={styles.searchInputContainer}>
@@ -690,6 +839,9 @@ const fetchUserData = async () => {
                     zoomEnabled={true}
                     pitchEnabled={true}
                     rotateEnabled={true}
+                    showsUserLocation={true}
+                    showsMyLocationButton={false}
+                    followsUserLocation={false}
                   >
                     <Marker
                       coordinate={{
@@ -713,13 +865,6 @@ const fetchUserData = async () => {
                     <Icon name="crosshairs-gps" size={24} color="#3182CE" />
                   </TouchableOpacity>
                 </View>
-                
-                {isFetchingLocation && (
-                  <View style={styles.locationLoading}>
-                    <ActivityIndicator size="small" color="#3182CE" />
-                    <Text style={styles.locationLoadingText}>Fetching location...</Text>
-                  </View>
-                )}
               </View>
               
               <View style={styles.inputContainer}>
@@ -1120,6 +1265,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#718096',
     marginTop: 2,
+  },
+  // Location status indicator
+  locationStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    backgroundColor: '#EBF8FF',
+    padding: 8,
+    borderRadius: 4,
+  },
+  locationStatusText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#3182CE',
   },
 });
 

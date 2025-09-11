@@ -1556,8 +1556,13 @@ const styles = StyleSheet.create({
   balanceLabel: { fontSize: 16, fontWeight: "700", color: "#1f2937" },
   balanceValue: { fontSize: 16, fontWeight: "700", color: "#10b981" },
 
-  actionsRow: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 12 },
-
+actionsRow: { 
+  flexDirection: "row", 
+  justifyContent: "flex-end", 
+  flexWrap: "wrap", // Allow buttons to wrap to next line
+  gap: 8, 
+  marginTop: 12,
+},
   primary: {
     backgroundColor: "#007bff",
     borderRadius: 8,
@@ -1566,16 +1571,23 @@ const styles = StyleSheet.create({
   },
   primaryText: { color: "#fff", fontWeight: "700" },
 
-  secondary: {
-    borderWidth: 1,
-    borderColor: "#3b82f6",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
+secondary: {
+  borderWidth: 1,
+  borderColor: "#3b82f6",
+  borderRadius: 8,
+  paddingVertical: 10,
+  paddingHorizontal: 16,
+  minWidth: 140, // Ensure minimum width
+},
   secondaryText: { color: "#3b82f6", fontWeight: "700" },
 
-  success: { backgroundColor: "#28a745", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
+success: { 
+  backgroundColor: "#28a745", 
+  borderRadius: 8, 
+  paddingVertical: 10, 
+  paddingHorizontal: 16,
+  minWidth: 120, // Ensure minimum width
+},
   successText: { color: "#fff", fontWeight: "700" },
 
   outlined: { borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
