@@ -119,7 +119,7 @@ const AvailabilityScreen: React.FC = () => {
   const start24 = convertTo24Hour(startTime, startPeriod);
   const end24 = convertTo24Hour(endTime, endPeriod);
 
-  const durations = ['5 mins', '10 mins', '15 mins', '30 mins', '45 mins', '60 mins'];
+  const durations = [ '15 mins', '30 mins', '45 mins'];
 
   const fetchClinicsForDoctor = async (doctorId: string) => {
     try {

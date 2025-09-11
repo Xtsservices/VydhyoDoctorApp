@@ -293,19 +293,24 @@ const AddAppointment = () => {
     }
   };
 
+  const [patientCreated, setPatientCreated] = useState(false);
+
+const isAddPatientDisabled =
+  patientCreated || !patientformData.age || !validateAge(patientformData.age);
+
   const prefillPatientDetails = (patient: any) => {
     console.log(patient, "selectedpatient")
     setpatientFormData({
-      firstName: patient.firstname,
-      lastName: patient.lastname,
-      dob: patient.DOB,
-      age: '', // optionally calculate
-      gender: patient.gender,
-      mobile: patient.mobile,
+      firstName: patient?.firstname,
+      lastName: patient?.lastname,
+      dob: patient?.DOB,
+      age: patient?.age || '', // optionally calculate
+      gender: patient?.gender,
+      mobile: patient?.mobile,
     });
+    setPatientCreated(true)
     setPatientId(patient.userId)
   };
-
 
 
   const handleAddPatient = async () => {
@@ -316,6 +321,17 @@ const AddAppointment = () => {
     }
 
     console.log('Adding patient with data:', patientformData);
+
+ if (!patientformData.age) {
+    setFieldErrors({ age: "Age is required. Use formats like 6m, 2y, or 15d" });
+    return;
+  }
+  // Validate age format
+  if (patientformData.age && !validateAge(patientformData.age)) {
+    setFieldErrors({ age: "Invalid age format. Use format like 6m, 2y, or 15d" });
+    return;
+  }
+
     try {
       const token = await AsyncStorage.getItem('authToken');
       const payload = {
@@ -330,7 +346,7 @@ const AddAppointment = () => {
       console.log(payload, 'payload details')
       const response = await AuthPost('doctor/createPatient', payload, token);
       console.log(response, 'patient response')
-      if (response.status === 'success') {
+      if (response?.status === 'success') {
         const data = response?.data
         setIsPatientAdded(true)
 
@@ -343,7 +359,7 @@ const AddAppointment = () => {
           position: 'top',
           visibilityTime: 3000,
         });
-
+setPatientCreated(true)
         setpatientFormData({
           firstName: data.data?.firstname || '',
           lastName: data.data?.lastname || '',
@@ -352,6 +368,9 @@ const AddAppointment = () => {
           age: data.data?.age || '',
           mobile: data.data?.mobile || '',
         });
+      }else{
+        console.log("123")
+        Alert.alert("Error", response?.message?.message)
       }
 
     } catch (error) {
@@ -701,7 +720,7 @@ const AddAppointment = () => {
             />
           </View>
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Last Name*</Text>
+            <Text style={styles.label}>Last Name</Text>
             <TextInput
               placeholder="Last Name"
               style={styles.inputFlex}
@@ -718,7 +737,7 @@ const AddAppointment = () => {
         <View style={styles.row}>
           {/* Date of Birth Input */}
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Date of Birth</Text>
+            <Text style={styles.label}>Date of Birth*</Text>
             <TouchableOpacity
               style={styles.inputFlex}
               onPress={() => setShowDatePicker(true)}
@@ -737,7 +756,7 @@ const AddAppointment = () => {
             )}
           </View>
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Age</Text>
+            <Text style={styles.label}>Age*</Text>
             <TextInput
               placeholder="e.g., 2y, 6m, 15d"
               style={styles.inputFlex}
@@ -767,7 +786,7 @@ const AddAppointment = () => {
           {mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
         </View>
 
-        <Text style={styles.label}>Gender</Text>
+        <Text style={styles.label}>Gender*</Text>
         <View style={styles.radioRow}>
           {['Male', 'Female', 'Other'].map((option) => (
             <View key={option} style={styles.radioItem}>
@@ -781,9 +800,14 @@ const AddAppointment = () => {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.addButton} onPress={handleAddPatient}>
-          <Text style={styles.addButtonText}>Add Patient</Text>
-        </TouchableOpacity>
+        <TouchableOpacity
+  style={[styles.addButton, isAddPatientDisabled && styles.disabledButton]}
+  onPress={handleAddPatient}
+  disabled={isAddPatientDisabled}
+>
+  <Text style={styles.addButtonText}>Add Patient</Text>
+</TouchableOpacity>
+
       </View>
 
       <View style={styles.patientsContainer}>
@@ -809,25 +833,15 @@ const AddAppointment = () => {
           </Picker>
         </View>
         <Text style={styles.label}>Department *</Text>
-        <View style={styles.pickerContainer}>
+        <View style={styles.pickerContainer} >
           <TextInput
             style={styles.input}
-            value={formData.department || currentuserDetails?.
+            value={formData?.department || currentuserDetails?.
               specialization?.name || ""}
+              accessibilityState={{ disabled: true }}
           // onChangeText={(text) => setFormData({ ...formData, department: text })}
           />
-          {/* <Picker
-    selectedValue={formData.department}
-    onValueChange={(itemValue) =>
-      setFormData((prev) => ({ ...prev, department: itemValue }))
-    }
-    style={styles.picker}
-  >
-    <Picker.Item label="Select Department" value="" />
-    <Picker.Item label="Cardiology" value="cardiology" />
-    <Picker.Item label="Neurology" value="neuro" />
-    <Picker.Item label="Orthopedics" value="ortho" />
-  </Picker> */}
+
         </View>
 
         <Text style={styles.label}>Appointment Date *</Text>

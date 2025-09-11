@@ -553,12 +553,12 @@ const pieState = useMemo(() => {
             </View>
             <View style={styles.gridRow}>
               <View style={styles.newCard}>
-                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.newAppointments}↑</Text></View>
+                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.newAppointments}% {dashboardData.percentageChanges.newAppointments>0?'↑' :'↑'}</Text></View>
                 <Text style={styles.newNumber}>{dashboardData.appointmentCounts.newAppointments}</Text>
                 <Text style={styles.newLabel}>New Appointments</Text>
               </View>
               <View style={styles.followUpCard}>
-                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.followUp}↑</Text></View>
+                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.followUp}%↑</Text></View>
                 <Text style={styles.followUpNumber}>{dashboardData.appointmentCounts.followUp}</Text>
                 <Text style={styles.followUpLabel}>Follow-ups</Text>
               </View>
@@ -611,7 +611,7 @@ const pieState = useMemo(() => {
             ) : (<Text style={styles.unavailableText}>No slots available</Text>)}
           </ScrollView>
 
-          <Text style={styles.sectionLabel}>Next Available Slots (Tomorrow):</Text>
+          {/* <Text style={styles.sectionLabel}>Next Available Slots (Tomorrow):</Text>
           <ScrollView horizontal contentContainerStyle={styles.slotContainer}>
             {selectedClinicTomorrow ? (
               selectedClinicTomorrow.slots
@@ -623,7 +623,7 @@ const pieState = useMemo(() => {
                   </View>
                 ))
             ) : (<Text style={styles.unavailableText}>No slots available</Text>)}
-          </ScrollView>
+          </ScrollView> */}
         </View>
 
         {/* Revenue Summary (with date range like web) */}
