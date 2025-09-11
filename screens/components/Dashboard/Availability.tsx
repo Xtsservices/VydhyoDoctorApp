@@ -7,6 +7,7 @@ import {
   ScrollView,
   Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -68,6 +69,8 @@ const AvailabilityScreen: React.FC = () => {
   const [unavailableStartPeriod, setUnavailableStartPeriod] = useState<string>('AM');
   const [unavailableEndTime, setUnavailableEndTime] = useState<number>(11);
   const [unavailableEndPeriod, setUnavailableEndPeriod] = useState<string>('PM');
+  const [isAddingSlots, setIsAddingSlots] = useState<boolean>(false);
+  const [isDeletingSlots, setIsDeletingSlots] = useState<boolean>(false);
 
   const fullToShortMap: { [key: string]: string } = {
     Monday: 'Mon',
@@ -119,7 +122,14 @@ const AvailabilityScreen: React.FC = () => {
   const start24 = convertTo24Hour(startTime, startPeriod);
   const end24 = convertTo24Hour(endTime, endPeriod);
 
-  const durations = [ '15 mins', '30 mins', '45 mins'];
+  // Check if end time is after start time
+  const isEndTimeValid = () => {
+    const startMinutes = moment(start24, 'HH:mm').minutes() + moment(start24, 'HH:mm').hours() * 60;
+    const endMinutes = moment(end24, 'HH:mm').minutes() + moment(end24, 'HH:mm').hours() * 60;
+    return endMinutes > startMinutes;
+  };
+
+  const durations = ['15 mins', '30 mins', '45 mins'];
 
   const fetchClinicsForDoctor = async (doctorId: string) => {
     try {
@@ -229,7 +239,35 @@ const AvailabilityScreen: React.FC = () => {
   }, [fromDate, doctorId, selectedClinic]);
 
   const generateTimeSlots = async () => {
+    if (!isEndTimeValid()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'End time must be after start time',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
+    }
+
+    setIsAddingSlots(true);
     try {
+      const startDateObj = dayjs(fromDate);
+      const endDateObj = dayjs(toDate);
+      const daysDifference = endDateObj.diff(startDateObj, 'day');
+
+      if (daysDifference > 6) { // 0-6 days = 1 week max (inclusive)
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Cannot add slots for more than 1 week at a time',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        setIsAddingSlots(false);
+        return;
+      }
+      
       const getDateRangeArray = (fromDate: string, toDate: string): string[] => {
         const dates: string[] = [];
         const start = moment(fromDate, 'YYYY-MM-DD');
@@ -261,47 +299,49 @@ const AvailabilityScreen: React.FC = () => {
       };
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthPost('appointment/createSlotsForDoctor', payload, token);
-      console.log(response, "slots")
 
       if (response?.data && response?.data?.status === 'success') {
-        if (response?.data?.results[0]?.status === 'created'){
-           fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
+        // Always refresh the slots after a successful API call
+        await fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
         setToDate(new Date());
-           Toast.show({
+
+        Toast.show({
           type: 'success',
           text1: 'Success',
-          text2: response?.data?.message || 'Slots Added Successfully',
+          text2: 'Slots Added Successfully', // Use fixed text instead of response data
           position: 'top',
           visibilityTime: 3000,
         });
+
+        // Check if these properties exist before accessing them
+        const overlap = response?.data?.results?.[0]?.reason;
+        const clinicname = response?.data?.results?.[0]?.overlaps?.[0]?.clinic;
+        if (overlap && clinicname) {
+          Alert.alert(overlap, `Clinic Name: ${clinicname}`)
         }
-        const overlap = response?.data?.results[0]?.reason
-        const clinicname = response?.data?.results[0]?.overlaps[0]?.clinic
-        if (overlap &&clinicname) {
-        Alert.alert(overlap, `Clinic Name: ${clinicname}`)
-        }
-        fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
-        setToDate(new Date());
-       
       } else {
-        console.log(response, "12")
+        // Use a safe fallback message
+        const errorMessage = response?.data?.message || response?.message || 'Please Retry';
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: response?.data?.message || 'Please Retry',
+          text2: errorMessage,
           position: 'top',
           visibilityTime: 3000,
         });
       }
     } catch (error: any) {
-      console.log(error, "1234")
-      // Toast.show({
-      //   type: 'error',
-      //   text1: 'Error',
-      //   text2: error?.message || 'Please Retry',
-      //   position: 'top',
-      //   visibilityTime: 3000,
-      // });
+      // Use a safe fallback message for catch block too
+      const errorMessage = error?.message || 'Please Retry';
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: errorMessage,
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    } finally {
+      setIsAddingSlots(false);
     }
   };
 
@@ -401,6 +441,7 @@ const AvailabilityScreen: React.FC = () => {
   };
 
   const handleDeleteSlots = async () => {
+    setIsDeletingSlots(true);
     const date = dayjs(fromDate).format('YYYY-MM-DD');
     const convertTo24Hour = (time12h: string): string => {
       const [time, modifier] = time12h.split(' ');
@@ -452,6 +493,8 @@ const AvailabilityScreen: React.FC = () => {
         visibilityTime: 3000,
       });
       console.error(error);
+    } finally {
+      setIsDeletingSlots(false); // Stop loading regardless of success/error
     }
   };
 
@@ -466,45 +509,47 @@ const AvailabilityScreen: React.FC = () => {
     // Convert Moment object to Date object
     const date = moment().add(diff, 'days').toDate(); // Use .toDate() to ensure Date object
     setFromDate(date);
+    // Also update toDate to be the same as fromDate
+    setToDate(date);
   };
 
   // Convert "HH:mm" or "h:mm AM/PM" => minutes since midnight
-const slotStringToMinutes = (s) => {
-  if (!s) return 0;
-  const raw = s.trim().toUpperCase();
-  const hasAMPM = /\bAM\b|\bPM\b/.test(raw);
-  const cleaned = raw.replace(/\s?(AM|PM)\b/, '').trim();
-  const [hStr, mStr = '0'] = cleaned.split(':');
-  let h = parseInt(hStr, 10);
-  const m = parseInt(mStr, 10) || 0;
+  const slotStringToMinutes = (s) => {
+    if (!s) return 0;
+    const raw = s.trim().toUpperCase();
+    const hasAMPM = /\bAM\b|\bPM\b/.test(raw);
+    const cleaned = raw.replace(/\s?(AM|PM)\b/, '').trim();
+    const [hStr, mStr = '0'] = cleaned.split(':');
+    let h = parseInt(hStr, 10);
+    const m = parseInt(mStr, 10) || 0;
 
-  if (hasAMPM) {
-    const isPM = /\bPM\b/.test(raw);
-    if (isPM && h !== 12) h += 12;
-    if (!isPM && h === 12) h = 0; // 12:xx AM -> 00:xx
-  }
-  return h * 60 + m;
-};
+    if (hasAMPM) {
+      const isPM = /\bPM\b/.test(raw);
+      if (isPM && h !== 12) h += 12;
+      if (!isPM && h === 12) h = 0; // 12:xx AM -> 00:xx
+    }
+    return h * 60 + m;
+  };
 
-const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-/**
- * Disable if:
- *  - selected date is strictly before today, OR
- *  - selected date is today AND slot time is <= current time
- */
-const isPastSlot = (slotTimeStr, fromDate) => {
-  const now = new Date();
-  const today0 = startOfDay(now).getTime();
-  const sel0 = startOfDay(fromDate).getTime();
+  /**
+   * Disable if:
+   *  - selected date is strictly before today, OR
+   *  - selected date is today AND slot time is <= current time
+   */
+  const isPastSlot = (slotTimeStr, fromDate) => {
+    const now = new Date();
+    const today0 = startOfDay(now).getTime();
+    const sel0 = startOfDay(fromDate).getTime();
 
-  if (sel0 < today0) return true;                // any time in a past day
-  if (sel0 > today0) return false;               // future day – all enabled
+    if (sel0 < today0) return true;               
+    if (sel0 > today0) return false;               // future day – all enabled
 
-  const slotMins = slotStringToMinutes(slotTimeStr);
-  const nowMins = now.getHours() * 60 + now.getMinutes();
-  return slotMins <= nowMins;                    // today: past or current minute
-};
+    const slotMins = slotStringToMinutes(slotTimeStr);
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    return slotMins <= nowMins;                    // today: past or current minute
+  };
 
 
   return (
@@ -562,11 +607,23 @@ const isPastSlot = (slotTimeStr, fromDate) => {
               if (event.type === 'set' && selected) {
                 if (whichPicker === 'from') {
                   setFromDate(selected);
+                  // If toDate is before the new fromDate, update toDate to match fromDate
                   if (selected > toDate) {
-                    setToDate(selected); // Ensure toDate is not before fromDate
+                    setToDate(selected);
                   }
                 } else if (whichPicker === 'to') {
-                  setToDate(selected);
+                  // Ensure toDate is not before fromDate
+                  if (selected >= fromDate) {
+                    setToDate(selected);
+                  } else {
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Error',
+                      text2: 'End date cannot be before start date',
+                      position: 'top',
+                      visibilityTime: 3000,
+                    });
+                  }
                 }
               }
               setWhichPicker(null);
@@ -615,7 +672,7 @@ const isPastSlot = (slotTimeStr, fromDate) => {
           <View style={styles.timeBox}>
             <Text style={styles.label}>End Time:</Text>
             <View style={styles.timeControl}>
-              <Text style={styles.timeValue}>{endTime}</Text>
+              <Text style={[styles.timeValue, !isEndTimeValid() && styles.invalidTime]}>{endTime}</Text>
               <View style={styles.arrowGroup}>
                 <TouchableOpacity onPress={() => adjustTime('end', 'up', 'available')} style={styles.arrowButton}>
                   <Text style={styles.arrowButton}>▲</Text>
@@ -634,6 +691,10 @@ const isPastSlot = (slotTimeStr, fromDate) => {
           </View>
         </View>
 
+        {!isEndTimeValid() && (
+          <Text style={styles.errorText}>End time must be after start time</Text>
+        )}
+
         <View style={styles.dropdownContainer}>
           <Text style={styles.label}>Duration</Text>
           <View style={styles.pickerWrapper}>
@@ -646,11 +707,30 @@ const isPastSlot = (slotTimeStr, fromDate) => {
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.addButton} onPress={generateTimeSlots}>
-            <Text style={styles.addButtonText}>Add Slots</Text>
+          <TouchableOpacity
+            style={[styles.addButton, !isEndTimeValid() && styles.disabledButton]}
+            onPress={generateTimeSlots}
+            disabled={isAddingSlots || !isEndTimeValid()}
+          >
+            {isAddingSlots ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.addButtonText}>Add Slots</Text>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteSlots}>
-            <Text style={styles.deleteButtonText}>Delete All</Text>
+          <TouchableOpacity
+            style={[
+              styles.deleteButton,
+              (isDeletingSlots || availableSlots.length === 0) && styles.disabledButton
+            ]}
+            onPress={handleDeleteSlots}
+            disabled={isDeletingSlots || availableSlots.length === 0}
+          >
+            {isDeletingSlots ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.deleteButtonText}>Delete All</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -662,33 +742,33 @@ const isPastSlot = (slotTimeStr, fromDate) => {
         ) : (
           availableSlots.map((slot: Slot, index: number) => (
             <TouchableOpacity
-  key={index}
-  disabled={isPastSlot(slot.time, fromDate)}
-  style={[
-    styles.slotBubble,
-    selectedSlots.includes(slot.time) && styles.selectedSlotBubble,
-    isPastSlot(slot.time, fromDate) && styles.disabledSlotBubble,
-  ]}
-  onPress={() => {
-    if (isPastSlot(slot.time, fromDate)) return;
-    toggleSlotSelection(slot.time);
-  }}
-  onLongPress={() => {
-    if (isPastSlot(slot.time, fromDate)) return;
-    setSelectedSlots([slot.time]);
-    setShowDeleteConfirm(true);
-  }}
-  accessibilityState={{ disabled: isPastSlot(slot.time, fromDate) }}
->
-  <Text
-    style={[
-      { color: '#333' },
-      isPastSlot(slot.time, fromDate) && styles.disabledSlotText,
-    ]}
-  >
-    {slot.time}
-  </Text>
-</TouchableOpacity>
+              key={index}
+              disabled={isPastSlot(slot.time, fromDate)}
+              style={[
+                styles.slotBubble,
+                selectedSlots.includes(slot.time) && styles.selectedSlotBubble,
+                isPastSlot(slot.time, fromDate) && styles.disabledSlotBubble,
+              ]}
+              onPress={() => {
+                if (isPastSlot(slot.time, fromDate)) return;
+                toggleSlotSelection(slot.time);
+              }}
+              onLongPress={() => {
+                if (isPastSlot(slot.time, fromDate)) return;
+                setSelectedSlots([slot.time]);
+                setShowDeleteConfirm(true);
+              }}
+              accessibilityState={{ disabled: isPastSlot(slot.time, fromDate) }}
+            >
+              <Text
+                style={[
+                  { color: '#333' },
+                  isPastSlot(slot.time, fromDate) && styles.disabledSlotText,
+                ]}
+              >
+                {slot.time}
+              </Text>
+            </TouchableOpacity>
 
           ))
         )}
@@ -757,7 +837,7 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     width: '100%',
-    color:' #2e2c2cff',
+    color: ' #2e2c2cff',
   },
   row: {
     flexDirection: 'row',
@@ -780,6 +860,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginVertical: 12,
     gap: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
+    opacity: 0.6,
   },
   weekdayButton: {
     paddingVertical: 8,
@@ -819,6 +903,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#333',
   },
+  invalidTime: {
+    color: 'red',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
   arrowGroup: {
     marginLeft: 8,
     justifyContent: 'center',
@@ -826,7 +919,7 @@ const styles = StyleSheet.create({
   arrowButton: {
     width: 20,
     height: 20,
-    display:'flex',
+    display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -882,8 +975,8 @@ const styles = StyleSheet.create({
   },
   slotGrid: {
     flexDirection: 'row',
-    alignItems:'center',
-    justifyContent:'center',
+    alignItems: 'center',
+    justifyContent: 'center',
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 20,
@@ -917,7 +1010,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 20,
     textAlign: 'center',
-    color:'black'
+    color: 'black'
   },
   modalButtons: {
     flexDirection: 'row',
@@ -935,7 +1028,7 @@ const styles = StyleSheet.create({
   defaultButton: {
     backgroundColor: '#f0f0f0',
   },
-   disabledSlotBubble: {
+  disabledSlotBubble: {
     opacity: 0.45,
   },
   disabledSlotText: {

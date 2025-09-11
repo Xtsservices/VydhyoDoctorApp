@@ -182,20 +182,20 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
         feeDetails: appointment.feeDetails,
         updatedAt: appointment.createdAt
           ? new Date(appointment.createdAt).toLocaleString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
           : "N/A",
         clinicName: addr?.clinicName || "N/A",
         appointmentDate: appointment.appointmentDate
           ? new Date(appointment.appointmentDate).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })
           : "N/A",
         appointmentTime: appointment.appointmentTime || "N/A",
         status: "Completed",
@@ -226,12 +226,12 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
       prescriptionId: patient.prescriptionId,
       prescriptionCreatedAt: patient.prescriptionCreatedAt
         ? new Date(patient.prescriptionCreatedAt).toLocaleString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
         : "N/A",
       appointmentDetails,
       tests: tests.map((test, idx) => ({
@@ -247,21 +247,21 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
         updatedAt: test.updatedAt,
         createdDate: test.createdAt
           ? new Date(test.createdAt).toLocaleString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
           : "N/A",
         updatedDate: test.updatedAt
           ? new Date(test.updatedAt).toLocaleString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
           : "N/A",
       })),
       medicines: medicines.map((med, idx) => ({
@@ -280,12 +280,12 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
           : "Unknown",
         createdDate: med.createdAt
           ? new Date(med.createdAt).toLocaleString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
           : "N/A",
       })),
       totalTestAmount,
@@ -418,7 +418,7 @@ const Billing: React.FC = () => {
             totalItems: paginationInfo?.totalItems || 0,
           });
         }
-      } catch {}
+      } catch { }
     },
     [doctorId, user, pagination.current, pagination.pageSize, debouncedSearch]
   );
@@ -452,13 +452,15 @@ const Billing: React.FC = () => {
     setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: true }));
     try {
       const prescriptionId = patient.prescriptionId;
-      if (!prescriptionId) throw new Error("Prescription ID not found for this patient.");
+      // if (!prescriptionId) throw new Error("Prescription ID not found for this patient.");
       const token = await AsyncStorage.getItem("authToken");
 
       const res = await AuthFetch(
         `receptionist/fetchDoctorPatientDetails/${doctorId}/${patient.patientId}/${prescriptionId}`,
         token
       );
+
+      console.log("timeeeeeeeeeee", res);
 
       const ok = res?.status === "success" || res?.data?.status === "success";
       const arr = res?.data?.data || [];
@@ -630,13 +632,13 @@ const Billing: React.FC = () => {
       const firstMed = completedMeds[0];
       itemDate = firstMed.updatedAt
         ? new Date(firstMed.updatedAt).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          })
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })
         : "N/A";
 
       const pharmacyDetails = patient.pharmacyDetails || {};
@@ -683,8 +685,8 @@ const Billing: React.FC = () => {
             </thead>
             <tbody>
               ${completedMeds
-                .map(
-                  (med, idx) => `
+          .map(
+            (med, idx) => `
                 <tr>
                   <td>${idx + 1}.</td>
                   <td>${(med.name || "")}${med.dosage ? ` ${med.dosage}` : ""}</td>
@@ -692,8 +694,8 @@ const Billing: React.FC = () => {
                   <td>${Number(med.price || 0).toFixed(2)}</td>
                   <td>${((Number(med.price) || 0) * (Number(med.quantity) || 0)).toFixed(2)}</td>
                 </tr>`
-                )
-                .join("")}
+          )
+          .join("")}
             </tbody>
           </table>
           <div class="section-total" style="display:flex;justify-content:space-between;align-items:center;">
@@ -710,13 +712,13 @@ const Billing: React.FC = () => {
       const firstTest = completedTests[0];
       itemDate = firstTest.updatedAt
         ? new Date(firstTest.updatedAt).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          })
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })
         : "N/A";
 
       const labDetails = patient.labDetails || {};
@@ -759,15 +761,15 @@ const Billing: React.FC = () => {
             </thead>
             <tbody>
               ${completedTests
-                .map(
-                  (t, idx) => `
+          .map(
+            (t, idx) => `
                 <tr>
                   <td>${idx + 1}.</td>
                   <td>${t.name || ""}</td>
                   <td class="price-column">${Number(t.price || 0).toFixed(2)}</td>
                 </tr>`
-                )
-                .join("")}
+          )
+          .join("")}
             </tbody>
           </table>
           <div class="section-total">
@@ -810,13 +812,13 @@ const Billing: React.FC = () => {
 
       itemDate = firstAppt?.feeDetails?.paidAt
         ? new Date(firstAppt.feeDetails.paidAt).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          })
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })
         : "N/A";
 
       sectionHTML = `
@@ -833,17 +835,17 @@ const Billing: React.FC = () => {
             </thead>
             <tbody>
               ${((patient.appointments as any[]) || [])
-                .map((appt: any, idx: number) => {
-                  const amt = totalFromFees;
-                  return `
+          .map((appt: any, idx: number) => {
+            const amt = totalFromFees;
+            return `
                     <tr>
                       <td>${idx + 1}.</td>
                       <td>Consultation Bill</td>
                       <td class="price-column">${Number(amt || 0).toFixed(2)}</td>
                       <td>${appt?.appointmentType || ""}</td>
                     </tr>`;
-                })
-                .join("")}
+          })
+          .join("")}
             </tbody>
           </table>
           <div class="section-total">
@@ -924,76 +926,76 @@ const Billing: React.FC = () => {
   };
 
   // ---------- SAVE HTML TO DEVICE ----------
-//   const saveInvoiceHTML = async (filename: string, html: string) => {
-//     try {
-//       const dir =
-//         Platform.OS === "android"
-//           ? RNFS.DownloadDirectoryPath // /storage/emulated/0/Download
-//           : RNFS.DocumentDirectoryPath; // iOS app's documents
+  //   const saveInvoiceHTML = async (filename: string, html: string) => {
+  //     try {
+  //       const dir =
+  //         Platform.OS === "android"
+  //           ? RNFS.DownloadDirectoryPath // /storage/emulated/0/Download
+  //           : RNFS.DocumentDirectoryPath; // iOS app's documents
 
-//       const path = `${dir}/${filename}`;
-//       await RNFS.writeFile(path, html, "utf8");
-//       Toast.show({ type: "success", text1: "Invoice downloaded", text2: path });
-//       return path;
-//     } catch (e: any) {
-//       Toast.show({ type: "error", text1: "Failed to save invoice", text2: e?.message || "" });
-//       return null;
-//     }
-//   };
+  //       const path = `${dir}/${filename}`;
+  //       await RNFS.writeFile(path, html, "utf8");
+  //       Toast.show({ type: "success", text1: "Invoice downloaded", text2: path });
+  //       return path;
+  //     } catch (e: any) {
+  //       Toast.show({ type: "error", text1: "Failed to save invoice", text2: e?.message || "" });
+  //       return null;
+  //     }
+  //   };
 
 
 
   // ---------- GENERATE & SAVE PDF FROM HTML ----------
-const generateAndSavePDF = async (filenameBase: string, html: string) => {
-  try {
-    // Choose a sensible filename (lib appends .pdf automatically)
-    const fileName = filenameBase.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const generateAndSavePDF = async (filenameBase: string, html: string) => {
+    try {
+      // Choose a sensible filename (lib appends .pdf automatically)
+      const fileName = filenameBase.replace(/[^a-zA-Z0-9_\-]/g, "_");
 
-    const options = {
-      html,
-      fileName,
-      directory:
-        Platform.OS === "android"
-          ? "Download"     // /storage/emulated/0/Download
-          : "Documents",   // iOS Files app -> On My iPhone -> <YourApp>/Documents
-      base64: false,
-      // (Optional) set page size & margins here if you want:
-      // width: 595, height: 842,  // A4 points
-      // padding: 8,
-    };
+      const options = {
+        html,
+        fileName,
+        directory:
+          Platform.OS === "android"
+            ? "Download"     // /storage/emulated/0/Download
+            : "Documents",   // iOS Files app -> On My iPhone -> <YourApp>/Documents
+        base64: false,
+        // (Optional) set page size & margins here if you want:
+        // width: 595, height: 842,  // A4 points
+        // padding: 8,
+      };
 
-    const result = await RNHTMLtoPDF.convert(options);
-    if (result?.filePath) {
-      Toast.show({ type: "success", text1: "Invoice saved (PDF)", text2: result.filePath });
-      return result.filePath;
-    } else {
-      throw new Error("No file path returned.");
+      const result = await RNHTMLtoPDF.convert(options);
+      if (result?.filePath) {
+        Toast.show({ type: "success", text1: "Invoice saved (PDF)", text2: result.filePath });
+        return result.filePath;
+      } else {
+        throw new Error("No file path returned.");
+      }
+    } catch (e: any) {
+      Toast.show({ type: "error", text1: "Failed to save PDF", text2: e?.message || "" });
+      return null;
     }
-  } catch (e: any) {
-    Toast.show({ type: "error", text1: "Failed to save PDF", text2: e?.message || "" });
-    return null;
-  }
-};
+  };
 
 
   const handleDownloadInvoice = async (
-  type: "pharmacy" | "labs" | "appointments",
-  patientId: string
-) => {
-  const p = transformedPatients.find((x) => x.patientId === patientId);
-  if (!p) return;
-  const html = buildInvoiceHTML(type, p, user);
-  if (!html) return;
+    type: "pharmacy" | "labs" | "appointments",
+    patientId: string
+  ) => {
+    const p = transformedPatients.find((x) => x.patientId === patientId);
+    if (!p) return;
+    const html = buildInvoiceHTML(type, p, user);
+    if (!html) return;
 
-  const ts = new Date().toISOString().replace(/[:.]/g, "-");
-  const base =
-    type === "pharmacy" ? "Pharmacy"
-    : type === "labs" ? "Lab"
-    : "Consultation";
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const base =
+      type === "pharmacy" ? "Pharmacy"
+        : type === "labs" ? "Lab"
+          : "Consultation";
 
-  const filenameBase = `Invoice_${base}_${p.patientId}_${ts}`;
-  await generateAndSavePDF(filenameBase, html);
-};
+    const filenameBase = `Invoice_${base}_${p.patientId}_${ts}`;
+    await generateAndSavePDF(filenameBase, html);
+  };
 
 
   /* ---------- RENDER ---------- */
@@ -1001,8 +1003,8 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
   if (loading && !error) {
     return (
       <View style={styles.centerFill}>
-        <ActivityIndicator />
-        <Text style={{ marginTop: 8, color: "#007bff" }}>Loading patients...</Text>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={{ marginTop: 12, color: "#000000" }}>Loading patients...</Text>
       </View>
     );
   }
@@ -1062,12 +1064,18 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
 
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              style={[styles.smallButton, { backgroundColor: loadingPatients[item.id] ? "#9ca3af" : "#007bff" }]}
+              style={[styles.smallButton, { backgroundColor: loadingPatients[item.id] ? "#ffffff" : "#007bff" }]}
               disabled={loadingPatients[item.id]}
               onPress={() => handleViewClick(item.id)}
             >
               <Text style={styles.smallButtonText}>
-                {loadingPatients[item.id] ? "Loading..." : isViewMode ? "Hide" : "View Details"}
+                {loadingPatients[item.id] ? (
+                  <ActivityIndicator size="small" color="#3B82F6" />
+                ) : isViewMode ? (
+                  "Hide"
+                ) : (
+                  "View Details"
+                )}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1090,8 +1098,8 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
                         String(m.status).toLowerCase() === "pending"
                           ? "pending"
                           : String(m.status).toLowerCase() === "completed"
-                          ? "done"
-                          : "danger";
+                            ? "done"
+                            : "danger";
                       return (
                         <View key={m.id} style={styles.rowCard}>
                           <View style={styles.rowCardHeader}>
@@ -1137,9 +1145,11 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
                         disabled={totals.medicineTotal === 0 || !!isPaymentInProgress[`${item.id}-pharmacy`]}
                         onPress={() => handleMarkAsPaid(item.id, "pharmacy")}
                       >
-                        <Text style={styles.successText}>
-                          {isPaymentInProgress[`${item.id}-pharmacy`] ? "Processing..." : "Pay Pharmacy"}
-                        </Text>
+                        {isPaymentInProgress[`${item.id}-pharmacy`] ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.successText}>Pay Pharmacy</Text>
+                        )}
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1198,9 +1208,11 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
                         disabled={totals.testTotal === 0 || !!isPaymentInProgress[`${item.id}-labs`]}
                         onPress={() => handleMarkAsPaid(item.id, "labs")}
                       >
-                        <Text style={styles.successText}>
-                          {isPaymentInProgress[`${item.id}-labs`] ? "Processing..." : "Pay Labs"}
-                        </Text>
+                        {isPaymentInProgress[`${item.id}-labs`] ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.successText}>Pay Labs</Text>
+                        )}
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1356,8 +1368,8 @@ const generateAndSavePDF = async (filenameBase: string, html: string) => {
               {modalType === "pharmacy"
                 ? "No Pharmacy Details Are Found"
                 : modalType === "lab"
-                ? "No Lab Details Are Found"
-                : "No Clinic Details Are Found"}
+                  ? "No Lab Details Are Found"
+                  : "No Clinic Details Are Found"}
             </Text>
             <Text style={{ marginBottom: 16, color: "#374151" }}>{modalMessage}</Text>
             <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
@@ -1556,13 +1568,13 @@ const styles = StyleSheet.create({
   balanceLabel: { fontSize: 16, fontWeight: "700", color: "#1f2937" },
   balanceValue: { fontSize: 16, fontWeight: "700", color: "#10b981" },
 
-actionsRow: { 
-  flexDirection: "row", 
-  justifyContent: "flex-end", 
-  flexWrap: "wrap", // Allow buttons to wrap to next line
-  gap: 8, 
-  marginTop: 12,
-},
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    flexWrap: "wrap", // Allow buttons to wrap to next line
+    gap: 8,
+    marginTop: 12,
+  },
   primary: {
     backgroundColor: "#007bff",
     borderRadius: 8,
@@ -1571,23 +1583,23 @@ actionsRow: {
   },
   primaryText: { color: "#fff", fontWeight: "700" },
 
-secondary: {
-  borderWidth: 1,
-  borderColor: "#3b82f6",
-  borderRadius: 8,
-  paddingVertical: 10,
-  paddingHorizontal: 16,
-  minWidth: 140, // Ensure minimum width
-},
+  secondary: {
+    borderWidth: 1,
+    borderColor: "#3b82f6",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minWidth: 140, // Ensure minimum width
+  },
   secondaryText: { color: "#3b82f6", fontWeight: "700" },
 
-success: { 
-  backgroundColor: "#28a745", 
-  borderRadius: 8, 
-  paddingVertical: 10, 
-  paddingHorizontal: 16,
-  minWidth: 120, // Ensure minimum width
-},
+  success: {
+    backgroundColor: "#28a745",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minWidth: 120, // Ensure minimum width
+  },
   successText: { color: "#fff", fontWeight: "700" },
 
   outlined: { borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },

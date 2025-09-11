@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
   Alert,
   PermissionsAndroid,
   Modal,
+  Linking,
 } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -21,7 +23,7 @@ import dayjs from 'dayjs';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import RNFS from 'react-native-fs';
 import { useNavigation } from '@react-navigation/native';
-
+import { Menu, Provider } from 'react-native-paper';
 
 const AccountsScreen = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
@@ -29,8 +31,8 @@ const AccountsScreen = () => {
   const [showFilters, setShowFilters] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [searchText, setSearchText] = useState('');
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date>(new Date());
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [transactions, setTransactions] = useState([]);
@@ -38,7 +40,15 @@ const AccountsScreen = () => {
   const [selectedTxn, setSelectedTxn] = useState(null);
   const [showTxnModal, setShowTxnModal] = useState(false);
   const navigation = useNavigation<any>();
-
+  const [loadingRevenue, setLoadingRevenue] = useState(false);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filterService, setFilterService] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [serviceMenuVisible, setServiceMenuVisible] = useState(false);
+  const dropdownRef = useRef(null); // Reference for Menu anchor
 
   const handleViewTxn = (txn) => {
     setSelectedTxn(txn);
@@ -54,9 +64,10 @@ const AccountsScreen = () => {
 
   const fetchRevenue = async () => {
     try {
+      setLoadingRevenue(true);
       const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthFetch(`finance/getDoctorRevenue?${doctorId}`, token);
-      console.log(response, 'revenue summery')
+      const response = await AuthFetch(`finance/getDoctorRevenue?doctorId=${doctorId}`, token);
+
       if (response.status === 'success') {
         const apiData = response.data.data;
 
@@ -64,88 +75,62 @@ const AccountsScreen = () => {
           ...prev,
           totalReceived: apiData.totalRevenue,
           totalExpenditure: apiData.totalExpenditure,
-          recentTransactions: apiData.lastThreeTransactions.map((txn) => ({
+          pendingTransactions: apiData.pendingTransactions || 0,
+        }));
+
+        if (apiData.lastThreeTransactions) {
+          setRecentTransactions(apiData.lastThreeTransactions.map((txn) => ({
             name: txn.username,
             amount: txn.finalAmount,
-          })),
-        }));
-        // const revenue = res?.data?.data || 0;
-        // console.log('Revenue fetched:', revenue);
-        // setTotalRevenue(revenue.totalRevenue || 0);
+          })));
+        }
       } else {
         throw new Error('Failed to fetch revenue data');
       }
-      console.log('Revenue Summary:', res);
     } catch (error) {
       console.error('Error fetching revenue:', error);
+      Alert.alert('Error', 'Failed to fetch revenue data');
+    } finally {
+      setLoadingRevenue(false);
     }
   };
-  const fetchTransactions = async () => {
+
+  const fetchTransactions = useCallback(async () => {
     if (!doctorId) return;
 
-    console.log(doctorId, 'selectedDoctor Id');
+    setLoadingTransactions(true);
 
     const payload = {
-      service: '',
-      status: '',
+      service: filterService,
+      status: filterStatus,
       search: searchText,
-      limit: 100,
+      page: currentPage,
+      limit: 10,
       doctorId: doctorId,
       startDate: startDate ? dayjs(startDate).format('YYYY-MM-DD') : '',
       endDate: endDate ? dayjs(endDate).format('YYYY-MM-DD') : '',
     };
 
-    console.log(payload, 'payload to be sent');
-
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthPost('finance/getTransactionHistory', payload, token) as TransactionResponse;
-      console.log(response, 'total transactions history');
-      const data = response?.data;
-      if (data?.status === 'success') {
-        setTransactions(data.data || []);
-        setTotalItems(data.totalResults || 0);
+      const response = await AuthPost('finance/getTransactionHistory', payload, token);
+
+      if (response?.data?.status === 'success') {
+        setTransactions(response.data.data || []);
+        setTotalItems(response.data.totalResults || 0);
       }
     } catch (err) {
       console.error('Error fetching transactions:', err);
+      Alert.alert('Error', 'Failed to fetch transactions');
+    } finally {
+      setLoadingTransactions(false);
     }
-  };
-
-  // const fetchTransactions = useCallback(async () => {
-  //   if (!doctorId) return;
-
-  //   console.log(doctorId, 'selectedDoctor Id');
-
-  //   const payload = {
-  //     service: '',
-  //     status: '',
-  //     search: searchText,
-  //     limit: 100,
-  //     doctorId: doctorId,
-  //     startDate: startDate ? dayjs(startDate).format('YYYY-MM-DD') : '',
-  //     endDate: endDate ? dayjs(endDate).format('YYYY-MM-DD') : '',
-  //   };
-
-  //   console.log(payload, 'payload to be sent');
-
-  //   try {
-  //     const token = await AsyncStorage.getItem('authToken');
-  //     const response = await AuthPost('finance/getTransactionHistory', payload, token);
-  //     console.log(response, 'total transactions history');
-  //     const data = response?.data;
-  //     if (data?.status === 'success') {
-  //       setTransactions(data.data || []);
-  //       setTotalItems(data.totalResults || 0);
-  //     }
-  //   } catch (err) {
-  //     console.error('Error fetching transactions:', err);
-  //   }
-  // }, [doctorId, startDate, endDate, searchText]);
+  }, [doctorId, startDate, endDate, searchText, filterService, filterStatus, currentPage]);
 
   useEffect(() => {
     fetchTransactions();
     fetchRevenue();
-  }, [doctorId, startDate, endDate, searchText]);
+  }, [fetchTransactions]); // Updated dependency to use fetchTransactions
 
   const onStartChange = (_: any, selectedDate?: Date) => {
     setShowStartPicker(Platform.OS === 'ios');
@@ -161,8 +146,10 @@ const AccountsScreen = () => {
     }
   };
 
-  const exportTransactionsToPDF = async (transactions: any[]) => {
+  const exportTransactionsToPDF = async () => {
     try {
+      setExportingPdf(true);
+
       if (Platform.OS === 'android' && Platform.Version < 29) {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
@@ -223,57 +210,118 @@ const AccountsScreen = () => {
       </html>
     `;
 
-
       const timestamp = dayjs().format('YYYYMMDD_HHmmss');
       const fileName = `Transaction_Report_${timestamp}.pdf`;
 
-      // Step 1: Generate PDF in temporary path
       const pdf = await RNHTMLtoPDF.convert({
         html: htmlContent,
         fileName: `Transaction_Report_${timestamp}`,
         base64: false,
       });
 
-      // Step 2: Move it to the actual Downloads folder
       const downloadsPath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
       await RNFS.moveFile(pdf.filePath!, downloadsPath);
 
       Alert.alert('Success', `PDF saved in Files > Downloads as ${fileName}`);
-      console.log('Saved at:', downloadsPath);
-
     } catch (error) {
       console.error('PDF export failed:', error);
       Alert.alert('Error', 'Failed to generate PDF.');
+    } finally {
+      setExportingPdf(false);
     }
   };
 
-  console.log(searchText, 'patient id or transaction id');
+  const renderPagination = () => {
+    const totalPages = Math.ceil(totalItems / 10);
+    if (totalPages <= 1) return null;
+
+    return (
+      <View style={styles.paginationContainer}>
+        <TouchableOpacity
+          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+          onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          <Text style={styles.paginationText}>Previous</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.paginationInfo}>
+          Page {currentPage} of {totalPages}
+        </Text>
+
+        <TouchableOpacity
+          style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
+          onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          <Text style={styles.paginationText}>Next</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
-    <ScrollView>
-      <View style={styles.container}>
-        {/* <Text style={styles.header}>Accounts</Text> */}
-
+    <Provider>
+      <ScrollView style={styles.container}>
         {/* Summary Cards */}
         <View style={styles.summaryRow}>
-          <View style={[styles.summaryCard, { borderColor: '#10B981' }]}>
-            <Icon name="cash" size={24} color="#10B981" />
-            <Text style={styles.summaryAmount}>₹{accountSummary.totalReceived}</Text>
-            <Text style={{ color: '#333' }}>Total Amount Received</Text>
+          <View style={[styles.summaryCard, styles.receivedCard]}>
+            {loadingRevenue ? (
+              <ActivityIndicator size="small" color="#10B981" />
+            ) : (
+              <>
+                <View style={styles.cardIconContainer}>
+                  <View style={[styles.cardIcon, styles.greenIcon]}>
+                    <Icon name="cash" size={20} color="#fff" />
+                  </View>
+                </View>
+                <Text style={styles.summaryAmount}>₹{accountSummary.totalReceived.toLocaleString()}</Text>
+                <Text style={styles.summaryLabel}>Total Amount Received</Text>
+              </>
+            )}
           </View>
+
           <TouchableOpacity
-            style={[styles.summaryCard, { borderColor: '#EF4444' }]}
+            style={[styles.summaryCard, styles.expenditureCard]}
             onPress={() => navigation.navigate('expenditure')}
           >
-            <Icon name="cash-remove" size={24} color="#EF4444" />
-            <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
-            <Text style={{ color: '#333' }}>Total Expenditure</Text>
+            {loadingRevenue ? (
+              <ActivityIndicator size="small" color="#EF4444" />
+            ) : (
+              <>
+                <View style={styles.cardIconContainer}>
+                  <View style={[styles.cardIcon, styles.redIcon]}>
+                    <Icon name="cash-remove" size={20} color="#fff" />
+                  </View>
+                </View>
+                <Text style={styles.summaryAmount}>₹{accountSummary.totalExpenditure.toLocaleString()}</Text>
+                <Text style={styles.summaryLabel}>Total Expenditure</Text>
+              </>
+            )}
           </TouchableOpacity>
-          {/* <View style={[styles.summaryCard, { borderColor: '#EF4444' }]}>
-            <Icon name="cash-remove" size={24} color="#EF4444" />
-            <Text style={styles.summaryAmount}>{accountSummary.totalExpenditure}</Text>
-            <Text>Total Expenditure</Text>
-          </View> */}
+
+          <View style={[styles.summaryCard, styles.recentCard]}>
+            <View style={styles.cardIconContainer}>
+              <View style={[styles.cardIcon, styles.blueIcon]}>
+                <Icon name="sync" size={20} color="#fff" />
+              </View>
+            </View>
+            <Text style={styles.summaryLabel}>Recent Transactions</Text>
+            <ScrollView style={styles.recentTransactionsContainer}>
+              {recentTransactions.length > 0 ? (
+                recentTransactions.map((transaction, index) => (
+                  <View key={index} style={styles.transactionItem}>
+                    <Text style={styles.transactionName} numberOfLines={1}>
+                      {transaction.name}
+                    </Text>
+                    <Text style={styles.transactionAmount}>₹{transaction.amount}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noTransactionsText}>No recent transactions</Text>
+              )}
+            </ScrollView>
+          </View>
         </View>
 
         {/* Filter Section */}
@@ -292,7 +340,7 @@ const AccountsScreen = () => {
         {showFilters && (
           <View style={styles.filters}>
             <TextInput
-              placeholder="Search by Patient"
+              placeholder="Search by Patient Name or Transaction ID"
               style={styles.searchInput}
               value={searchText}
               onChangeText={(text) => setSearchText(text)}
@@ -306,7 +354,7 @@ const AccountsScreen = () => {
               >
                 <Icon name="calendar" size={18} color="#6B7280" />
                 <Text style={styles.dateText}>
-                  {startDate ? moment(startDate).format('DD/MM/YYYY') : 'dd/mm/yyyy'}
+                  {startDate ? moment(startDate).format('DD/MM/YYYY') : 'Start Date'}
                 </Text>
               </TouchableOpacity>
 
@@ -316,13 +364,13 @@ const AccountsScreen = () => {
               >
                 <Icon name="calendar" size={18} color="#6B7280" />
                 <Text style={styles.dateText}>
-                  {endDate ? moment(endDate).format('DD/MM/YYYY') : 'dd/mm/yyyy'}
+                  {endDate ? moment(endDate).format('DD/MM/YYYY') : 'End Date'}
                 </Text>
               </TouchableOpacity>
 
               {showStartPicker && (
                 <DateTimePicker
-                  value={startDate || new Date()}
+                  value={startDate}
                   mode="date"
                   display="default"
                   onChange={onStartChange}
@@ -331,7 +379,7 @@ const AccountsScreen = () => {
 
               {showEndPicker && (
                 <DateTimePicker
-                  value={endDate || new Date()}
+                  value={endDate}
                   mode="date"
                   display="default"
                   onChange={onEndChange}
@@ -339,73 +387,162 @@ const AccountsScreen = () => {
               )}
             </View>
 
-            {/* <View style={styles.dropdownRow}>
-              <TouchableOpacity style={styles.dropdown}>
-                <Text>All Services</Text>
-                <Icon name="chevron-down" size={18} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdown}>
-                <Text>All Status</Text>
-                <Icon name="chevron-down" size={18} />
-              </TouchableOpacity>
-            </View> */}
+            <Menu
+              visible={serviceMenuVisible}
+              onDismiss={() => setServiceMenuVisible(false)}
+              anchor={
+                <TouchableOpacity
+                  style={styles.dropdown}
+                  onPress={() => setServiceMenuVisible(true)}
+                >
+                  <Text style={styles.dropdownText}>
+                    {filterService
+                      ? filterService.charAt(0).toUpperCase() + filterService.slice(1)
+                      : 'All Services'}
+                  </Text>
+                  <Icon name="chevron-down" size={18} color="#6B7280" />
+                </TouchableOpacity>
+              }
+              style={styles.menu}
+            >
+              <Menu.Item
+                onPress={() => {
+                  setFilterService('');
+                  setServiceMenuVisible(false);
+                }}
+                title="All Services"
+              />
+              <Menu.Item
+                onPress={() => {
+                  setFilterService('appointment');
+                  setServiceMenuVisible(false);
+                }}
+                title="Appointments"
+              />
+              <Menu.Item
+                onPress={() => {
+                  setFilterService('lab');
+                  setServiceMenuVisible(false);
+                }}
+                title="Lab"
+              />
+              <Menu.Item
+                onPress={() => {
+                  setFilterService('pharmacy');
+                  setServiceMenuVisible(false);
+                }}
+                title="Pharmacy"
+              />
+            </Menu>
 
             <TouchableOpacity
               style={styles.exportBtn}
-              onPress={() => exportTransactionsToPDF(transactions)}
+              onPress={exportTransactionsToPDF}
+              disabled={exportingPdf}
             >
-              <Icon name="download" size={18} color="#fff" />
-              <Text style={styles.exportText}>Export</Text>
+              {exportingPdf ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Icon name="download" size={18} color="#fff" />
+                  <Text style={styles.exportText}>Export</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         )}
 
         {/* Transaction History */}
-        <ScrollView style={{ marginTop: 16, marginBottom: 16 }}>
+        <View style={styles.transactionSection}>
           <Text style={styles.sectionTitle}>Transaction History</Text>
 
-          {transactions.length > 0 &&
-            transactions.map((item, index) => (
-              <View key={item.paymentId || index} style={styles.transactionCard}>
-                <View style={styles.txnHeader}>
-                  <Text style={styles.txnId}>{item?.paymentId}</Text>
-                  <Text style={styles.txnDate}>
-                    {dayjs(item?.paidAt || item?.updatedAt).format('YYYY-MM-DD')}
-                  </Text>
-                </View>
-                <View style={styles.txnRow}>
-                  <Text style={styles.txnName}>{item.patientName}</Text>
-                  <Text style={styles.txnName}>
-                    {' '}
-                    {dayjs(item?.paidAt || item?.updatedAt).format('HH:mm')}
-                  </Text>
-                </View>
-                <View style={styles.txnRow}>
-                  <Text style={styles.txnLabel}>{item?.paymentFrom}</Text>
-                  <Text style={styles.txnAmount}>₹{item.finalAmount}</Text>
-                </View>
-                <View style={styles.txnRow}>
-                  <Text style={styles.txnLabel}>{item?.paymentMethod}</Text>
-                  <View style={styles.statusRow}>
-                    <Text style={styles.paidStatus}>{item.paymentStatus}</Text>
-                    <TouchableOpacity onPress={() => handleViewTxn(item)}>
-                      <Icon name="eye-outline" size={18} color="#3B82F6" />
-                    </TouchableOpacity>
+          {loadingTransactions ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+              <Text style={styles.loadingText}>Loading transactions...</Text>
+            </View>
+          ) : transactions.length > 0 ? (
+            <>
+              {transactions.map((item, index) => (
+                <View key={item.paymentId || index} style={styles.transactionCard}>
+                  <View style={styles.txnHeader}>
+                    <Text style={styles.txnId}>{item?.paymentId}</Text>
+                    <Text style={styles.txnDate}>
+                      {dayjs(item?.paidAt || item?.updatedAt).format('YYYY-MM-DD')}
+                    </Text>
+                  </View>
+                  <View style={styles.txnRow}>
+                    <Text style={styles.txnName}>{item.patientName}</Text>
+                    <Text style={styles.txnName}>
+                      {dayjs(item?.paidAt || item?.updatedAt).format('HH:mm')}
+                    </Text>
+                  </View>
+                  <View style={styles.txnRow}>
+                    <Text style={styles.txnLabel}>{item?.paymentFrom}</Text>
+                    <Text style={styles.txnAmount}>₹{item.finalAmount}</Text>
+                  </View>
+                  <View style={styles.txnRow}>
+                    <Text style={styles.txnLabel}>{item?.paymentMethod}</Text>
+                    <View style={styles.statusRow}>
+                      <Text
+                        style={[
+                          styles.paidStatus,
+                          item.paymentStatus === 'paid'
+                            ? styles.paidStatusSuccess
+                            : item.paymentStatus === 'pending'
+                              ? styles.paidStatusPending
+                              : styles.paidStatusRefunded,
+                        ]}
+                      >
+                        {item.paymentStatus === 'paid'
+                          ? 'Paid'
+                          : item.paymentStatus === 'pending'
+                            ? 'Pending'
+                            : 'Refunded'}
+                      </Text>
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          backgroundColor: '#3B82F6',
+                          borderRadius: 6,
+                        }}
+                        onPress={() => handleViewTxn(item)}
+                      >
+                        <Icon name="information-outline" size={16} color="#fff" style={{ marginRight: 4 }} />
+                        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 12 }}>
+                          View Details
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              ))}
 
-          {showTxnModal && selectedTxn && (
-            <Modal
-              visible={showTxnModal}
-              transparent={true}
-              animationType="slide"
-              onRequestClose={() => setShowTxnModal(false)}
-            >
-              <View style={styles.modalContainer}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Transaction Details</Text>
+              {renderPagination()}
+            </>
+          ) : (
+            <View style={styles.noDataContainer}>
+              <Icon name="file-document-outline" size={40} color="#9CA3AF" />
+              <Text style={styles.noDataText}>No transactions found</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Transaction Details Modal */}
+        {showTxnModal && selectedTxn && (
+          <Modal
+            visible={showTxnModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowTxnModal(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Transaction Details</Text>
+                <ScrollView>
                   <View style={styles.row}>
                     <View style={styles.column}>
                       <Text style={styles.modalLabel}>Patient Name:</Text>
@@ -433,7 +570,11 @@ const AccountsScreen = () => {
                     </View>
                     <View style={styles.column}>
                       <Text style={styles.modalLabel}>Status:</Text>
-                      <Text style={styles.modalValue}>{selectedTxn.paymentStatus}</Text>
+                      <Text style={styles.modalValue}>
+                        {selectedTxn.paymentStatus === 'refund_pending'
+                          ? 'Refunded'
+                          : selectedTxn.paymentStatus}
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.row}>
@@ -472,19 +613,19 @@ const AccountsScreen = () => {
                       <Text style={styles.modalValue}>{selectedTxn.currency}</Text>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={() => setShowTxnModal(false)}
-                  >
-                    <Text style={styles.closeButtonText}>Close</Text>
-                  </TouchableOpacity>
-                </View>
+                </ScrollView>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowTxnModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
               </View>
-            </Modal>
-          )}
-        </ScrollView>
-      </View>
-    </ScrollView>
+            </View>
+          </Modal>
+        )}
+      </ScrollView>
+    </Provider>
   );
 };
 
@@ -493,59 +634,122 @@ export default AccountsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0FDF4',
-    paddingTop: 50,
-    paddingHorizontal: 16,
-  },
-  header: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: '#0A2342',
+    backgroundColor: '#F9FAFB',
   },
   summaryRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    padding: 16,
+    gap: 12,
   },
   summaryCard: {
     flex: 1,
+    minWidth: '30%',
     backgroundColor: '#fff',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginHorizontal: 4,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  receivedCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+  },
+  expenditureCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+  },
+  recentCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
+  },
+  cardIconContainer: {
+    marginBottom: 8,
+  },
+  cardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  greenIcon: {
+    backgroundColor: '#10B981',
+  },
+  redIcon: {
+    backgroundColor: '#EF4444',
+  },
+  blueIcon: {
+    backgroundColor: '#3B82F6',
+  },
   summaryAmount: {
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  recentTransactionsContainer: {
+    maxHeight: 80,
+    marginTop: 8,
+  },
+  transactionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  transactionName: {
+    fontSize: 12,
+    color: '#374151',
+    flex: 1,
+    marginRight: 8,
+  },
+  transactionAmount: {
+    fontSize: 12,
     fontWeight: '600',
-    marginVertical: 4,
-    color: '#0A2342',
+    color: '#111827',
+  },
+  noTransactionsText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
   },
   filterToggle: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 8,
     alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    marginTop: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   filterTitle: {
     fontWeight: '600',
-    color: '#0A2342',
+    color: '#111827',
+    fontSize: 16,
   },
   filters: {
     backgroundColor: '#fff',
-    borderRadius: 10,
     padding: 16,
-    marginTop: 8,
   },
   searchInput: {
-    backgroundColor: '#F3F4F6',
-    padding: 10,
+    backgroundColor: '#F9FAFB',
+    padding: 12,
     borderRadius: 8,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    color: '#111827',
   },
   dateRow: {
     flexDirection: 'row',
@@ -555,60 +759,89 @@ const styles = StyleSheet.create({
   },
   dateInput: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    padding: 10,
+    backgroundColor: '#F9FAFB',
+    padding: 12,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   dateText: {
     color: '#6B7280',
   },
-  dropdownRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    gap: 8,
-  },
   dropdown: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    padding: 10,
+    backgroundColor: '#F9FAFB',
+    padding: 12,
     borderRadius: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  dropdownText: {
+    color: '#6B7280',
   },
   exportBtn: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#10B981',
     borderRadius: 8,
     padding: 12,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   exportText: {
     color: '#fff',
     fontWeight: '600',
   },
+  transactionSection: {
+    padding: 16,
+  },
   sectionTitle: {
     fontWeight: '600',
+    fontSize: 18,
+    marginBottom: 16,
+    color: '#111827',
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#6B7280',
+  },
+  noDataContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noDataText: {
+    marginTop: 12,
+    color: '#6B7280',
     fontSize: 16,
-    marginBottom: 8,
-    color: '#0A2342',
   },
   transactionCard: {
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 14,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   txnHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
-    color: '#6B7280',
+    marginBottom: 8,
   },
   txnId: {
     color: '#6B7280',
@@ -621,19 +854,21 @@ const styles = StyleSheet.create({
   txnName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 6,
-    color: '#0A2342',
+    marginBottom: 4,
+    color: '#111827',
   },
   txnRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 2,
+    marginVertical: 4,
   },
   txnLabel: {
-    color: '#4B5563',
+    color: '#6B7280',
+    fontSize: 14,
   },
   txnAmount: {
     fontWeight: '600',
+    color: '#111827',
   },
   statusRow: {
     flexDirection: 'row',
@@ -641,44 +876,82 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   paidStatus: {
-    backgroundColor: '#D1FAE5',
-    color: '#16A34A',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     fontSize: 12,
     fontWeight: '500',
+  },
+  paidStatusSuccess: {
+    backgroundColor: '#D1FAE5',
+    color: '#065F46',
+  },
+  paidStatusPending: {
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+  },
+  paidStatusRefunded: {
+    backgroundColor: '#FEE2E2',
+    color: '#B91C1C',
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  paginationButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#3B82F6',
+    borderRadius: 6,
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  paginationText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  paginationInfo: {
+    color: '#6B7280',
   },
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 20,
-    width: '90%',
+    width: '100%',
+    maxHeight: '80%',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 16,
+    color: '#111827',
   },
   modalLabel: {
     fontWeight: '600',
     marginTop: 8,
     color: '#374151',
+    fontSize: 14,
   },
   modalValue: {
     marginBottom: 4,
-    color: '#374151',
+    color: '#6B7280',
+    fontSize: 14,
   },
   closeButton: {
     marginTop: 20,
     backgroundColor: '#3B82F6',
-    padding: 10,
+    padding: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -693,5 +966,8 @@ const styles = StyleSheet.create({
   },
   column: {
     width: '48%',
+  },
+  menu: {
+    marginTop: 10, // Adjusted for better positioning
   },
 });
