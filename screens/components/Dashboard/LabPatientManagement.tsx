@@ -596,7 +596,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     <View style={{ flex: 1 }}>
       {loading && patients.length === 0 ? (
         <View style={styles.loader}>
-          <ActivityIndicator />
+          <ActivityIndicator  />
         </View>
       ) : (
         <FlatList

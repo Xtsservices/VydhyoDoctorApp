@@ -52,6 +52,7 @@ const AdviceScreen = () => {
           <TextInput
             style={styles.textArea}
             placeholder="Enter general notes..."
+             placeholderTextColor={'#9CA3AF'}
             multiline
             value={formData.advice.medicationNotes || ''}
             onChangeText={text => handleChange('medicationNotes', text)}
@@ -180,6 +181,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
     backgroundColor: '#fff',
+    color:'black'
   },
   input: {
     borderWidth: 1,

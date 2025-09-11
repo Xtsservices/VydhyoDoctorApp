@@ -209,7 +209,7 @@ const PatientDetails = () => {
                   <View style={styles.radioCircle}>
                     {isSelected && <View style={styles.selectedCircle} />}
                   </View>
-                  <Text>{g}</Text>
+                  <Text style={{color:"black"}}>{g}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -224,6 +224,7 @@ const PatientDetails = () => {
           <Text style={styles.subtitle}>Complete medical history documentation</Text>
           <TextInput
             placeholder="Chief Complaint"
+            placeholderTextColor="#9CA3AF"
             style={styles.textArea}
             multiline
             value={formData.patientInfo.chiefComplaint || ''}
@@ -239,6 +240,7 @@ const PatientDetails = () => {
           />
           <TextInput
             placeholder="Past Medical History"
+            placeholderTextColor="#9CA3AF"
             style={styles.textArea}
             multiline
             value={formData.patientInfo.pastMedicalHistory || ''}
@@ -254,6 +256,7 @@ const PatientDetails = () => {
           />
           <TextInput
             placeholder="Family Medical History"
+            placeholderTextColor="#9CA3AF"
             style={styles.textArea}
             multiline
             value={formData.patientInfo.familyMedicalHistory || ''}
@@ -269,6 +272,7 @@ const PatientDetails = () => {
           />
           <TextInput
             placeholder="Physical Examination"
+            placeholderTextColor="#9CA3AF"
             style={styles.textArea}
             multiline
             value={formData.patientInfo.physicalExamination || ''}

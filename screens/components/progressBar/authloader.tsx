@@ -96,7 +96,7 @@ const AuthLoader = () => {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#00203F" />
+      <ActivityIndicator size="large" color="#007bff" />
       <Text style={styles.text}>Checking login status...</Text>
     </View>
   );
