@@ -594,21 +594,29 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
 
   return (
     <View style={{ flex: 1 }}>
-      {loading && patients.length === 0 ? (
-        <View style={styles.loader}>
-          <ActivityIndicator  />
-        </View>
+      {loading ? (
+        <View style={styles.spinningContainer}>
+                <ActivityIndicator size="large" color="#007bff" />
+                <Text style={{color:'black'}}>Loading List...</Text>
+                </View>
       ) : (
-        <FlatList
-          data={patients}
-          keyExtractor={(x) => x.patientId}
-          renderItem={renderPatient}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.3}
-          refreshing={loading}
-          onRefresh={() => fetchPatients(1, pageSize)}
-        />
+        patients?.length === 0 ? (
+          <View style={styles.spinningContainer}>
+  <Text style={{color:'black'}}>No Data Found</Text>
+          </View>
+        
+        ) : (
+          <FlatList
+            data={patients}
+            keyExtractor={(x) => x.patientId}
+            renderItem={renderPatient}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.3}
+            refreshing={loading}
+            onRefresh={() => fetchPatients(1, pageSize)}
+          />
+        )
       )}
     </View>
   );
@@ -650,4 +658,10 @@ const styles = StyleSheet.create({
   primaryBtn: { backgroundColor: "#1A3C6A", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 },
   primaryBtnText: { color: "#fff", fontWeight: "700" },
   btnDisabled: { opacity: 0.5 },
+   spinningContainer : {
+ flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+ padding: 10,
+  },
 });

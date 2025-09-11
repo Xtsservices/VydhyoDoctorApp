@@ -63,10 +63,10 @@ const AccountVerified = () => {
   };
   return (
     <View style={styles.container}>
-      <Image
+      {/* <Image
         source={PLACEHOLDER_IMAGE} // Replace with actual profile image URL
         style={styles.profileImage}
-      />
+      /> */}
       <Ionicons
        name="checkmark-circle"
         size={25}

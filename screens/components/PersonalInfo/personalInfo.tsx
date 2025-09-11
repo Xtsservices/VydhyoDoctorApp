@@ -380,7 +380,7 @@ console.log(userData, "userDetails")
           // keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
         >
            <ScrollView style={styles.formContainer}>
-        <View style={styles.photoContainer}>
+        {/* <View style={styles.photoContainer}>
           <TouchableOpacity onPress={handleImagePick}>
             <View style={styles.profilePhotoWrapper}>
               <Image source={formData.profilePhoto} style={styles.profilePhoto} />
@@ -393,7 +393,7 @@ console.log(userData, "userDetails")
             </View>
             <Text style={styles.changePhotoText}>Tap to change photo</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         <Text style={styles.label}>First Name</Text>
         <TextInput

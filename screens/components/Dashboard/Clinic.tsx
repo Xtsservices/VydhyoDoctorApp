@@ -572,7 +572,7 @@ const ClinicManagementScreen = () => {
       if (pharmacyHeaderFile) formData.append('pharmacyHeader', pharmacyHeaderFile as any);
 
       const response = await UploadFiles('users/addPharmacyToClinic', formData, token);
-
+console.log(response, "pharmacyres")
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -584,13 +584,14 @@ const ClinicManagementScreen = () => {
         setPharmacyModalVisible(false);
         await fetchClinics();
       } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: response.message || 'Failed to add pharmacy details',
-          position: 'top',
-          visibilityTime: 3000,
-        });
+        Alert.alert("Warning", response?.message?.message)
+        // Toast.show({
+        //   type: 'error',
+        //   text1: 'Error',
+        //   text2: response?.message?.message || 'Failed to add pharmacy details',
+        //   position: 'top',
+        //   visibilityTime: 3000,
+        // });
       }
     } catch (error) {
       console.error('Pharmacy submit error:', error);
@@ -636,13 +637,14 @@ const ClinicManagementScreen = () => {
         setLabModalVisible(false);
         await fetchClinics();
       } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: response.message || 'Failed to add lab details',
-          position: 'top',
-          visibilityTime: 3000,
-        });
+        Alert.alert("Warning", response?.message?.message)
+        // Toast.show({
+        //   type: 'error',
+        //   text1: 'Error',
+        //   text2: response?.message?.message || 'Failed to add lab details',
+        //   position: 'top',
+        //   visibilityTime: 3000,
+        // });
       }
     } catch (error) {
       console.error('Lab submit error:', error);
@@ -908,6 +910,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyName: text }))}
                   style={styles.input}
                   placeholder="Enter pharmacy name"
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -918,6 +921,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyRegNum: text }))}
                   style={styles.input}
                   placeholder="Enter registration number"
+                   placeholderTextColor='gray'
                 />
               </View>
 
@@ -928,6 +932,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyGST: text }))}
                   style={styles.input}
                   placeholder="Enter GST number"
+                   placeholderTextColor='gray'
                 />
               </View>
 
@@ -938,6 +943,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyPAN: text }))}
                   style={styles.input}
                   placeholder="Enter PAN number"
+                   placeholderTextColor='gray'
                 />
               </View>
 
@@ -949,6 +955,7 @@ const ClinicManagementScreen = () => {
                   style={[styles.input, { height: 80 }]}
                   multiline
                   placeholder="Enter pharmacy address"
+                   placeholderTextColor='gray'
                 />
               </View>
 
@@ -1012,6 +1019,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, labName: text }))}
                   style={styles.input}
                   placeholder="Enter lab name"
+                   placeholderTextColor='gray'
                 />
               </View>
 
@@ -1022,6 +1030,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, labRegNum: text }))}
                   style={styles.input}
                   placeholder="Enter registration number"
+                   placeholderTextColor='gray'
                 />
               </View>
 
@@ -1032,6 +1041,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, labGST: text }))}
                   style={styles.input}
                   placeholder="Enter GST number"
+                   placeholderTextColor='gray'
                 />
               </View>
 
@@ -1042,6 +1052,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, labPAN: text }))}
                   style={styles.input}
                   placeholder="Enter PAN number"
+                   placeholderTextColor='gray'
                 />
               </View>
 
@@ -1053,6 +1064,7 @@ const ClinicManagementScreen = () => {
                   style={[styles.input, { height: 80 }]}
                   multiline
                   placeholder="Enter lab address"
+                   placeholderTextColor='gray'
                 />
               </View>
 

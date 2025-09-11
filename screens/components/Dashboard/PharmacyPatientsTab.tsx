@@ -744,10 +744,19 @@ export default function PatientsTab({
 
   return (
     <View style={{ flex: 1 }}>
-      {loading && patients.length === 0 ? (
-        <View style={styles.loader}><ActivityIndicator /></View>
+      {loading  ? (
+         <View style={styles.spinningContainer}>
+                        <ActivityIndicator size="large" color="#007bff" />
+                        <Text style={{color:'black'}}>Loading List...</Text>
+                        </View>
       ) : (
-        <FlatList
+         patients?.length === 0 ? (
+                  <View style={styles.spinningContainer}>
+          <Text style={{color:'black'}}>No Data Found</Text>
+                  </View>
+                
+                ) : (
+                  <FlatList
           data={patients}
           keyExtractor={(x) => x.patientId}
           renderItem={renderPatient}
@@ -760,6 +769,8 @@ export default function PatientsTab({
             fetchPatients();
           }}
         />
+                )
+        
       )}
     </View>
   );
@@ -896,5 +907,11 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { 
     opacity: 0.5 
+  },
+   spinningContainer : {
+ flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+ padding: 10,
   },
 });

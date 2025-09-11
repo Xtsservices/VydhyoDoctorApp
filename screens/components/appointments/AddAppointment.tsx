@@ -226,7 +226,8 @@ const AddAppointment = () => {
           const doctorDetails = profileResponse.data.data
           setFormData((prev) => ({
             ...prev,
-            department: doctorDetails?.specialization?.name
+            department: doctorDetails?.specialization?.name,
+            fee:doctorDetails?.consultationModeFee[0]?.fee
             ,
           }));
         }
@@ -650,7 +651,7 @@ setPatientCreated(true)
           navigation.navigate('Availability');
         }}
       >
-        <Text style={styles.singleActionButtonText}>Go to Availability Settings</Text>
+        <Text style={styles.singleActionButtonText}>Go to Availability</Text>
       </TouchableOpacity>
     </View>
   </View>
@@ -979,7 +980,7 @@ setPatientCreated(true)
           placeholderTextColor="#9CA3AF"
           style={styles.inputFlex}
           keyboardType="numeric"
-          value={formData.fee || currentuserDetails.consultationModeFee[0]?.fee || ""}
+          value={formData.fee || currentuserDetails?.consultationModeFee[0]?.fee || ""}
           onChangeText={(text) => setFormData({ ...formData, fee: text })}
         />
         {/* Action Buttons */}
@@ -1156,6 +1157,7 @@ modalButton: {
     fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
+    color:'black'
   },
   patientOption: {
     paddingVertical: 10,

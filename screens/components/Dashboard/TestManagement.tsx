@@ -195,9 +195,18 @@ export default function TestManagement() {
       </View>
 
       {loading && tests.length === 0 ? (
-        <View style={styles.loader}><ActivityIndicator /></View>
+        <View style={styles.spinningContainer}>
+                                <ActivityIndicator size="large" color="#007bff" />
+                                <Text style={{color:'black'}}>Loading List...</Text>
+                                </View>
       ) : (
-        <FlatList
+         tests?.length === 0 ? (
+                          <View style={styles.spinningContainer}>
+                  <Text style={{color:'black'}}>No Data Found</Text>
+                          </View>
+                        
+                        ) : (
+ <FlatList
           data={tests}
           keyExtractor={(x) => x.testId}
           renderItem={renderItem}
@@ -207,6 +216,8 @@ export default function TestManagement() {
           refreshing={loading}
           onRefresh={() => fetchTests(1)}
         />
+                        )
+       
       )}
 
       {/* Bulk preview panel */}
@@ -283,4 +294,11 @@ const styles = StyleSheet.create({
   bulkPanel: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#e5e7eb", padding: 12, marginBottom: 10 },
   bulkTitle: { fontWeight: "800", marginBottom: 8, color: "#0f172a" },
   previewRow: { flexDirection: "row", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#f1f5f9", paddingVertical: 8 },
+   spinningContainer : {
+ flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+ padding: 10,
+  },
+
 });
