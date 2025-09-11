@@ -393,7 +393,7 @@ const PrescriptionScreen = () => {
                     }}
                     style={styles.dropdownItem}
                   >
-                    <Text>{medicine}</Text>
+                    <Text style={{color:'black'}}>{medicine}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>

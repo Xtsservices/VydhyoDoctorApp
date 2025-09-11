@@ -10,7 +10,8 @@ import {
   PermissionsAndroid,
   Platform,
   Image,
-  Share
+  Share,
+  ActivityIndicator
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
@@ -684,10 +685,10 @@ ${data?.advice?.followUpDate ? `
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Dr. {formData?.doctorInfo?.doctorName}</Text>
-        <Text>
+        <Text style={{color:"black"}}>
           {formData?.doctorInfo?.qualifications || 'Qualifications not provided'} | {formData?.doctorInfo?.specialization || 'Specialist'}
         </Text>
-        <Text>Medical Registration No: {formData?.doctorInfo?.medicalRegistrationNumber || 'Not provided'}</Text>
+        <Text style={{color:"black"}}>Medical Registration No: {formData?.doctorInfo?.medicalRegistrationNumber || 'Not provided'}</Text>
       </View>
 
       <View style={styles.section}>
@@ -701,7 +702,7 @@ ${data?.advice?.followUpDate ? `
       {(formData.patientInfo?.chiefComplaint || formData.patientInfo?.pastMedicalHistory ||
         formData.patientInfo?.familyMedicalHistory || formData.patientInfo?.physicalExamination) && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Patient History</Text>
+            <Text style={[styles.sectionTitle]}>Patient History</Text>
             {formData.patientInfo.chiefComplaint && (
               <Text style={{ color: 'black' }}>Chief Complaint: {formData.patientInfo.chiefComplaint}</Text>
             )}
@@ -815,7 +816,7 @@ ${data?.advice?.followUpDate ? `
           {formData.advice?.medicationNotes && (
             <View style={{ marginTop: 8 }}>
               <Text style={{ fontWeight: '600', color: '#6b7280' }}>General Notes:</Text>
-              <Text>{formData.advice.medicationNotes}</Text>
+              <Text style={{color:'black'}}>{formData.advice.medicationNotes}</Text>
             </View>
           )}
         </View>
@@ -875,7 +876,7 @@ ${data?.advice?.followUpDate ? `
           disabled={isSharing || isSaving}
         >
           <Text style={styles.downloadText}>
-            {isSharing ? 'Processing...' : 'Share via WhatsApp'}
+            {isSharing ?  <ActivityIndicator size="small" color="#007bff" /> : 'Share via WhatsApp'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -884,7 +885,7 @@ ${data?.advice?.followUpDate ? `
           disabled={isSaving || isSharing}
         >
           <Text style={styles.saveText}>
-            {isSaving ? 'Processing...' : 'Save'}
+            {isSaving ?  <ActivityIndicator size="small" color="#007bff" /> : 'Save'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -960,6 +961,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
+    color:'black'
   },
   signatureSection: {
     alignItems: 'flex-end',

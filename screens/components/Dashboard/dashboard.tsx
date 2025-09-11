@@ -149,7 +149,10 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
       {showPicker && <DateTimePicker value={date} mode="date" display="default" onChange={handleDateChange} />}
 
       {loading ? (
+        <View style={styles.spinningContainer}>
         <ActivityIndicator size="small" color="#007bff" />
+        <Text style={{color:'black'}}>Loading Appointments...</Text>
+        </View>
       ) : appointments.length > 0 ? (
         <View style={styles.table}>
           <View style={styles.tableHeader}>
@@ -171,7 +174,7 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
                 </View>
 
                 <View style={[styles.nameColumn, { flex: 1 }]}>
-                  <Text style={[styles.pillText, { color: typeInfo.fg }]}>{typeInfo.label}</Text>
+                  <Text style={[styles.pillText, { color: typeInfo.fg }]}>{item.appointmentType}</Text>
                 </View>
 
                 <View style={[styles.pill, { flex: 1, backgroundColor: statusInfo.bg }]}>
@@ -247,16 +250,13 @@ const DoctorDashboard = () => {
   const [revenueEndDate, setRevenueEndDate] = useState<string>(today);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
 
-
-  // right above your return(...)
 const pieState = useMemo(() => {
   const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
   if (total <= 0) {
-    // show equal thirds visually, but don't lie with absolute numbers
     const equalData = revenueSummaryData.map(d => ({ ...d, _display: 1 }));
-    return { data: equalData, accessor: '_display', absolute: false }; // show 33% labels
+    return { data: equalData, accessor: '_display', absolute: false }; 
   }
-  return { data: revenueSummaryData, accessor: 'population', absolute: true }; // your current behavior
+  return { data: revenueSummaryData, accessor: 'population', absolute: true }; 
 }, [revenueSummaryData]);
 
 
@@ -415,15 +415,14 @@ const pieState = useMemo(() => {
     }
   }, [doctorId, clinics]);
 
-  /** NEW: Dynamic feedback loader */
   const fetchReviews = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (!token) return;
       const response = await AuthFetch(`users/getFeedbackByDoctorId/${doctorId}`, token);
 
-      // Normalize a couple of possible shapes
       const ok = response?.data?.status === 'success' || response?.status === 'success';
+
       const doctorData =
         ok && response?.data?.doctor
           ? response.data.doctor
@@ -455,7 +454,6 @@ const pieState = useMemo(() => {
           fetchClinics(),
           fetchReviews(),
         ]);
-        // Initialize range summary to "today - today"
         await getRevenueSummaryRange(revenueStartDate, revenueEndDate);
       } catch (e) {
         console.error(e);
@@ -468,7 +466,6 @@ const pieState = useMemo(() => {
 
   useEffect(() => { fetchAvailableSlots(); }, [fetchAvailableSlots]);
 
-  /* ---------- Handlers ---------- */
   const handleDateChange = useCallback((newDate: Date) => { setDate(newDate); }, []);
 
   const handleRangePicked = useCallback((kind: 'start' | 'end') => (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -504,23 +501,21 @@ const pieState = useMemo(() => {
   const selectedClinicTomorrow = nextAvailableSlot.find((each) => each.addressId === currentClinic?.addressId);
   const formatSlotTime = (time: string) => moment(time, 'HH:mm').format('hh:mm A');
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007bff" />
-      </View>
-    );
-  }
-
   const isSmallDevice = width < 360;
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      {loading ?(
+         <View style={styles.spinningContainer}>
+        <ActivityIndicator size="large" color="#007bff" />
+        <Text style={{color:'black'}}>Loading Dashboard...</Text>
+      </View>
+      ) : (
+ <ScrollView style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Sidebar')}>
-            <Ionicons style={styles.title} size={28} name="menu" color="#000000" />
+            <Ionicons size={32} name="menu" color="#000000" />
           </TouchableOpacity>
           <Text style={styles.headerText}>
             {(() => { const hour = new Date().getHours(); if (hour < 12) return 'Good Morning,'; if (hour < 17) return 'Good Afternoon,'; return 'Good Evening,'; })()}
@@ -553,18 +548,18 @@ const pieState = useMemo(() => {
             </View>
             <View style={styles.gridRow}>
               <View style={styles.newCard}>
-                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.newAppointments}% {dashboardData.percentageChanges.newAppointments>0?'↑' :'↑'}</Text></View>
+                 <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.newAppointments}% {dashboardData.percentageChanges.newAppointments>=0?'↑' :'↓'}</Text></View>
                 <Text style={styles.newNumber}>{dashboardData.appointmentCounts.newAppointments}</Text>
                 <Text style={styles.newLabel}>New Appointments</Text>
               </View>
               <View style={styles.followUpCard}>
-                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.followUp}%↑</Text></View>
+                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.followUp}%{dashboardData.percentageChanges.followUp>=0?'↑' :'↓'}</Text></View>
                 <Text style={styles.followUpNumber}>{dashboardData.appointmentCounts.followUp}</Text>
                 <Text style={styles.followUpLabel}>Follow-ups</Text>
               </View>
             </View>
           </View>
-{currentuserDetails?.role === "doctor" && 
+          {currentuserDetails?.role === "doctor" && 
           <View style={styles.revenueCard}>
             <View style={styles.revenueRow}>
               <View style={styles.revenueBoxPurple}>
@@ -709,7 +704,11 @@ const pieState = useMemo(() => {
                 return (
                   <View key={fb.id || i} style={styles.feedbackItem}>
                     <View style={styles.avatarRow}>
-                      <Image source={fb.avatar ? { uri: fb.avatar } : PLACEHOLDER_IMAGE} style={styles.avatar} />
+<View style={styles.placeholderCircle}>
+                <Text style={styles.placeholderText}>{fb.patientName[0].toUpperCase() || ""}</Text>
+              </View>
+
+                      {/* <Image source={fb.avatar ? { uri: fb.avatar } : PLACEHOLDER_IMAGE} style={styles.avatar} /> */}
                       <View style={{ flex: 1 }}>
                         <Text style={styles.name}>{fb.patientName}</Text>
                         <View style={styles.ratingRow}>
@@ -728,13 +727,24 @@ const pieState = useMemo(() => {
           </ScrollView>
         </View>
       </ScrollView>
+      )}
     </View>
   );
 };
 
-/* ---------- Styles ---------- */
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#F0FDF4' },
+   spinningContainer : {
+ flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+ padding: 10,
+  },
+    placeholderCircle: {
+    width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
+    justifyContent: 'center', alignItems: 'center', marginRight: 16,
+  },
+  placeholderText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   scrollView: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, marginTop: 20 },
   headerText: { color: '#000', fontSize: 20, fontWeight: 'bold' },
@@ -796,7 +806,7 @@ const styles = StyleSheet.create({
     paddingRight: 8
   },
   nameText: { fontWeight: '600', fontSize: 14, color: '#0A2342' },
-  datetimeText: { color: '#777', fontSize: 12 },
+  datetimeText: { color: '#777', fontSize: 10 },
   pill: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 16, alignSelf: 'flex-start' },
   pillText: { fontSize: 12, fontWeight: '600' },
 
@@ -816,7 +826,7 @@ const styles = StyleSheet.create({
   feedbackItem: { marginBottom: 8 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#f3f4f6' },
-  name: { fontWeight: '600', fontSize: 14 },
+  name: { fontWeight: '600', fontSize: 14 , color:'black'},
   ratingRow: { flexDirection: 'row', marginTop: 4, gap: 2 },
   comment: { fontSize: 14, color: '#6c757d', fontStyle: 'italic', marginBottom: 8 },
 

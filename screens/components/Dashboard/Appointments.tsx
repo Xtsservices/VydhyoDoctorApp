@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
   Alert,
+   ActivityIndicator
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
@@ -79,8 +80,11 @@ const AppointmentsScreen = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState('');
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-
+  const [selectedType, setSelectedType] = useState<string | null>(null); // existing STATUS
+  const [selectedApptType, setSelectedApptType] = useState<string>('all'); // TYPE
+  const [typeDropdownVisible, setTypeDropdownVisible] = useState(false);     // NEW: type popup like status
+  const [filterDate, setFilterDate] = useState<string>(); // YYYY-MM-DD (default today)
+ const [showFilterDatePicker, setShowFilterDatePicker] = useState(false);
   // Action sheet (menu) + action modal
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
@@ -116,16 +120,19 @@ const AppointmentsScreen = () => {
   const [startDate, setStartDate] = useState<string>(thisMonthStart);
   const [endDate, setEndDate] = useState<string>(thisMonthEnd);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
-
+const [loader, setLoader] = useState(false)
   // Previous prescriptions presence (for disabling)
   const [hasPrescriptions, setHasPrescriptions] = useState<Record<string, boolean>>({});
 
   const fetchAppointments = async (page = 1, limit = 5) => {
     try {
+      setLoader(true)
       const queryParams = new URLSearchParams({
         doctorId: String(doctorId ?? ''),
         ...(search ? { searchText: String(search) } : {}),
         ...(selectedType && selectedType !== 'all' ? { status: String(selectedType) } : {}),
+         ...(selectedApptType && selectedApptType !== 'all' ? { appointmentType: String(selectedApptType) } : {}),
+       ...(filterDate ? { date: String(filterDate) } : {}),
         page: String(page),
         limit: String(limit),
       });
@@ -178,6 +185,7 @@ const AppointmentsScreen = () => {
       });
 
       setAppointments(formatted);
+      setLoader(false)
 
       // Precompute flags for "View Previous Prescription"
       try {
@@ -212,6 +220,8 @@ const AppointmentsScreen = () => {
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch appointments');
+    }finally{
+      setLoader(false)
     }
   };
 
@@ -227,7 +237,23 @@ const AppointmentsScreen = () => {
       fetchAppointments(pagination.current, pagination.pageSize);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, selectedType]);
+  }, [search, selectedType, selectedApptType, filterDate]);
+
+  const TYPE_OPTIONS = useMemo(
+    () => [
+      { label: 'All Types', value: 'all' },
+      { label: 'New Walkin', value: 'new-walkin' },
+      { label: 'New HomeCare', value: 'new-homecare' },
+      { label: 'Followup Walkin', value: 'followup-walkin' },
+      { label: 'Followup Video', value: 'followup-video' },
+      { label: 'Followup Homecare', value: 'followup-homecare' },
+    ],
+    []
+  );
+  const selectedApptTypeLabel = useMemo(
+    () => TYPE_OPTIONS.find(o => o.value === selectedApptType)?.label ?? 'All Types',
+    [TYPE_OPTIONS, selectedApptType]
+  );
 
   const getAppointmentsCount = async () => {
     try {
@@ -332,7 +358,7 @@ const AppointmentsScreen = () => {
       Toast.show({ type: 'error', text1: 'Error opening prescriptions' });
     }
   };
-
+const [button, setButton] = useState(false)
   const handleStatusChange = async (
     id: string,
     status: 'Cancel' | 'Reschedule' | 'Mark as Completed' | 'Prescription' | 'View Previous Prescription',
@@ -341,6 +367,7 @@ const AppointmentsScreen = () => {
     patientId: string
   ) => {
     try {
+      setButton(true)
       const token = await AsyncStorage.getItem('authToken');
 
       if (status === 'Prescription') {
@@ -366,12 +393,13 @@ const AppointmentsScreen = () => {
           { appointmentId: id, reason },
           token
         );
+        console.log(response, "cancelation response")
         if (response?.data?.status === 'success') {
           Toast.show({ type: 'success', text1: 'Appointment cancelled' });
           fetchAppointments(pagination.current, pagination.pageSize);
           getAppointmentsCount();
         } else {
-          Alert.alert('Error', response?.data?.message?.message || 'Failed to cancel appointment');
+          Alert.alert('Error', response?.message?.message || 'Failed to cancel appointment');
         }
       } else if (status === 'Reschedule') {
         if (!newDate || !newTime) {
@@ -416,6 +444,7 @@ const AppointmentsScreen = () => {
       setNewTime('');
       setReason('');
       setAvailableTimeSlots([]);
+       setButton(false)
     }
   };
 
@@ -516,25 +545,38 @@ const AppointmentsScreen = () => {
   const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
     const statusKey = (appt.status || '').toLowerCase() as keyof typeof STATUS_COLORS;
     const statusSty = STATUS_COLORS[statusKey] || { bg: '#F3F4F6', fg: '#374151', label: appt.status || 'Unknown' };
-
+console.log("123")
     return (
       <View style={styles.apptCard}>
-        <View style={styles.row}>
+        {loader ? (
+ <View style={styles.spinningContainer}>
+        <ActivityIndicator size="small" color="#007bff" />
+        <Text style={{color:'black'}}>Loading Appointments...</Text>
+        </View>
+        ):(
+          <>
+<View style={styles.row}>
            <View style={styles.placeholderCircle}>
         <Text style={styles.placeholderText}>{appt.patientName[0].toUpperCase() || ""}</Text>
       </View>
           {/* <Image source={{ uri: appt.avatar }} style={styles.avatar} /> */}
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>{appt.patientName}</Text>
-            <Text style={styles.phone}>{appt.phone}</Text>
+             <Text style={styles.id}>{appt.appointmentDepartment}</Text>
+             <Text style={styles.id}>ID: {appt.id}</Text>
+
           </View>
           <TouchableOpacity style={styles.menuButton} onPress={() => handleMenuPress(appt)}>
             <Text style={styles.menuButtonText}>⋯</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.id}>ID: {appt.id}</Text>
+       
 
+          </>
+          
+        )}
+        
         <View style={styles.row}>
           <View style={[styles.tag, { backgroundColor: '#EFF6FF' }]}>
             <Text style={[styles.tagText, { color: '#3B82F6' }]}>
@@ -667,7 +709,7 @@ const AppointmentsScreen = () => {
                     <Text style={styles.buttonText}>Close</Text>
                   </Pressable>
                   <Pressable
-                    style={[styles.modalButton, styles.confirmButton]}
+                    style={[styles.modalButton, styles.confirmButton, button&&styles.disableButton]}
                     onPress={() => {
                       if (selectedAppointmentId) {
                         handleStatusChange(
@@ -679,6 +721,7 @@ const AppointmentsScreen = () => {
                         );
                       }
                     }}
+                    disabled={button}
                   >
                     <Text style={styles.buttonText}>Confirm</Text>
                   </Pressable>
@@ -696,7 +739,8 @@ const AppointmentsScreen = () => {
       <View style={styles.container}>
         {/* Date Range for CARDS (web parity) */}
         <View style={styles.rangeWrap}>
-          <Text style={styles.rangeHint}>{formattedRangeLabel}</Text>
+ <View style={styles.rangeWrap}>
+          {/* <Text style={styles.rangeHint}>{formattedRangeLabel}</Text> */}
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ color: '#1977f3', marginRight: 8 }}>📅</Text>
             <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('start')}>
@@ -734,26 +778,28 @@ const AppointmentsScreen = () => {
         </View>
 
         {/* Summary cards */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={true} persistentScrollbar  indicatorStyle="black" >
           <View style={styles.summaryContainer}>
             <View style={[styles.card, { borderColor: '#FBBF24' }]}>
               <Text style={[styles.cardTitle, { color: '#FBBF24' }]}>{totalAppointmentsCount}</Text>
-              <Text style={{ color: '#FBBF24' }}>Total Appointments</Text>
+              <Text style={{ color: '#FBBF24',fontSize: 12 }}>Total Appointments</Text>
             </View>
             <View style={[styles.card, { borderColor: '#10B981' }]}>
               <Text style={[styles.cardTitle, { color: '#10B981' }]}>{scheduledAppointmentsCount}</Text>
-              <Text style={{ color: '#10B981' }}>Upcoming</Text>
+              <Text style={{ color: '#10B981',fontSize: 12 }}>Upcoming</Text>
             </View>
             <View style={[styles.card, { borderColor: '#6366F1' }]}>
               <Text style={[styles.cardTitle, { color: '#6366F1' }]}>{completedAppointmentsCount}</Text>
-              <Text style={{ color: '#6366F1' }}>Completed</Text>
+              <Text style={{ color: '#6366F1' ,fontSize: 12}}>Completed</Text>
             </View>
             <View style={[styles.card, { borderColor: 'red' }]}>
               <Text style={[styles.cardTitle, { color: 'red' }]}>{cancledAppointmentsCount}</Text>
-              <Text style={{ color: 'red' }}>Cancelled</Text>
+              <Text style={{ color: 'red', fontSize: 12 }}>Cancelled</Text>
             </View>
           </View>
         </ScrollView>
+        </View>
+       
 
         {/* Search + Filter */}
         <View style={styles.searchContainer}>
@@ -768,6 +814,78 @@ const AppointmentsScreen = () => {
             <Text style={styles.filterButtonText}>Filter</Text>
           </TouchableOpacity>
         </View>
+
+        
+          {/* Type */}
+                    <View style={styles.inlineFiltersRow}>
+
+            
+           
+          {/* Type (popup like Status) */}
+          <View style={{flex:1}}>
+            <Text style={styles.filterLabel}>Type</Text>
+            <TouchableOpacity style={styles.selectBtn} onPress={() => setTypeDropdownVisible(true)}>
+              <Text style={styles.selectBtnText}>{selectedApptTypeLabel}</Text>
+            </TouchableOpacity>
+         </View>
+        
+
+
+          {/* Date */}
+          <View style={{flex:1}}>
+            <Text style={styles.filterLabel}>Date</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+               <TouchableOpacity style={styles.dateBtn} onPress={() => setShowFilterDatePicker(true)}>
+                <Text style={styles.dateBtnText}>
+                  {filterDate ? moment(filterDate, 'YYYY-MM-DD').format('DD-MMM-YYYY') : 'DD-MMM-YYYY'}
+                </Text>
+              </TouchableOpacity>
+              {!!filterDate && (
+                <TouchableOpacity style={styles.clearDateBtn} onPress={() => setFilterDate('')}>
+                  <Text style={styles.clearDateText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {showFilterDatePicker && (
+              <DateTimePicker
+                value={filterDate ? moment(filterDate, 'YYYY-MM-DD').toDate() : new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowFilterDatePicker(false);
+                  if (event?.type === 'set' && selectedDate) {
+                    setFilterDate(moment(selectedDate).format('YYYY-MM-DD'));
+                  }
+                }}
+              />
+            )}
+          </View>
+       </View>
+
+         <Modal
+          visible={typeDropdownVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setTypeDropdownVisible(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setTypeDropdownVisible(false)}>
+            <View style={styles.dropdown}>
+              {TYPE_OPTIONS.map(opt => (
+                <Pressable
+                  key={opt.value}
+                  style={styles.option}
+                  onPress={() => {
+                    setSelectedApptType(opt.value);
+                    setTypeDropdownVisible(false);
+                  }}
+                >
+                  <Text style={{ color: '#000' }}>{opt.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
+
 
         {/* Status filter modal */}
         <Modal
@@ -838,15 +956,15 @@ const AppointmentsScreen = () => {
                   <>
                     {/* Navigate immediately for these two */}
                     <MenuItem
-                      label="Prescription"
+                      label="Digital-Prescription"
                       disabled={dis.disablePrescription}
                       onPress={() => {
                         setActionMenuVisible(false);
                         handleStatusChange(appt.id, 'Prescription', appt._id, appt.patientName, appt.patientId);
                       }}
                     />
-                    <MenuItem
-                      label="View Previous Prescription"
+                    <MenuItem 
+                      label="View Previous Prescriptions"
                       disabled={dis.disableViewPrev}
                       onPress={() => {
                         setActionMenuVisible(false);
@@ -890,57 +1008,96 @@ const AppointmentsScreen = () => {
         </Modal>
 
         {/* List */}
-        <FlatList
-          data={appointments}
-          keyExtractor={(item) => item.id}
-          renderItem={renderAppointmentCard}
-          contentContainerStyle={{ paddingBottom: 10 }}
-        />
+        {loader ? (
+  <View style={styles.spinningContainer}>
+    <ActivityIndicator size="small" color="#007bff" />
+    <Text style={{ color: 'black' }}>Loading Appointments...</Text>
+  </View>
+) : appointments?.length === 0 ? (
+  <View style={styles.emptyWrap}>
+    <Text style={styles.emptyText}>No Appointments Found</Text>
+  </View>
+) : (
+  <>
+    <FlatList
+      data={appointments}
+      keyExtractor={(item) => item.id}
+      renderItem={renderAppointmentCard}
+      contentContainerStyle={{ paddingBottom: 10 }}
+    />
+
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginVertical: 10,
+        marginBottom: 40,
+      }}
+    >
+      <TouchableOpacity
+        onPress={() => handlePageChange(pagination.current - 1)}
+        disabled={pagination.current === 1}
+        style={{
+          padding: 10,
+          marginHorizontal: 5,
+          backgroundColor: pagination.current === 1 ? '#e5e7eb' : '#3b82f6',
+          borderRadius: 6,
+        }}
+      >
+        <Text style={{ color: pagination.current === 1 ? '#9ca3af' : '#fff' }}>
+          Previous
+        </Text>
+      </TouchableOpacity>
+
+      <Text
+        style={{
+          alignSelf: 'center',
+          fontSize: 16,
+          marginHorizontal: 10,
+          color: 'black',
+        }}
+      >
+        Page {pagination.current} of{' '}
+        {Math.max(1, Math.ceil((pagination.total || 1) / (pagination.pageSize || 1)))}
+      </Text>
+
+      <TouchableOpacity
+        onPress={() => handlePageChange(pagination.current + 1)}
+        disabled={
+          pagination.current >=
+          Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
+        }
+        style={{
+          padding: 10,
+          marginHorizontal: 5,
+          backgroundColor:
+            pagination.current >=
+            Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
+              ? '#e5e7eb'
+              : '#3b82f6',
+          borderRadius: 6,
+        }}
+      >
+        <Text
+          style={{
+            color:
+              pagination.current >=
+              Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
+                ? '#9ca3af'
+                : '#fff',
+          }}
+        >
+          Next
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </>
+)}
+
+        
 
         {/* Pagination */}
-        <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 10, marginBottom: 40 }}>
-          <TouchableOpacity
-            onPress={() => handlePageChange(pagination.current - 1)}
-            disabled={pagination.current === 1}
-            style={{
-              padding: 10,
-              marginHorizontal: 5,
-              backgroundColor: pagination.current === 1 ? '#e5e7eb' : '#3b82f6',
-              borderRadius: 6,
-            }}
-          >
-            <Text style={{ color: pagination.current === 1 ? '#9ca3af' : '#fff' }}>Previous</Text>
-          </TouchableOpacity>
-
-          <Text style={{ alignSelf: 'center', fontSize: 16, marginHorizontal: 10 }}>
-            Page {pagination.current} of {Math.max(1, Math.ceil((pagination.total || 1) / (pagination.pageSize || 1)))}
-          </Text>
-
-          <TouchableOpacity
-            onPress={() => handlePageChange(pagination.current + 1)}
-            disabled={pagination.current >= Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))}
-            style={{
-              padding: 10,
-              marginHorizontal: 5,
-              backgroundColor:
-                pagination.current >= Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
-                  ? '#e5e7eb'
-                  : '#3b82f6',
-              borderRadius: 6,
-            }}
-          >
-            <Text
-              style={{
-                color:
-                  pagination.current >= Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
-                    ? '#9ca3af'
-                    : '#fff',
-              }}
-            >
-              Next
-            </Text>
-          </TouchableOpacity>
-        </View>
+        
       </View>
     </ScrollView>
   );
@@ -1000,12 +1157,12 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderRadius: 10,
-    padding: 12,
-    marginHorizontal: 4,
+    padding: 5,
+    marginHorizontal: 2,
     backgroundColor: '#fff',
     alignItems: 'center',
   },
-  cardTitle: { fontSize: 22, fontWeight: 'bold' },
+  cardTitle: { fontSize: 16, fontWeight: 'bold' },
 
   searchContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   searchInput: {
@@ -1026,6 +1183,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterButtonText: { color: '#fff', fontWeight: 'bold' },
+
+   inlineFiltersRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  inlineFilter: {
+    flex: 1,
+    flexDirection: 'row'
+  },
+  filterLabel: {
+    fontSize: 16,
+    color: '#111827',   // darker label for dark mode visibility
+    marginBottom: 6,
+  },
+  pickerBox: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    padding:0,
+  },
+   pickerControl: {
+    height: 44,          // enforce same control height
+    color: '#111827',    // dark mode readable
+    fontSize: 14,
+    width: '100%',
+  },
+  pickerItem: {
+    color: '#111827',   // iOS wheel item color
+  },
+  dateBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+  },
+  dateBtnText: {
+    color: '#111827',
+    fontSize: 14,
+  },
+  clearDateBtn: {
+    marginLeft: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+  },
+  clearDateText: {
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
 
   apptCard: {
     backgroundColor: '#fff',
@@ -1048,7 +1260,7 @@ const styles = StyleSheet.create({
 
   status: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
 
-  menuButton: { padding: 8, backgroundColor: '#f0f0f0', borderRadius: 5 },
+  menuButton: { padding: 8, backgroundColor: '#ffffffff', borderRadius: 5 },
   menuButtonText: { fontSize: 18, fontWeight: 'bold', color: '#333' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
@@ -1069,9 +1281,38 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   modalButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 5 },
   confirmButton: { backgroundColor: '#10B981' },
+  disableButton:{backgroundColor:'#555'},
   cancelButton: { backgroundColor: '#EF4444' },
   buttonText: { color: '#fff', fontWeight: 'bold' },
 
   dropdown: { width: '80%', backgroundColor: '#fff', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 15, elevation: 5 },
   option: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    spinningContainer : {
+ flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+ padding: 10,
+  },
+    selectBtn: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    height: 44,               // same as dateBtn
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+  },
+  selectBtnText: {
+    color: '#111827',         // visible in dark mode
+    fontSize: 14,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  emptyText: {
+    color: '#111827',
+    fontSize: 14,
+  },
 });

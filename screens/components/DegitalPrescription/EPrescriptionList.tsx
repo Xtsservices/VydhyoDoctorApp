@@ -472,8 +472,7 @@ const EPrescriptionList = () => {
         </View>
       )}
 
-      <View style={styles.header}>
-        {/* <Text style={styles.title}>e-Prescriptions</Text> */}
+      {/* <View style={styles.header}>
         <Text style={styles.subtitle}>
           Create and manage digital prescriptions for your patients
         </Text>
@@ -482,14 +481,14 @@ const EPrescriptionList = () => {
             <Text style={styles.countText}>{totalAppointmentsCount} scheduled appointments</Text>
           </View>
         )}
-      </View>
+      </View> */}
 
       <View style={styles.filtersContainer}>
         <View style={styles.searchContainer}>
           <Icon name="search1" size={18} color="#6B7280" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by patient name..."
+            placeholder="Search by Patient Name or Appointment ID"
             placeholderTextColor="#9CA3AF"
             value={searchText}
             onChangeText={setSearchText}
@@ -557,7 +556,7 @@ const EPrescriptionList = () => {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              <Icon name="calendar" size={48} color="#D1D5DB" />
+              {/* <Icon name="calendar" size={48} color="#D1D5DB" /> */}
               <Text style={styles.emptyTitle}>No appointments found</Text>
               <Text style={styles.emptySubtitle}>
                 {searchText
@@ -636,8 +635,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 5,
     marginBottom: 16,
   },
   searchIcon: {
@@ -666,6 +664,7 @@ const styles = StyleSheet.create({
   picker: {
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
+    color:'black'
   },
   datePickerButton: {
     flexDirection: 'row',

@@ -21,7 +21,7 @@ interface Patient {
   id: string;
   appointmentId: string;
   name: string;
-  gender: 'Male' | 'Female' | 'Other' | 'N/A';
+  gender: 'Male' | 'Female' | 'Other' ;
   age: string;
   phone: string;
   lastVisit: string;
@@ -90,7 +90,7 @@ const MyPatients: React.FC = () => {
   ];
 
   const calculateAge = (dob: string): string => {
-    if (!dob) return 'N/A';
+    if (!dob) return '';
     return moment().diff(moment(dob, 'DD-MM-YYYY'), 'years').toString();
   };
 
@@ -123,27 +123,27 @@ const MyPatients: React.FC = () => {
         const { appointments, pagination: apiPagination } = res.data.data;
         console.log('API response:', appointments);
         const formattedPatients = appointments.map((appointment: any) => ({
-          id: appointment.userId || appointment._id || 'N/A',
-          appointmentId: appointment.appointmentId || 'N/A',
-          name: appointment.patientName || 'N/A',
-          gender: appointment.patientDetails?.gender || 'N/A',
+          id: appointment.userId || appointment._id || '',
+          appointmentId: appointment.appointmentId || '',
+          name: appointment.patientName || '',
+          gender: appointment.patientDetails?.gender || '',
           age: appointment.patientDetails?.dob
             ? calculateAge(appointment.patientDetails.dob)
-            : appointment.patientDetails?.age || 'N/A',
-          phone: appointment.patientDetails?.mobile || 'N/A',
+            : appointment.patientDetails?.age || '',
+          phone: appointment.patientDetails?.mobile || '',
           lastVisit: appointment.appointmentDate
             ? moment(appointment.appointmentDate).format('DD MMMM YYYY')
-            : 'N/A',
-          appointmentType: appointment.appointmentType || 'N/A',
+            : '',
+          appointmentType: appointment.appointmentType || '',
           status:
             appointment.appointmentType === 'new-walkin' ||
             appointment.appointmentType === 'New-Walkin'
               ? 'New Patient'
               : 'Follow-up',
-          department: appointment.appointmentDepartment || 'N/A',
-          appointmentStatus: appointment.appointmentStatus || 'N/A',
-          appointmentReason: appointment.appointmentReason || 'N/A',
-          appointmentTime: appointment.appointmentTime || 'N/A',
+          department: appointment.appointmentDepartment || '',
+          appointmentStatus: appointment.appointmentStatus || '',
+          appointmentReason: appointment.appointmentReason || '',
+          appointmentTime: appointment.appointmentTime || '',
           appointmentCount: 1,
           allAppointments: [appointment],
           ePrescription: appointment.ePrescription || null,
@@ -199,17 +199,17 @@ const MyPatients: React.FC = () => {
           setPrescriptionData({
             medicines: response.data.data.medicines?.map((med: any) => ({
               id: med.id || undefined,
-              medName: String(med.medName || 'N/A'),
-              quantity: String(med.quantity || 'N/A'),
-              dosage: String(med.dosage || 'N/A'),
-              duration: String(med.duration || 'N/A'),
-              frequency: String(med.frequency || 'N/A'),
+              medName: String(med.medName || ''),
+              quantity: String(med.quantity || ''),
+              dosage: String(med.dosage || ''),
+              duration: String(med.duration || ''),
+              frequency: String(med.frequency || ''),
             })) || [],
             tests: response.data.data.tests?.map((test: any) => ({
               id: test.id || undefined,
-              name: String(test.testName || 'N/A'),
-              labTestID: String(test.labTestID || 'N/A'),
-              status: String(test.status || 'N/A'),
+              name: String(test.testName || ''),
+              labTestID: String(test.labTestID || ''),
+              status: String(test.status || ''),
             })) || [],
           });
         } else {
@@ -291,7 +291,7 @@ const MyPatients: React.FC = () => {
   };
 
   const shouldDisplayValue = (value: any): boolean => {
-    return value != null && value !== '' && value !== 'N/A' && value !== 'undefined';
+    return value != null && value !== '' && value !== '' && value !== 'undefined';
   };
 
   const renderPatientItem = ({ item }: { item: Patient }) => {
@@ -311,6 +311,8 @@ const MyPatients: React.FC = () => {
         <View style={styles.info}>
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.id}>ID: {item.id}</Text>
+          <Text style={styles.id}>{item.appointmentType}</Text>
+
           <Text style={styles.details}>
             {item.gender}, {item.age} years
           </Text>
@@ -418,7 +420,10 @@ const MyPatients: React.FC = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{loading ? 'Loading...' : 'No patients found.'}</Text>
+            <Text style={styles.emptyText}>{loading ? <View style={{display:'flex', justifyContent:'center'}}>
+            <ActivityIndicator size="large" color="#007bff" />
+                    <Text style={{color:'black'}}>Loading Patients...</Text> 
+            </View>: 'No patients found.'}</Text>
           </View>
         }
         renderItem={renderPatientItem}
@@ -478,31 +483,31 @@ const MyPatients: React.FC = () => {
                 <View style={styles.infoGrid}>
                   <Text style={styles.infoItem}>
                     <Text style={styles.infoLabel}>Patient ID: </Text>
-                    <Text>{selectedPatient.id || 'N/A'}</Text>
+                    <Text>{selectedPatient.id || ''}</Text>
                   </Text>
                   <Text style={styles.infoItem}>
                     <Text style={styles.infoLabel}>Name: </Text>
-                    <Text>{selectedPatient.name || 'N/A'}</Text>
+                    <Text>{selectedPatient.name || ''}</Text>
                   </Text>
                   <Text style={styles.infoItem}>
                     <Text style={styles.infoLabel}>Gender: </Text>
-                    <Text>{selectedPatient.gender || 'N/A'}</Text>
+                    <Text>{selectedPatient.gender || ''}</Text>
                   </Text>
                   <Text style={styles.infoItem}>
                     <Text style={styles.infoLabel}>Phone: </Text>
-                    <Text>{selectedPatient.phone || 'N/A'}</Text>
+                    <Text>{selectedPatient.phone || ''}</Text>
                   </Text>
                   <Text style={styles.infoItem}>
                     <Text style={styles.infoLabel}>Last Visit: </Text>
-                    <Text>{selectedPatient.lastVisit || 'N/A'}</Text>
+                    <Text>{selectedPatient.lastVisit || ''}</Text>
                   </Text>
                   <Text style={styles.infoItem}>
                     <Text style={styles.infoLabel}>Department: </Text>
-                    <Text>{selectedPatient.department || 'N/A'}</Text>
+                    <Text>{selectedPatient.department || ''}</Text>
                   </Text>
                   <Text style={styles.infoItem}>
                     <Text style={styles.infoLabel}>Status: </Text>
-                    <Text>{selectedPatient.status || 'N/A'}</Text>
+                    <Text>{selectedPatient.status || ''}</Text>
                   </Text>
                 </View>
               </View>
@@ -631,11 +636,11 @@ const MyPatients: React.FC = () => {
                     </View>
                     {ePrescriptionData.diagnosis.medications.map((med: any, index: number) => (
                       <View key={med.medInventoryId || index} style={styles.tableRow}>
-                        <Text style={styles.tableCell}>{String(med.medName || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(med.quantity || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(med.dosage || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(med.duration || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(med.frequency || 'N/A')}</Text>
+                        <Text style={styles.tableCell}>{String(med.medName || '')}</Text>
+                        <Text style={styles.tableCell}>{String(med.quantity || '')}</Text>
+                        <Text style={styles.tableCell}>{String(med.dosage || '')}</Text>
+                        <Text style={styles.tableCell}>{String(med.duration || '')}</Text>
+                        <Text style={styles.tableCell}>{String(med.frequency || '')}</Text>
                       </View>
                     ))}
                   </View>
@@ -650,11 +655,11 @@ const MyPatients: React.FC = () => {
                     </View>
                     {prescriptionData.medicines.map((med, index) => (
                       <View key={med.id || index} style={styles.tableRow}>
-                        <Text style={styles.tableCell}>{String(med.medName || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(med.quantity || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(med.dosage || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(med.duration || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(med.frequency || 'N/A')}</Text>
+                        <Text style={styles.tableCell}>{String(med.medName || '')}</Text>
+                        <Text style={styles.tableCell}>{String(med.quantity || '')}</Text>
+                        <Text style={styles.tableCell}>{String(med.dosage || '')}</Text>
+                        <Text style={styles.tableCell}>{String(med.duration || '')}</Text>
+                        <Text style={styles.tableCell}>{String(med.frequency || '')}</Text>
                       </View>
                     ))}
                   </View>
@@ -676,8 +681,8 @@ const MyPatients: React.FC = () => {
                     </View>
                     {ePrescriptionData.diagnosis.selectedTests.map((test: any, index: number) => (
                       <View key={test.testInventoryId || test.testName || index} style={styles.tableRow}>
-                        <Text style={styles.tableCell}>{String(test.testName || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(test.testInventoryId || 'N/A')}</Text>
+                        <Text style={styles.tableCell}>{String(test.testName || '')}</Text>
+                        <Text style={styles.tableCell}>{String(test.testInventoryId || '')}</Text>
                         <Text style={styles.tableCell}>{String(test.status || 'Prescribed')}</Text>
                       </View>
                     ))}
@@ -691,9 +696,9 @@ const MyPatients: React.FC = () => {
                     </View>
                     {prescriptionData.tests.map((test, index) => (
                       <View key={test.id || index} style={styles.tableRow}>
-                        <Text style={styles.tableCell}>{String(test.name || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(test.labTestID || 'N/A')}</Text>
-                        <Text style={styles.tableCell}>{String(test.status || 'N/A')}</Text>
+                        <Text style={styles.tableCell}>{String(test.name || '')}</Text>
+                        <Text style={styles.tableCell}>{String(test.labTestID || '')}</Text>
+                        <Text style={styles.tableCell}>{String(test.status || '')}</Text>
                       </View>
                     ))}
                   </View>
