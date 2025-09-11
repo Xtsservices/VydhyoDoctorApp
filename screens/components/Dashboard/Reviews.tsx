@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#000000',
   },
   emptyContainer: {
     flex: 1,

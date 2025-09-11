@@ -1129,7 +1129,7 @@ const ClinicManagementScreen = () => {
       {/* Loading Overlay */}
       {initialLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00203F" />
+          <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>Loading clinics...</Text>
         </View>
       ) : (
@@ -1391,7 +1391,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#000000',
   },
   card: {
     backgroundColor: '#FFFFFF',
