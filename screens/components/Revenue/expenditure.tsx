@@ -18,7 +18,7 @@ import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import { AuthPost, AuthFetch } from '../../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface Expense {
   _id: string;
@@ -34,10 +34,7 @@ interface UserState {
 }
 
 const TotalExpenditureScreen: React.FC = () => {
-    const user = useSelector((state: any) => state.currentUser);
-  // const user = useSelector((state: UserState) => state.currentUserData);
-  // console.log(currentUserDetails, "1234qwe")
-
+  const user = useSelector((state: any) => state.currentUser);
   const userId = user?.userId;
   const [searchText, setSearchText] = useState('');
   const [selectedDate, setSelectedDate] = useState(moment());
@@ -70,8 +67,8 @@ const TotalExpenditureScreen: React.FC = () => {
       const token = await AsyncStorage.getItem('authToken');
 
       const response = await AuthFetch(`finance/getExpense/${user.userId}?startDate=${startDate}&endDate=${endDate}`, token);
-      console.log(response, "expenditure response")
-      
+      console.log(response, "expenditure response");
+
       if (response.data.success) {
         setExpenses(response.data.data);
         setTotalExpenses(response.data.data.length);
@@ -155,8 +152,8 @@ const TotalExpenditureScreen: React.FC = () => {
       const token = await AsyncStorage.getItem('authToken');
 
       const response = await AuthPost('finance/createExpense', payload, token);
-      console.log(response, )
-      
+      console.log(response);
+
       if (response?.data?.success) {
         Toast.show({
           type: 'success',
@@ -228,13 +225,18 @@ const TotalExpenditureScreen: React.FC = () => {
 
       {fetching ? (
         <ActivityIndicator size="large" color="#2563EB" />
-      ) : (
+      ) : expenses.length > 0 ? (
         <FlatList
           data={expenses.slice((currentPage - 1) * 10, currentPage * 10)}
           renderItem={renderItem}
           keyExtractor={item => item._id}
           style={styles.list}
         />
+      ) : (
+        <View style={styles.noDataContainer}>
+          <Icon name="file-document-outline" size={40} color="#9CA3AF" />
+          <Text style={styles.noDataText}>No expenses found</Text>
+        </View>
       )}
 
       <View style={styles.footer}>
@@ -499,7 +501,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D9D9D9',
     marginBottom: 16,
-    color:'black'
+    color: 'black',
   },
   textArea: {
     height: 80,
@@ -510,7 +512,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D9D9D9',
     marginBottom: 16,
-    color:'black'
+    color: 'black',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -533,6 +535,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  noDataContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noDataText: {
+    marginTop: 12,
+    color: '#9CA3AF',
+    fontSize: 16,
   },
 });
 

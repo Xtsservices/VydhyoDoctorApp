@@ -23,7 +23,6 @@ import dayjs from 'dayjs';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import RNFS from 'react-native-fs';
 import { useNavigation } from '@react-navigation/native';
-import { Menu, Provider } from 'react-native-paper';
 
 const AccountsScreen = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
@@ -47,8 +46,7 @@ const AccountsScreen = () => {
   const [filterService, setFilterService] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [recentTransactions, setRecentTransactions] = useState([]);
-  const [serviceMenuVisible, setServiceMenuVisible] = useState(false);
-  const dropdownRef = useRef(null); // Reference for Menu anchor
+  const [serviceModalVisible, setServiceModalVisible] = useState(false); // Replaced Menu with Modal
 
   const handleViewTxn = (txn) => {
     setSelectedTxn(txn);
@@ -130,7 +128,7 @@ const AccountsScreen = () => {
   useEffect(() => {
     fetchTransactions();
     fetchRevenue();
-  }, [fetchTransactions]); // Updated dependency to use fetchTransactions
+  }, [fetchTransactions]);
 
   const onStartChange = (_: any, selectedDate?: Date) => {
     setShowStartPicker(Platform.OS === 'ios');
@@ -261,371 +259,389 @@ const AccountsScreen = () => {
   };
 
   return (
-    <Provider>
-      <ScrollView style={styles.container}>
-        {/* Summary Cards */}
-        <View style={styles.summaryRow}>
-          <View style={[styles.summaryCard, styles.receivedCard]}>
-            {loadingRevenue ? (
-              <ActivityIndicator size="small" color="#10B981" />
-            ) : (
-              <>
-                <View style={styles.cardIconContainer}>
-                  <View style={[styles.cardIcon, styles.greenIcon]}>
-                    <Icon name="cash" size={20} color="#fff" />
-                  </View>
-                </View>
-                <Text style={styles.summaryAmount}>₹{accountSummary.totalReceived.toLocaleString()}</Text>
-                <Text style={styles.summaryLabel}>Total Amount Received</Text>
-              </>
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.summaryCard, styles.expenditureCard]}
-            onPress={() => navigation.navigate('expenditure')}
-          >
-            {loadingRevenue ? (
-              <ActivityIndicator size="small" color="#EF4444" />
-            ) : (
-              <>
-                <View style={styles.cardIconContainer}>
-                  <View style={[styles.cardIcon, styles.redIcon]}>
-                    <Icon name="cash-remove" size={20} color="#fff" />
-                  </View>
-                </View>
-                <Text style={styles.summaryAmount}>₹{accountSummary.totalExpenditure.toLocaleString()}</Text>
-                <Text style={styles.summaryLabel}>Total Expenditure</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <View style={[styles.summaryCard, styles.recentCard]}>
-            <View style={styles.cardIconContainer}>
-              <View style={[styles.cardIcon, styles.blueIcon]}>
-                <Icon name="sync" size={20} color="#fff" />
-              </View>
-            </View>
-            <Text style={styles.summaryLabel}>Recent Transactions</Text>
-            <ScrollView style={styles.recentTransactionsContainer}>
-              {recentTransactions.length > 0 ? (
-                recentTransactions.map((transaction, index) => (
-                  <View key={index} style={styles.transactionItem}>
-                    <Text style={styles.transactionName} numberOfLines={1}>
-                      {transaction.name}
-                    </Text>
-                    <Text style={styles.transactionAmount}>₹{transaction.amount}</Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noTransactionsText}>No recent transactions</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-
-        {/* Filter Section */}
-        <TouchableOpacity
-          onPress={() => setShowFilters(!showFilters)}
-          style={styles.filterToggle}
-        >
-          <Text style={styles.filterTitle}>Filters</Text>
-          <Icon
-            name={showFilters ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color="#111"
-          />
-        </TouchableOpacity>
-
-        {showFilters && (
-          <View style={styles.filters}>
-            <TextInput
-              placeholder="Search by Patient Name or Transaction ID"
-              style={styles.searchInput}
-              value={searchText}
-              onChangeText={(text) => setSearchText(text)}
-              placeholderTextColor="#9CA3AF"
-            />
-
-            <View style={styles.dateRow}>
-              <TouchableOpacity
-                style={styles.dateInput}
-                onPress={() => setShowStartPicker(true)}
-              >
-                <Icon name="calendar" size={18} color="#6B7280" />
-                <Text style={styles.dateText}>
-                  {startDate ? moment(startDate).format('DD/MM/YYYY') : 'Start Date'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dateInput}
-                onPress={() => setShowEndPicker(true)}
-              >
-                <Icon name="calendar" size={18} color="#6B7280" />
-                <Text style={styles.dateText}>
-                  {endDate ? moment(endDate).format('DD/MM/YYYY') : 'End Date'}
-                </Text>
-              </TouchableOpacity>
-
-              {showStartPicker && (
-                <DateTimePicker
-                  value={startDate}
-                  mode="date"
-                  display="default"
-                  onChange={onStartChange}
-                />
-              )}
-
-              {showEndPicker && (
-                <DateTimePicker
-                  value={endDate}
-                  mode="date"
-                  display="default"
-                  onChange={onEndChange}
-                />
-              )}
-            </View>
-
-            <Menu
-              visible={serviceMenuVisible}
-              onDismiss={() => setServiceMenuVisible(false)}
-              anchor={
-                <TouchableOpacity
-                  style={styles.dropdown}
-                  onPress={() => setServiceMenuVisible(true)}
-                >
-                  <Text style={styles.dropdownText}>
-                    {filterService
-                      ? filterService.charAt(0).toUpperCase() + filterService.slice(1)
-                      : 'All Services'}
-                  </Text>
-                  <Icon name="chevron-down" size={18} color="#6B7280" />
-                </TouchableOpacity>
-              }
-              style={styles.menu}
-            >
-              <Menu.Item
-                onPress={() => {
-                  setFilterService('');
-                  setServiceMenuVisible(false);
-                }}
-                title="All Services"
-              />
-              <Menu.Item
-                onPress={() => {
-                  setFilterService('appointment');
-                  setServiceMenuVisible(false);
-                }}
-                title="Appointments"
-              />
-              <Menu.Item
-                onPress={() => {
-                  setFilterService('lab');
-                  setServiceMenuVisible(false);
-                }}
-                title="Lab"
-              />
-              <Menu.Item
-                onPress={() => {
-                  setFilterService('pharmacy');
-                  setServiceMenuVisible(false);
-                }}
-                title="Pharmacy"
-              />
-            </Menu>
-
-            <TouchableOpacity
-              style={styles.exportBtn}
-              onPress={exportTransactionsToPDF}
-              disabled={exportingPdf}
-            >
-              {exportingPdf ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Icon name="download" size={18} color="#fff" />
-                  <Text style={styles.exportText}>Export</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Transaction History */}
-        <View style={styles.transactionSection}>
-          <Text style={styles.sectionTitle}>Transaction History</Text>
-
-          {loadingTransactions ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#3B82F6" />
-              <Text style={styles.loadingText}>Loading transactions...</Text>
-            </View>
-          ) : transactions.length > 0 ? (
-            <>
-              {transactions.map((item, index) => (
-                <View key={item.paymentId || index} style={styles.transactionCard}>
-                  <View style={styles.txnHeader}>
-                    <Text style={styles.txnId}>{item?.paymentId}</Text>
-                    <Text style={styles.txnDate}>
-                      {dayjs(item?.paidAt || item?.updatedAt).format('YYYY-MM-DD')}
-                    </Text>
-                  </View>
-                  <View style={styles.txnRow}>
-                    <Text style={styles.txnName}>{item.patientName}</Text>
-                    <Text style={styles.txnName}>
-                      {dayjs(item?.paidAt || item?.updatedAt).format('HH:mm')}
-                    </Text>
-                  </View>
-                  <View style={styles.txnRow}>
-                    <Text style={styles.txnLabel}>{item?.paymentFrom}</Text>
-                    <Text style={styles.txnAmount}>₹{item.finalAmount}</Text>
-                  </View>
-                  <View style={styles.txnRow}>
-                    <Text style={styles.txnLabel}>{item?.paymentMethod}</Text>
-                    <View style={styles.statusRow}>
-                      <Text
-                        style={[
-                          styles.paidStatus,
-                          item.paymentStatus === 'paid'
-                            ? styles.paidStatusSuccess
-                            : item.paymentStatus === 'pending'
-                              ? styles.paidStatusPending
-                              : styles.paidStatusRefunded,
-                        ]}
-                      >
-                        {item.paymentStatus === 'paid'
-                          ? 'Paid'
-                          : item.paymentStatus === 'pending'
-                            ? 'Pending'
-                            : 'Refunded'}
-                      </Text>
-                      <TouchableOpacity
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingHorizontal: 8,
-                          paddingVertical: 4,
-                          backgroundColor: '#3B82F6',
-                          borderRadius: 6,
-                        }}
-                        onPress={() => handleViewTxn(item)}
-                      >
-                        <Icon name="information-outline" size={16} color="#fff" style={{ marginRight: 4 }} />
-                        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 12 }}>
-                          View Details
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              ))}
-
-              {renderPagination()}
-            </>
+    <ScrollView style={styles.container}>
+      {/* Summary Cards */}
+      <View style={styles.summaryRow}>
+        <View style={[styles.summaryCard, styles.receivedCard]}>
+          {loadingRevenue ? (
+            <ActivityIndicator size="small" color="#10B981" />
           ) : (
-            <View style={styles.noDataContainer}>
-              <Icon name="file-document-outline" size={40} color="#9CA3AF" />
-              <Text style={styles.noDataText}>No transactions found</Text>
-            </View>
+            <>
+              <View style={styles.cardIconContainer}>
+                <View style={[styles.cardIcon, styles.greenIcon]}>
+                  <Icon name="cash" size={20} color="#fff" />
+                </View>
+              </View>
+              <Text style={styles.summaryAmount}>₹{accountSummary.totalReceived.toLocaleString()}</Text>
+              <Text style={styles.summaryLabel}>Total Amount Received</Text>
+            </>
           )}
         </View>
 
-        {/* Transaction Details Modal */}
-        {showTxnModal && selectedTxn && (
-          <Modal
-            visible={showTxnModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowTxnModal(false)}
+        <TouchableOpacity
+          style={[styles.summaryCard, styles.expenditureCard]}
+          onPress={() => navigation.navigate('expenditure')}
+        >
+          {loadingRevenue ? (
+            <ActivityIndicator size="small" color="#EF4444" />
+          ) : (
+            <>
+              <View style={styles.cardIconContainer}>
+                <View style={[styles.cardIcon, styles.redIcon]}>
+                  <Icon name="cash-remove" size={20} color="#fff" />
+                </View>
+              </View>
+              <Text style={styles.summaryAmount}>₹{accountSummary.totalExpenditure.toLocaleString()}</Text>
+              <Text style={styles.summaryLabel}>Total Expenditure</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <View style={[styles.summaryCard, styles.recentCard]}>
+          <View style={styles.cardIconContainer}>
+            <View style={[styles.cardIcon, styles.blueIcon]}>
+              <Icon name="sync" size={20} color="#fff" />
+            </View>
+          </View>
+          <Text style={styles.summaryLabel}>Recent Transactions</Text>
+          <ScrollView style={styles.recentTransactionsContainer}>
+            {recentTransactions.length > 0 ? (
+              recentTransactions.map((transaction, index) => (
+                <View key={index} style={styles.transactionItem}>
+                  <Text style={styles.transactionName} numberOfLines={1}>
+                    {transaction.name}
+                  </Text>
+                  <Text style={styles.transactionAmount}>₹{transaction.amount}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noTransactionsText}>No recent transactions</Text>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+
+      {/* Filter Section */}
+      <TouchableOpacity
+        onPress={() => setShowFilters(!showFilters)}
+        style={styles.filterToggle}
+      >
+        <Text style={styles.filterTitle}>Filters</Text>
+        <Icon
+          name={showFilters ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color="#111"
+        />
+      </TouchableOpacity>
+
+      {showFilters && (
+        <View style={styles.filters}>
+          <TextInput
+            placeholder="Search by Patient Name or Transaction ID"
+            style={styles.searchInput}
+            value={searchText}
+            onChangeText={(text) => setSearchText(text)}
+            placeholderTextColor="#9CA3AF"
+          />
+
+          <View style={styles.dateRow}>
+            <TouchableOpacity
+              style={styles.dateInput}
+              onPress={() => setShowStartPicker(true)}
+            >
+              <Icon name="calendar" size={18} color="#6B7280" />
+              <Text style={styles.dateText}>
+                {startDate ? moment(startDate).format('DD/MM/YYYY') : 'Start Date'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dateInput}
+              onPress={() => setShowEndPicker(true)}
+            >
+              <Icon name="calendar" size={18} color="#6B7280" />
+              <Text style={styles.dateText}>
+                {endDate ? moment(endDate).format('DD/MM/YYYY') : 'End Date'}
+              </Text>
+            </TouchableOpacity>
+
+            {showStartPicker && (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display="default"
+                onChange={onStartChange}
+              />
+            )}
+
+            {showEndPicker && (
+              <DateTimePicker
+                value={endDate}
+                mode="date"
+                display="default"
+                onChange={onEndChange}
+              />
+            )}
+          </View>
+
+          {/* Service Selection Modal */}
+          <TouchableOpacity
+            style={styles.dropdown}
+            onPress={() => setServiceModalVisible(true)}
           >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Transaction Details</Text>
-                <ScrollView>
-                  <View style={styles.row}>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Patient Name:</Text>
-                      <Text style={styles.modalValue}>{selectedTxn.patientName}</Text>
-                    </View>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Transaction ID:</Text>
-                      <Text style={styles.modalValue}>{selectedTxn.paymentId}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.row}>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>User ID:</Text>
-                      <Text style={styles.modalValue}>{selectedTxn.userId}</Text>
-                    </View>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Payment From:</Text>
-                      <Text style={styles.modalValue}>{selectedTxn.paymentFrom}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.row}>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Payment Method:</Text>
-                      <Text style={styles.modalValue}>{selectedTxn.paymentMethod}</Text>
-                    </View>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Status:</Text>
-                      <Text style={styles.modalValue}>
-                        {selectedTxn.paymentStatus === 'refund_pending'
-                          ? 'Refunded'
-                          : selectedTxn.paymentStatus}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.row}>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Paid At:</Text>
-                      <Text style={styles.modalValue}>
-                        {dayjs(selectedTxn.paidAt).format('YY-MMM-YYYY h:mm A')}
-                      </Text>
-                    </View>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Created At:</Text>
-                      <Text style={styles.modalValue}>
-                        {dayjs(selectedTxn?.createdAt).format('YY-MMM-YYYY h:mm A')}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.row}>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Actual Amount:</Text>
-                      <Text style={styles.modalValue}>₹{selectedTxn?.actualAmount}</Text>
-                    </View>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Final Amount:</Text>
-                      <Text style={styles.modalValue}>₹{selectedTxn?.finalAmount}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.row}>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Discount:</Text>
-                      <Text style={styles.modalValue}>
-                        {selectedTxn.discount} ({selectedTxn.discountType})
-                      </Text>
-                    </View>
-                    <View style={styles.column}>
-                      <Text style={styles.modalLabel}>Currency:</Text>
-                      <Text style={styles.modalValue}>{selectedTxn.currency}</Text>
-                    </View>
-                  </View>
-                </ScrollView>
+            <Text style={styles.dropdownText}>
+              {filterService
+                ? filterService.charAt(0).toUpperCase() + filterService.slice(1)
+                : 'All Services'}
+            </Text>
+            <Icon name="chevron-down" size={18} color="#6B7280" />
+          </TouchableOpacity>
+
+          <Modal
+            visible={serviceModalVisible}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setServiceModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.serviceModalContent}>
+                <Text style={styles.modalTitle}>Select Service</Text>
+                <TouchableOpacity
+                  style={styles.serviceOption}
+                  onPress={() => {
+                    setFilterService('');
+                    setServiceModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.serviceOptionText}>All Services</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.serviceOption}
+                  onPress={() => {
+                    setFilterService('appointment');
+                    setServiceModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.serviceOptionText}>Appointments</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.serviceOption}
+                  onPress={() => {
+                    setFilterService('lab');
+                    setServiceModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.serviceOptionText}>Lab</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.serviceOption}
+                  onPress={() => {
+                    setFilterService('pharmacy');
+                    setServiceModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.serviceOptionText}>Pharmacy</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.closeButton}
-                  onPress={() => setShowTxnModal(false)}
+                  onPress={() => setServiceModalVisible(false)}
                 >
-                  <Text style={styles.closeButtonText}>Close</Text>
+                  <Text style={styles.closeButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </Modal>
+
+          <TouchableOpacity
+            style={styles.exportBtn}
+            onPress={exportTransactionsToPDF}
+            disabled={exportingPdf}
+          >
+            {exportingPdf ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Icon name="download" size={18} color="#fff" />
+                <Text style={styles.exportText}>Export</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Transaction History */}
+      <View style={styles.transactionSection}>
+        <Text style={styles.sectionTitle}>Transaction History</Text>
+
+        {loadingTransactions ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={styles.loadingText}>Loading transactions...</Text>
+          </View>
+        ) : transactions.length > 0 ? (
+          <>
+            {transactions.map((item, index) => (
+              <View key={item.paymentId || index} style={styles.transactionCard}>
+                <View style={styles.txnHeader}>
+                  <Text style={styles.txnId}>{item?.paymentId}</Text>
+                  <Text style={styles.txnDate}>
+                    {dayjs(item?.paidAt || item?.updatedAt).format('YYYY-MM-DD')}
+                  </Text>
+                </View>
+                <View style={styles.txnRow}>
+                  <Text style={styles.txnName}>{item.patientName}</Text>
+                  <Text style={styles.txnName}>
+                    {dayjs(item?.paidAt || item?.updatedAt).format('HH:mm')}
+                  </Text>
+                </View>
+                <View style={styles.txnRow}>
+                  <Text style={styles.txnLabel}>{item?.paymentFrom}</Text>
+                  <Text style={styles.txnAmount}>₹{item.finalAmount}</Text>
+                </View>
+                <View style={styles.txnRow}>
+                  <Text style={styles.txnLabel}>{item?.paymentMethod}</Text>
+                  <View style={styles.statusRow}>
+                    <Text
+                      style={[
+                        styles.paidStatus,
+                        item.paymentStatus === 'paid'
+                          ? styles.paidStatusSuccess
+                          : item.paymentStatus === 'pending'
+                          ? styles.paidStatusPending
+                          : styles.paidStatusRefunded,
+                      ]}
+                    >
+                      {item.paymentStatus === 'paid'
+                        ? 'Paid'
+                        : item.paymentStatus === 'pending'
+                        ? 'Pending'
+                        : 'Refunded'}
+                    </Text>
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        backgroundColor: '#3B82F6',
+                        borderRadius: 6,
+                      }}
+                      onPress={() => handleViewTxn(item)}
+                    >
+                      <Icon name="information-outline" size={16} color="#fff" style={{ marginRight: 4 }} />
+                      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 12 }}>
+                        View Details
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))}
+
+            {renderPagination()}
+          </>
+        ) : (
+          <View style={styles.noDataContainer}>
+            <Icon name="file-document-outline" size={40} color="#9CA3AF" />
+            <Text style={styles.noDataText}>No transactions found</Text>
+          </View>
         )}
-      </ScrollView>
-    </Provider>
+      </View>
+
+      {/* Transaction Details Modal */}
+      {showTxnModal && selectedTxn && (
+        <Modal
+          visible={showTxnModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowTxnModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Transaction Details</Text>
+              <ScrollView>
+                <View style={styles.row}>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Patient Name:</Text>
+                    <Text style={styles.modalValue}>{selectedTxn.patientName}</Text>
+                  </View>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Transaction ID:</Text>
+                    <Text style={styles.modalValue}>{selectedTxn.paymentId}</Text>
+                  </View>
+                </View>
+                <View style={styles.row}>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>User ID:</Text>
+                    <Text style={styles.modalValue}>{selectedTxn.userId}</Text>
+                  </View>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Payment From:</Text>
+                    <Text style={styles.modalValue}>{selectedTxn.paymentFrom}</Text>
+                  </View>
+                </View>
+                <View style={styles.row}>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Payment Method:</Text>
+                    <Text style={styles.modalValue}>{selectedTxn.paymentMethod}</Text>
+                  </View>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Status:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedTxn.paymentStatus === 'refund_pending'
+                        ? 'Refunded'
+                        : selectedTxn.paymentStatus}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.row}>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Paid At:</Text>
+                    <Text style={styles.modalValue}>
+                      {dayjs(selectedTxn.paidAt).format('YY-MMM-YYYY h:mm A')}
+                    </Text>
+                  </View>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Created At:</Text>
+                    <Text style={styles.modalValue}>
+                      {dayjs(selectedTxn?.createdAt).format('YY-MMM-YYYY h:mm A')}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.row}>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Actual Amount:</Text>
+                    <Text style={styles.modalValue}>₹{selectedTxn?.actualAmount}</Text>
+                  </View>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Final Amount:</Text>
+                    <Text style={styles.modalValue}>₹{selectedTxn?.finalAmount}</Text>
+                  </View>
+                </View>
+                <View style={styles.row}>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Discount:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedTxn.discount} ({selectedTxn.discountType})
+                    </Text>
+                  </View>
+                  <View style={styles.column}>
+                    <Text style={styles.modalLabel}>Currency:</Text>
+                    <Text style={styles.modalValue}>{selectedTxn.currency}</Text>
+                  </View>
+                </View>
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowTxnModal(false)}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </ScrollView>
   );
 };
 
@@ -698,13 +714,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   recentTransactionsContainer: {
-    maxHeight: 80,
-    marginTop: 8,
+    maxHeight: 120, // Increased maxHeight to prevent overlap
+    marginTop: 12, // Added more spacing
   },
   transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8, // Increased spacing between items
+    paddingVertical: 4, // Added padding for better touch area
   },
   transactionName: {
     fontSize: 12,
@@ -721,7 +738,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 12,
   },
   filterToggle: {
     flexDirection: 'row',
@@ -729,7 +746,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     padding: 16,
-    marginTop: 8,
+    marginTop: 12, // Added margin to prevent overlap with summary cards
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
@@ -741,6 +758,7 @@ const styles = StyleSheet.create({
   filters: {
     backgroundColor: '#fff',
     padding: 16,
+    paddingBottom: 24, // Added more padding to ensure spacing
   },
   searchInput: {
     backgroundColor: '#F9FAFB',
@@ -931,6 +949,20 @@ const styles = StyleSheet.create({
     width: '100%',
     maxHeight: '80%',
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  serviceModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -954,6 +986,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+    width: '100%',
   },
   closeButtonText: {
     color: 'white',
@@ -967,7 +1000,17 @@ const styles = StyleSheet.create({
   column: {
     width: '48%',
   },
-  menu: {
-    marginTop: 10, // Adjusted for better positioning
+  serviceOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    width: '100%',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  serviceOptionText: {
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '500',
   },
 });

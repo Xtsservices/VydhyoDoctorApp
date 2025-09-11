@@ -71,7 +71,8 @@ const AvailabilityScreen: React.FC = () => {
   const [unavailableEndPeriod, setUnavailableEndPeriod] = useState<string>('PM');
   const [isAddingSlots, setIsAddingSlots] = useState<boolean>(false);
   const [isDeletingSlots, setIsDeletingSlots] = useState<boolean>(false);
-
+  const [isClinicModalVisible, setIsClinicModalVisible] = useState<boolean>(false);
+  const [isDurationModalVisible, setIsDurationModalVisible] = useState<boolean>(false);
   const fullToShortMap: { [key: string]: string } = {
     Monday: 'Mon',
     Tuesday: 'Tue',
@@ -267,7 +268,7 @@ const AvailabilityScreen: React.FC = () => {
         setIsAddingSlots(false);
         return;
       }
-      
+
       const getDateRangeArray = (fromDate: string, toDate: string): string[] => {
         const dates: string[] = [];
         const start = moment(fromDate, 'YYYY-MM-DD');
@@ -543,7 +544,7 @@ const AvailabilityScreen: React.FC = () => {
     const today0 = startOfDay(now).getTime();
     const sel0 = startOfDay(fromDate).getTime();
 
-    if (sel0 < today0) return true;               
+    if (sel0 < today0) return true;
     if (sel0 > today0) return false;               // future day – all enabled
 
     const slotMins = slotStringToMinutes(slotTimeStr);
@@ -556,21 +557,53 @@ const AvailabilityScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       <View style={styles.dropdownContainer}>
         <Text style={styles.label}>Clinic Availability</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={selectedClinic}
-            onValueChange={(value) => setSelectedClinic(value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select Clinic" value="" />
-            {clinics?.length > 0 &&
-              clinics.map((clinic) => (
-                <Picker.Item key={clinic.value} label={clinic.label} value={clinic.value} style={{ color: '#171515ff' }} />
-              ))}
-          </Picker>
-        </View>
-      </View>
+        <TouchableOpacity
+          style={styles.selectionButton}
+          onPress={() => setIsClinicModalVisible(true)}
+        >
+          <Text style={styles.selectionButtonText}>
+            {selectedClinic ? clinics.find((c) => c.value === selectedClinic)?.label || 'Select Clinic' : 'Select Clinic'}
+          </Text>
+          <Icon name="arrow-drop-down" size={20} color="#333" />
+        </TouchableOpacity>
 
+        <Modal
+          transparent
+          animationType="fade"
+          visible={isClinicModalVisible}
+          onRequestClose={() => setIsClinicModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Clinic</Text>
+              <ScrollView style={styles.modalScroll}>
+                {clinics.length > 0 ? (
+                  clinics.map((clinic) => (
+                    <TouchableOpacity
+                      key={clinic.value}
+                      style={styles.modalItem}
+                      onPress={() => {
+                        setSelectedClinic(clinic.value);
+                        setIsClinicModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.modalItemText}>{clinic.label}</Text>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={styles.noOptionsText}>No clinics available</Text>
+                )}
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setIsClinicModalVisible(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </View>
       <View style={styles.row}>
         <Text style={styles.label}>Start:</Text>
         <TouchableOpacity
@@ -697,15 +730,47 @@ const AvailabilityScreen: React.FC = () => {
 
         <View style={styles.dropdownContainer}>
           <Text style={styles.label}>Duration</Text>
-          <View style={styles.pickerWrapper}>
-            <Picker selectedValue={duration} onValueChange={(val) => setDuration(val)} style={styles.picker}>
-              {durations.map((d) => (
-                <Picker.Item key={d} label={d} value={d} style={{ color: '#333' }} />
-              ))}
-            </Picker>
-          </View>
-        </View>
+          <TouchableOpacity
+            style={styles.selectionButton}
+            onPress={() => setIsDurationModalVisible(true)}
+          >
+            <Text style={styles.selectionButtonText}>{duration || 'Select Duration'}</Text>
+            <Icon name="arrow-drop-down" size={20} color="#333" />
+          </TouchableOpacity>
 
+          <Modal
+            transparent
+            animationType="fade"
+            visible={isDurationModalVisible}
+            onRequestClose={() => setIsDurationModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Duration</Text>
+                <ScrollView style={styles.modalScroll}>
+                  {durations.map((d) => (
+                    <TouchableOpacity
+                      key={d}
+                      style={styles.modalItem}
+                      onPress={() => {
+                        setDuration(d);
+                        setIsDurationModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.modalItemText}>{d}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setIsDurationModalVisible(false)}
+                >
+                  <Text style={styles.modalCloseButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </View>
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.addButton, !isEndTimeValid() && styles.disabledButton]}
@@ -864,6 +929,71 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#cccccc',
     opacity: 0.6,
+  },
+  selectionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  selectionButtonText: {
+    color: '#333',
+    fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: '60%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#333',
+    textAlign: 'center',
+  },
+  modalScroll: {
+    maxHeight: 200, // Adjust as needed
+  },
+  modalItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  modalCloseButton: {
+    marginTop: 10,
+    backgroundColor: '#ccc',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    color: '#333',
+    fontWeight: '600',
+  },
+  noOptionsText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+    padding: 20,
   },
   weekdayButton: {
     paddingVertical: 8,

@@ -583,7 +583,7 @@ const DoctorProfileView: React.FC = () => {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#1E88E5" />
-        <Text style={styles.loadingText}>Loading doctor details...</Text>
+        <Text style={styles.loadingText}>Loading Profile details...</Text>
       </SafeAreaView>
     );
   }
@@ -633,7 +633,7 @@ const DoctorProfileView: React.FC = () => {
                   {(doctorData.firstname?.[0] ?? 'D').toUpperCase()}
                 </Text>
               </View>
-              <Text style={styles.doctorName}>{currentuserDetails.role==='doctor' &&'Dr. '}{doctorData.firstname} {doctorData.lastname}</Text>
+              <Text style={styles.doctorName}>{currentuserDetails.role === 'doctor' && 'Dr. '}{doctorData.firstname} {doctorData.lastname}</Text>
             </View>
 
             <View style={styles.infoSection}>
@@ -669,93 +669,93 @@ const DoctorProfileView: React.FC = () => {
           </View>
 
           {/* Professional Summary */}
-          {currentuserDetails.role === 'doctor' && 
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardTitleContainer}>
-                <Icon name="medicinebox" size={16} color="#3b82f6" />
-                <Text style={styles.cardTitle}>Professional Summary</Text>
+          {currentuserDetails.role === 'doctor' &&
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleContainer}>
+                  <Icon name="medicinebox" size={16} color="#3b82f6" />
+                  <Text style={styles.cardTitle}>Professional Summary</Text>
+                </View>
+                <TouchableOpacity onPress={() => handleEditOpen('professional')}>
+                  <Icon name="edit" size={18} color="#3b82f6" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => handleEditOpen('professional')}>
-                <Icon name="edit" size={18} color="#3b82f6" />
-              </TouchableOpacity>
-            </View>
 
-                          <View style={styles.infoItem}>
+              <View style={styles.infoItem}>
                 {/* <Icon name="idcard" size={16} color="#333" /> */}
                 <Text style={styles.infoText}><Text style={styles.bold}>Medical Registration:</Text> {doctorData.medicalRegistrationNumber}</Text>
               </View>
 
-            <View style={styles.infoSection}>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoText}><Text style={styles.bold}>State Medical Council:</Text> TSMC</Text>
-              </View>
+              <View style={styles.infoSection}>
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoText}><Text style={styles.bold}>State Medical Council:</Text> TSMC</Text>
+                </View>
 
-              <Text style={[styles.infoText, styles.bold, styles.sectionTitle]}>Degrees</Text>
-              <View style={styles.tagsContainer}>
-                {degreesDisplay.length > 0 ? (
-                  degreesDisplay.map((deg, idx) => (
-                    <View key={idx} style={styles.tag}>
-                      <Text style={styles.tagText}>{deg}</Text>
+                <Text style={[styles.infoText, styles.bold, styles.sectionTitle]}>Degrees</Text>
+                <View style={styles.tagsContainer}>
+                  {degreesDisplay.length > 0 ? (
+                    degreesDisplay.map((deg, idx) => (
+                      <View key={idx} style={styles.tag}>
+                        <Text style={styles.tagText}>{deg}</Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.noDataText}>No degrees added</Text>
+                  )}
+                </View>
+
+                <Text style={[styles.infoText, styles.bold, styles.sectionTitle]}>Specializations</Text>
+                <View style={styles.tagsContainer}>
+                  {specializationsDisplay.length > 0 ? (
+                    specializationsDisplay.map((spec, idx) => (
+                      <View key={idx} style={styles.tag}>
+                        <Text style={styles.tagText}>{spec}</Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.noDataText}>No specializations added</Text>
+                  )}
+                </View>
+
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoText}>
+                    <Text style={styles.bold}>Work Experience:</Text> {doctorData.specialization?.[0]?.experience || 0} Years
+                  </Text>
+                </View>
+
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoText}>
+                    <Text style={styles.bold}>About:</Text> {doctorData.specialization?.[0]?.bio || 'N/A'}
+                  </Text>
+                </View>
+
+                <Text style={[styles.infoText, styles.bold, styles.sectionTitle]}>Certifications</Text>
+                {doctorData.certifications.length > 0 ? (
+                  doctorData.certifications.map((cert, index) => (
+                    <View key={index} style={styles.certificationItem}>
+                      <View style={styles.certificationInfo}>
+                        <Text style={styles.certificationName}>{cert.name || 'N/A'}</Text>
+                        {/* <Text style={styles.certificationNumber}>{cert.registrationNo || 'N/A'}</Text> */}
+                      </View>
+                      <View style={styles.certificationActions}>
+                        {!!cert.image && (
+                          <TouchableOpacity style={styles.viewButton} onPress={() => showDocModal({ type: 'Specialization Certificate', data: cert.image })}>
+                            <Text style={styles.viewButtonText}>View Certificate</Text>
+                          </TouchableOpacity>
+                        )}
+                        {!!cert.degreeCertificate && (
+                          <TouchableOpacity style={styles.viewButton} onPress={() => showDocModal({ type: 'Degree Certificate', data: cert.degreeCertificate })}>
+                            <Text style={styles.viewButtonText}>View Degree</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.noDataText}>No degrees added</Text>
+                  <Text style={styles.noDataText}>No certifications added</Text>
                 )}
               </View>
-
-              <Text style={[styles.infoText, styles.bold, styles.sectionTitle]}>Specializations</Text>
-              <View style={styles.tagsContainer}>
-                {specializationsDisplay.length > 0 ? (
-                  specializationsDisplay.map((spec, idx) => (
-                    <View key={idx} style={styles.tag}>
-                      <Text style={styles.tagText}>{spec}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.noDataText}>No specializations added</Text>
-                )}
-              </View>
-
-              <View style={styles.infoItem}>
-                <Text style={styles.infoText}>
-                  <Text style={styles.bold}>Work Experience:</Text> {doctorData.specialization?.[0]?.experience || 0} Years
-                </Text>
-              </View>
-
-              <View style={styles.infoItem}>
-                <Text style={styles.infoText}>
-                  <Text style={styles.bold}>About:</Text> {doctorData.specialization?.[0]?.bio || 'N/A'}
-                </Text>
-              </View>
-
-              <Text style={[styles.infoText, styles.bold, styles.sectionTitle]}>Certifications</Text>
-              {doctorData.certifications.length > 0 ? (
-                doctorData.certifications.map((cert, index) => (
-                  <View key={index} style={styles.certificationItem}>
-                    <View style={styles.certificationInfo}>
-                      <Text style={styles.certificationName}>{cert.name || 'N/A'}</Text>
-                      {/* <Text style={styles.certificationNumber}>{cert.registrationNo || 'N/A'}</Text> */}
-                    </View>
-                    <View style={styles.certificationActions}>
-                      {!!cert.image && (
-                        <TouchableOpacity style={styles.viewButton} onPress={() => showDocModal({ type: 'Specialization Certificate', data: cert.image })}>
-                          <Text style={styles.viewButtonText}>View Certificate</Text>
-                        </TouchableOpacity>
-                      )}
-                      {!!cert.degreeCertificate && (
-                        <TouchableOpacity style={styles.viewButton} onPress={() => showDocModal({ type: 'Degree Certificate', data: cert.degreeCertificate })}>
-                          <Text style={styles.viewButtonText}>View Degree</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noDataText}>No certifications added</Text>
-              )}
             </View>
-          </View>
           }
         </View>
 
@@ -827,37 +827,37 @@ const DoctorProfileView: React.FC = () => {
         </View>
 
         {/* Row 3: Consultation Charges + Bank Details */}
-                
+
         <View style={styles.row}>
           {/* Consultation Charges */}
-            {currentuserDetails.role === 'doctor' && 
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardTitleContainer}>
-                <Icon name="pay-circle-o1" size={16} color="#3b82f6" />
-                <Text style={styles.cardTitle}>Consultation Charges</Text>
-              </View>
-              <TouchableOpacity onPress={() => handleEditOpen('consultation')}>
-                <Icon name="edit" size={18} color="#3b82f6" />
-              </TouchableOpacity>
-            </View>
-
-            {(doctorData.consultationModeFee || []).map((mode, idx) => (
-              <View key={idx} style={styles.consultationCard}>
-                <View style={styles.consultationInfo}>
-                  {mode.type?.toLowerCase() === 'in-person' && <Icon name="user" size={16} color="#3b82f6" />}
-                  {mode.type?.toLowerCase() === 'video' && <Icon name="videocamera" size={16} color="#16a34a" />}
-                  {mode.type?.toLowerCase() === 'home visit' && <Icon name="car" size={16} color="#9333ea" />}
-                  <View>
-                    <Text style={[styles.infoText, styles.bold]}>{mode.type}</Text>
-                  </View>
+          {currentuserDetails.role === 'doctor' &&
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleContainer}>
+                  <Icon name="pay-circle-o1" size={16} color="#3b82f6" />
+                  <Text style={styles.cardTitle}>Consultation Charges</Text>
                 </View>
-                <Text style={styles.consultationPrice}>
-                  {mode.currency || '₹'}{mode.fee}
-                </Text>
+                <TouchableOpacity onPress={() => handleEditOpen('consultation')}>
+                  <Icon name="edit" size={18} color="#3b82f6" />
+                </TouchableOpacity>
               </View>
-            ))}
-          </View>}
+
+              {(doctorData.consultationModeFee || []).map((mode, idx) => (
+                <View key={idx} style={styles.consultationCard}>
+                  <View style={styles.consultationInfo}>
+                    {mode.type?.toLowerCase() === 'in-person' && <Icon name="user" size={16} color="#3b82f6" />}
+                    {mode.type?.toLowerCase() === 'video' && <Icon name="videocamera" size={16} color="#16a34a" />}
+                    {mode.type?.toLowerCase() === 'home visit' && <Icon name="car" size={16} color="#9333ea" />}
+                    <View>
+                      <Text style={[styles.infoText, styles.bold]}>{mode.type}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.consultationPrice}>
+                    {mode.currency || '₹'}{mode.fee}
+                  </Text>
+                </View>
+              ))}
+            </View>}
 
           {/* Bank Details */}
           <View style={styles.card}>
@@ -926,6 +926,8 @@ const DoctorProfileView: React.FC = () => {
                     style={styles.input}
                     value={formPersonal.firstname}
                     onChangeText={(v) => setFormPersonal((s) => ({ ...s, firstname: v.replace(/[^A-Za-z\s]/g, '') }))}
+                    placeholder="Enter first name"
+                    placeholderTextColor="#888"
                   />
                 </View>
 
@@ -935,6 +937,8 @@ const DoctorProfileView: React.FC = () => {
                     style={styles.input}
                     value={formPersonal.lastname}
                     onChangeText={(v) => setFormPersonal((s) => ({ ...s, lastname: v.replace(/[^A-Za-z\s]/g, '') }))}
+                    placeholder="Enter last name"
+                    placeholderTextColor="#888"
                   />
                 </View>
 
@@ -946,6 +950,8 @@ const DoctorProfileView: React.FC = () => {
                     onChangeText={(v) => setFormPersonal((s) => ({ ...s, email: v }))}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    placeholder="Enter email address"
+                    placeholderTextColor="#888"
                   />
                 </View>
 
@@ -1014,30 +1020,56 @@ const DoctorProfileView: React.FC = () => {
               <Text style={styles.modalTitle}>Edit Professional Details</Text>
               <ScrollView style={styles.formContainer}>
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Degrees (tap to toggle)</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                    {degrees.map((deg) => {
-                      const selected = formProfessional.selectedDegrees.includes(deg);
-                      return (
-                        <TouchableOpacity
+                  <Text style={styles.label}>Select Degree</Text>
+                  <View style={styles.dropdownContainer}>
+                    <Picker
+                      selectedValue={""}
+                      onValueChange={(value) => {
+                        if (value && !formProfessional.selectedDegrees.includes(value)) {
+                          setFormProfessional((s) => ({
+                            ...s,
+                            selectedDegrees: [...s.selectedDegrees, value],
+                          }));
+                        }
+                      }}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Select a degree" value="" />
+                      {degrees.map((deg) => (
+                        <Picker.Item
                           key={deg}
-                          style={[styles.togglePill, selected ? styles.togglePillSelected : null]}
-                          onPress={() => {
-                            setFormProfessional((s) => ({
-                              ...s,
-                              selectedDegrees: selected
-                                ? s.selectedDegrees.filter((d) => d !== deg)
-                                : [...s.selectedDegrees, deg],
-                            }));
-                          }}
-                        >
-                          <Text style={[styles.togglePillText, selected ? { color: '#fff' } : null]}>{deg}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                          label={deg}
+                          value={deg}
+                          enabled={!formProfessional.selectedDegrees.includes(deg)}
+                        />
+                      ))}
+                    </Picker>
                   </View>
-                </View>
 
+                  {formProfessional.selectedDegrees.length > 0 && (
+                    <>
+                      <Text style={[styles.label, { marginTop: 10 }]}>Selected Degrees:</Text>
+                      <View style={styles.tagsContainer}>
+                        {formProfessional.selectedDegrees.map((deg, index) => (
+                          <View key={index} style={styles.tag}>
+                            <Text style={styles.tagText}>{deg}</Text>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setFormProfessional((s) => ({
+                                  ...s,
+                                  selectedDegrees: s.selectedDegrees.filter((d) => d !== deg),
+                                }));
+                              }}
+                              style={styles.closeButton} // Updated style for better control
+                            >
+                              <Icon name="close" size={14} color="#D32F2F" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  )}
+                </View>
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Experience (Years)</Text>
                   <TextInput
@@ -1045,6 +1077,8 @@ const DoctorProfileView: React.FC = () => {
                     value={formProfessional.experience}
                     onChangeText={(v) => setFormProfessional((s) => ({ ...s, experience: v.replace(/[^0-9]/g, '') }))}
                     keyboardType="numeric"
+                    placeholder="Enter years of experience"
+                    placeholderTextColor="#888"
                   />
                 </View>
 
@@ -1056,6 +1090,8 @@ const DoctorProfileView: React.FC = () => {
                     onChangeText={(v) => setFormProfessional((s) => ({ ...s, about: v }))}
                     multiline
                     maxLength={500}
+                    placeholder="Tell us about yourself"
+                    placeholderTextColor="#888"
                   />
                 </View>
               </ScrollView>
@@ -1085,7 +1121,8 @@ const DoctorProfileView: React.FC = () => {
                     onChangeText={(v) => setPanNumber(v.replace(/[^A-Z0-9]/g, '').toUpperCase().slice(0, 10))}
                     maxLength={10}
                     autoCapitalize="characters"
-                    placeholder="ABCDE1234F"
+                    placeholder="Enter PAN number (e.g., ABCDE1234F)"
+                    placeholderTextColor="#888"
                   />
                 </View>
 
@@ -1128,7 +1165,8 @@ const DoctorProfileView: React.FC = () => {
                           next[idx].type = v;
                           setFormConsultation(next);
                         }}
-                        placeholder="In-Person / Video / Home Visit"
+                        placeholder="e.g., In-Person, Video, Home Visit"
+                        placeholderTextColor="#888"
                       />
                     </View>
                     <View style={{ width: 100, marginRight: 8 }}>
@@ -1142,25 +1180,12 @@ const DoctorProfileView: React.FC = () => {
                           setFormConsultation(next);
                         }}
                         keyboardType="numeric"
+                        placeholder="Enter fee"
+                        placeholderTextColor="#888"
                       />
                     </View>
-                    {/* <View style={{ width: 80 }}>
-                      <Text style={styles.label}>Curr</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={row.currency || '₹'}
-                        onChangeText={(v) => {
-                          const next = [...formConsultation];
-                          next[idx].currency = v.slice(0, 3);
-                          setFormConsultation(next);
-                        }}
-                        placeholder="₹ / INR"
-                      />
-                    </View> */}
-                   
                   </View>
                 ))}
-
               </ScrollView>
 
               <View style={styles.modalActions}>
@@ -1189,6 +1214,8 @@ const DoctorProfileView: React.FC = () => {
                       const clean = v.replace(/[^A-Za-z\s]/g, '');
                       setFormBank((s) => ({ ...s, bankName: clean }));
                     }}
+                    placeholder="Enter bank name"
+                    placeholderTextColor="#888"
                   />
                 </View>
                 <View style={styles.formGroup}>
@@ -1200,6 +1227,8 @@ const DoctorProfileView: React.FC = () => {
                       const clean = v.replace(/[^A-Za-z\s]/g, '');
                       setFormBank((s) => ({ ...s, accountHolderName: clean }));
                     }}
+                    placeholder="Enter account holder name"
+                    placeholderTextColor="#888"
                   />
                 </View>
                 <View style={styles.formGroup}>
@@ -1210,6 +1239,8 @@ const DoctorProfileView: React.FC = () => {
                     onChangeText={(v) => setFormBank((s) => ({ ...s, accountNumber: v.replace(/[^0-9]/g, '').slice(0, 18) }))}
                     keyboardType="numeric"
                     maxLength={18}
+                    placeholder="Enter account number"
+                    placeholderTextColor="#888"
                   />
                 </View>
                 <View style={styles.formGroup}>
@@ -1220,7 +1251,8 @@ const DoctorProfileView: React.FC = () => {
                     onChangeText={(v) => setFormBank((s) => ({ ...s, ifscCode: sanitizeIFSC(v) }))}
                     autoCapitalize="characters"
                     maxLength={11}
-                    placeholder="HDFC0ABCD12"
+                    placeholder="Enter IFSC code (e.g., HDFC0ABCD12)"
+                    placeholderTextColor="#888"
                   />
                 </View>
               </ScrollView>
@@ -1277,13 +1309,24 @@ const styles = StyleSheet.create({
   infoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: SCREEN_WIDTH * 0.02 },
   infoText: { fontSize: SCREEN_WIDTH * 0.035, color: '#333', marginLeft: 8 },
   bold: { fontWeight: 'bold', color: '#212121' },
-  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: SCREEN_WIDTH * 0.02 },
-  tag: {
-    backgroundColor: '#E3F2FD', borderRadius: 16, paddingHorizontal: SCREEN_WIDTH * 0.03, paddingVertical: SCREEN_WIDTH * 0.01,
-    marginRight: SCREEN_WIDTH * 0.02, marginBottom: SCREEN_WIDTH * 0.02,
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: SCREEN_WIDTH * 0.02,
+  }, tag: {
+    flexDirection: 'row', // Align text and icon horizontally
+    alignItems: 'center', // Vertically center the content
+    backgroundColor: '#e0e0e0', // Example background for the tag
+    borderRadius: 16, // Rounded corners for the tag
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginRight: 8,
+    marginBottom: 8,
   },
-  tagText: { fontSize: SCREEN_WIDTH * 0.03, color: '#1565C0' },
-  noDataText: { fontSize: SCREEN_WIDTH * 0.035, color: '#616161', fontStyle: 'italic' },
+  tagText: {
+    fontSize: 14,
+    color: '#333', // Text color for degree
+  }, noDataText: { fontSize: SCREEN_WIDTH * 0.035, color: '#616161', fontStyle: 'italic' },
   sectionTitle: { fontSize: SCREEN_WIDTH * 0.035, color: '#166534', fontWeight: 'bold', marginTop: 6, marginBottom: SCREEN_WIDTH * 0.02 },
   certificationItem: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -1298,7 +1341,10 @@ const styles = StyleSheet.create({
     borderRadius: 4, marginLeft: SCREEN_WIDTH * 0.02, marginBottom: SCREEN_WIDTH * 0.01,
   },
   viewButtonText: { color: '#fff', fontSize: SCREEN_WIDTH * 0.03 },
-
+closeButton: {
+    marginLeft: 8, 
+    padding: 4, 
+  },
   locationCard: { backgroundColor: '#E8EAF6', borderRadius: 8, padding: SCREEN_WIDTH * 0.03, marginBottom: SCREEN_WIDTH * 0.02 },
   locationInfo: { flexDirection: 'row', alignItems: 'flex-start' },
   locationDetails: { marginLeft: SCREEN_WIDTH * 0.02, flex: 1 },
@@ -1327,11 +1373,16 @@ const styles = StyleSheet.create({
 
   formContainer: { maxHeight: SCREEN_WIDTH * 1.2, marginBottom: SCREEN_WIDTH * 0.04 },
   formGroup: { marginBottom: SCREEN_WIDTH * 0.04 },
-  label: { fontSize: SCREEN_WIDTH * 0.035, fontWeight: 'bold', color: '#212121', marginBottom: SCREEN_WIDTH * 0.02 },
+  label: { fontSize: SCREEN_WIDTH * 0.035, fontWeight: 'bold', color: '#000000', marginBottom: SCREEN_WIDTH * 0.02 },
   input: { borderWidth: 1, borderColor: '#B0BEC5', borderRadius: 6, padding: SCREEN_WIDTH * 0.025, fontSize: SCREEN_WIDTH * 0.035, color: '#333' },
 
   languageItem: { flexDirection: 'row', alignItems: 'center', marginBottom: SCREEN_WIDTH * 0.02 },
-  picker: { height: SCREEN_WIDTH * 0.12, flex: 1, marginRight: 8 },
+  picker: {
+    height: SCREEN_WIDTH * 0.12,
+    flex: 1,
+    marginRight: 8,
+    color: '#333',
+  },
   addButton: { backgroundColor: '#E3F2FD', padding: SCREEN_WIDTH * 0.025, borderRadius: 6, alignItems: 'center' },
   addButtonText: { color: '#1565C0', fontWeight: 'bold', fontSize: SCREEN_WIDTH * 0.035 },
 
@@ -1355,12 +1406,21 @@ const styles = StyleSheet.create({
   togglePillSelected: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
   togglePillText: { color: '#111827' },
 
-  consultationRow: { paddingVertical: 8 , 
-    flexDirection: 'row',       
-    alignItems: 'flex-end',      
+  consultationRow: {
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     // paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',},
+    borderBottomColor: '#eee',
+  },
+  dropdownContainer: {
+    borderWidth: 1,
+    borderColor: '#B0BEC5',
+    borderRadius: 6,
+    marginBottom: SCREEN_WIDTH * 0.02,
+    overflow: 'hidden',
+  },
 });
 
 export default DoctorProfileView;
