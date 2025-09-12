@@ -17,13 +17,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
-// import DropDownPicker from 'react-native-dropdown-picker';
+import DropDownPicker from 'react-native-dropdown-picker';
 
 const AddStaffScreen = () => {
    const currentuserDetails =  useSelector((state: any) => state.currentUser);
         const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
     const userId = currentuserDetails.userId
       const navigation = useNavigation<any>();
+const [openRoleDropdown, setOpenRoleDropdown] = useState(false);
+const [roleItems, setRoleItems] = useState([
+  {label: "Select Role", value: ""},
+  {label: "Lab Assistant", value: "lab_assistant"},
+  {label: "Pharmacy Assistant", value: "pharmacy_assistant"},
+  {label: "Assistant", value: "assistant"},
+  {label: "Receptionist", value: "receptionist"}
+]);
+
 
   const [form, setForm] = useState({
     firstName: '',
@@ -196,25 +205,23 @@ const AddStaffScreen = () => {
                 placeholderTextColor={'gray'}
 
       />
-
-       <Text style={styles.label}>Role</Text>
-
-      <View style={styles.pickerContainer}>
-  <Picker
-    selectedValue={form.role}
-    onValueChange={(itemValue) =>
-      setForm((prev) => ({ ...prev, role: itemValue }))
-    }
-    style={styles.picker}
-  > 
-    <Picker.Item label="Select Role" value=""  style={{ color: 'black' }}/>
-    <Picker.Item label="Lab Assistant" value="lab_assistant" style={{ color: 'black' }}/>
-    <Picker.Item label="Pharmacy Assistant" value="pharmacy_assistant" style={{ color: 'black' }}/>
-    <Picker.Item label="Assistant" value="assistant" style={{ color: 'black' }}/>
-    <Picker.Item label="Receptionist" value="receptionist" style={{ color: 'black' }}/>
-  </Picker>
-</View>
-
+<Text style={styles.label}>Role</Text>
+<DropDownPicker
+  open={openRoleDropdown}
+  value={form.role}
+  items={roleItems}
+  setOpen={setOpenRoleDropdown}
+  setValue={(callback) => {
+    setForm(prev => ({...prev, role: callback(prev.role)}));
+  }}
+  setItems={setRoleItems}
+  placeholder="Select Role"
+  style={styles.dropdown}
+  dropDownContainerStyle={styles.dropdownList}
+  textStyle={{color: '#000'}}
+  zIndex={3000}
+  zIndexInverse={1000}
+/>
 <Text style={styles.label}>Access</Text>
 {[
 
@@ -361,10 +368,10 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
   },
-  dropdown: {
+dropdown: {
   borderColor: '#D1D5DB',
   marginBottom: 16,
-  zIndex: 1000, // keep dropdown above other elements
+  zIndex: 1000,
 },
 dropdownList: {
   borderColor: '#D1D5DB',

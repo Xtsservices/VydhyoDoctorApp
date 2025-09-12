@@ -612,6 +612,7 @@ export default function PatientsTab({
             <TextInput
               keyboardType="numeric"
               placeholder="Enter price"
+              placeholderTextColor="#94a3b8" 
               value={medicine.price?.toString() || ""}
               editable={medicine.status === "pending" && (isEditable || isPriceInitiallyNull)}
               onFocus={() => !isEditable && enableEdit(medicine._id)}
