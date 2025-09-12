@@ -625,46 +625,34 @@ ${data?.advice?.followUpDate ? `
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Header with conditional background and padding */}
-      <View style={[
-        styles.header,
-        !selectedClinic?.headerImage && styles.headerNoImagePadding,
-        selectedClinic?.headerImage && styles.headerWithImageBackground
-      ]}>
-        {selectedClinic?.headerImage && (
-          <Image
-            source={{ uri: selectedClinic.headerImage }}
-            style={styles.headerImage}
-            resizeMode="contain"
-          />
-        )}
-
-        {!selectedClinic?.headerImage && (
-          <View className="row" style={styles.row}>
-            <Text style={[
-              styles.headerText,
-              selectedClinic?.headerImage && styles.headerTextWithImage
-            ]}>
-              {selectedClinic?.clinicName}
-            </Text>
-            <View>
-              <Text style={[
-                styles.headerText,
-                selectedClinic?.headerImage && styles.headerTextWithImage
-              ]}>
-                📍 {selectedClinic?.address}
-              </Text>
-              <Text style={[
-                styles.headerText,
-                selectedClinic?.headerImage && styles.headerTextWithImage
-              ]}>
-                📞 {selectedClinic?.mobile}
-              </Text>
-            </View>
-          </View>
-        )}
-
+{/* Replace your entire header section with this code */}
+<View style={[
+  styles.header,
+  !selectedClinic?.headerImage && styles.headerNoImage,
+  selectedClinic?.headerImage && styles.headerWithImageBackground
+]}>
+  {selectedClinic?.headerImage ? (
+    <Image
+      source={{ uri: selectedClinic.headerImage }}
+      style={styles.headerImage}
+      resizeMode="contain"
+    />
+  ) : (
+    <View style={styles.headerContent}>
+      <Text style={styles.headerClinicName}>
+        {selectedClinic?.clinicName || 'Clinic Name'}
+      </Text>
+      <View style={styles.headerContactInfo}>
+        <Text style={styles.headerContactText}>
+          📍 {selectedClinic?.address || 'Address not provided'}
+        </Text>
+        <Text style={styles.headerContactText}>
+          📞 {selectedClinic?.mobile || 'Contact not provided'}
+        </Text>
       </View>
+    </View>
+  )}
+</View>
 
       {(formData.doctorInfo?.appointmentDate || formData.doctorInfo?.appointmentStartTime) && (
         <View style={styles.appointmentSection}>
@@ -685,10 +673,10 @@ ${data?.advice?.followUpDate ? `
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Dr. {formData?.doctorInfo?.doctorName}</Text>
-        <Text style={{color:"black"}}>
+        <Text style={{ color: "black" }}>
           {formData?.doctorInfo?.qualifications || 'Qualifications not provided'} | {formData?.doctorInfo?.specialization || 'Specialist'}
         </Text>
-        <Text style={{color:"black"}}>Medical Registration No: {formData?.doctorInfo?.medicalRegistrationNumber || 'Not provided'}</Text>
+        <Text style={{ color: "black" }}>Medical Registration No: {formData?.doctorInfo?.medicalRegistrationNumber || 'Not provided'}</Text>
       </View>
 
       <View style={styles.section}>
@@ -816,7 +804,7 @@ ${data?.advice?.followUpDate ? `
           {formData.advice?.medicationNotes && (
             <View style={{ marginTop: 8 }}>
               <Text style={{ fontWeight: '600', color: '#6b7280' }}>General Notes:</Text>
-              <Text style={{color:'black'}}>{formData.advice.medicationNotes}</Text>
+              <Text style={{ color: 'black' }}>{formData.advice.medicationNotes}</Text>
             </View>
           )}
         </View>
@@ -859,7 +847,7 @@ ${data?.advice?.followUpDate ? `
             </Text>
           </View>
         )}
-        <Text style={{ fontSize: 12, marginTop: 4, color:'black' }}>
+        <Text style={{ fontSize: 12, marginTop: 4, color: 'black' }}>
           ✔ Digitally Signed
         </Text>
       </View>
@@ -876,7 +864,7 @@ ${data?.advice?.followUpDate ? `
           disabled={isSharing || isSaving}
         >
           <Text style={styles.downloadText}>
-            {isSharing ?  <ActivityIndicator size="small" color="#007bff" /> : 'Share via WhatsApp'}
+            {isSharing ? <ActivityIndicator size="small" color="#007bff" /> : 'Share via WhatsApp'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -885,7 +873,7 @@ ${data?.advice?.followUpDate ? `
           disabled={isSaving || isSharing}
         >
           <Text style={styles.saveText}>
-            {isSaving ?  <ActivityIndicator size="small" color="#007bff" /> : 'Save'}
+            {isSaving ? <ActivityIndicator size="small" color="#007bff" /> : 'Save'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -906,6 +894,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4',
     borderRadius: 10,
     justifyContent: 'center',
+  },
+    headerContent: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '100%',
+},
+headerClinicName: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: 'white',
+  marginBottom: 8,
+  textAlign: 'center',
+},
+headerContactInfo: {
+  alignItems: 'center',
+},
+headerContactText: {
+  fontSize: 14,
+  color: 'white',
+  textAlign: 'center',
+  marginBottom: 4,
+},
+headerImage: {
+  width: '100%',
+  height: 120,
+  resizeMode: 'contain',
+},
+  headerNoImage: {
+    backgroundColor: '#007bff', 
   },
   headerNoImagePadding: {
     padding: 16,
@@ -961,7 +978,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
-    color:'black'
+    color: 'black'
   },
   signatureSection: {
     alignItems: 'flex-end',
@@ -1016,20 +1033,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#6c757d',
     opacity: 0.7,
   },
-downloadText: {
-  color: '#fff',
-  fontWeight: '600',
-  textAlign: 'center',
-  includeFontPadding: false, // Removes extra font padding
-  textAlignVertical: 'center', // Ensures vertical centering on Android
-},
-saveText: {
-  color: '#fff',
-  fontWeight: '600',
-  textAlign: 'center',
-  includeFontPadding: false, // Removes extra font padding
-  textAlignVertical: 'center', // Ensures vertical centering on Android
-},
+  downloadText: {
+    color: '#fff',
+    fontWeight: '600',
+    textAlign: 'center',
+    includeFontPadding: false, // Removes extra font padding
+    textAlignVertical: 'center', // Ensures vertical centering on Android
+  },
+  saveText: {
+    color: '#fff',
+    fontWeight: '600',
+    textAlign: 'center',
+    includeFontPadding: false, // Removes extra font padding
+    textAlignVertical: 'center', // Ensures vertical centering on Android
+  },
 
   row: {
     flexDirection: 'row',

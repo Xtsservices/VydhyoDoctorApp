@@ -850,7 +850,8 @@ const styles = StyleSheet.create({
     borderRadius: 8, 
     paddingHorizontal: 10, 
     paddingVertical: 6, 
-    backgroundColor: "#fff" 
+    backgroundColor: "#fff" ,
+     color: "#000000", 
   },
   priceInputDisabled: { 
     backgroundColor: "#f3f4f6", 

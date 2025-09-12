@@ -649,6 +649,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 1,
     backgroundColor: "#fff",
+    color: "#000000", 
   },
   priceInputDisabled: { backgroundColor: "#f3f4f6", color: "#94a3b8" },
   saveBtn: { backgroundColor: "#1f2937", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },

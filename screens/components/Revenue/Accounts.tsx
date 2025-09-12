@@ -258,6 +258,7 @@ const AccountsScreen = () => {
     );
   };
 
+  console.log('recentTraselectedTxnnsactions', selectedTxn);
   return (
     <ScrollView style={styles.container}>
       {/* Summary Cards */}
@@ -337,7 +338,7 @@ const AccountsScreen = () => {
       {showFilters && (
         <View style={styles.filters}>
           <TextInput
-            placeholder="Search by Patient Name or Transaction ID"
+            placeholder="Search by Patient Name"
             style={styles.searchInput}
             value={searchText}
             onChangeText={(text) => setSearchText(text)}
@@ -583,7 +584,7 @@ const AccountsScreen = () => {
                 <View style={styles.row}>
                   <View style={styles.column}>
                     <Text style={styles.modalLabel}>Payment Method:</Text>
-                    <Text style={styles.modalValue}>{selectedTxn.paymentMethod}</Text>
+                    <Text style={styles.modalValue}>{selectedTxn.paymentMethod || "Cash"}</Text>
                   </View>
                   <View style={styles.column}>
                     <Text style={styles.modalLabel}>Status:</Text>
@@ -977,7 +978,7 @@ const styles = StyleSheet.create({
   },
   modalValue: {
     marginBottom: 4,
-    color: '#6B7280',
+    color: '#000000',
     fontSize: 14,
   },
   closeButton: {
