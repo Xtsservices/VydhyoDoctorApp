@@ -403,7 +403,7 @@ const PrescriptionScreen = () => {
               onValueChange={(value) => handleMedicineChange(index, 'type', value)}
               style={styles.picker}
             >
-              <Picker.Item label="Select Type" value={null} />
+              <Picker.Item label="Select Type " value={null} />
               {medicineTypeOptions.map((option) => (
                 <Picker.Item key={option} label={option} value={option} />
               ))}
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
   section: { backgroundColor: '#fff', padding: 16, borderRadius: 10, marginBottom: 16, elevation: 2 },
   sectionTitle: { fontWeight: '600', fontSize: 16, marginBottom: 8, color: '#0A2342' },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 10, color: 'black', backgroundColor: '#fff' },
-  picker: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 10, backgroundColor: '#fff', color: 'black' },
+  picker: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 10, backgroundColor: '#fff', color: 'gray' },
   textArea: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, minHeight: 80, textAlignVertical: 'top', backgroundColor: '#fff', marginBottom: 10, color: 'black' },
   addButton: { backgroundColor: '#007bff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 },
   addButtonText: { color: '#fff', fontWeight: '600' },

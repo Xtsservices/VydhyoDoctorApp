@@ -98,7 +98,7 @@ const Routing = () => {
         <Stack.Screen name="PrescriptionPreview" component={PrescriptionPreview} options={{ title: "Prescription Preview", headerTitleAlign: "center", }}/>
         <Stack.Screen name="Profile" component={Profile} options={{ title: "Profile", headerTitleAlign: "center", }}/>
         <Stack.Screen name="PreviousPrescription" component={PreviousPrescription} options={{ title: "Previous Prescription", headerTitleAlign: "center", }}/>
-        <Stack.Screen name="EPrescriptionList" component={EPrescriptionList} options={{ title: "E-Prescriptions", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="EPrescriptionList" component={EPrescriptionList} options={{ title: "Digital-Prescription", headerTitleAlign: "center", }}/>
 
 
       </Stack.Navigator>

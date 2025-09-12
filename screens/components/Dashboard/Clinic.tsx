@@ -275,6 +275,15 @@ const ClinicManagementScreen = () => {
     setModalVisible(true);
   };
 
+  const formatTimeTo12Hour = (time24: string): string => {
+  if (!time24) return '—';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hours);
+  date.setMinutes(minutes);
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
   const closeModal = () => {
     setModalVisible(false);
     setMode(null);
@@ -1192,7 +1201,7 @@ console.log(response, "pharmacyres")
 
                     <View style={styles.detailRow}>
                       <Icon name="clock-outline" size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{clinic.startTime} - {clinic.endTime}</Text>
+                      <Text style={styles.detailText}>{formatTimeTo12Hour(clinic.startTime)} - {formatTimeTo12Hour(clinic.endTime)}</Text>
                     </View>
                   </View>
 

@@ -12,7 +12,7 @@ import {
   Modal,
   Pressable,
   Alert,
-   ActivityIndicator
+  ActivityIndicator
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
@@ -84,7 +84,7 @@ const AppointmentsScreen = () => {
   const [selectedApptType, setSelectedApptType] = useState<string>('all'); // TYPE
   const [typeDropdownVisible, setTypeDropdownVisible] = useState(false);     // NEW: type popup like status
   const [filterDate, setFilterDate] = useState<string>(); // YYYY-MM-DD (default today)
- const [showFilterDatePicker, setShowFilterDatePicker] = useState(false);
+  const [showFilterDatePicker, setShowFilterDatePicker] = useState(false);
   // Action sheet (menu) + action modal
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
@@ -120,7 +120,7 @@ const AppointmentsScreen = () => {
   const [startDate, setStartDate] = useState<string>(thisMonthStart);
   const [endDate, setEndDate] = useState<string>(thisMonthEnd);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
-const [loader, setLoader] = useState(false)
+  const [loader, setLoader] = useState(false)
   // Previous prescriptions presence (for disabling)
   const [hasPrescriptions, setHasPrescriptions] = useState<Record<string, boolean>>({});
 
@@ -131,8 +131,8 @@ const [loader, setLoader] = useState(false)
         doctorId: String(doctorId ?? ''),
         ...(search ? { searchText: String(search) } : {}),
         ...(selectedType && selectedType !== 'all' ? { status: String(selectedType) } : {}),
-         ...(selectedApptType && selectedApptType !== 'all' ? { appointmentType: String(selectedApptType) } : {}),
-       ...(filterDate ? { date: String(filterDate) } : {}),
+        ...(selectedApptType && selectedApptType !== 'all' ? { appointmentType: String(selectedApptType) } : {}),
+        ...(filterDate ? { date: String(filterDate) } : {}),
         page: String(page),
         limit: String(limit),
       });
@@ -220,17 +220,17 @@ const [loader, setLoader] = useState(false)
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch appointments');
-    }finally{
+    } finally {
       setLoader(false)
     }
   };
 
-  useEffect(() => {
-    if (currentuserDetails && doctorId) {
-      fetchAppointments();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+useEffect(() => {
+  if (currentuserDetails && doctorId) {
+    fetchAppointments(1, pagination.pageSize, true);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [search, selectedType, selectedApptType, filterDate]);
 
   useEffect(() => {
     if (currentuserDetails && doctorId) {
@@ -358,7 +358,7 @@ const [loader, setLoader] = useState(false)
       Toast.show({ type: 'error', text1: 'Error opening prescriptions' });
     }
   };
-const [button, setButton] = useState(false)
+  const [button, setButton] = useState(false)
   const handleStatusChange = async (
     id: string,
     status: 'Cancel' | 'Reschedule' | 'Mark as Completed' | 'Prescription' | 'View Previous Prescription',
@@ -444,7 +444,7 @@ const [button, setButton] = useState(false)
       setNewTime('');
       setReason('');
       setAvailableTimeSlots([]);
-       setButton(false)
+      setButton(false)
     }
   };
 
@@ -526,7 +526,7 @@ const [button, setButton] = useState(false)
     const m = parseApptMoment(appt.rawDate, appt.appointmentTime);
     const disabledByTime = !m ? true : moment().isBefore(m.clone().subtract(1, 'hour'));
 
-    const disablePrescription = isCompleted || isCancelled || disabledByTime || isPhysio ||notADoctor;
+    const disablePrescription = isCompleted || isCancelled || disabledByTime || isPhysio || notADoctor;
     const disableComplete = isCompleted || isCancelled || disabledByTime;
     const disableReschedule = isCompleted || isCancelled;
     const disableCancel = isCompleted || isCancelled;
@@ -546,38 +546,38 @@ const [button, setButton] = useState(false)
   const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
     const statusKey = (appt.status || '').toLowerCase() as keyof typeof STATUS_COLORS;
     const statusSty = STATUS_COLORS[statusKey] || { bg: '#F3F4F6', fg: '#374151', label: appt.status || 'Unknown' };
-console.log("123")
+    console.log("123")
     return (
       <View style={styles.apptCard}>
         {loader ? (
- <View style={styles.spinningContainer}>
-        <ActivityIndicator size="small" color="#007bff" />
-        <Text style={{color:'black'}}>Loading Appointments...</Text>
-        </View>
-        ):(
-          <>
-<View style={styles.row}>
-           <View style={styles.placeholderCircle}>
-        <Text style={styles.placeholderText}>{appt.patientName[0].toUpperCase() || ""}</Text>
-      </View>
-          {/* <Image source={{ uri: appt.avatar }} style={styles.avatar} /> */}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{appt.patientName}</Text>
-             <Text style={styles.id}>{appt.appointmentDepartment}</Text>
-             <Text style={styles.id}>ID: {appt.id}</Text>
-
+          <View style={styles.spinningContainer}>
+            <ActivityIndicator size="small" color="#007bff" />
+            <Text style={{ color: 'black' }}>Loading Appointments...</Text>
           </View>
-          <TouchableOpacity style={styles.menuButton} onPress={() => handleMenuPress(appt)}>
-            <Text style={styles.menuButtonText}>⋯</Text>
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <>
+            <View style={styles.row}>
+              <View style={styles.placeholderCircle}>
+                <Text style={styles.placeholderText}>{appt.patientName[0].toUpperCase() || ""}</Text>
+              </View>
+              {/* <Image source={{ uri: appt.avatar }} style={styles.avatar} /> */}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name}>{appt.patientName}</Text>
+                <Text style={styles.id}>{appt.appointmentDepartment}</Text>
+                <Text style={styles.id}>ID: {appt.id}</Text>
 
-       
+              </View>
+              <TouchableOpacity style={styles.menuButton} onPress={() => handleMenuPress(appt)}>
+                <Text style={styles.menuButtonText}>⋯</Text>
+              </TouchableOpacity>
+            </View>
+
+
 
           </>
-          
+
         )}
-        
+
         <View style={styles.row}>
           <View style={[styles.tag, { backgroundColor: '#EFF6FF' }]}>
             <Text style={[styles.tagText, { color: '#3B82F6' }]}>
@@ -710,7 +710,7 @@ console.log("123")
                     <Text style={styles.buttonText}>Close</Text>
                   </Pressable>
                   <Pressable
-                    style={[styles.modalButton, styles.confirmButton, button&&styles.disableButton]}
+                    style={[styles.modalButton, styles.confirmButton, button && styles.disableButton]}
                     onPress={() => {
                       if (selectedAppointmentId) {
                         handleStatusChange(
@@ -740,67 +740,82 @@ console.log("123")
       <View style={styles.container}>
         {/* Date Range for CARDS (web parity) */}
         <View style={styles.rangeWrap}>
- <View style={styles.rangeWrap}>
-          {/* <Text style={styles.rangeHint}>{formattedRangeLabel}</Text> */}
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: '#1977f3', marginRight: 8 }}>📅</Text>
-            <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('start')}>
-              <Text style={styles.rangeBtnLabel}>Start</Text>
-              <Text style={styles.rangeBtnValue}>{moment(startDate).format('MMM D, YYYY')}</Text>
-            </TouchableOpacity>
-            <Text style={{ marginHorizontal: 6, color: '#6b7280' }}>—</Text>
-            <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('end')}>
-              <Text style={styles.rangeBtnLabel}>End</Text>
-              <Text style={styles.rangeBtnValue}>{moment(endDate).format('MMM D, YYYY')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.clearBtn} onPress={clearRange}>
-              <Text style={styles.clearText}>X</Text>
-            </TouchableOpacity>
+          <View style={styles.rangeWrap}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={{ color: '#1977f3', marginRight: 8 }}>📅</Text>
+
+              <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}>
+                <TouchableOpacity
+                  style={[styles.rangeBtn, { marginRight: 4 }]}
+                  onPress={() => setWhichRangePicker('start')}
+                >
+                  <Text style={styles.rangeBtnLabel}>Start</Text>
+                  <Text style={styles.rangeBtnValue} numberOfLines={1}>
+                    {moment(startDate).format('MMM D, YYYY')}
+                  </Text>
+                </TouchableOpacity>
+
+                <Text style={{ marginHorizontal: 4, color: '#6b7280' }}>—</Text>
+
+                <TouchableOpacity
+                  style={[styles.rangeBtn, { marginRight: 4 }]}
+                  onPress={() => setWhichRangePicker('end')}
+                >
+                  <Text style={styles.rangeBtnLabel}>End</Text>
+                  <Text style={styles.rangeBtnValue} numberOfLines={1}>
+                    {moment(endDate).format('MMM D, YYYY')}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.clearBtn} onPress={clearRange}>
+                  <Text style={styles.clearText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {whichRangePicker === 'start' && (
+              <DateTimePicker
+                value={moment(startDate, 'YYYY-MM-DD').toDate()}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={handleRangePicked('start')}
+              />
+            )}
+            {whichRangePicker === 'end' && (
+              <DateTimePicker
+                value={moment(endDate, 'YYYY-MM-DD').toDate()}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={handleRangePicked('end')}
+              />
+            )}
           </View>
 
-          {whichRangePicker === 'start' && (
-            <DateTimePicker
-              value={moment(startDate, 'YYYY-MM-DD').toDate()}
-              mode="date"
-              display="default"
-              maximumDate={new Date()}
-              onChange={handleRangePicked('start')}
-            />
-          )}
-          {whichRangePicker === 'end' && (
-            <DateTimePicker
-              value={moment(endDate, 'YYYY-MM-DD').toDate()}
-              mode="date"
-              display="default"
-              maximumDate={new Date()}
-              onChange={handleRangePicked('end')}
-            />
-          )}
+          {/* Summary cards */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={true} persistentScrollbar indicatorStyle="black" >
+            <View style={styles.summaryContainer}>
+              <View style={[styles.card, { borderColor: '#FBBF24' }]}>
+                <Text style={[styles.cardTitle, { color: '#FBBF24' }]}>{totalAppointmentsCount}</Text>
+                <Text style={{ color: '#FBBF24', fontSize: 12 }}>Total Appointments</Text>
+              </View>
+              <View style={[styles.card, { borderColor: '#10B981' }]}>
+                <Text style={[styles.cardTitle, { color: '#10B981' }]}>{scheduledAppointmentsCount}</Text>
+                <Text style={{ color: '#10B981', fontSize: 12 }}>Upcoming</Text>
+              </View>
+              <View style={[styles.card, { borderColor: '#6366F1' }]}>
+                <Text style={[styles.cardTitle, { color: '#6366F1' }]}>{completedAppointmentsCount}</Text>
+                <Text style={{ color: '#6366F1', fontSize: 12 }}>Completed</Text>
+              </View>
+              <View style={[styles.card, { borderColor: 'red' }]}>
+                <Text style={[styles.cardTitle, { color: 'red' }]}>{cancledAppointmentsCount}</Text>
+                <Text style={{ color: 'red', fontSize: 12 }}>Cancelled</Text>
+              </View>
+            </View>
+          </ScrollView>
         </View>
 
-        {/* Summary cards */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={true} persistentScrollbar  indicatorStyle="black" >
-          <View style={styles.summaryContainer}>
-            <View style={[styles.card, { borderColor: '#FBBF24' }]}>
-              <Text style={[styles.cardTitle, { color: '#FBBF24' }]}>{totalAppointmentsCount}</Text>
-              <Text style={{ color: '#FBBF24',fontSize: 12 }}>Total Appointments</Text>
-            </View>
-            <View style={[styles.card, { borderColor: '#10B981' }]}>
-              <Text style={[styles.cardTitle, { color: '#10B981' }]}>{scheduledAppointmentsCount}</Text>
-              <Text style={{ color: '#10B981',fontSize: 12 }}>Upcoming</Text>
-            </View>
-            <View style={[styles.card, { borderColor: '#6366F1' }]}>
-              <Text style={[styles.cardTitle, { color: '#6366F1' }]}>{completedAppointmentsCount}</Text>
-              <Text style={{ color: '#6366F1' ,fontSize: 12}}>Completed</Text>
-            </View>
-            <View style={[styles.card, { borderColor: 'red' }]}>
-              <Text style={[styles.cardTitle, { color: 'red' }]}>{cancledAppointmentsCount}</Text>
-              <Text style={{ color: 'red', fontSize: 12 }}>Cancelled</Text>
-            </View>
-          </View>
-        </ScrollView>
-        </View>
-       
 
         {/* Search + Filter */}
         <View style={styles.searchContainer}>
@@ -816,27 +831,27 @@ console.log("123")
           </TouchableOpacity>
         </View>
 
-        
-          {/* Type */}
-                    <View style={styles.inlineFiltersRow}>
 
-            
-           
+        {/* Type */}
+        <View style={styles.inlineFiltersRow}>
+
+
+
           {/* Type (popup like Status) */}
-          <View style={{flex:1}}>
+          <View style={{ flex: 1 }}>
             <Text style={styles.filterLabel}>Type</Text>
             <TouchableOpacity style={styles.selectBtn} onPress={() => setTypeDropdownVisible(true)}>
               <Text style={styles.selectBtnText}>{selectedApptTypeLabel}</Text>
             </TouchableOpacity>
-         </View>
-        
+          </View>
+
 
 
           {/* Date */}
-          <View style={{flex:1}}>
+          <View style={{ flex: 1 }}>
             <Text style={styles.filterLabel}>Date</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-               <TouchableOpacity style={styles.dateBtn} onPress={() => setShowFilterDatePicker(true)}>
+              <TouchableOpacity style={styles.dateBtn} onPress={() => setShowFilterDatePicker(true)}>
                 <Text style={styles.dateBtnText}>
                   {filterDate ? moment(filterDate, 'YYYY-MM-DD').format('DD-MMM-YYYY') : 'DD-MMM-YYYY'}
                 </Text>
@@ -861,9 +876,9 @@ console.log("123")
               />
             )}
           </View>
-       </View>
+        </View>
 
-         <Modal
+        <Modal
           visible={typeDropdownVisible}
           transparent
           animationType="fade"
@@ -964,7 +979,7 @@ console.log("123")
                         handleStatusChange(appt.id, 'Prescription', appt._id, appt.patientName, appt.patientId);
                       }}
                     />
-                    <MenuItem 
+                    <MenuItem
                       label="View Previous Prescriptions"
                       disabled={dis.disableViewPrev}
                       onPress={() => {
@@ -1010,95 +1025,95 @@ console.log("123")
 
         {/* List */}
         {loader ? (
-  <View style={styles.spinningContainer}>
-    <ActivityIndicator size="small" color="#007bff" />
-    <Text style={{ color: 'black' }}>Loading Appointments...</Text>
-  </View>
-) : appointments?.length === 0 ? (
-  <View style={styles.emptyWrap}>
-    <Text style={styles.emptyText}>No Appointments Found</Text>
-  </View>
-) : (
-  <>
-    <FlatList
-      data={appointments}
-      keyExtractor={(item) => item.id}
-      renderItem={renderAppointmentCard}
-      contentContainerStyle={{ paddingBottom: 10 }}
-    />
+          <View style={styles.spinningContainer}>
+            <ActivityIndicator size="small" color="#007bff" />
+            <Text style={{ color: 'black' }}>Loading Appointments...</Text>
+          </View>
+        ) : appointments?.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>No Appointments Found</Text>
+          </View>
+        ) : (
+          <>
+            <FlatList
+              data={appointments}
+              keyExtractor={(item) => item.id}
+              renderItem={renderAppointmentCard}
+              contentContainerStyle={{ paddingBottom: 10 }}
+            />
 
-    <View
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginVertical: 10,
-        marginBottom: 40,
-      }}
-    >
-      <TouchableOpacity
-        onPress={() => handlePageChange(pagination.current - 1)}
-        disabled={pagination.current === 1}
-        style={{
-          padding: 10,
-          marginHorizontal: 5,
-          backgroundColor: pagination.current === 1 ? '#e5e7eb' : '#3b82f6',
-          borderRadius: 6,
-        }}
-      >
-        <Text style={{ color: pagination.current === 1 ? '#9ca3af' : '#fff' }}>
-          Previous
-        </Text>
-      </TouchableOpacity>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'center',
+                marginVertical: 10,
+                marginBottom: 40,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => handlePageChange(pagination.current - 1)}
+                disabled={pagination.current === 1}
+                style={{
+                  padding: 10,
+                  marginHorizontal: 5,
+                  backgroundColor: pagination.current === 1 ? '#e5e7eb' : '#3b82f6',
+                  borderRadius: 6,
+                }}
+              >
+                <Text style={{ color: pagination.current === 1 ? '#9ca3af' : '#fff' }}>
+                  Previous
+                </Text>
+              </TouchableOpacity>
 
-      <Text
-        style={{
-          alignSelf: 'center',
-          fontSize: 16,
-          marginHorizontal: 10,
-          color: 'black',
-        }}
-      >
-        Page {pagination.current} of{' '}
-        {Math.max(1, Math.ceil((pagination.total || 1) / (pagination.pageSize || 1)))}
-      </Text>
+              <Text
+                style={{
+                  alignSelf: 'center',
+                  fontSize: 16,
+                  marginHorizontal: 10,
+                  color: 'black',
+                }}
+              >
+                Page {pagination.current} of{' '}
+                {Math.max(1, Math.ceil((pagination.total || 1) / (pagination.pageSize || 1)))}
+              </Text>
 
-      <TouchableOpacity
-        onPress={() => handlePageChange(pagination.current + 1)}
-        disabled={
-          pagination.current >=
-          Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
-        }
-        style={{
-          padding: 10,
-          marginHorizontal: 5,
-          backgroundColor:
-            pagination.current >=
-            Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
-              ? '#e5e7eb'
-              : '#3b82f6',
-          borderRadius: 6,
-        }}
-      >
-        <Text
-          style={{
-            color:
-              pagination.current >=
-              Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
-                ? '#9ca3af'
-                : '#fff',
-          }}
-        >
-          Next
-        </Text>
-      </TouchableOpacity>
-    </View>
-  </>
-)}
+              <TouchableOpacity
+                onPress={() => handlePageChange(pagination.current + 1)}
+                disabled={
+                  pagination.current >=
+                  Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
+                }
+                style={{
+                  padding: 10,
+                  marginHorizontal: 5,
+                  backgroundColor:
+                    pagination.current >=
+                      Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
+                      ? '#e5e7eb'
+                      : '#3b82f6',
+                  borderRadius: 6,
+                }}
+              >
+                <Text
+                  style={{
+                    color:
+                      pagination.current >=
+                        Math.ceil((pagination.total || 1) / (pagination.pageSize || 1))
+                        ? '#9ca3af'
+                        : '#fff',
+                  }}
+                >
+                  Next
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
-        
+
 
         {/* Pagination */}
-        
+
       </View>
     </ScrollView>
   );
@@ -1113,7 +1128,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
   },
-   placeholderCircle: {
+  placeholderCircle: {
     width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
     justifyContent: 'center', alignItems: 'center', marginRight: 16,
   },
@@ -1133,6 +1148,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     minWidth: 100,
+    flex: 1,
     marginRight: 4,
   },
   rangeBtnLabel: {
@@ -1145,8 +1161,14 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
-  clearBtn: { marginLeft: 10, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#EEF2FF' },
-  clearText: { color: '#4F46E5', fontWeight: '600' },
+  clearBtn: {
+    padding: 8, // Reduced padding to make it more compact
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 36, // Set a minimum width instead of fixed
+  }, clearText: { color: '#4F46E5', fontWeight: '600' },
   rangeHint: { marginTop: 6, color: '#6b7280', fontSize: 12 },
 
   summaryContainer: {
@@ -1185,7 +1207,7 @@ const styles = StyleSheet.create({
   },
   filterButtonText: { color: '#fff', fontWeight: 'bold' },
 
-   inlineFiltersRow: {
+  inlineFiltersRow: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 12,
@@ -1204,9 +1226,9 @@ const styles = StyleSheet.create({
     borderColor: '#d1d5db',
     borderRadius: 8,
     backgroundColor: '#fff',
-    padding:0,
+    padding: 0,
   },
-   pickerControl: {
+  pickerControl: {
     height: 44,          // enforce same control height
     color: '#111827',    // dark mode readable
     fontSize: 14,
@@ -1282,19 +1304,19 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   modalButton: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 5 },
   confirmButton: { backgroundColor: '#10B981' },
-  disableButton:{backgroundColor:'#555'},
+  disableButton: { backgroundColor: '#555' },
   cancelButton: { backgroundColor: '#EF4444' },
   buttonText: { color: '#fff', fontWeight: 'bold' },
 
   dropdown: { width: '80%', backgroundColor: '#fff', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 15, elevation: 5 },
   option: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    spinningContainer : {
- flex: 1,
+  spinningContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
- padding: 10,
+    padding: 10,
   },
-    selectBtn: {
+  selectBtn: {
     borderWidth: 1,
     borderColor: '#d1d5db',
     borderRadius: 8,

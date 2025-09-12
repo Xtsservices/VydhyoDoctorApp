@@ -530,7 +530,8 @@ const styles = StyleSheet.create({
     borderRadius: 10, 
     paddingHorizontal: 12, 
     paddingVertical: 10, 
-    backgroundColor: "#fff" 
+    backgroundColor: "#fff" ,
+    color: "#000000", 
   },
   paginationContainer: {
     padding: 16,

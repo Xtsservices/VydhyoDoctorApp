@@ -624,6 +624,7 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 16,
     backgroundColor: '#fff',
+     color: '#000000', 
   },
   error: {
     color: '#ff4d4f',

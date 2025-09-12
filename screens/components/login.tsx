@@ -141,8 +141,8 @@ const DoctorLoginScreen = () => {
       </View>
 
       <ScrollView style={styles.formContainer}>
-        <View style={styles.logoContainer}>
-          <Image source={require('../assets/logo.png')} style={styles.logo} />
+        <View style={styles.logoContainer1}>
+          <Image source={require('../assets/doclogo.png')} style={styles.doclogo} />
           <Text style={styles.portalTitle}>VYDHYO Doctor Portal</Text>
         </View>
 
@@ -151,7 +151,7 @@ const DoctorLoginScreen = () => {
           <Icon name="phone" size={20} color="#00203F" style={styles.icon} />
           <TextInput
             style={styles.input}
-            placeholder="+91 9876543210"
+            placeholder="9876543210"
             placeholderTextColor="#999"
             keyboardType="phone-pad"
             editable={!isOtpSent}
@@ -237,15 +237,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     textAlign: 'center',
+    marginTop: 30,
   },
   formContainer: {
     flex: 1,
     paddingHorizontal: width * 0.05,
     paddingVertical: height * 0.03,
+    
   },
   logoContainer: {
     alignItems: 'center',
     marginBottom: height * 0.04,
+  },
+  logoContainer1: {
+    marginTop: 80,
+    alignItems: 'center',
+    marginBottom: height * 0.0,
   },
   logoWrapper: {
     justifyContent: 'center',
@@ -254,6 +261,10 @@ const styles = StyleSheet.create({
   logo: {
     width: width * 0.7,
     height: width * 0.7,
+  },
+  doclogo: {
+    width: width * 0.5,
+    height: width * 0.5,
   },
   portalTitle: {
     fontSize: width * 0.05,
@@ -328,7 +339,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginHorizontal: width * 0.05,
-    marginBottom: height * 0.03,
+    marginBottom: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,

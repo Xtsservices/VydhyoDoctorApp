@@ -426,16 +426,16 @@ const DoctorProfileView: React.FC = () => {
     if (!token) return;
     try {
       if (!formBank.bankName || !formBank.accountHolderName || !formBank.accountNumber || !formBank.ifscCode) {
-        Toast.show({ type: 'error', text1: 'Validation', text2: 'All bank fields are required' });
+        Alert.alert('Validation', 'All bank fields are required');
         return;
       }
       if (!isDigits(formBank.accountNumber!)) {
-        Toast.show({ type: 'error', text1: 'Validation', text2: 'Account number must be digits' });
+        Alert.alert('Validation', 'Account number must be digits');
         return;
       }
       const ifsc = sanitizeIFSC(formBank.ifscCode!);
       if (!isValidIFSC(ifsc)) {
-        Toast.show({ type: 'error', text1: 'Validation', text2: 'Invalid IFSC (e.g., HDFC0ABCD12)' });
+        Alert.alert('Validation', 'Invalid IFSC (e.g., HDFC0ABCD12)');
         return;
       }
 

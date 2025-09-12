@@ -44,8 +44,8 @@ export default function TestManagement() {
       const token = await AsyncStorage.getItem('authToken');
 
       setLoading(true);
-      const res = await AuthFetch(`lab/getTestsByDoctorId/${doctorId}?page=${pg}&limit=${pageSize}`,token);
-    console.log(res, "rest response")
+      const res = await AuthFetch(`lab/getTestsByDoctorId/${doctorId}?page=${pg}&limit=${pageSize}`, token);
+      console.log(res, "rest response")
       const fetched = (res?.data?.data?.tests || []).map((t: any) => ({
         testId: t.id,
         testName: t.testName,
@@ -92,11 +92,11 @@ export default function TestManagement() {
         // throw new Error(resp?.message?.message);
       }
     } catch (e: any) {
-        console.log(e?.response, "error response")
+      console.log(e?.response, "error response")
       const msg = e?.response?.status === 400 && e?.response?.data?.message?.message === "A test with this name already exists"
         ? "A test with this name already exists"
         : (e?.response?.data?.message?.message || "Failed to   ");
-        Alert.alert("Error", e)
+      Alert.alert("Error", e)
       Toast.show({ type: "error", text1: msg });
     } finally {
       setLoading(false);
@@ -196,28 +196,28 @@ export default function TestManagement() {
 
       {loading && tests.length === 0 ? (
         <View style={styles.spinningContainer}>
-                                <ActivityIndicator size="large" color="#007bff" />
-                                <Text style={{color:'black'}}>Loading List...</Text>
-                                </View>
+          <ActivityIndicator size="large" color="#007bff" />
+          <Text style={{ color: 'black' }}>Loading List...</Text>
+        </View>
       ) : (
-         tests?.length === 0 ? (
-                          <View style={styles.spinningContainer}>
-                  <Text style={{color:'black'}}>No Data Found</Text>
-                          </View>
-                        
-                        ) : (
- <FlatList
-          data={tests}
-          keyExtractor={(x) => x.testId}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.3}
-          refreshing={loading}
-          onRefresh={() => fetchTests(1)}
-        />
-                        )
-       
+        tests?.length === 0 ? (
+          <View style={styles.spinningContainer}>
+            <Text style={{ color: 'black' }}>No Data Found</Text>
+          </View>
+
+        ) : (
+          <FlatList
+            data={tests}
+            keyExtractor={(x) => x.testId}
+            renderItem={renderItem}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.3}
+            refreshing={loading}
+            onRefresh={() => fetchTests(1)}
+          />
+        )
+
       )}
 
       {/* Bulk preview panel */}
@@ -252,14 +252,16 @@ export default function TestManagement() {
               placeholder="Test Name"
               value={name}
               onChangeText={setName}
-              style={styles.input}
+              style={[styles.input, { color: "#000000" }]} // Add color here
+              placeholderTextColor="#999999" // Optional: style placeholder text
             />
             <TextInput
               placeholder="Test Price (₹)"
               keyboardType="numeric"
               value={price}
               onChangeText={setPrice}
-              style={styles.input}
+              style={[styles.input, { color: "#000000" }]} // Add color here
+              placeholderTextColor="#999999" // Optional: style placeholder text
             />
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TouchableOpacity style={[styles.outlined, { flex: 1 }]} onPress={() => setAddOpen(false)}>
@@ -289,16 +291,16 @@ const styles = StyleSheet.create({
   primaryText: { color: "#fff", fontWeight: "700" },
   modalWrap: { flex: 1, backgroundColor: "#0006", alignItems: "center", justifyContent: "center", padding: 16 },
   modalCard: { width: "100%", backgroundColor: "#fff", borderRadius: 12, padding: 16, gap: 10 },
-  modalTitle: { fontWeight: "800", fontSize: 18, marginBottom: 8 },
+  modalTitle: { fontWeight: "800", fontSize: 18, marginBottom: 8 ,color: "#0f172a" },
   input: { borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: "#fff" },
   bulkPanel: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#e5e7eb", padding: 12, marginBottom: 10 },
   bulkTitle: { fontWeight: "800", marginBottom: 8, color: "#0f172a" },
   previewRow: { flexDirection: "row", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#f1f5f9", paddingVertical: 8 },
-   spinningContainer : {
- flex: 1,
+  spinningContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
- padding: 10,
+    padding: 10,
   },
 
 });
