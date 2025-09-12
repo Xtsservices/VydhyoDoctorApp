@@ -43,7 +43,7 @@ const ProfileReview: React.FC = () => {
   };
 
   const handleSupport = () => {
-    Alert.alert('Contact Support', 'Please email support@yourapp.com for assistance.');
+    Alert.alert('Contact Support', 'Please email vydhyo@gmail.com for assistance.');
     // Alternatively, implement navigation or email intent:
     // navigation.navigate('SupportScreen');
     // Linking.openURL('mailto:support@yourapp.com');

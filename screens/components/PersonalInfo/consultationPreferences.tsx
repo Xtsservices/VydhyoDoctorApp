@@ -27,7 +27,7 @@ const ConsultationPreferences = () => {
     homeVisit: false,
   });
   const [fees, setFees] = useState({ inPerson: 0, video: 0, homeVisit: 0 });
- const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
 
   const navigation = useNavigation<any>();
@@ -44,22 +44,31 @@ const ConsultationPreferences = () => {
     }
   };
 
-  const isFormValid = () => {
-    const hasSelectedMode = selectedModes.inPerson || selectedModes.video || selectedModes.homeVisit;
-    if (!hasSelectedMode) return false;
-    return (
-      (!selectedModes.inPerson || fees.inPerson !== "") &&
-      (!selectedModes.video || fees.video !== "") &&
-      (!selectedModes.homeVisit || fees.homeVisit !== "")
-    );
-  };
+const isFormValid = () => {
+  const hasSelectedMode = selectedModes.inPerson || selectedModes.video || selectedModes.homeVisit;
+  if (!hasSelectedMode) return false;
 
+  // Check that all selected modes have fees > 0
+  return (
+    (!selectedModes.inPerson || parseInt(fees.inPerson) > 0) &&
+    (!selectedModes.video || parseInt(fees.video) > 0) &&
+    (!selectedModes.homeVisit || parseInt(fees.homeVisit) > 0)
+  );
+};
   const handleBack = () => {
     navigation.navigate('Practice');
   };
 
   const handleNext = async () => {
     // if (!isFormValid()) return;
+    if (!isFormValid()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Selection Required',
+        text2: 'Please select at least one consultation mode',
+      });
+      return;
+    }
 
     console.log(fees)
 
@@ -70,12 +79,12 @@ const ConsultationPreferences = () => {
         { type: 'Home Visit', fee: parseInt(fees?.homeVisit) },
       ],
     };
-console.log(payload)
+    console.log(payload)
     try {
-       setLoading(true);
+      setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-         setLoading(false);
+        setLoading(false);
         Toast.show({
           type: 'error',
           text1: 'Authentication Error',
@@ -85,14 +94,14 @@ console.log(payload)
       }
       console.log('Sending payload:', payload);
       const response = await AuthPost('users/updateConsultationModes', payload, token);
-      
+
       console.log('API Response:', response);
       if (response.status == 'success') {
         Toast.show({
           type: 'success',
           text1: 'Preferences saved successfully',
         });
-    await AsyncStorage.setItem('currentStep', 'FinancialSetupScreen');
+        await AsyncStorage.setItem('currentStep', 'FinancialSetupScreen');
         (navigation as any).navigate('FinancialSetupScreen')
       }
 
@@ -105,47 +114,47 @@ console.log(payload)
         text2: error?.response?.data?.message || 'Something went wrong',
       });
     } finally {
-    setLoading(false); // Always hide loader after request
-  }
+      setLoading(false); // Always hide loader after request
+    }
 
   };
-  
 
 
-const fetchUserData = async () => {
-  try {
-    const token = await AsyncStorage.getItem('authToken');
-    if (token) {
-      const response = await AuthFetch('users/getUser', token);
-      if (response.data.status === 'success') {
-        const userData = response.data.data;
-        const consultationFee = userData.consultationModeFee;
 
-        let updatedModes = { inPerson: false, video: false, homeVisit: false };
-        let updatedFees = { inPerson: 0, video: 0, homeVisit: 0 };
+  const fetchUserData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        const response = await AuthFetch('users/getUser', token);
+        if (response.data.status === 'success') {
+          const userData = response.data.data;
+          const consultationFee = userData.consultationModeFee;
 
-        consultationFee.forEach((mode) => {
-          const { type, fee } = mode;
-          if (type === 'In-Person') {
-            updatedFees.inPerson = fee.toString();
-            if (fee > 0) updatedModes.inPerson = true;
-          } else if (type === 'Video') {
-            updatedFees.video = fee.toString();
-            if (fee > 0) updatedModes.video = true;
-          } else if (type === 'Home Visit') {
-            updatedFees.homeVisit = fee.toString();
-            if (fee > 0) updatedModes.homeVisit = true;
-          }
-        });
+          let updatedModes = { inPerson: false, video: false, homeVisit: false };
+          let updatedFees = { inPerson: 0, video: 0, homeVisit: 0 };
 
-        setSelectedModes(updatedModes);
-        setFees(updatedFees);
+          consultationFee.forEach((mode) => {
+            const { type, fee } = mode;
+            if (type === 'In-Person') {
+              updatedFees.inPerson = fee.toString();
+              if (fee > 0) updatedModes.inPerson = true;
+            } else if (type === 'Video') {
+              updatedFees.video = fee.toString();
+              if (fee > 0) updatedModes.video = true;
+            } else if (type === 'Home Visit') {
+              updatedFees.homeVisit = fee.toString();
+              if (fee > 0) updatedModes.homeVisit = true;
+            }
+          });
+
+          setSelectedModes(updatedModes);
+          setFees(updatedFees);
+        }
       }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
     }
-  } catch (error) {
-    console.error('Error fetching user data:', error);
-  }
-};
+  };
 
 
 
@@ -156,12 +165,12 @@ const fetchUserData = async () => {
   return (
     <View style={styles.container}>
 
-        {loading && (
-                    <View style={styles.loaderOverlay}>
-                      <ActivityIndicator size="large" color="#00203F" />
-                      <Text style={styles.loaderText}>Processing...</Text>
-                    </View>
-                  )}
+      {loading && (
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#00203F" />
+          <Text style={styles.loaderText}>Processing...</Text>
+        </View>
+      )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -257,14 +266,9 @@ const fetchUserData = async () => {
 
       {/* Next Button */}
       <TouchableOpacity
-        style={[styles.nextButton]}
-        // disabled={!isFormValid()}
+        style={[styles.nextButton, !isFormValid() && styles.disabledButton]}
+        disabled={!isFormValid()}
         onPress={handleNext}
-        // onPress={() => {
-        //   setTimeout(() => {
-        //     navigation.navigate("FinancialSetupScreen");
-        //   }, 3000);
-        // }}
       >
         <Text style={styles.nextText}>Next</Text>
       </TouchableOpacity>
@@ -396,7 +400,7 @@ const styles = StyleSheet.create({
   spacer: {
     height: height * 0.1,
   },
-    loaderOverlay: {
+  loaderOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
     justifyContent: 'center',

@@ -144,129 +144,163 @@ const VitalsScreen = () => {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🩺 Vitals</Text>
-          <View style={styles.inputRow}>
-            <TextInput
-              placeholder="Systolic"
-              style={styles.input}
-              value={formData.vitals?.bpSystolic || ''}
-              onChangeText={(text) => handleVitalsChange('bpSystolic', text)}
-              onBlur={() => handleBlur('bpSystolic')}
-              keyboardType="numeric"
-
-            placeholderTextColor="#9CA3AF"
-
-            />
-            <TextInput
-              placeholder="Diastolic"
-              style={styles.input}
-              value={formData.vitals?.bpDiastolic || ''}
-              onChangeText={(text) => handleVitalsChange('bpDiastolic', text)}
-              onBlur={() => handleBlur('bpDiastolic')}
-              keyboardType="numeric"
-
-            placeholderTextColor="#9CA3AF"
-
-
-            />
-            <TextInput
-              placeholder="Pulse Rate"
-              style={styles.input}
-              value={formData.vitals?.pulseRate || ''}
-              onChangeText={(text) => handleVitalsChange('pulseRate', text)}
-              onBlur={() => handleBlur('pulseRate')}
-              keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-            />
+          
+          {/* Blood Pressure Row */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Blood Pressure (MMHG)</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="Systolic"
+                  style={styles.input}
+                  value={formData.vitals?.bpSystolic || ''}
+                  onChangeText={(text) => handleVitalsChange('bpSystolic', text)}
+                  onBlur={() => handleBlur('bpSystolic')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+              <Text style={styles.unitSeparator}>/</Text>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="Diastolic"
+                  style={styles.input}
+                  value={formData.vitals?.bpDiastolic || ''}
+                  onChangeText={(text) => handleVitalsChange('bpDiastolic', text)}
+                  onBlur={() => handleBlur('bpDiastolic')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
           </View>
 
-          <View style={styles.inputRow}>
-            <TextInput
-              placeholder="Respiratory Rate"
-              style={styles.input}
-              value={formData.vitals?.respiratoryRate || ''}
-              onChangeText={(text) => handleVitalsChange('respiratoryRate', text)}
-              onBlur={() => handleBlur('respiratoryRate')}
-              keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-            />
-            <TextInput
-              placeholder="Temperature"
-              style={styles.input}
-              value={formData.vitals?.temperature || ''}
-              onChangeText={(text) => handleVitalsChange('temperature', text)}
-              onBlur={() => handleBlur('temperature')}
-              keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-            />
+          {/* Pulse Rate Row */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Pulse Rate (BPM)</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="Pulse Rate"
+                  style={styles.input}
+                  value={formData.vitals?.pulseRate || ''}
+                  onChangeText={(text) => handleVitalsChange('pulseRate', text)}
+                  onBlur={() => handleBlur('pulseRate')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
           </View>
 
-          <View style={styles.inputRow}>
-            <TextInput
-              placeholder="SpO2"
-              style={styles.input}
-              value={formData.vitals?.spo2 || ''}
-              onChangeText={(text) => handleVitalsChange('spo2', text)}
-              onBlur={() => handleBlur('spo2')}
-              keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-            />
-            <TextInput
-              placeholder="Height (cm)"
-              style={styles.input}
-              value={formData.vitals?.height || ''}
-              onChangeText={(text) => handleVitalsChange('height', text)}
-              onBlur={() => handleBlur('height')}
-              keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-
-            />
+          {/* Respiratory Rate Row */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Respiratory Rate (Breaths/Min)</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="Respiratory Rate"
+                  style={styles.input}
+                  value={formData.vitals?.respiratoryRate || ''}
+                  onChangeText={(text) => handleVitalsChange('respiratoryRate', text)}
+                  onBlur={() => handleBlur('respiratoryRate')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
           </View>
 
-          <View style={styles.inputRow}>
-            <TextInput
-              placeholder="Weight (kg)"
-              style={styles.input}
-              value={formData.vitals?.weight || ''}
-              onChangeText={(text) => handleVitalsChange('weight', text)}
-              onBlur={() => handleBlur('weight')}
-              keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-            />
-            <TextInput
-              placeholder="BMI"
-              style={[styles.input, { backgroundColor: '#f0f0f0' }]}
-              value={formData.vitals?.bmi || 'Auto-calculated'}
-              editable={false}
-            placeholderTextColor="#9CA3AF"
-            />
+          {/* Temperature Row */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Temperature (°F)</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="Temperature"
+                  style={styles.input}
+                  value={formData.vitals?.temperature || ''}
+                  onChangeText={(text) => handleVitalsChange('temperature', text)}
+                  onBlur={() => handleBlur('temperature')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* SpO2 Row */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>SpO₂ (%)</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="SpO2"
+                  style={styles.input}
+                  value={formData.vitals?.spo2 || ''}
+                  onChangeText={(text) => handleVitalsChange('spo2', text)}
+                  onBlur={() => handleBlur('spo2')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Height Row */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Height (CM)</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="Height"
+                  style={styles.input}
+                  value={formData.vitals?.height || ''}
+                  onChangeText={(text) => handleVitalsChange('height', text)}
+                  onBlur={() => handleBlur('height')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Weight Row */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Weight (KG)</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="Weight"
+                  style={styles.input}
+                  value={formData.vitals?.weight || ''}
+                  onChangeText={(text) => handleVitalsChange('weight', text)}
+                  onBlur={() => handleBlur('weight')}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* BMI Row */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>BMI (KG/M²)</Text>
+            <View style={styles.inputRow}>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  placeholder="BMI"
+                  style={[styles.input, { backgroundColor: '#f0f0f0' }]}
+                  value={formData.vitals?.bmi || 'Auto-calculated'}
+                  editable={false}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
           </View>
         </View>
 
-
-        {/* Investigation Section */}
-        {/* <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🧪 Investigation</Text>
-          <Text style={styles.subtitle}>Clinical examination findings and observations</Text>
-          <TextInput
-            placeholder="Enter findings from clinical examination..."
-            style={styles.textArea}
-            multiline
-            value={formData.patientInfo?.examinationFindings || ''}
-            onChangeText={(text) =>
-              setFormData((prev) => ({
-                ...prev,
-                patientInfo: {
-                  ...prev.patientInfo,
-                  examinationFindings: text,
-                },
-              }))
-            }
-            placeholderTextColor="#9CA3AF"
-          />
-        </View> */}
-
         {/* Buttons */}
-
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -307,14 +341,26 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontWeight: '600',
     fontSize: 16,
+    marginBottom: 16,
+    color: 'black'
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
     marginBottom: 8,
-    color:'black'
+    color: 'black'
   },
   inputRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    color:'black'
+    alignItems: 'center',
+  },
+  inputWithUnit: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
@@ -322,21 +368,14 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 10,
-    marginRight: 8,
     backgroundColor: '#fff',
-
-    color:'black'
+    color: 'black'
   },
-  textArea: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 10,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    backgroundColor: '#fff',
-    color:'black'
-
+  unitSeparator: {
+    marginHorizontal: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'black'
   },
   buttonRow: {
     flexDirection: 'row',

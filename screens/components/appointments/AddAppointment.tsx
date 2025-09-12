@@ -3,6 +3,7 @@ import {
   Alert, View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Platform,
   Modal, ActivityIndicator
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RadioButton } from 'react-native-paper';
@@ -16,7 +17,6 @@ import { useSelector } from 'react-redux';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from "moment";
-
 
 const AddAppointment = () => {
   const userId = useSelector((state: any) => state.currentUserId);
@@ -34,37 +34,42 @@ const AddAppointment = () => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [mobileError, setMobileError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  
+  // UPDATED: More flexible regex - allows multi-digit numbers, requires units on each part, ignores case
   const validateAge = (age: string): boolean => {
     if (!age) return false;
-    // Valid formats: 6m, 2y, 15d, 1y 2m, 3m 15d, etc.
-    return /^(\d+[myd])(\s\d+[myd])*$/i.test(age.replace(/\s+/g, ' ').trim());
+    const trimmed = age.trim();
+    // Split into parts, filter empty, and check each has \d+ followed immediately by [myd]
+    const parts = trimmed.split(/\s+/).filter(p => p);
+    return parts.length > 0 && parts.every(part => /^\d+[myd]$/i.test(part));
   };
-  const [noSlotsModalVisible, setNoSlotsModalVisible] = useState(false);
-  const calculateAgeFromDOB = (dob: string): string => {
-    if (!dob) return "";
 
-    const dobDate = moment(dob, "DD-MM-YYYY").toDate();
+  const [noSlotsModalVisible, setNoSlotsModalVisible] = useState(false);
+const calculateAgeFromDOB = (dob: string): string => {
+  if (!dob) return "";
+
+  try {
+    // Parse the DOB string (DD-MM-YYYY format)
+    const [day, month, year] = dob.split('-').map(Number);
+    const dobDate = new Date(year, month - 1, day);
     const today = new Date();
 
-    // Calculate years, months and days
-    let years = today.getFullYear() - dobDate.getFullYear();
-    let months = today.getMonth() - dobDate.getMonth();
-    let days = today.getDate() - dobDate.getDate();
-
-    // Adjust for negative days
-    if (days < 0) {
-      months--;
-      // Get days in the previous month
-      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-      days += prevMonth.getDate();
+    // Check if DOB is in the future
+    if (dobDate > today) {
+      return "0d"; // Return 0 days for future dates
     }
 
-    // Adjust for negative months
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
+    // Calculate total difference in milliseconds
+    const diffMs = today.getTime() - dobDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+    // Convert to years, months, days
+    const years = Math.floor(diffDays / 365.25);
+    const remainingDaysAfterYears = diffDays - (years * 365.25);
+    const months = Math.floor(remainingDaysAfterYears / 30.44);
+    const days = Math.round(remainingDaysAfterYears - (months * 30.44));
+
+    // Build the age string
     let ageText = "";
 
     if (years > 0) {
@@ -80,7 +85,12 @@ const AddAppointment = () => {
     }
 
     return ageText.trim();
-  };
+
+  } catch (error) {
+    console.error("Error calculating age from DOB:", error);
+    return "";
+  }
+};
   const [fieldsDisabled, setFieldsDisabled] = useState(false);
   const [timeSlots, setTimeSlots] = useState([])
   const [patientformData, setpatientFormData] = useState({
@@ -119,6 +129,7 @@ const AddAppointment = () => {
   const [message, setMessage] = useState('')
   const [isPatientAdded, setIsPatientAdded] = useState(false);
 
+  // UPDATED: Enhanced handleInputChange with better age sanitization and validation
   const handleInputChange = (field: string, value: string) => {
     // Clear any previous errors for this field
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -142,13 +153,36 @@ const AddAppointment = () => {
       validatedValue = digitsOnly;
     }
 
+    // UPDATED: Better age sanitization - strip invalid chars, normalize spaces, attach units if possible
     if (field === "age") {
-      // Allow numbers followed by 'm', 'y', or 'd' (months, years, days)
-      validatedValue = value.replace(/[^0-9myd]/gi, "");
+      // First, strip everything except digits, m/y/d, spaces
+      validatedValue = value.replace(/[^0-9myd\s]/gi, "");
+      
+      // Normalize multiple spaces to single space
+      validatedValue = validatedValue.replace(/\s+/g, ' ').trim();
+      
+      // NEW: Attempt to auto-correct common errors (e.g., "12 d" -> "12d" if no unit conflict)
+      const parts = validatedValue.split(' ');
+      const correctedParts = parts.map(part => {
+        if (/^\d+$/.test(part)) {
+          // Loose number without unit - suggest/append 'd' (common default), but only if not already unit-attached
+          return part + 'd';
+        }
+        // If it has unit already, leave as-is
+        return part;
+      });
+      validatedValue = correctedParts.join(' ');
 
-      // Limit length to prevent very long inputs
-      if (validatedValue.length > 5) {
-        validatedValue = validatedValue.slice(0, 5);
+      // Limit length
+      if (validatedValue.length > 12) {  // Increased slightly for safety
+        validatedValue = validatedValue.slice(0, 12);
+      }
+
+      // Validate immediately for UX feedback
+      if (validatedValue && !validateAge(validatedValue)) {
+        setFieldErrors((prev) => ({ ...prev, age: "Invalid format. Use e.g., 1m, 2y, 15d, 1m 2d" }));
+      } else {
+        setFieldErrors((prev) => ({ ...prev, age: undefined }));
       }
     }
 
@@ -158,35 +192,40 @@ const AddAppointment = () => {
 
       // If date of birth is changed, automatically update the age field
       if (field === "dob") {
-        if (validatedValue) {
-          const calculatedAge = calculateAgeFromDOB(validatedValue);
+        console.log("DOB value:", value); // Debug log
+        if (value) {
+          const calculatedAge = calculateAgeFromDOB(value);
+          console.log("Calculated age:", calculatedAge); // Debug log
           if (calculatedAge) {
             newData.age = calculatedAge;
           }
         } else {
-          // Clear age if date of birth is cleared
           newData.age = "";
         }
       }
 
-      // If age is changed and follows the pattern (e.g., "2m"), calculate date of birth
-      if (field === "age" && validatedValue && /^\d+[myd]$/i.test(validatedValue)) {
+      // UPDATED: DOB calculation from age - now handles multi-unit more reliably
+      if (field === "age" && validatedValue && validateAge(validatedValue)) {
         const today = new Date();
-        const ageValue = parseInt(validatedValue);
-        const ageUnit = validatedValue.slice(-1).toLowerCase();
+        const ageParts = validatedValue.toLowerCase().split(/\s+/).filter(p => p);  // Filter empty parts
 
-        let calculatedDOB = new Date();
+        let calculatedDOB = new Date(today);
 
-        if (ageUnit === 'y') {
-          // Years
-          calculatedDOB.setFullYear(today.getFullYear() - ageValue);
-        } else if (ageUnit === 'm') {
-          // Months
-          calculatedDOB.setMonth(today.getMonth() - ageValue);
-        } else if (ageUnit === 'd') {
-          // Days
-          calculatedDOB.setDate(today.getDate() - ageValue);
-        }
+        ageParts.forEach(part => {
+          const match = part.match(/(\d+)([myd])/i);
+          if (match) {
+            const value = parseInt(match[1]);
+            const unit = match[2].toLowerCase();
+
+            if (unit === 'y') {
+              calculatedDOB.setFullYear(calculatedDOB.getFullYear() - value);
+            } else if (unit === 'm') {
+              calculatedDOB.setMonth(calculatedDOB.getMonth() - value);
+            } else if (unit === 'd') {
+              calculatedDOB.setDate(calculatedDOB.getDate() - value);
+            }
+          }
+        });
 
         // Format as DD-MM-YYYY
         const day = String(calculatedDOB.getDate()).padStart(2, '0');
@@ -227,7 +266,7 @@ const AddAppointment = () => {
           setFormData((prev) => ({
             ...prev,
             department: doctorDetails?.specialization?.name,
-            fee:doctorDetails?.consultationModeFee[0]?.fee
+            fee: doctorDetails?.consultationModeFee[0]?.fee
             ,
           }));
         }
@@ -254,6 +293,14 @@ const AddAppointment = () => {
       // setPatientData((prev) => ({ ...prev, selectedTimeSlot: "" }));
     }
   }, [formData.appointmentDate, formData.clinicAddressId, fetchTimeSlots]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (formData.appointmentDate && formData.clinicAddressId && doctorId) {
+        fetchTimeSlots(formData.appointmentDate, formData.clinicAddressId);
+      }
+    }, [formData.appointmentDate, formData.clinicAddressId, doctorId, fetchTimeSlots])
+  );
 
   const onDateChange = (event: any, selectedDate: Date | undefined) => {
     setShowDatePicker(false);
@@ -300,8 +347,9 @@ const AddAppointment = () => {
 
   const [patientCreated, setPatientCreated] = useState(false);
 
-const isAddPatientDisabled =
-  patientCreated || !patientformData.age || !validateAge(patientformData.age);
+  // UPDATED: Use the new validateAge
+  const isAddPatientDisabled =
+    patientCreated || !patientformData.age || !validateAge(patientformData.age.trim());
 
   const prefillPatientDetails = (patient: any) => {
     console.log(patient, "selectedpatient")
@@ -318,24 +366,31 @@ const isAddPatientDisabled =
   };
 
 
+  // UPDATED: Enhanced handleAddPatient with normalized age parsing
   const handleAddPatient = async () => {
-    // Validate age format
-    if (patientformData.age && !validateAge(patientformData.age)) {
-      setFieldErrors({ age: "Invalid age format. Use format like 6m, 2y, or 15d" });
+    let ageToValidate = patientformData.age.trim();
+    
+    // NEW: Normalize before validation (strip extra spaces, auto-append 'd' to lone numbers if needed)
+    const parts = ageToValidate.split(/\s+/).filter(p => p);
+    const normalizedParts = parts.map(part => {
+      if (/^\d+$/.test(part)) {
+        return part + 'd';  // Default to days for loose numbers
+      }
+      return part;
+    });
+    ageToValidate = normalizedParts.join(' ');
+
+    // Validate the normalized version
+    if (!ageToValidate) {
+      setFieldErrors({ age: "Age is required. Use formats like 6m, 2y, or 15d" });
+      return;
+    }
+    if (!validateAge(ageToValidate)) {
+      setFieldErrors({ age: "Invalid age format. Use format like 6m, 2y, 1m 12d, or 15d" });
       return;
     }
 
     console.log('Adding patient with data:', patientformData);
-
- if (!patientformData.age) {
-    setFieldErrors({ age: "Age is required. Use formats like 6m, 2y, or 15d" });
-    return;
-  }
-  // Validate age format
-  if (patientformData.age && !validateAge(patientformData.age)) {
-    setFieldErrors({ age: "Invalid age format. Use format like 6m, 2y, or 15d" });
-    return;
-  }
 
     try {
       const token = await AsyncStorage.getItem('authToken');
@@ -345,7 +400,7 @@ const isAddPatientDisabled =
         gender: patientformData.gender,
         DOB: patientformData.dob || '',
         mobile: patientformData.mobile,
-        age: patientformData.age || calculateAge(patientformData.dob) || "0"
+        age: ageToValidate || calculateAge(patientformData.dob) || "0"  // Use normalized age
       };
 
       console.log(payload, 'payload details')
@@ -364,7 +419,7 @@ const isAddPatientDisabled =
           position: 'top',
           visibilityTime: 3000,
         });
-setPatientCreated(true)
+        setPatientCreated(true)
         setpatientFormData({
           firstName: data.data?.firstname || '',
           lastName: data.data?.lastname || '',
@@ -373,7 +428,7 @@ setPatientCreated(true)
           age: data.data?.age || '',
           mobile: data.data?.mobile || '',
         });
-      }else{
+      } else {
         console.log("123")
         Alert.alert("Error", response?.message?.message)
       }
@@ -513,32 +568,25 @@ setPatientCreated(true)
       const [day, month, year] = selectedDate.split("-");
       const formattedDate = `${year}-${month}-${day}`;
 
-      console.log(selectedDate, clinicId, doctorId, token, "requiredData for fetching slots");
-
       const response = await AuthFetch(
         `appointment/getSlotsByDoctorIdAndDate?doctorId=${doctorId}&date=${formattedDate}&addressId=${clinicId}`,
         token
       );
 
-      console.log(response, "selectedTimeSlots");
-
       if (response?.status === "success" && response?.data?.data?.slots) {
         const availableSlots = response.data.data.slots
           .filter((slot: { status: string }) => slot.status === "available")
           .map((slot: { time: any }) => {
-            // Store the original time in HH:mm format for the value
             const originalTime = slot.time;
-
-            // Format the time from 24-hour to 12-hour format for display
             const [hours, minutes] = slot.time.split(':');
             const hour = parseInt(hours);
             const ampm = hour >= 12 ? 'PM' : 'AM';
-            const hour12 = hour % 12 || 12; // Convert to 12-hour format
+            const hour12 = hour % 12 || 12;
             const displayTime = `${hour12}:${minutes} ${ampm}`;
 
             return {
-              display: displayTime,    // For display (e.g., "3:00 PM")
-              value: originalTime      // For value (e.g., "15:00")
+              display: displayTime,
+              value: originalTime
             };
           })
           .filter((timeObj: any) => {
@@ -546,31 +594,25 @@ setPatientCreated(true)
             return slotMoment.isAfter(moment());
           });
 
-        console.log(availableSlots);
-
-        if (availableSlots.length === 0) {
-          // Show the modal when no slots are available
-          setNoSlotsModalVisible(true);
+        // ADD THE CONDITION HERE - This is the key change
+        if (availableSlots.length > 0) {
+          setNoSlotsModalVisible(false); // Hide the modal if slots are available
+        } else {
+          setNoSlotsModalVisible(true); // Show the modal when no slots are available
         }
 
         setTimeSlots(availableSlots);
-      } else if (response.status === "success") {
+      } else {
         setTimeSlots([]);
-        // Show the modal when no slots are found
         setNoSlotsModalVisible(true);
-      } else if (response.status === 'error') {
-        console.log("no slots found");
-        setMessage(`*${response?.message?.message}` || "*No slots Found");
-        // Show the modal when there's an error indicating no slots
-        setNoSlotsModalVisible(true);
+        setMessage(response?.message?.message || "*No slots Found");
       }
     } catch (error) {
       console.error("Error fetching time slots:", error);
-      // Show the modal when there's an error
       setNoSlotsModalVisible(true);
       setTimeSlots([]);
     }
-  }, []);
+  }, [doctorId]); // Add doctorId to dependency array
 
 
   const calculateAge = useCallback((dob: string): string => {
@@ -617,45 +659,45 @@ setPatientCreated(true)
         </TouchableOpacity>
       </View>
       {/* No Slots Available Modal */}
-<Modal
-  visible={noSlotsModalVisible}
-  animationType="slide"
-  transparent={true}
-  onRequestClose={() => setNoSlotsModalVisible(false)}
->
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalContainer}>
-      {/* Close button in top right corner */}
-      <TouchableOpacity 
-        style={styles.closeButton}
-        onPress={() => setNoSlotsModalVisible(false)}
+      <Modal
+        visible={noSlotsModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setNoSlotsModalVisible(false)}
       >
-        <Ionicons name="close" size={24} color="#6B7280" />
-      </TouchableOpacity>
-      
-      <View style={styles.modalHeader}>
-        <Ionicons name="warning" size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
-        <Text style={styles.modalTitle}>No Slots Available</Text>
-      </View>
-      
-      <Text style={styles.modalMessage}>
-        There are no available time slots for the selected clinic on the selected date.
-        Please choose a different date or clinic.
-      </Text>
-      
-      {/* Single action button */}
-      <TouchableOpacity
-        style={styles.singleActionButton}
-        onPress={() => {
-          setNoSlotsModalVisible(false);
-          navigation.navigate('Availability');
-        }}
-      >
-        <Text style={styles.singleActionButtonText}>Go to Availability</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Close button in top right corner */}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setNoSlotsModalVisible(false)}
+            >
+              <Ionicons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+
+            <View style={styles.modalHeader}>
+              <Ionicons name="warning" size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
+              <Text style={styles.modalTitle}>No Slots Available</Text>
+            </View>
+
+            <Text style={styles.modalMessage}>
+              There are no available time slots for the selected clinic on the selected date.
+              Please choose a different date or clinic.
+            </Text>
+
+            {/* Single action button */}
+            <TouchableOpacity
+              style={styles.singleActionButton}
+              onPress={() => {
+                setNoSlotsModalVisible(false);
+                navigation.navigate('Availability');
+              }}
+            >
+              <Text style={styles.singleActionButtonText}>Go to Availability</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={isPatientSelectModalVisible}
@@ -763,34 +805,34 @@ setPatientCreated(true)
           <View style={styles.inputWrapper}>
             <Text style={styles.label}>Age*</Text>
             <TextInput
-              placeholder="e.g., 2y, 6m, 15d"
-              style={styles.inputFlex}
+              placeholder="e.g., 2y, 6m, 15d, 1m 12d"
+              style={[styles.inputFlex, fieldErrors.age ? styles.errorInput : null]}
               placeholderTextColor="#9CA3AF"
               value={patientformData.age}
               onChangeText={(text) => handleInputChange("age", text)}
               editable={!patientformData.dob}
-              maxLength={5}
+              maxLength={12}
             />
             {fieldErrors.age && <Text style={styles.errorText}>{fieldErrors.age}</Text>}
           </View>
         </View>
-        <Text style={styles.label}>Mobile Number*</Text>
-        <View style={styles.row}>
-
-          <TextInput
-            placeholder="Mobile Number"
-            style={[styles.inputFlex, mobileError ? styles.errorInput : null]}
-            keyboardType="phone-pad"
-            maxLength={10}
-            value={patientformData.mobile}
-            onChangeText={(text) => handleInputChange("mobile", text)}
-            editable={!isPatientAdded}
-            onBlur={() => validateMobile(patientformData.mobile)}
-            placeholderTextColor="#9CA3AF"
-          />
+        <View style={styles.mobileContainer}>
+          <Text style={styles.label}>Mobile Number*</Text>
+          <View style={styles.row}>
+            <TextInput
+              placeholder="Mobile Number"
+              style={[styles.inputFlex, mobileError ? styles.errorInput : null]}
+              keyboardType="phone-pad"
+              maxLength={10}
+              value={patientformData.mobile}
+              onChangeText={(text) => handleInputChange("mobile", text)}
+              editable={!isPatientAdded}
+              onBlur={() => validateMobile(patientformData.mobile)}
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
           {mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
         </View>
-
         <Text style={styles.label}>Gender*</Text>
         <View style={styles.radioRow}>
           {['Male', 'Female', 'Other'].map((option) => (
@@ -806,12 +848,12 @@ setPatientCreated(true)
         </View>
 
         <TouchableOpacity
-  style={[styles.addButton, isAddPatientDisabled && styles.disabledButton]}
-  onPress={handleAddPatient}
-  disabled={isAddPatientDisabled}
->
-  <Text style={styles.addButtonText}>Add Patient</Text>
-</TouchableOpacity>
+          style={[styles.addButton, isAddPatientDisabled && styles.disabledButton]}
+          onPress={handleAddPatient}
+          disabled={isAddPatientDisabled}
+        >
+          <Text style={styles.addButtonText}>Add Patient</Text>
+        </TouchableOpacity>
 
       </View>
 
@@ -843,7 +885,7 @@ setPatientCreated(true)
             style={styles.input}
             value={formData?.department || currentuserDetails?.
               specialization?.name || ""}
-              accessibilityState={{ disabled: true }}
+            accessibilityState={{ disabled: true }}
           // onChangeText={(text) => setFormData({ ...formData, department: text })}
           />
 
@@ -1071,51 +1113,51 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   closeButton: {
-  position: 'absolute',
-  top: 15,
-  right: 15,
-  zIndex: 1,
-},
-singleActionButton: {
-  backgroundColor: '#2563EB',
-  paddingVertical: 12,
-  paddingHorizontal: 20,
-  borderRadius: 8,
-  alignItems: 'center',
-  marginTop: 20,
-  width: '100%',
-},
-singleActionButtonText: {
-  color: 'white',
-  fontWeight: '600',
-  fontSize: 16,
-},
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    zIndex: 1,
+  },
+  singleActionButton: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    width: '100%',
+  },
+  singleActionButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
   modalButtonContainer: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  width: '100%',
-  marginTop: 15,
-},
-modalSecondaryButton: {
-  backgroundColor: '#6B7280',
-  flex: 1,
-  marginRight: 10,
-},
-modalPrimaryButton: {
-  backgroundColor: '#2563EB',
-  flex: 1,
-},
-modalPrimaryButtonText: {
-  color: 'white',
-  fontWeight: '600',
-  fontSize: 14,
-},
-modalButton: {
-  paddingVertical: 12,
-  paddingHorizontal: 20,
-  borderRadius: 8,
-  alignItems: 'center',
-},
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 15,
+  },
+  modalSecondaryButton: {
+    backgroundColor: '#6B7280',
+    flex: 1,
+    marginRight: 10,
+  },
+  modalPrimaryButton: {
+    backgroundColor: '#2563EB',
+    flex: 1,
+  },
+  modalPrimaryButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
   modalButtonText: {
     color: 'white',
     fontWeight: '600',
@@ -1135,7 +1177,9 @@ modalButton: {
   errorMessage: {
     color: 'red'
   },
-
+  mobileContainer: {
+    marginBottom: 10,
+  },
   searchIcon: {
     marginRight: 6,
   },
@@ -1157,7 +1201,7 @@ modalButton: {
     fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
-    color:'black'
+    color: 'black'
   },
   patientOption: {
     paddingVertical: 10,
@@ -1216,7 +1260,7 @@ modalButton: {
     flex: 1,
   },
   row: {
-    flexDirection: 'row', marginBottom: 10,
+    flexDirection: 'row'
   },
   label: { marginBottom: 5, color: 'black' },
   radioRow: {
@@ -1317,6 +1361,3 @@ modalButton: {
     color: 'black'
   },
 });
-// Removed unused moment function as date parsing is handled inline.
-
-

@@ -88,12 +88,31 @@ const AvailabilityScreen: React.FC = () => {
   const todayShortName = fullToShortMap[todayFullName];
   const startIndex = weekdays.indexOf(todayShortName);
   const orderedDays = [...weekdays.slice(startIndex), ...weekdays.slice(0, startIndex)];
+  const getMinimumStartTime = (): number => {
+    if (!moment(fromDate).isSame(moment(), 'day')) {
+      return 1; // Minimum is 1 AM for future dates
+    }
 
+    const currentHour = moment().hour();
+    const current12Hour = currentHour > 12 ? currentHour - 12 : currentHour;
+    return current12Hour === 0 ? 12 : current12Hour; // Convert to 12-hour format
+  };
   const adjustTime = (type: 'start' | 'end', direction: 'up' | 'down', section: 'available' | 'unavailable') => {
+    const isToday = moment(fromDate).isSame(moment(), 'day');
     if (section === 'available') {
       if (type === 'start') {
         setStartTime((prev) => {
           const prevNum = parseInt(prev, 10);
+          if (isToday && direction === 'down') {
+            const currentHour = moment().hour();
+            const current12Hour = currentHour > 12 ? currentHour - 12 : currentHour;
+            const current12HourFormatted = current12Hour === 0 ? 12 : current12Hour;
+
+            // Don't allow going below current hour for today
+            if (prevNum <= current12HourFormatted) {
+              return prev; // Keep current value
+            }
+          }
           const newNum = direction === 'up' ? (prevNum === 12 ? 1 : prevNum + 1) : (prevNum === 1 ? 12 : prevNum - 1);
           return newNum.toString().padStart(2, '0');
         });
@@ -227,6 +246,18 @@ const AvailabilityScreen: React.FC = () => {
       console.error(err);
     }
   };
+
+useEffect(() => {
+  if (moment(fromDate).isSame(moment(), 'day')) {
+    const currentHour = moment().hour();
+    const current12Hour = currentHour > 12 ? currentHour - 12 : currentHour;
+    const formattedHour = (current12Hour === 0 ? 12 : current12Hour).toString().padStart(2, '0');
+    setStartTime(formattedHour);
+    
+    // Also set appropriate period
+    setStartPeriod(currentHour >= 12 ? 'PM' : 'AM');
+  }
+}, [fromDate]);
 
   useEffect(() => {
     const date = new Date().toISOString().split('T')[0];
@@ -689,8 +720,15 @@ const AvailabilityScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => adjustTime('start', 'up', 'available')} style={styles.arrowButton}>
                   <Text style={styles.arrowButton}>▲</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => adjustTime('start', 'down', 'available')} style={styles.arrowButton}>
-                  <Text style={styles.arrowButton}>▼</Text>
+                <TouchableOpacity
+                  onPress={() => adjustTime('start', 'down', 'available')}
+                  style={styles.arrowButton}
+                  disabled={moment(fromDate).isSame(moment(), 'day') && parseInt(startTime, 10) <= getMinimumStartTime()}
+                >
+                  <Text style={[
+                    styles.arrowButton,
+                    moment(fromDate).isSame(moment(), 'day') && parseInt(startTime, 10) <= getMinimumStartTime() && styles.disabledArrow
+                  ]}>▼</Text>
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
@@ -1058,6 +1096,10 @@ const styles = StyleSheet.create({
     color: '#333',
     paddingLeft: 2,
   },
+  disabledArrow: {
+  color: '#ccc',
+  opacity: 0.5,
+},
   periodButton: {
     marginLeft: 8,
     borderWidth: 1,
