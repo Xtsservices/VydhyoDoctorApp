@@ -485,6 +485,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
           <TextInput
             keyboardType="numeric"
             placeholder="Enter price"
+            placeholderTextColor="#94a3b8" 
             value={t.price != null ? String(t.price) : ""}
             onFocus={() => {
               if (!isEditable) enableEdit(t._id);

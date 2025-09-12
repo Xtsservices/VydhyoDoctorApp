@@ -60,7 +60,7 @@ const AvailabilityScreen: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [selectedDay, setSelectedDay] = useState<string>(moment().format('ddd')); // e.g., "Mon"
   const [startTime, setStartTime] = useState<string>('09');
-  const [endTime, setEndTime] = useState<string>('05');
+  const [endTime, setEndTime] = useState<string>('11');
   const [startPeriod, setStartPeriod] = useState<string>('AM');
   const [endPeriod, setEndPeriod] = useState<string>('PM');
   const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
