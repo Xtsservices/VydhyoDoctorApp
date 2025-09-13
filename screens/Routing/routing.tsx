@@ -80,7 +80,7 @@ const Routing = () => {
         <Stack.Screen name="expenditure" component={expenditure} />
 
         <Stack.Screen name="Clinic" component={Clinic} options={{ title: "Clinic Management", headerTitleAlign: "center", }} />
-        <Stack.Screen name="labs" component={labs} />
+        <Stack.Screen name="labs" component={labs} options={{ title: "Lab", headerTitleAlign: "center", }}/>
         <Stack.Screen name="LabPatientManagement" component={LabPatientManagement} />
         
         <Stack.Screen name="Billing" component={Billing} />
@@ -92,7 +92,7 @@ const Routing = () => {
         <Stack.Screen name="Reviews" component={Reviews} options={{ headerShown: false }}/>
         <Stack.Screen name="DoctorDetails" component={DoctorDetails} options={{ title: "Consulting Physician", headerTitleAlign: "center", }}/>
         <Stack.Screen name="PatientDetails" component={PatientDetails} options={{ title: "Patient Details", headerTitleAlign: "center", }}/>
-        <Stack.Screen name="Vitals" component={Vitals} options={{ title: "Vitals & Investigation", headerTitleAlign: "center", }}/>
+        <Stack.Screen name="Vitals" component={Vitals} options={{ title: "Vitals", headerTitleAlign: "center", }}/>
         <Stack.Screen name="DiagnosisMedication" component={DiagnosisMedication} options={{ title: "Diagnosis & Medication", headerTitleAlign: "center", }}/>
         <Stack.Screen name="AdviceFollowup" component={AdviceFollowup} options={{ title: "Advice & Followup", headerTitleAlign: "center", }}/>
         <Stack.Screen name="PrescriptionPreview" component={PrescriptionPreview} options={{ title: "Prescription Preview", headerTitleAlign: "center", }}/>

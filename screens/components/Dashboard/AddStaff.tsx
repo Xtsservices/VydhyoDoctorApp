@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Toast from 'react-native-toast-message';
 import { AuthPost, AuthFetch } from '../../auth/auth';
@@ -20,18 +21,18 @@ import { useSelector } from 'react-redux';
 import DropDownPicker from 'react-native-dropdown-picker';
 
 const AddStaffScreen = () => {
-   const currentuserDetails =  useSelector((state: any) => state.currentUser);
-        const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
-    const userId = currentuserDetails.userId
-      const navigation = useNavigation<any>();
-const [openRoleDropdown, setOpenRoleDropdown] = useState(false);
-const [roleItems, setRoleItems] = useState([
-  {label: "Select Role", value: ""},
-  {label: "Lab Assistant", value: "lab_assistant"},
-  {label: "Pharmacy Assistant", value: "pharmacy_assistant"},
-  {label: "Assistant", value: "assistant"},
-  {label: "Receptionist", value: "receptionist"}
-]);
+  const currentuserDetails = useSelector((state: any) => state.currentUser);
+  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy
+  const userId = currentuserDetails.userId
+  const navigation = useNavigation<any>();
+  const [openRoleDropdown, setOpenRoleDropdown] = useState(false);
+  const [roleItems, setRoleItems] = useState([
+    { label: "Select Role", value: "" },
+    { label: "Lab Assistant", value: "lab_assistant" },
+    { label: "Pharmacy Assistant", value: "pharmacy_assistant" },
+    { label: "Assistant", value: "assistant" },
+    { label: "Receptionist", value: "receptionist" }
+  ]);
 
 
   const [form, setForm] = useState({
@@ -46,7 +47,7 @@ const [roleItems, setRoleItems] = useState([
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(false);
   const onDateChange = (event: any, selectedDate: Date | undefined) => {
     setShowDatePicker(false);
     if (selectedDate) {
@@ -58,6 +59,11 @@ const [roleItems, setRoleItems] = useState([
   };
 
   const handleSubmit = async () => {
+    if (!form.firstName || !form.lastName || !form.DOB || !form.mobile || !form.email || !form.role) {
+      Alert.alert('Error', 'Please fill all required fields');
+      return;
+    }
+    setIsLoading(true);
     const staffData = {
       firstname: form.firstName,
       lastname: form.lastName,
@@ -72,7 +78,7 @@ const [roleItems, setRoleItems] = useState([
     console.log(staffData, 'Staff Data to be sent');
 
     try {
-      const token = await AsyncStorage.getItem('authToken'); 
+      const token = await AsyncStorage.getItem('authToken');
       // Replace with actual token if available
       // const userId = await AsyncStorage.getItem('userId'); // Retrieve userId from storage or context
       if (!userId) {
@@ -102,12 +108,12 @@ const [roleItems, setRoleItems] = useState([
           DOB: '',
           gender: 'Male',
           mobile: '',
-    email: '',
-    role: '',
-    access: [] as string[],
-  });
+          email: '',
+          role: '',
+          access: [] as string[],
+        });
         navigation.navigate('StaffManagement' as never); // Navigate to Staff Management screen
-      }else if (response.status === 'error') {
+      } else if (response.status === 'error') {
         // Handle error case
         const message =
           (response && 'message' in response && response.message?.message) ||
@@ -118,40 +124,42 @@ const [roleItems, setRoleItems] = useState([
     } catch (error) {
       console.error('Error creating staff:', error);
       Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  
+
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      
+
       <Text style={styles.title}>Add New Staff Member</Text>
       <Text style={styles.subtitle}>Fill in the details below to add a new staff member</Text>
 
-       <Text style={styles.label}>First Name</Text>
+      <Text style={styles.label}>First Name</Text>
 
       <TextInput
         style={styles.input}
         placeholder="Enter first name"
         value={form.firstName}
         onChangeText={(text) => setForm({ ...form, firstName: text })}
-                placeholderTextColor={'gray'}
+        placeholderTextColor={'gray'}
 
       />
 
-       <Text style={styles.label}>Last Name</Text>
+      <Text style={styles.label}>Last Name</Text>
 
 
       <TextInput
         style={styles.input}
         placeholder="Enter last name"
         value={form.lastName}
-                placeholderTextColor={'gray'}
+        placeholderTextColor={'gray'}
 
         onChangeText={(text) => setForm({ ...form, lastName: text })}
       />
-       <Text style={styles.label}>Date of Birth</Text>
+      <Text style={styles.label}>Date of Birth</Text>
 
 
       <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
@@ -182,7 +190,7 @@ const [roleItems, setRoleItems] = useState([
           </TouchableOpacity>
         ))}
       </View>
-       <Text style={styles.label}>Mobile Number</Text>
+      <Text style={styles.label}>Mobile Number</Text>
 
       <TextInput
         style={styles.input}
@@ -191,10 +199,10 @@ const [roleItems, setRoleItems] = useState([
         value={form.mobile}
         maxLength={10}
         onChangeText={(text) => setForm({ ...form, mobile: text })}
-                placeholderTextColor={'gray'}
+        placeholderTextColor={'gray'}
 
       />
-       <Text style={styles.label}>Email</Text>
+      <Text style={styles.label}>Email</Text>
 
       <TextInput
         style={styles.input}
@@ -202,71 +210,71 @@ const [roleItems, setRoleItems] = useState([
         keyboardType="email-address"
         value={form.email}
         onChangeText={(text) => setForm({ ...form, email: text })}
-                placeholderTextColor={'gray'}
+        placeholderTextColor={'gray'}
 
       />
-<Text style={styles.label}>Role</Text>
-<DropDownPicker
-  open={openRoleDropdown}
-  value={form.role}
-  items={roleItems}
-  setOpen={setOpenRoleDropdown}
-  setValue={(callback) => {
-    setForm(prev => ({...prev, role: callback(prev.role)}));
-  }}
-  setItems={setRoleItems}
-  placeholder="Select Role"
-  style={styles.dropdown}
-  dropDownContainerStyle={styles.dropdownList}
-  textStyle={{color: '#000'}}
-  zIndex={3000}
-  zIndexInverse={1000}
-/>
-<Text style={styles.label}>Access</Text>
-{[
+      <Text style={styles.label}>Role</Text>
+      <DropDownPicker
+        open={openRoleDropdown}
+        value={form.role}
+        items={roleItems}
+        setOpen={setOpenRoleDropdown}
+        setValue={(callback) => {
+          setForm(prev => ({ ...prev, role: callback(prev.role) }));
+        }}
+        setItems={setRoleItems}
+        placeholder="Select Role"
+        style={styles.dropdown}
+        dropDownContainerStyle={styles.dropdownList}
+        textStyle={{ color: '#000' }}
+        zIndex={3000}
+        zIndexInverse={1000}
+      />
+      <Text style={styles.label}>Access</Text>
+      {[
 
-      { value: "my-patients", label: "My Patients" },
-    { value: "appointments", label: "Appointments" },
-    { value: "labs", label: "Labs" },
-    { value: "dashboard", label: "Dashboard" },
-    { value: "pharmacy", label: "Pharmacy" },
-    { value: "availability", label: "Availability" },
-    { value: "staff-management", label: "Staff Management" },
-    { value: "clinic-management", label: "Clinic Management" },
-    { value: "billing", label: "Billing" },
-    { value: "reviews", label: "Reviews" },
-  // { label: 'View Patients', value: 'viewPatients' },
-  // { label: 'Pharmacy', value: 'pharmacy' },
-  // { label: 'Availability', value: 'availability' },
-  // { label: 'Dashboard', value: 'dashboard' },
-  // { label: 'Labs', value: 'labs' },
-  // { label: 'Appointments', value: 'appointments' },
-  // { label: ' New Appointments', value: 'New appointments' },
+        { value: "my-patients", label: "My Patients" },
+        { value: "appointments", label: "Appointments" },
+        { value: "labs", label: "Labs" },
+        { value: "dashboard", label: "Dashboard" },
+        { value: "pharmacy", label: "Pharmacy" },
+        { value: "availability", label: "Availability" },
+        { value: "staff-management", label: "Staff Management" },
+        { value: "clinic-management", label: "Clinic Management" },
+        { value: "billing", label: "Billing" },
+        { value: "reviews", label: "Reviews" },
+        // { label: 'View Patients', value: 'viewPatients' },
+        // { label: 'Pharmacy', value: 'pharmacy' },
+        // { label: 'Availability', value: 'availability' },
+        // { label: 'Dashboard', value: 'dashboard' },
+        // { label: 'Labs', value: 'labs' },
+        // { label: 'Appointments', value: 'appointments' },
+        // { label: ' New Appointments', value: 'New appointments' },
 
-].map((item) => (
-  <TouchableOpacity
-    key={item.value}
-    style={styles.checkboxRow}
-    onPress={() => {
-      setForm((prev) => {
-        const exists = prev.access.includes(item.value);
-        return {
-          ...prev,
-          access: exists
-            ? prev.access.filter((val) => val !== item.value)
-            : [...prev.access, item.value],
-        };
-      });
-    }}
-  >
-    <Ionicons
-      name={form.access.includes(item.value) ? 'checkbox' : 'square-outline'}
-      size={22}
-      color={form.access.includes(item.value) ? '#10B981' : '#6B7280'}
-    />
-    <Text style={styles.checkboxLabel}>{item.label}</Text>
-  </TouchableOpacity>
-))}
+      ].map((item) => (
+        <TouchableOpacity
+          key={item.value}
+          style={styles.checkboxRow}
+          onPress={() => {
+            setForm((prev) => {
+              const exists = prev.access.includes(item.value);
+              return {
+                ...prev,
+                access: exists
+                  ? prev.access.filter((val) => val !== item.value)
+                  : [...prev.access, item.value],
+              };
+            });
+          }}
+        >
+          <Ionicons
+            name={form.access.includes(item.value) ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={form.access.includes(item.value) ? '#10B981' : '#6B7280'}
+          />
+          <Text style={styles.checkboxLabel}>{item.label}</Text>
+        </TouchableOpacity>
+      ))}
 
 
 
@@ -277,8 +285,16 @@ const [roleItems, setRoleItems] = useState([
         onChangeText={(text) => setForm({ ...form, access: text })}
       /> */}
 
-      <TouchableOpacity style={styles.addButton} onPress={handleSubmit}>
-        <Text style={styles.addButtonText}>Add Staff</Text>
+      <TouchableOpacity
+        style={[styles.addButton, isLoading && styles.disabledButton]}
+        onPress={handleSubmit}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.addButtonText}>Add Staff</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -294,12 +310,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4',
     padding: 16,
   },
-  
+
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
-    color:'black'
+    color: 'black'
   },
   subtitle: {
     fontSize: 14,
@@ -319,7 +335,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
     fontWeight: '500',
-    color:'black'
+    color: 'black'
   },
   genderGroup: {
     flexDirection: 'row',
@@ -346,6 +362,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#374151',
   },
+  disabledButton: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.7,
+  },
   addButton: {
     backgroundColor: '#10B981',
     padding: 14,
@@ -368,26 +388,26 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
   },
-dropdown: {
-  borderColor: '#D1D5DB',
-  marginBottom: 16,
-  zIndex: 1000,
-},
-dropdownList: {
-  borderColor: '#D1D5DB',
-  zIndex: 1000,
-},
-checkboxRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 8,
-},
-checkboxLabel: {
-  marginLeft: 10,
-  fontSize: 16,
-  color: '#374151',
-},
-    
+  dropdown: {
+    borderColor: '#D1D5DB',
+    marginBottom: 16,
+    zIndex: 1000,
+  },
+  dropdownList: {
+    borderColor: '#D1D5DB',
+    zIndex: 1000,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  checkboxLabel: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#374151',
+  },
+
 
 
 });
