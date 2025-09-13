@@ -72,7 +72,7 @@ export default function LabsScreen() {
           <Text style={styles.title}>Labs</Text>
         </View>
         <TextInput
-          placeholder="Search by PatientId"
+          placeholder="Search by Patient Id"
           value={searchValue}
           onChangeText={(t) => setSearchValue(t.trim())}
           style={styles.search}

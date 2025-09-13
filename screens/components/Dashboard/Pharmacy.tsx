@@ -274,7 +274,7 @@ export default function Pharmacy() {
           <Text style={styles.title}>Pharmacy</Text>
         </View>
         <TextInput
-          placeholder="Search by PatientId"
+          placeholder="Search by Patient Id"
           value={searchQuery}
           onChangeText={(t) => setSearchQuery(t.trim())}
           style={styles.search}

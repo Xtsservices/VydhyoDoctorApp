@@ -26,6 +26,7 @@ const PrescriptionPreview = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { patientDetails, formData } = route.params;
+  console.log("formData in preview", formData)
 
   const currentuserDetails = useSelector((state) => state.currentUser);
   const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy;
@@ -713,24 +714,24 @@ ${data?.advice?.followUpDate ? `
             <Text style={styles.sectionTitle}>Vitals</Text>
             <View style={styles.row}>
               {(formData.vitals.bpSystolic || formData.vitals.bpDiastolic) && (
-                <Text style={{ color: 'black' }}>BP: {formData.vitals.bpSystolic}/{formData.vitals.bpDiastolic}</Text>
+                <Text style={{ color: 'black' }}>BP: {formData.vitals.bpSystolic}/{formData.vitals.bpDiastolic} mmHg</Text>
               )}
               {formData.vitals.pulseRate && (
-                <Text style={{ color: 'black' }}>Pulse: {formData.vitals.pulseRate}</Text>
+                <Text style={{ color: 'black' }}>Pulse: {formData.vitals.pulseRate} bpm</Text>
               )}
               {formData.vitals.temperature && (
-                <Text style={{ color: 'black' }}>Temp: {formData.vitals.temperature}</Text>
+                <Text style={{ color: 'black' }}>Temp: {formData.vitals.temperature} °F</Text>
               )}
             </View>
             <View style={styles.row}>
               {formData.vitals.respiratoryRate && (
-                <Text style={{ color: 'black' }}>RR: {formData.vitals.respiratoryRate}</Text>
+                <Text style={{ color: 'black' }}>RR: {formData.vitals.respiratoryRate} breaths/min</Text>
               )}
               {formData.vitals.spo2 && (
-                <Text style={{ color: 'black' }}>Spo2: {formData.vitals.spo2}</Text>
+                <Text style={{ color: 'black' }}>Spo2: {formData.vitals.spo2} %</Text>
               )}
               {formData.vitals.bmi && (
-                <Text style={{ color: 'black' }}>BMI: {formData.vitals.bmi}</Text>
+                <Text style={{ color: 'black' }}>BMI: {formData.vitals.bmi} kg/m²</Text>
               )}
             </View>
             {(formData.vitals.height || formData.vitals.weight) && (

@@ -87,40 +87,43 @@ const PreviousPrescription = () => {
         <Text style={styles.sectionContent}>{prescription.patientInfo.chiefComplaint || 'N/A'}</Text>
       </View>
 
-      {prescription.vitals && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Vitals</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>BP:</Text>
-            <Text style={styles.infoValue}>{prescription.vitals.bp || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Pulse:</Text>
-            <Text style={styles.infoValue}>{prescription.vitals.pulseRate || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Temp:</Text>
-            <Text style={styles.infoValue}>{prescription.vitals.temperature || 'N/A'}°F</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>SpO2:</Text>
-            <Text style={styles.infoValue}>{prescription.vitals.spo2 || 'N/A'}%</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Height:</Text>
-            <Text style={styles.infoValue}>{prescription.vitals.height || 'N/A'} cm</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Weight:</Text>
-            <Text style={styles.infoValue}>{prescription.vitals.weight || 'N/A'} kg</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>BMI:</Text>
-            <Text style={styles.infoValue}>{prescription.vitals.bmi || 'N/A'}</Text>
-          </View>
-        </View>
-      )}
-
+{prescription.vitals && (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>Vitals</Text>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>BP:</Text>
+      <Text style={styles.infoValue}>{prescription.vitals.bp || 'N/A'} mmHg</Text>
+    </View>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>Pulse:</Text>
+      <Text style={styles.infoValue}>{prescription.vitals.pulseRate || 'N/A'} bpm</Text>
+    </View>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>Temp:</Text>
+      <Text style={styles.infoValue}>{prescription.vitals.temperature || 'N/A'}°F</Text>
+    </View>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>SpO2:</Text>
+      <Text style={styles.infoValue}>{prescription.vitals.spo2 || 'N/A'}%</Text>
+    </View>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>Respiratory Rate:</Text>
+      <Text style={styles.infoValue}>{prescription.vitals.respiratoryRate || 'N/A'} breaths/min</Text>
+    </View>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>Height:</Text>
+      <Text style={styles.infoValue}>{prescription.vitals.height || 'N/A'} cm</Text>
+    </View>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>Weight:</Text>
+      <Text style={styles.infoValue}>{prescription.vitals.weight || 'N/A'} kg</Text>
+    </View>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>BMI:</Text>
+      <Text style={styles.infoValue}>{prescription.vitals.bmi || 'N/A'} kg/m²</Text>
+    </View>
+  </View>
+)}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Diagnosis</Text>
         <Text style={styles.sectionContent}>{prescription.diagnosis.diagnosisNote || 'N/A'}</Text>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, memo,useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import {
   ActivityIndicator,
   View,
@@ -70,19 +70,19 @@ const formatApptDateTime = (dateStr?: string, timeStr?: string) => {
   const OUT = hasTime ? 'D MMM YYYY h:mmA' : 'D MMM YYYY';
   const ISOZ = (x: string) => /T\d{2}:\d{2}|Z$|[+-]\d{2}:?\d{2}$/.test(x);
   const FDT = [
-    'DD-MMM-YYYY h:mmA','D-MMM-YYYY h:mmA','DD-MMM-YYYY h:mm A','D-MMM-YYYY h:mm A',
-    'YYYY-MM-DD HH:mm','YYYY-MM-DD h:mmA','YYYY-MM-DD h:mm A',
-    'DD/MM/YYYY h:mmA','D/M/YYYY h:mmA','DD/MM/YYYY h:mm A','D/M/YYYY h:mm A',
-    'h:mmA','h:mm A','HH:mm'
+    'DD-MMM-YYYY h:mmA', 'D-MMM-YYYY h:mmA', 'DD-MMM-YYYY h:mm A', 'D-MMM-YYYY h:mm A',
+    'YYYY-MM-DD HH:mm', 'YYYY-MM-DD h:mmA', 'YYYY-MM-DD h:mm A',
+    'DD/MM/YYYY h:mmA', 'D/M/YYYY h:mmA', 'DD/MM/YYYY h:mm A', 'D/M/YYYY h:mm A',
+    'h:mmA', 'h:mm A', 'HH:mm'
   ];
-  const FD = ['DD-MMM-YYYY','D-MMM-YYYY','YYYY-MM-DD','DD/MM/YYYY','D/M/YYYY'];
+  const FD = ['DD-MMM-YYYY', 'D-MMM-YYYY', 'YYYY-MM-DD', 'DD/MM/YYYY', 'D/M/YYYY'];
   const C = j(D, TN);
 
   if (C && ISOZ(C)) { const z = moment.parseZone(C); if (z.isValid()) return z.local().format(OUT); }
 
   let m = hasTime ? moment(C, FDT, true) : moment(D, FD, true);
   if (!m.isValid() && hasTime) m = moment(D, FDT, true);
-  if (!m.isValid() && !D && TN) m = moment(TN, ['h:mmA','h:mm A','HH:mm'], true);
+  if (!m.isValid() && !D && TN) m = moment(TN, ['h:mmA', 'h:mm A', 'HH:mm'], true);
   if (m.isValid()) return m.format(OUT);
 
   if (!hasTime && /^\d{4}-\d{2}-\d{2}$/.test(D)) return moment(D, 'YYYY-MM-DD', true).format(OUT);
@@ -150,8 +150,8 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
 
       {loading ? (
         <View style={styles.spinningContainer}>
-        <ActivityIndicator size="small" color="#007bff" />
-        <Text style={{color:'black'}}>Loading Appointments...</Text>
+          <ActivityIndicator size="small" color="#007bff" />
+          <Text style={{ color: 'black' }}>Loading Appointments...</Text>
         </View>
       ) : appointments.length > 0 ? (
         <View style={styles.table}>
@@ -189,7 +189,7 @@ const PatientAppointments = memo(({ date, doctorId, onDateChange }: PatientAppoi
           })}
         </View>
       ) : (
-        <Text style={{ textAlign: 'center', marginTop: 20, color:'black' }}>No appointments on this date.</Text>
+        <Text style={{ textAlign: 'center', marginTop: 20, color: 'black' }}>No appointments on this date.</Text>
       )}
 
       {appointments.length > 5 && !viewAll && (
@@ -241,7 +241,7 @@ const DoctorDashboard = () => {
   }>>([]);
 
   const currentuserDetails = useSelector((state: any) => state.currentUser);
-  console.log("currentuserDetails000",currentuserDetails)
+  console.log("currentuserDetails000", currentuserDetails)
   const doctorId = currentuserDetails?.role === 'doctor' ? currentuserDetails?.userId : currentuserDetails?.createdBy;
 
   /* ---------- Revenue Summary RANGE (new) ---------- */
@@ -250,14 +250,14 @@ const DoctorDashboard = () => {
   const [revenueEndDate, setRevenueEndDate] = useState<string>(today);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
 
-const pieState = useMemo(() => {
-  const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
-  if (total <= 0) {
-    const equalData = revenueSummaryData.map(d => ({ ...d, _display: 1 }));
-    return { data: equalData, accessor: '_display', absolute: false }; 
-  }
-  return { data: revenueSummaryData, accessor: 'population', absolute: true }; 
-}, [revenueSummaryData]);
+  const pieState = useMemo(() => {
+    const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
+    if (total <= 0) {
+      const equalData = revenueSummaryData.map(d => ({ ...d, _display: 1 }));
+      return { data: equalData, accessor: '_display', absolute: false };
+    }
+    return { data: revenueSummaryData, accessor: 'population', absolute: true };
+  }, [revenueSummaryData]);
 
 
   const getRevenueData = useCallback(async () => {
@@ -469,23 +469,41 @@ const pieState = useMemo(() => {
   const handleDateChange = useCallback((newDate: Date) => { setDate(newDate); }, []);
 
   const handleRangePicked = useCallback((kind: 'start' | 'end') => (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (event.type === 'dismissed') { setWhichRangePicker(null); return; }
-    const iso = fmtYYYYMMDD(selectedDate || new Date());
-    if (kind === 'start') {
-      setRevenueStartDate(iso);
-      if (revenueEndDate && moment(iso).isAfter(revenueEndDate)) {
-        Toast.show({ type: 'error', text1: 'Invalid range', text2: 'Start date cannot be after end date', position: 'top' });
-      } else if (revenueEndDate) {
-        getRevenueSummaryRange(iso, revenueEndDate);
-      }
-    } else {
-      setRevenueEndDate(iso);
-      if (revenueStartDate && moment(iso).isBefore(revenueStartDate)) {
-        Toast.show({ type: 'error', text1: 'Invalid range', text2: 'End date cannot be before start date', position: 'top' });
-      } else if (revenueStartDate) {
-        getRevenueSummaryRange(revenueStartDate, iso);
-      }
+    if (event.type === 'dismissed') {
+      setWhichRangePicker(null);
+      return;
     }
+
+    const iso = fmtYYYYMMDD(selectedDate || new Date());
+
+    if (kind === 'start') {
+      if (revenueEndDate && moment(iso).isAfter(revenueEndDate)) {
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid range',
+          text2: 'Start date cannot be after end date',
+          position: 'top'
+        });
+        setWhichRangePicker(null);
+        return;
+      }
+      setRevenueStartDate(iso);
+      getRevenueSummaryRange(iso, revenueEndDate);
+    } else {
+      if (revenueStartDate && moment(iso).isBefore(revenueStartDate)) {
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid range',
+          text2: 'End date cannot be before start date',
+          position: 'top'
+        });
+        setWhichRangePicker(null);
+        return;
+      }
+      setRevenueEndDate(iso);
+      getRevenueSummaryRange(revenueStartDate, iso);
+    }
+
     setWhichRangePicker(null);
   }, [revenueStartDate, revenueEndDate, getRevenueSummaryRange]);
 
@@ -505,108 +523,108 @@ const pieState = useMemo(() => {
 
   return (
     <View style={styles.container}>
-      {loading ?(
-         <View style={styles.spinningContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
-        <Text style={{color:'black'}}>Loading Dashboard...</Text>
-      </View>
+      {loading ? (
+        <View style={styles.spinningContainer}>
+          <ActivityIndicator size="large" color="#007bff" />
+          <Text style={{ color: 'black' }}>Loading Dashboard...</Text>
+        </View>
       ) : (
- <ScrollView style={styles.scrollView}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate('Sidebar')}>
-            <Ionicons size={32} name="menu" color="#000000" />
-          </TouchableOpacity>
-          <Text style={styles.headerText}>
-            {(() => { const hour = new Date().getHours(); if (hour < 12) return 'Good Morning,'; if (hour < 17) return 'Good Afternoon,'; return 'Good Evening,'; })()}
-            {'\n'}{currentuserDetails?.role === 'doctor' && 'Dr. '}{formData?.name}
-          </Text>
-          <View style={styles.rightIcons} />
-        </View>
-
-        {/* Add Appointment */}
-        <View style={[styles.appointmentButton, { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }]}>
-          <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddAppointment')}>
-            <Text style={styles.addButtonText}>+ Add Appointment</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Counters & Revenue totals */}
-        <View style={styles.container}>
-          <View style={styles.appointmentsCard}>
-            <View style={styles.centered}>
-              <Text style={styles.mainNumber}>{dashboardData.appointmentCounts.today}</Text>
-              {/* FIX: always visible on small devices / large font scales */}
-              <Text
-                style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
-                numberOfLines={2}
-                adjustsFontSizeToFit={true}
-                allowFontScaling={false}
-              >
-                Today's Appointments
-              </Text>
-            </View>
-            <View style={styles.gridRow}>
-              <View style={styles.newCard}>
-                 <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.newAppointments}% {dashboardData.percentageChanges.newAppointments>=0?'↑' :'↓'}</Text></View>
-                <Text style={styles.newNumber}>{dashboardData.appointmentCounts.newAppointments}</Text>
-                <Text style={styles.newLabel}>New Appointments</Text>
-              </View>
-              <View style={styles.followUpCard}>
-                <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.followUp}%{dashboardData.percentageChanges.followUp>=0?'↑' :'↓'}</Text></View>
-                <Text style={styles.followUpNumber}>{dashboardData.appointmentCounts.followUp}</Text>
-                <Text style={styles.followUpLabel}>Follow-ups</Text>
-              </View>
-            </View>
-          </View>
-          {currentuserDetails?.role === "doctor" && 
-          <View style={styles.revenueCard}>
-            <View style={styles.revenueRow}>
-              <View style={styles.revenueBoxPurple}>
-                <Text style={styles.revenueAmountPurple}>₹{todayRevenue}</Text>
-                <Text style={styles.revenueSubLabel}>Today's Revenue</Text>
-              </View>
-              <View style={styles.revenueBoxOrange}>
-                <Text style={styles.revenueAmountOrange}>₹{monthRevenue}</Text>
-                <Text style={styles.revenueSubLabelOrange}>This Month</Text>
-              </View>
-            </View>
-          </View>}
-        </View>
-
-        {/* Patient Appointments (with date) */}
-        <PatientAppointments date={date} doctorId={doctorId} onDateChange={handleDateChange} />
-
-        {/* Clinic Availability */}
-        <View style={styles.card}>
-          <Text style={styles.title}>Clinic Availability</Text>
-          <View style={styles.clinicNavContainer}>
-            <TouchableOpacity onPress={() => setCurrentClinicIndex((p) => (p > 0 ? p - 1 : clinics.length - 1))}>
-              <AntDesign name="left" size={24} color="black" />
+        <ScrollView style={styles.scrollView}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.navigate('Sidebar')}>
+              <Ionicons size={32} name="menu" color="#000000" />
             </TouchableOpacity>
-            <View style={styles.clinicInfo}>
-              <Text style={styles.clinicName}>{currentClinic?.clinicName || 'N/A'}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setCurrentClinicIndex((p) => (p < clinics.length - 1 ? p + 1 : 0))}>
-              <AntDesign name="right" size={24} color="black" />
+            <Text style={styles.headerText}>
+              {(() => { const hour = new Date().getHours(); if (hour < 12) return 'Good Morning,'; if (hour < 17) return 'Good Afternoon,'; return 'Good Evening,'; })()}
+              {'\n'}{currentuserDetails?.role === 'doctor' && 'Dr. '}{formData?.name}
+            </Text>
+            <View style={styles.rightIcons} />
+          </View>
+
+          {/* Add Appointment */}
+          <View style={[styles.appointmentButton, { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }]}>
+            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddAppointment')}>
+              <Text style={styles.addButtonText}>+ Add Appointment</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.sectionLabel}>Available Slots (Today):</Text>
-          <ScrollView horizontal contentContainerStyle={styles.slotContainer}>
-            {selectedClinicToday ? (
-              selectedClinicToday.slots
-                .filter((s) => (s as any).status ? (s as any).status === 'available' : true)
-                .slice(0, 5)
-                .map((slot) => (
-                  <View key={slot._id} style={styles.slot}>
-                    <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
+          {/* Counters & Revenue totals */}
+          <View style={styles.container}>
+            <View style={styles.appointmentsCard}>
+              <View style={styles.centered}>
+                <Text style={styles.mainNumber}>{dashboardData.appointmentCounts.today}</Text>
+                {/* FIX: always visible on small devices / large font scales */}
+                <Text
+                  style={[styles.subText, isSmallDevice && { fontSize: 14 }]}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit={true}
+                  allowFontScaling={false}
+                >
+                  Today's Appointments
+                </Text>
+              </View>
+              <View style={styles.gridRow}>
+                <View style={styles.newCard}>
+                  <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.newAppointments}% {dashboardData.percentageChanges.newAppointments >= 0 ? '↑' : '↓'}</Text></View>
+                  <Text style={styles.newNumber}>{dashboardData.appointmentCounts.newAppointments}</Text>
+                  <Text style={styles.newLabel}>New Appointments</Text>
+                </View>
+                <View style={styles.followUpCard}>
+                  <View style={styles.trendBadge}><Text style={styles.trendBadgeText}>{dashboardData.percentageChanges.followUp}%{dashboardData.percentageChanges.followUp >= 0 ? '↑' : '↓'}</Text></View>
+                  <Text style={styles.followUpNumber}>{dashboardData.appointmentCounts.followUp}</Text>
+                  <Text style={styles.followUpLabel}>Follow-ups</Text>
+                </View>
+              </View>
+            </View>
+            {currentuserDetails?.role === "doctor" &&
+              <View style={styles.revenueCard}>
+                <View style={styles.revenueRow}>
+                  <View style={styles.revenueBoxPurple}>
+                    <Text style={styles.revenueAmountPurple}>₹{todayRevenue}</Text>
+                    <Text style={styles.revenueSubLabel}>Today's Revenue</Text>
                   </View>
-                ))
-            ) : (<Text style={styles.unavailableText}>No slots available</Text>)}
-          </ScrollView>
+                  <View style={styles.revenueBoxOrange}>
+                    <Text style={styles.revenueAmountOrange}>₹{monthRevenue}</Text>
+                    <Text style={styles.revenueSubLabelOrange}>This Month</Text>
+                  </View>
+                </View>
+              </View>}
+          </View>
 
-          {/* <Text style={styles.sectionLabel}>Next Available Slots (Tomorrow):</Text>
+          {/* Patient Appointments (with date) */}
+          <PatientAppointments date={date} doctorId={doctorId} onDateChange={handleDateChange} />
+
+          {/* Clinic Availability */}
+          <View style={styles.card}>
+            <Text style={styles.title}>Clinic Availability</Text>
+            <View style={styles.clinicNavContainer}>
+              <TouchableOpacity onPress={() => setCurrentClinicIndex((p) => (p > 0 ? p - 1 : clinics.length - 1))}>
+                <AntDesign name="left" size={24} color="black" />
+              </TouchableOpacity>
+              <View style={styles.clinicInfo}>
+                <Text style={styles.clinicName}>{currentClinic?.clinicName || 'N/A'}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setCurrentClinicIndex((p) => (p < clinics.length - 1 ? p + 1 : 0))}>
+                <AntDesign name="right" size={24} color="black" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.sectionLabel}>Available Slots (Today):</Text>
+            <ScrollView horizontal contentContainerStyle={styles.slotContainer}>
+              {selectedClinicToday ? (
+                selectedClinicToday.slots
+                  .filter((s) => (s as any).status ? (s as any).status === 'available' : true)
+                  .slice(0, 5)
+                  .map((slot) => (
+                    <View key={slot._id} style={styles.slot}>
+                      <Text style={styles.slotText}>{formatSlotTime(slot.time)}</Text>
+                    </View>
+                  ))
+              ) : (<Text style={styles.unavailableText}>No slots available</Text>)}
+            </ScrollView>
+
+            {/* <Text style={styles.sectionLabel}>Next Available Slots (Tomorrow):</Text>
           <ScrollView horizontal contentContainerStyle={styles.slotContainer}>
             {selectedClinicTomorrow ? (
               selectedClinicTomorrow.slots
@@ -619,114 +637,116 @@ const pieState = useMemo(() => {
                 ))
             ) : (<Text style={styles.unavailableText}>No slots available</Text>)}
           </ScrollView> */}
-        </View>
-
-        {/* Revenue Summary (with date range like web) */}
-        {currentuserDetails?.role === 'doctor' && 
-        <View style={[styles.card, { alignItems: 'flex-start', paddingLeft: 0 }]}>
-          <View style={{ paddingHorizontal: 16, width: '100%' }}>
-            <Text style={styles.title}>Revenue Summary</Text>
-
-            {/* Range controls */}
-            <View style={styles.rangeRow}>
-              <Ionicons name="calendar" size={18} color="#1977f3" style={{ marginRight: 8 }} />
-
-              <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('start')}>
-                <Text style={styles.rangeBtnLabel}>Start</Text>
-                <Text style={styles.rangeBtnValue}>{fmtNice(revenueStartDate)}</Text>
-              </TouchableOpacity>
-
-              <Text style={{ marginHorizontal: 6, color: '#6b7280' }}>—</Text>
-
-              <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('end')}>
-                <Text style={styles.rangeBtnLabel}>End</Text>
-                <Text style={styles.rangeBtnValue}>{fmtNice(revenueEndDate)}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.clearBtn} onPress={clearRange}>
-                <Ionicons name="refresh" size={16} color="#6b7280" />
-                <Text style={styles.clearText}>Clear</Text>
-              </TouchableOpacity>
-            </View>
           </View>
 
-          {/* Native pickers (open one at a time) */}
-          {whichRangePicker === 'start' && (
-            <DateTimePicker
-              value={moment(revenueStartDate, 'YYYY-MM-DD').toDate()}
-              mode="date"
-              display="default"
-              maximumDate={new Date()}
-              onChange={handleRangePicked('start')}
-            />
-          )}
-          {whichRangePicker === 'end' && (
-            <DateTimePicker
-              value={moment(revenueEndDate, 'YYYY-MM-DD').toDate()}
-              mode="date"
-              display="default"
-              maximumDate={new Date()}
-              onChange={handleRangePicked('end')}
-            />
-          )}
+          {/* Revenue Summary (with date range like web) */}
+          {currentuserDetails?.role === 'doctor' &&
+            <View style={[styles.card, { alignItems: 'flex-start', paddingLeft: 0 }]}>
+              <View style={{ paddingHorizontal: 16, width: '100%' }}>
+                <Text style={styles.title}>Revenue Summary</Text>
 
-          {/* Pie */}
-          
-         <PieChart
-  data={pieState.data}
-  width={screenWidth - 30}
-  height={200}
-  chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
-  accessor={pieState.accessor}
-  backgroundColor={'transparent'}
-  paddingLeft={'0'}
-  hasLegend={true}
-  absolute={pieState.absolute}
-  style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
-/>
+                {/* Range controls */}
+                <View style={styles.rangeRow}>
+                  <Ionicons name="calendar" size={18} color="#1977f3" style={{ marginRight: 8 }} />
 
+                  <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('start')}>
+                    <Text style={styles.rangeBtnLabel}>Start</Text>
+                    <Text style={styles.rangeBtnValue}>{fmtNice(revenueStartDate)}</Text>
+                  </TouchableOpacity>
 
-        </View>}
+                  <Text style={{ marginHorizontal: 6, color: '#6b7280' }}>—</Text>
 
-        {/* Patient Feedback (dynamic) */}
-        <View style={styles.card}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Patient Feedback</Text>
-            <View style={styles.navButtons}>
-            </View>
-          </View>
-          <ScrollView style={{ maxHeight: 220 }}>
-            {reviews.length === 0 ? (
-              <Text style={{ color: '#6c757d' }}>No reviews yet.</Text>
-            ) : (
-              reviews.slice(0, 10).map((fb, i) => {
-                const daysAgo = fb.date ? moment(fb.date).fromNow() : '';
-                return (
-                  <View key={fb.id || i} style={styles.feedbackItem}>
-                    <View style={styles.avatarRow}>
-<View style={styles.placeholderCircle}>
-                <Text style={styles.placeholderText}>{fb.patientName[0].toUpperCase() || ""}</Text>
+                  <TouchableOpacity style={styles.rangeBtn} onPress={() => setWhichRangePicker('end')}>
+                    <Text style={styles.rangeBtnLabel}>End</Text>
+                    <Text style={styles.rangeBtnValue}>{fmtNice(revenueEndDate)}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.clearBtn} onPress={clearRange}>
+                    <Ionicons name="refresh" size={16} color="#6b7280" />
+                    <Text style={styles.clearText}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
-                      {/* <Image source={fb.avatar ? { uri: fb.avatar } : PLACEHOLDER_IMAGE} style={styles.avatar} /> */}
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.name}>{fb.patientName}</Text>
-                        <View style={styles.ratingRow}>
-                          {[...Array(Math.max(0, Math.min(5, fb.rating || 0)))].map((_, j) => (
-                            <AntDesign key={j} name="star" size={14} color="#fbbf24" />
-                          ))}
+              {/* Native pickers (open one at a time) */}
+              {whichRangePicker === 'start' && (
+                <DateTimePicker
+                  value={moment(revenueStartDate, 'YYYY-MM-DD').toDate()}
+                  mode="date"
+                  display="default"
+                  maximumDate={new Date()}
+                  onChange={handleRangePicked('start')}
+                />
+              )}
+              {whichRangePicker === 'end' && (
+                <DateTimePicker
+                  value={moment(revenueEndDate, 'YYYY-MM-DD').toDate()}
+                  mode="date"
+                  display="default"
+                  maximumDate={new Date()}
+                  onChange={handleRangePicked('end')}
+                />
+              )}
+
+              {/* Pie */}
+
+              <PieChart
+                data={pieState.data}
+                width={screenWidth - 30}
+                height={200}
+                chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
+                accessor={pieState.accessor}
+                backgroundColor={'transparent'}
+                paddingLeft={'0'}
+                hasLegend={true}
+                absolute={pieState.absolute}
+                style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
+              />
+
+
+            </View>}
+
+          {/* Patient Feedback (dynamic) */}
+          <View style={styles.card}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Patient Feedback</Text>
+              <View style={styles.navButtons}>
+              </View>
+            </View>
+            <ScrollView style={{ maxHeight: 220 }}>
+              {reviews.length === 0 ? (
+                <View style={styles.noReviewsContainer}>
+                  <Text style={styles.noReviewsText}>No reviews yet.</Text>
+                </View>
+              ) : (
+                reviews.slice(0, 10).map((fb, i) => {
+                  const daysAgo = fb.date ? moment(fb.date).fromNow() : '';
+                  return (
+                    <View key={fb.id || i} style={styles.feedbackItem}>
+                      <View style={styles.avatarRow}>
+                        <View style={styles.placeholderCircle}>
+                          <Text style={styles.placeholderText}>{fb.patientName[0].toUpperCase() || ""}</Text>
+                        </View>
+
+                        {/* <Image source={fb.avatar ? { uri: fb.avatar } : PLACEHOLDER_IMAGE} style={styles.avatar} /> */}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.name}>{fb.patientName}</Text>
+                          <View style={styles.ratingRow}>
+                            {[...Array(Math.max(0, Math.min(5, fb.rating || 0)))].map((_, j) => (
+                              <AntDesign key={j} name="star" size={14} color="#fbbf24" />
+                            ))}
+                          </View>
                         </View>
                       </View>
+                      <Text style={styles.comment}>"{fb.review}"</Text>
+                      {!!daysAgo && <Text style={styles.dateText}>{daysAgo}</Text>}
                     </View>
-                    <Text style={styles.comment}>"{fb.review}"</Text>
-                    {!!daysAgo && <Text style={styles.dateText}>{daysAgo}</Text>}
-                  </View>
-                );
-              })
-            )}
-          </ScrollView>
-        </View>
-      </ScrollView>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -734,13 +754,25 @@ const pieState = useMemo(() => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#F0FDF4' },
-   spinningContainer : {
- flex: 1,
+  spinningContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
- padding: 10,
+    padding: 10,
   },
-    placeholderCircle: {
+  noReviewsContainer: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  minHeight: 100, 
+  marginTop: -40,
+  marginBottom: -40,
+},
+noReviewsText: {
+  color: '#6c757d',
+  textAlign: 'center',
+},
+  placeholderCircle: {
     width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
     justifyContent: 'center', alignItems: 'center', marginRight: 16,
   },
@@ -826,7 +858,7 @@ const styles = StyleSheet.create({
   feedbackItem: { marginBottom: 8 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#f3f4f6' },
-  name: { fontWeight: '600', fontSize: 14 , color:'black'},
+  name: { fontWeight: '600', fontSize: 14, color: 'black' },
   ratingRow: { flexDirection: 'row', marginTop: 4, gap: 2 },
   comment: { fontSize: 14, color: '#6c757d', fontStyle: 'italic', marginBottom: 8 },
 
