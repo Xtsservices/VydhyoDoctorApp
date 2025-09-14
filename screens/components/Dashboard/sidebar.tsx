@@ -25,7 +25,6 @@ const Sidebar = () => {
   const navigation = useNavigation<any>();
   const currentuserDetails = useSelector((state: any) => state?.currentUser);
   const doctorId = currentuserDetails?.role === "doctor" ? currentuserDetails?.userId : currentuserDetails?.createdBy
-  console.log(currentuserDetails?.access, "currentuserdeils")
   const [department, setDepartment] = useState(currentuserDetails?.specialization?.name)
   const [access, setAccess] = useState<string[]>(currentuserDetails?.access); // ← You’ll receive this from backend
 
@@ -146,7 +145,6 @@ const Sidebar = () => {
 
   const dispatch = useDispatch();
   const userId = useSelector((state: any) => state.currentUser);
-  console.log('Current User ID:', userId);
 
   const fetchUserData = async () => {
     try {
@@ -156,10 +154,8 @@ const Sidebar = () => {
 
       if (storedToken) {
         const profileResponse = await AuthFetch(`users/getUser?userId=${doctorId}`, storedToken);
-        console.log('Profile response:', profileResponse);
         if (profileResponse?.status === 'success') {
           if (profileResponse?.data?.data?.role !== 'doctor') {
-            console.log(profileResponse?.data?.data?.specialization?.name, "department")
             setDepartment(profileResponse.data.data.specialization.name)
           }
           if (profileResponse.data.data.access && Array.isArray(profileResponse.data.data.access)) {
@@ -177,17 +173,12 @@ const Sidebar = () => {
 
               reviews: 'reviews',
             };
-            console.group(profileResponse.data.data.access)
 
             const transformedAccess = profileResponse.data.data.access.map(item => accessMap[item])
             setAccess(transformedAccess);
           }
 
         }
-
-
-        console.log('Access:', access);
-
         // setAccess(access);
 
         if (
@@ -214,7 +205,6 @@ const Sidebar = () => {
       }
 
     } catch (error) {
-      console.error('Error fetching user data:', error);
     }
   };
 
@@ -230,7 +220,6 @@ const Sidebar = () => {
 
       const response = await AuthPost("auth/logout", storedToken);
 
-      console.log(response, 'logoutresponse ')
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('userId');
 
@@ -250,7 +239,6 @@ const Sidebar = () => {
       navigation.navigate('Login'); // Navigate to Login screen
       return;
     } catch (error) {
-      console.error('Error during logout:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -260,9 +248,7 @@ const Sidebar = () => {
       });
     }
   };
-  console.log(currentuserDetails, 'currentuserDetails')
   const name = currentuserDetails?.role === 'doctor' ? `Dr.${currentuserDetails?.firstname} ${currentuserDetails?.lastname}` : `${currentuserDetails?.firstname} ${currentuserDetails?.lastname}`
-  console.log(department, 'departmetn')
   return (
     <ScrollView
       style={styles.scrollView}
@@ -272,7 +258,10 @@ const Sidebar = () => {
       {/* Profile Header */}
       <View style={styles.header}>
         <View style={styles.placeholderCircle}>
-          <Text style={styles.placeholderText}>{currentuserDetails?.firstname[0].toUpperCase() || ""}</Text>
+          <Text style={styles.placeholderText}>
+            {(currentuserDetails?.firstname[0]?.toUpperCase() || '') +
+              (currentuserDetails?.lastname[0]?.toUpperCase() || '')}
+          </Text>
         </View>
         {/* <Image
           source={PLACEHOLDER_IMAGE} // Replace with actual profile image
@@ -293,7 +282,7 @@ const Sidebar = () => {
         onPress={() => navigation.navigate('Profile')}
       >
         <Feather name="eye" size={16} color="#007AFF" />
-        <Text style={styles.profileButtonText}>View Public Profile</Text>
+        <Text style={styles.profileButtonText}>View Profile</Text>
       </TouchableOpacity>
 
       {

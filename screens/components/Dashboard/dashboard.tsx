@@ -241,7 +241,6 @@ const DoctorDashboard = () => {
   }>>([]);
 
   const currentuserDetails = useSelector((state: any) => state.currentUser);
-  console.log("currentuserDetails000", currentuserDetails)
   const doctorId = currentuserDetails?.role === 'doctor' ? currentuserDetails?.userId : currentuserDetails?.createdBy;
 
   /* ---------- Revenue Summary RANGE (new) ---------- */
@@ -250,15 +249,22 @@ const DoctorDashboard = () => {
   const [revenueEndDate, setRevenueEndDate] = useState<string>(today);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
 
-  const pieState = useMemo(() => {
-    const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
-    if (total <= 0) {
-      const equalData = revenueSummaryData.map(d => ({ ...d, _display: 1 }));
-      return { data: equalData, accessor: '_display', absolute: false };
-    }
-    return { data: revenueSummaryData, accessor: 'population', absolute: true };
-  }, [revenueSummaryData]);
-
+const pieState = useMemo(() => {
+  const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
+  
+  const hasData = total > 0;
+  
+  if (!hasData) {
+    // Return empty data with a special flag
+    const zeroData = revenueSummaryData.map(d => ({ 
+      ...d, 
+      population: 0 
+    }));
+    return { data: zeroData, accessor: 'population', absolute: false, hasData: false };
+  }
+  
+  return { data: revenueSummaryData, accessor: 'population', absolute: true, hasData: true };
+}, [revenueSummaryData]);
 
   const getRevenueData = useCallback(async () => {
     try {
@@ -268,7 +274,6 @@ const DoctorDashboard = () => {
       setTodayRevenue(rev.todayRevenue || 0);
       setMonthRevenue(rev.monthRevenue || 0);
     } catch (error) {
-      console.error('Fetch revenue error:', error);
     }
   }, []);
 
@@ -286,7 +291,6 @@ const DoctorDashboard = () => {
         ]);
       }
     } catch (error) {
-      console.error('Error fetching revenue summary (month):', error);
     }
   }, []);
 
@@ -320,7 +324,6 @@ const DoctorDashboard = () => {
         ]);
       }
     } catch (error) {
-      console.error('Error fetching revenue summary (range):', error);
       setRevenueSummaryData([
         { name: 'Appointment', population: 0, color: '#4285f4', legendFontColor: '#7F7F7F', legendFontSize: 12 },
         { name: 'Lab', population: 0, color: '#34a853', legendFontColor: '#7F7F7F', legendFontSize: 15 },
@@ -348,7 +351,6 @@ const DoctorDashboard = () => {
         },
       });
     } catch (error) {
-      console.error("Error fetching today's appointment count:", error);
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch appointment count', position: 'top' });
     }
   }, [doctorId]);
@@ -378,7 +380,6 @@ const DoctorDashboard = () => {
         accountNumber: maskAccountNumber(userData.bankDetails?.accountNumber || ''),
       });
     } catch (error: any) {
-      console.error('Error fetching user data:', error.message);
       Toast.show({ type: 'error', text1: 'Error', text2: error.message || 'Failed to fetch user data', position: 'top' });
     } finally {
       setLoading(false);
@@ -394,7 +395,7 @@ const DoctorDashboard = () => {
         setClinics(activeClinics || []);
       }
     } catch (err) {
-      console.error('Error fetching clinics:', err);
+
     }
   }, [doctorId]);
 
@@ -411,7 +412,7 @@ const DoctorDashboard = () => {
         setNextAvailableSlot(slotsData.filter((s) => s.date === tomorrowStr));
       }
     } catch (err) {
-      console.error('Error fetching slots:', err);
+
     }
   }, [doctorId, clinics]);
 
@@ -439,7 +440,7 @@ const DoctorDashboard = () => {
 
       setReviews(fbArr);
     } catch (err) {
-      console.error('Error fetching reviews:', err);
+
     }
   }, [doctorId]);
 
@@ -689,20 +690,25 @@ const DoctorDashboard = () => {
               )}
 
               {/* Pie */}
-
-              <PieChart
-                data={pieState.data}
-                width={screenWidth - 30}
-                height={200}
-                chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
-                accessor={pieState.accessor}
-                backgroundColor={'transparent'}
-                paddingLeft={'0'}
-                hasLegend={true}
-                absolute={pieState.absolute}
-                style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
-              />
-
+{/* Pie Chart or No Revenue Message */}
+{pieState.hasData ? (
+  <PieChart
+    data={pieState.data}
+    width={screenWidth - 30}
+    height={200}
+    chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
+    accessor={pieState.accessor}
+    backgroundColor={'transparent'}
+    paddingLeft={'0'}
+    hasLegend={true}
+    absolute={pieState.absolute}
+    style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
+  />
+) : (
+  <View style={styles.noRevenueContainer}>
+    <Text style={styles.noRevenueText}>No revenue data available</Text>
+  </View>
+)}
 
             </View>}
 
@@ -767,6 +773,17 @@ const styles = StyleSheet.create({
   minHeight: 100, 
   marginTop: -40,
   marginBottom: -40,
+},
+noRevenueContainer: {
+  width: screenWidth - 30,
+  height: 200,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+noRevenueText: {
+  color: '#6c757d',
+  fontSize: 16,
+  textAlign: 'center',
 },
 noReviewsText: {
   color: '#6c757d',

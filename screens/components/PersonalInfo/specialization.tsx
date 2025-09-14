@@ -144,9 +144,21 @@ const SpecializationDetails = () => {
   const [tempDegrees, setTempDegrees] = useState<string[]>(
     formData.degree ? formData.degree.split(',').map(deg => deg.trim()).filter(deg => deg) : []
   );
-
+  const [uploadedFiles, setUploadedFiles] = useState({
+    degrees: { name: '', file: null as { uri: string; type: string; name: string } | null },
+    certifications: { name: '', file: null as { uri: string; type: string; name: string } | null }
+  });
   const navigation = useNavigation<NavigationProp>();
-
+  const handleRemoveFile = (field: 'degrees' | 'certifications') => {
+    setFormData({
+      ...formData,
+      [field]: null
+    });
+    setUploadedFiles(prev => ({
+      ...prev,
+      [field]: { name: '', file: null }
+    }));
+  };
   const handleDegreeChange = (itemValue: string) => {
     let newDegrees: string[];
 
@@ -197,24 +209,47 @@ const SpecializationDetails = () => {
 
   const validateForm = () => {
     if (!formData.degree) {
-      Alert.alert('Error', 'Please select at least one degree.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please select at least one degree.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
       return false;
     }
     if (tempDegrees.includes('Others') && !formData.customDegree?.trim()) {
-      Alert.alert('Error', 'Please enter a custom degree for "Others".');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter a custom degree for "Others".',
+        position: 'top',
+        visibilityTime: 4000,
+      });
       return false;
     }
     if (!formData.specialization) {
-      Alert.alert('Error', 'Please select a specialization.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please select a specialization.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
       return false;
     }
     if (!formData.yearsExperience || isNaN(Number(formData.yearsExperience))) {
-      Alert.alert('Error', 'Please enter a valid number for years of experience.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter a valid number for years of experience.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
       return false;
     }
     return true;
   };
-
   const handleFileUpload = async (field: 'degrees' | 'certifications') => {
     Alert.alert(
       'Upload File',
@@ -238,12 +273,29 @@ const SpecializationDetails = () => {
                     name: asset.fileName || 'file.jpg',
                   },
                 });
+                // Set the file name for display
+                setUploadedFiles(prev => ({
+                  ...prev,
+                  [field]: {
+                    name: asset.fileName || 'file.jpg',
+                    file: {
+                      uri: asset.uri,
+                      type: asset.type || 'image/jpeg',
+                      name: asset.fileName || 'file.jpg',
+                    }
+                  }
+                }));
               } else {
-                Alert.alert('No image selected from camera');
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'No image selected from camera',
+                  position: 'top',
+                  visibilityTime: 4000,
+                });
               }
             } catch (error) {
               Alert.alert('Error', 'Camera access failed.');
-              console.error('Camera error:', error);
             }
           },
         },
@@ -265,12 +317,30 @@ const SpecializationDetails = () => {
                     name: asset.fileName || 'file.jpg',
                   },
                 });
+                // Set the file name for display
+                setUploadedFiles(prev => ({
+                  ...prev,
+                  [field]: {
+                    name: asset.fileName || 'file.jpg',
+                    file: {
+                      uri: asset.uri,
+                      type: asset.type || 'image/jpeg',
+                      name: asset.fileName || 'file.jpg',
+                    }
+                  }
+                }));
               } else {
-                Alert.alert('No image selected from gallery');
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'No image selected from gallery',
+                  position: 'top',
+                  visibilityTime: 4000,
+                });
               }
+
             } catch (error) {
               Alert.alert('Error', 'Gallery access failed.');
-              console.error('Gallery error:', error);
             }
           },
         },
@@ -290,12 +360,29 @@ const SpecializationDetails = () => {
                     name: result.name || 'file.pdf',
                   },
                 });
+                // Set the file name for display
+                setUploadedFiles(prev => ({
+                  ...prev,
+                  [field]: {
+                    name: result.name || 'file.pdf',
+                    file: {
+                      uri: result.uri,
+                      type: result.type || 'application/pdf',
+                      name: result.name || 'file.pdf',
+                    }
+                  }
+                }));
               } else {
-                Alert.alert('Error', 'Invalid file selected. Please try again.');
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'Invalid file selected. Please try again.',
+                  position: 'top',
+                  visibilityTime: 4000,
+                });
               }
             } catch (error) {
               Alert.alert('Error', 'PDF selection failed.');
-              console.error('PDF error:', error);
             }
           },
         },
@@ -307,7 +394,6 @@ const SpecializationDetails = () => {
       { cancelable: true }
     );
   };
-
   const handleNext = async () => {
     if (!validateForm()) return;
 
@@ -321,24 +407,23 @@ const SpecializationDetails = () => {
       formDataObj.append('degree', formData.degree);
       formDataObj.append('bio', formData.bio);
 
-      if (formData.degrees) {
+      if (uploadedFiles.degrees.file) {
         formDataObj.append('drgreeCertificate', {
-          uri: Platform.OS === 'android' ? formData.degrees.uri : formData.degrees.uri.replace('file://', ''),
-          type: formData.degrees.type || 'application/pdf',
-          name: formData.degrees.name || 'degree.pdf',
+          uri: Platform.OS === 'android' ? uploadedFiles.degrees.file.uri : uploadedFiles.degrees.file.uri.replace('file://', ''),
+          type: uploadedFiles.degrees.file.type || 'application/pdf',
+          name: uploadedFiles.degrees.file.name || 'degree.pdf',
         } as any);
       }
 
-      if (formData.certifications) {
+      if (uploadedFiles.certifications.file) {
         formDataObj.append('specializationCertificate', {
-          uri: Platform.OS === 'android' ? formData.certifications.uri : formData.certifications.uri.replace('file://', ''),
-          type: formData.certifications.type || 'application/pdf',
-          name: formData.certifications.name || 'certification.pdf',
+          uri: Platform.OS === 'android' ? uploadedFiles.certifications.file.uri : uploadedFiles.certifications.file.uri.replace('file://', ''),
+          type: uploadedFiles.certifications.file.type || 'application/pdf',
+          name: uploadedFiles.certifications.file.name || 'certification.pdf',
         } as any);
       }
 
       const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
-      console.log(response, "update form data");
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -359,8 +444,13 @@ const SpecializationDetails = () => {
         });
       }
     } catch (err) {
-      console.error('API error:', err);
-      Alert.alert('Error', 'Failed to update specialization details.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update specialization details.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -374,8 +464,6 @@ const SpecializationDetails = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('catalogue/degree/getAllDegrees', token);
-      console.log(response, "get all degrees");
-      console.log(response, "get all degrees");
       const data = response?.data?.data || [];
 
       // Sort alphabetically by 'name'
@@ -387,7 +475,6 @@ const SpecializationDetails = () => {
       // const data = response?.data?.data || [];
       // setDegrees(data);
     } catch (error) {
-      console.error('Error fetching degrees:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -403,10 +490,8 @@ const SpecializationDetails = () => {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
         const response = await AuthFetch('users/getUser', token);
-        console.log(response);
         if (response.data.status === 'success') {
           const userData = response.data.data;
-          console.log(userData?.specialization?.experience, "complete response");
           setFormData({
             degree: userData?.specialization?.degree || '',
             specialization: userData?.specialization?.name || '',
@@ -415,17 +500,27 @@ const SpecializationDetails = () => {
                 userData?.specialization?.experience !== null
                 ? String(userData.specialization.experience)
                 : '',
-            // yearsExperience: String(userData?.specialization?.experience || '') ,
             bio: userData?.specialization?.bio || '',
             customDegree: userData?.specialization?.customDegree || '',
             degrees: userData?.specialization?.degrees && 'uploaded successfully' || null,
             certifications: userData?.specialization?.certifications && "uploaded successfully" || null,
           });
           setTempDegrees(userData?.specialization?.degree ? userData?.specialization?.degree.split(',').map((deg: string) => deg.trim()).filter((deg: string) => deg) : []);
+
+          // Set file names if they exist
+          setUploadedFiles({
+            degrees: {
+              name: userData?.specialization?.degreesFileName || '',
+              file: userData?.specialization?.degrees ? 'uploaded successfully' : null
+            },
+            certifications: {
+              name: userData?.specialization?.certificationsFileName || '',
+              file: userData?.specialization?.certifications ? 'uploaded successfully' : null
+            }
+          });
         }
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
     }
   };
 
@@ -433,8 +528,6 @@ const SpecializationDetails = () => {
     fetchUserData();
     fetchDegrees();
   }, []);
-
-  console.log(formData, "setForm data");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -529,7 +622,7 @@ const SpecializationDetails = () => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Specialization(s)*</Text>
-              <View style={styles.input}>
+              <View style={[styles.input, styles.pickerContainer]}>
                 <Picker
                   selectedValue={formData.specialization}
                   onValueChange={(itemValue) => setFormData({ ...formData, specialization: itemValue })}
@@ -549,7 +642,10 @@ const SpecializationDetails = () => {
               <TextInput
                 style={styles.input}
                 value={formData?.yearsExperience}
-                onChangeText={(text) => setFormData({ ...formData, yearsExperience: text })}
+                onChangeText={(text) => {
+                  const filteredText = text.replace(/[^0-9]/g, '');
+                  setFormData({ ...formData, yearsExperience: filteredText });
+                }}
                 keyboardType="numeric"
                 placeholder="e.g. 5"
                 placeholderTextColor="#999"
@@ -572,6 +668,7 @@ const SpecializationDetails = () => {
               />
             </View>
 
+            {/* Degree Certificate Upload Section */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Degree Certificate(s) (Optional)</Text>
               <TouchableOpacity
@@ -582,12 +679,29 @@ const SpecializationDetails = () => {
                 <View style={styles.uploadField}>
                   <Icon name="upload" size={width * 0.05} color="#00203F" style={styles.uploadIcon} />
                   <Text style={styles.uploadText}>
-                    {formData.degrees ? 'Uploaded Successfully' : 'Upload Degree Certificate(s)'}
+                    {uploadedFiles.degrees.name ? 'Uploaded Successfully' : 'Upload Degree Certificate(s)'}
                   </Text>
                 </View>
               </TouchableOpacity>
+              {/* Display file name with remove button */}
+              {uploadedFiles.degrees.name ? (
+                <View style={styles.fileNameContainer}>
+                  <View style={styles.fileNameWrapper}>
+                    <Text style={styles.fileNameText} numberOfLines={1} ellipsizeMode="middle">
+                      {uploadedFiles.degrees.name}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveFile('degrees')}
+                    style={styles.removeButton}
+                  >
+                    <Text style={styles.removeText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </View>
 
+            {/* Specialization Certificate Upload Section */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Specialization Certificate(s) (Optional)</Text>
               <TouchableOpacity
@@ -598,10 +712,26 @@ const SpecializationDetails = () => {
                 <View style={styles.uploadField}>
                   <Icon name="upload" size={width * 0.05} color="#00203F" style={styles.uploadIcon} />
                   <Text style={styles.uploadText}>
-                    {formData.certifications ? 'Uploaded Successfully' : 'Upload Certificate(s)'}
+                    {uploadedFiles.certifications.name ? 'Uploaded Successfully' : 'Upload Certificate(s)'}
                   </Text>
                 </View>
               </TouchableOpacity>
+              {/* Display file name with remove button */}
+              {uploadedFiles.certifications.name ? (
+                <View style={styles.fileNameContainer}>
+                  <View style={styles.fileNameWrapper}>
+                    <Text style={styles.fileNameText} numberOfLines={1} ellipsizeMode="middle">
+                      {uploadedFiles.certifications.name}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveFile('certifications')}
+                    style={styles.removeButton}
+                  >
+                    <Text style={styles.removeText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </View>
           </View>
         </ScrollView>
@@ -651,6 +781,40 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 5,
   },
+  fileNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: height * 0.01,
+    paddingHorizontal: width * 0.03,
+    paddingVertical: height * 0.01,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E3F2FD',
+  },
+  fileNameWrapper: {
+    flex: 1,
+    marginRight: width * 0.02,
+  },
+  fileNameText: {
+    fontSize: width * 0.035,
+    color: '#00203F',
+  },
+  removeButton: {
+    paddingVertical: height * 0.005,
+    paddingHorizontal: width * 0.03,
+    backgroundColor: '#FFEBEE',
+    borderRadius: 4,
+    minWidth: width * 0.15,
+    alignItems: 'center',
+  },
+  removeText: {
+    color: '#D32F2F',
+    fontSize: width * 0.035,
+    fontWeight: '500',
+  },
+
   backButton: {
     padding: width * 0.02,
   },
@@ -683,13 +847,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: width * 0.03,
     backgroundColor: '#fff',
     fontSize: width * 0.04,
-    height: height * 0.06,
     color: '#333',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    justifyContent: 'center',
   },
   textArea: {
     height: height * 0.15,
@@ -699,6 +863,10 @@ const styles = StyleSheet.create({
   picker: {
     height: height * 0.06,
     color: '#333',
+  },
+    pickerContainer: {
+    minHeight: height * 0.06,
+    justifyContent: 'center', 
   },
   dropdownBox: {
     borderWidth: 1,
@@ -802,13 +970,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-  backgroundColor: '#fff',
-  borderRadius: 10,
-  padding: 20,
-  width: width * 0.9,
-  maxHeight: '80%',
-  justifyContent: 'flex-start',
-},
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: width * 0.9,
+    maxHeight: '80%',
+    justifyContent: 'flex-start',
+  },
   modalTitle: {
     fontSize: width * 0.05,
     fontWeight: '600',
@@ -844,6 +1012,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: width * 0.04,
     fontWeight: '600',
+  },
+  fileNameText: {
+    fontSize: width * 0.035,
+    color: '#00203F',
+    marginTop: height * 0.005,
+    fontStyle: 'italic',
   },
 });
 

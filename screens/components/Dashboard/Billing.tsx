@@ -476,7 +476,6 @@ const handleViewClick = async (patientKeyId: number) => {
     if (ok && Array.isArray(arr) && arr.length > 0) {
       const detailed = arr[0] as RawPatient;
       // Log the fetched data for debugging
-      console.log("Fetched patient details:", JSON.stringify(detailed, null, 2));
 
       // Update patientsRaw with the fetched data
       setPatientsRaw((prev) =>

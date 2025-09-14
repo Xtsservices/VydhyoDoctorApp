@@ -67,23 +67,17 @@ const DoctorDetails = () => {
 
 
      const fetchPrescription = async () => {
-        console.log(patientDetails?.id,"fetching prescription details")
     if (!patientDetails?.id) {
       
       return;
     }
-console.log('not loading')
     try {
          const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`pharmacy/getEPrescriptionByAppointmentId/${patientDetails.id}`, token);
 
-      console.log(response, "complete prescription details")
       if (response?.data?.success && response?.data?.data) {
         const prescription2 = response?.data?.data;
-        const prescription = response?.data?.data[0]; // Select the first prescription
-        console.log("response====",response)
-        console.log("prescription2====",prescription2)
-        console.log("prescription====",prescription)
+        const prescription = response?.data?.data[0];       
         setFormData({
           doctorInfo: {
             ...formData.doctorInfo,
@@ -133,20 +127,16 @@ console.log('not loading')
         });
       }
     } catch (error) {
-      console.error("Error fetching prescription:", error);
     }
   };
 
-  console.log(formData, "setFormData")
 
 
 const fetchDoctorData = async () => {
-      console.log(doctorId, "curetnuserid")
       try {
 const token = await AsyncStorage.getItem('authToken');
         const response = await AuthFetch(`users/getUser?userId=${doctorId}`, token);
         const userData = response.data?.data;
-  console.log(userData, "userdetais")
         if (response.data.status==='success') {
 
          
@@ -176,7 +166,6 @@ const token = await AsyncStorage.getItem('authToken');
   setAllClinics(allClinics[0])
         }
       } catch (error) {
-        console.error("Error fetching doctor data:", error);
        
       } 
     };
@@ -189,7 +178,6 @@ fetchDoctorData()
   useEffect(()=>{
 
   } ,[])
-console.log(allClinics, formData)
 useEffect(() => {
     if(currentuserDetails){
 

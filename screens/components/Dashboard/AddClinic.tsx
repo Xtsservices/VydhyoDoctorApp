@@ -102,7 +102,6 @@ const AddClinicForm = () => {
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
-        console.warn('Permission error:', err);
         return false;
       }
     }
@@ -175,7 +174,6 @@ const AddClinicForm = () => {
         });
       }
     } catch (error) {
-      console.error('Geocoding error:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -236,7 +234,6 @@ const AddClinicForm = () => {
         fetchAddress(latitude, longitude);
       },
       (error) => {
-        console.error('Location Error:', error);
 
         let errorMessage = 'Unable to fetch current location.';
         if (error.code === error.PERMISSION_DENIED) {
@@ -319,7 +316,6 @@ const AddClinicForm = () => {
         fetchAddress(latitude, longitude);
       },
       (error) => {
-        console.error('Location Retry Error:', error);
         setIsFetchingLocation(false);
 
         if (locationRetryCount < 3) {
@@ -363,11 +359,9 @@ const AddClinicForm = () => {
         setSearchResults(data.predictions);
         setShowSearchResults(true);
       } else {
-        console.log('Autocomplete failed:', data.status);
         setSearchResults([]);
       }
     } catch (error) {
-      console.error('Search error:', error);
       setSearchResults([]);
     }
   };
@@ -414,11 +408,9 @@ const AddClinicForm = () => {
         mapRef.current?.animateToRegion(newRegion, 500);
         fetchAddress(latitude, longitude);
       } else {
-        console.log('Place details failed:', data.status);
         Alert.alert('Error', 'Failed to fetch location details.');
       }
     } catch (error) {
-      console.error('Place details error:', error);
       Alert.alert('Error', 'Unable to fetch place details. Please try again.');
     } finally {
       setIsFetchingLocation(false);
@@ -501,7 +493,6 @@ const AddClinicForm = () => {
                 }
               } catch (error) {
                 Alert.alert('Error', 'Camera access failed.');
-                console.error('Camera error:', error);
               }
             },
           },
@@ -538,7 +529,6 @@ const AddClinicForm = () => {
                 }
               } catch (error) {
                 Alert.alert('Error', 'Gallery access failed.');
-                console.error('Gallery error:', error);
               }
             },
           },
@@ -551,7 +541,6 @@ const AddClinicForm = () => {
       );
     } catch (error) {
       Alert.alert('Error', 'Failed to pick file. Please try again.');
-      console.error('File upload error:', error);
     }
   };
 
@@ -633,7 +622,6 @@ const AddClinicForm = () => {
       if (labHeaderFile) formData.append('labHeader', labHeaderFile as any);
 
       const response = await UploadFiles('users/addAddressFromWeb', formData, token);
-      console.log('Add Clinic Response:', response);
 
       if (response.status === 'success') {
         Toast.show({
@@ -648,7 +636,6 @@ const AddClinicForm = () => {
         Alert.alert('Error', response.message || 'Failed to add clinic.');
       }
     } catch (error) {
-      console.error('Error adding clinic:', error);
       Alert.alert('Error', 'Failed to add clinic.');
     } finally {
       setLoading(false);

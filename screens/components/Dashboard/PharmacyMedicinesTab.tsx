@@ -107,7 +107,6 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
         throw new Error(response.message || "Error fetching medicines");
       }
     } catch (error: any) {
-      console.error("Error fetching medicines:", error);
       Toast.show({
         type: "error",
         text1: error.message || "Error fetching medicines",
@@ -166,7 +165,6 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
         throw new Error(response.message || "Failed to update medicine");
       }
     } catch (error: any) {
-      console.error("Error updating medicine:", error);
       Toast.show({
         type: "error",
         text1: error.message || "Failed to update medicine",

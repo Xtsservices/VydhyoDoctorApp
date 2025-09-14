@@ -95,17 +95,13 @@ const MyPatients: React.FC = () => {
   };
 
   const fetchPatients = async (page: number = 1, limit: number = 5) => {
-    console.log('Fetching patients with params:', { doctorId, searchText, selectedStatus, page, limit });
     if (!doctorId) return;
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-        console.error('No authentication token found');
         return;
       }
-
-      console.log(selectedStatus, "selected")
 
       const queryParams = new URLSearchParams({
         doctorId: String(doctorId),
@@ -121,7 +117,6 @@ const MyPatients: React.FC = () => {
 
       if (res.status === 'success' && res.data?.data) {
         const { appointments, pagination: apiPagination } = res.data.data;
-        console.log('API response:', appointments);
         const formattedPatients = appointments.map((appointment: any) => ({
           id: appointment.userId || appointment._id || '',
           appointmentId: appointment.appointmentId || '',
@@ -152,7 +147,6 @@ const MyPatients: React.FC = () => {
 
         setPatients(formattedPatients);
         setFilteredPatients(formattedPatients);
-        console.log('Fetched patients:', formattedPatients.length, 'from API');
         setPagination((prev) => {
           const newPagination = {
             pageSize: apiPagination.pageSize || limit,
@@ -167,15 +161,12 @@ const MyPatients: React.FC = () => {
       } else {
         setPatients([]);
         setFilteredPatients([]);
-        console.log('No data found, setting pagination to empty state');
         setPagination({ pageSize: limit, total: 0 });
         setCurrentPage(1); // Reset to page 1 on empty data
       }
     } catch (error) {
-      console.error('Error fetching patients:', error);
       setPatients([]);
       setFilteredPatients([]);
-      console.log('Setting pagination to empty state');
       setPagination({ pageSize: limit, total: 0 });
       setCurrentPage(1); // Reset to page 1 on error
     } finally {
@@ -189,12 +180,10 @@ const MyPatients: React.FC = () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
-          console.error('No authentication token found');
           return;
         }
 
         const response = await AuthFetch(`pharmacy/getPatientPrescriptionDetails/${patientId}`, token);
-        console.log('Prescription API response:', JSON.stringify(response, null, 2));
         if (response.status === 'success' && response.data?.success) {
           setPrescriptionData({
             medicines: response.data.data.medicines?.map((med: any) => ({
@@ -216,7 +205,6 @@ const MyPatients: React.FC = () => {
           throw new Error('Failed to fetch prescription details');
         }
       } catch (error) {
-        console.error('Error fetching prescription details:', error);
         setPrescriptionData({ medicines: [], tests: [] });
       } finally {
         setPrescriptionLoading(false);
@@ -227,7 +215,6 @@ const MyPatients: React.FC = () => {
 
   useEffect(() => {
     
-      console.log('Fetching patients for the first time');
       hasFetchedPatients.current = true;
       fetchPatients(1, pagination.pageSize);
     
@@ -253,7 +240,6 @@ const MyPatients: React.FC = () => {
       return true;
     });
     setFilteredPatients(filtered);
-    console.log('Filtered patients:', filtered.length, 'from', patients.length);
     setPagination((prev) => ({ ...prev, total: filtered.length }));
     // Only reset currentPage if the filter reduces the total pages below currentPage
     if (filtered.length > 0 && currentPage > Math.ceil(filtered.length / pagination.pageSize)) {
@@ -262,7 +248,6 @@ const MyPatients: React.FC = () => {
   }, [searchText, searchField, patients, pagination.pageSize]);
 
   const handlePageChange = (newPage: number) => {
-    console.log('Attempting to change to page:', newPage);
     if (newPage >= 1 && newPage <= Math.ceil(pagination.total / pagination.pageSize) && !loading) {
       setCurrentPage(newPage);
       fetchPatients(newPage, pagination.pageSize);
@@ -270,8 +255,6 @@ const MyPatients: React.FC = () => {
   };
 
   const handleViewPrescription = (patient: Patient) => {
-    console.log('Eye icon clicked for patient:', patient.id, patient.name);
-    console.log('Patient ePrescription:', JSON.stringify(patient.ePrescription, null, 2));
     setSelectedPatient(patient);
     setPrescriptionData({ medicines: [], tests: [] });
     setEPrescriptionData(patient.ePrescription || null);
@@ -333,7 +316,6 @@ const MyPatients: React.FC = () => {
   };
 
   const handleFilterSelect = (value: typeof selectedStatus) => {
-    console.log('Selected filter:', value);
     setSelectedStatus(value);
     setDropdownVisible(false);
     setCurrentPage(1);
@@ -341,8 +323,6 @@ const MyPatients: React.FC = () => {
     // fetchPatients(1, pagination.pageSize, value);
   };
 
-
-  console.log('No patients to render', selectedStatus);
   return (
     <View style={styles.container}>
       {/* <View style={styles.header}>

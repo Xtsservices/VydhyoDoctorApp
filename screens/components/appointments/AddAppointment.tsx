@@ -22,9 +22,7 @@ const AddAppointment = () => {
   const userId = useSelector((state: any) => state.currentUserId);
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy
-  console.log(currentuserDetails, "currentuserDetails")// Make sure your Redux state has currentUser with firstname and lastname
   const currentDoctor = useSelector((state: any) => state.currentDoctor);
-  console.log(currentDoctor, "currentDoctor")
 
   const [gender, setGender] = useState('Male');
   const [selectedTime, setSelectedTime] = useState('10:30 AM');
@@ -87,7 +85,6 @@ const calculateAgeFromDOB = (dob: string): string => {
     return ageText.trim();
 
   } catch (error) {
-    console.error("Error calculating age from DOB:", error);
     return "";
   }
 };
@@ -117,7 +114,6 @@ const calculateAgeFromDOB = (dob: string): string => {
     clinicName: '',
     clinicAddressId: ''
   });
-  console.log(formData, "formData")
   const [patientId, setPatientId] = useState<string>('');
   const [userData, setUserDate] = useState<any>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -192,10 +188,8 @@ const calculateAgeFromDOB = (dob: string): string => {
 
       // If date of birth is changed, automatically update the age field
       if (field === "dob") {
-        console.log("DOB value:", value); // Debug log
         if (value) {
           const calculatedAge = calculateAgeFromDOB(value);
-          console.log("Calculated age:", calculatedAge); // Debug log
           if (calculatedAge) {
             newData.age = calculatedAge;
           }
@@ -249,7 +243,6 @@ const calculateAgeFromDOB = (dob: string): string => {
   };
 
   const formatDOBToDDMMYYYY = (dobString: string): string => {
-    console.log('Formatting DOB:', dobString);
     const [month, day, year] = dobString.split('/');
     return `${day.padStart(2, '0')}-${month.padStart(2, '0')}-${year}`;
   };
@@ -260,7 +253,6 @@ const calculateAgeFromDOB = (dob: string): string => {
       if (storedToken) {
         const profileResponse = await AuthFetch(`users/getUser?userId=${doctorId}`, storedToken);
 
-        console.log('Profile:123', profileResponse);
         if (profileResponse.data.status === 'success') {
           const doctorDetails = profileResponse.data.data
           setFormData((prev) => ({
@@ -273,10 +265,8 @@ const calculateAgeFromDOB = (dob: string): string => {
 
         // Do something with profileResponse
       } else {
-        console.warn('No auth token found');
       }
     } catch (e) {
-      console.error('Error fetching profile:', e);
     }
   };
 
@@ -286,7 +276,6 @@ const calculateAgeFromDOB = (dob: string): string => {
       fetchUserProfile()
     }
     if (formData.appointmentDate && formData.clinicAddressId && doctorId) {
-      console.log("patient")
       fetchTimeSlots(formData.appointmentDate, formData.clinicAddressId);
     } else {
       setTimeSlots([]);
@@ -315,10 +304,8 @@ const calculateAgeFromDOB = (dob: string): string => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`doctor/searchUser?mobile=${searchMobile}`, token);
-      console.log(response, "selected patient details")
       if (response?.status === "success") {
         const patients = response.data.data;
-        console.log(patients, "selectedPatientDetails")
 
         if (patients.length > 0) {
           if (patients.length === 1) {
@@ -341,7 +328,6 @@ const calculateAgeFromDOB = (dob: string): string => {
         Alert.alert(response?.message?.message || "no User found PLease add patient")
       }
     } catch (error) {
-      console.error('Search error:', error);
     }
   };
 
@@ -352,7 +338,6 @@ const calculateAgeFromDOB = (dob: string): string => {
     patientCreated || !patientformData.age || !validateAge(patientformData.age.trim());
 
   const prefillPatientDetails = (patient: any) => {
-    console.log(patient, "selectedpatient")
     setpatientFormData({
       firstName: patient?.firstname,
       lastName: patient?.lastname,
@@ -390,8 +375,6 @@ const calculateAgeFromDOB = (dob: string): string => {
       return;
     }
 
-    console.log('Adding patient with data:', patientformData);
-
     try {
       const token = await AsyncStorage.getItem('authToken');
       const payload = {
@@ -403,15 +386,12 @@ const calculateAgeFromDOB = (dob: string): string => {
         age: ageToValidate || calculateAge(patientformData.dob) || "0"  // Use normalized age
       };
 
-      console.log(payload, 'payload details')
       const response = await AuthPost('doctor/createPatient', payload, token);
-      console.log(response, 'patient response')
       if (response?.status === 'success') {
         const data = response?.data
         setIsPatientAdded(true)
 
         setPatientId(data?.data?.userId || '');
-        console.log('Add patient response:', data);
         Toast.show({
           type: 'success',
           text1: 'Success',
@@ -429,12 +409,10 @@ const calculateAgeFromDOB = (dob: string): string => {
           mobile: data.data?.mobile || '',
         });
       } else {
-        console.log("123")
         Alert.alert("Error", response?.message?.message)
       }
 
     } catch (error) {
-      console.error('Add patient error:', error);
       Alert.alert('Error', 'Failed to add patient');
     }
   };
@@ -445,7 +423,6 @@ const calculateAgeFromDOB = (dob: string): string => {
     try {
       const token = await AsyncStorage.getItem('authToken');
 
-      console.log(patientformData, patientId, formData, "selectedPatientForm Data")
 
       if (!token) {
         Alert.alert('Authentication Error', 'Please login again.');
@@ -457,7 +434,6 @@ const calculateAgeFromDOB = (dob: string): string => {
       const paymentStatus = 'paid';
 
       const patientData = { ...formData, ...patientformData };
-      console.log('Creating appointment with data:', patientData);
 
       const [day, month, year] = patientData.appointmentDate.split("-");
 
@@ -481,11 +457,9 @@ const calculateAgeFromDOB = (dob: string): string => {
         appSource: "walkIn"
       };
 
-      console.log('Final appointment payload:', appointmentRequest);
 
       const response = await AuthPost('appointment/createAppointment', appointmentRequest, token);
 
-      console.log('Create appointment response:', response);
 
       if (response.status === 'success') {
         Alert.alert('Success', 'Appointment created successfully!');
@@ -502,7 +476,6 @@ const calculateAgeFromDOB = (dob: string): string => {
       }
 
     } catch (error: any) {
-      console.error('Create appointment error:', error);
       Toast.show({
         type: 'error',
         text1: 'error',
@@ -524,7 +497,6 @@ const calculateAgeFromDOB = (dob: string): string => {
     const fetchClinicAddress = async () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
-        console.log(token, doctorId, "to be sent details")
         const response = await AuthFetch(`users/getClinicAddress?doctorId=${doctorId}`, token);
 
         if (response.status === "success") {
@@ -608,7 +580,6 @@ const calculateAgeFromDOB = (dob: string): string => {
         setMessage(response?.message?.message || "*No slots Found");
       }
     } catch (error) {
-      console.error("Error fetching time slots:", error);
       setNoSlotsModalVisible(true);
       setTimeSlots([]);
     }
@@ -627,8 +598,6 @@ const calculateAgeFromDOB = (dob: string): string => {
     }
     return String(age);
   }, []);
-
-  console.log(formData, "complete form data")
 
   return (
     <ScrollView style={styles.container}>

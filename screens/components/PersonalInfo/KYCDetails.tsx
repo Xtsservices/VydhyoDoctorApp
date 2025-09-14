@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text,Modal, Pressable ,TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput,ActivityIndicator } from 'react-native';
+import { View, Text, Modal, Pressable, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput, ActivityIndicator, Linking } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { pick, types } from '@react-native-documents/picker';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-// import DocumentPicker from 'react-native-document-picker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
@@ -12,14 +11,14 @@ import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { UploadFiles, AuthFetch } from '../../auth/auth';
 
-const voter_icon = require('../../assets/aadhar.png'); // Update with actual voter ID icon if available
+const voter_icon = require('../../assets/aadhar.png');
 const pancard_icon = require('../../assets/pan.png');
 
 const { width, height } = Dimensions.get('window');
 import TermsAndConditionsModal from './TermsAndConditionsModal';
 
 const KYCDetailsScreen = () => {
-  const [voterImage, setVoterImage] = useState<{ uri: string, name: string } | null>(null);
+  const [voterImage, setVoterImage] = useState<{ uri: string, name: string, type?: string } | null>(null);
   const [panImage, setPanImage] = useState<{ uri: string, name: string, type?: string } | null>(null);
   const [voterUploaded, setVoterUploaded] = useState(false);
   const [pancardUploaded, setPancardUploaded] = useState(false);
@@ -28,8 +27,7 @@ const KYCDetailsScreen = () => {
   const [panNumber, setPanNumber] = useState('');
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
-const [modalVisible, setModalVisible] = useState(false);
-// const [termsAccepted, setTermsAccepted] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const handleVoterUpload = async () => {
     try {
@@ -38,125 +36,133 @@ const [modalVisible, setModalVisible] = useState(false);
         type: [types.pdf, types.images],
       });
       if (result.uri && result.name) {
-        setVoterImage({ uri: result.uri, name: result.name });
+        setVoterImage({
+          uri: result.uri,
+          name: result.name,
+          type: result.type || (result.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
+        });
         setVoterUploaded(true);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to pick Voter ID document. Please try again.');
-      console.error('Voter ID upload error:', error);
     }
   };
+
   const handlePancardUpload = async () => {
-  Alert.alert(
-    'Upload PAN Card',
-    'Choose an option',
-    [
-      {
-        text: 'Camera',
-        onPress: async () => {
-          try {
-            const result = await launchCamera({
-              mediaType: 'photo',
-              includeBase64: false,
-            });
-
-            if (result.assets && result.assets.length > 0) {
-              const asset = result.assets[0];
-
-              setPanImage({
-                uri: asset.uri!,
-                name: asset.fileName || 'pan_camera.jpg',
-                type: asset.type || 'image/jpeg',
+    Alert.alert(
+      'Upload PAN Card',
+      'Choose an option',
+      [
+        {
+          text: 'Camera',
+          onPress: async () => {
+            try {
+              const result = await launchCamera({
+                mediaType: 'photo',
+                includeBase64: false,
               });
-              setPancardUploaded(true);
-            } else {
-              Alert.alert('No image selected from camera');
+
+              if (result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+
+                setPanImage({
+                  uri: asset.uri!,
+                  name: asset.fileName || 'pan_camera.jpg',
+                  type: asset.type || 'image/jpeg',
+                });
+                setPancardUploaded(true);
+              } else {
+                Alert.alert('No image selected from camera');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Camera access failed.');
             }
-          } catch (error) {
-            Alert.alert('Error', 'Camera access failed.');
-            console.error('Camera error:', error);
-          }
+          },
         },
-      },
-      {
-        text: 'Gallery',
-        onPress: async () => {
-          try {
-            const result = await launchImageLibrary({
-              mediaType: 'photo',
-              includeBase64: false,
-            });
-
-            if (result.assets && result.assets.length > 0) {
-              const asset = result.assets[0];
-
-              setPanImage({
-                uri: asset.uri!,
-                name: asset.fileName || 'pan_gallery.jpg',
-                type: asset.type || 'image/jpeg',
+        {
+          text: 'Gallery',
+          onPress: async () => {
+            try {
+              const result = await launchImageLibrary({
+                mediaType: 'photo',
+                includeBase64: false,
               });
-              setPancardUploaded(true);
-            } else {
-              Alert.alert('No image selected from gallery');
-            }
-          } catch (error) {
-            Alert.alert('Error', 'Gallery access failed.');
-            console.error('Gallery error:', error);
-          }
-        },
-      },
-      {
-        text: 'Upload PDF',
-        onPress: async () => {
-          try {
-            const [res] = await pick({
-              type: [types.pdf, types.images],
-            });
 
-            if (res && res.uri && res.name) {
-              setPanImage({
-                uri: res.uri,
-                name: res.name,
-                type: res.type || 'application/pdf',
+              if (result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+
+                setPanImage({
+                  uri: asset.uri!,
+                  name: asset.fileName || 'pan_gallery.jpg',
+                  type: asset.type || 'image/jpeg',
+                });
+                setPancardUploaded(true);
+              } else {
+                Alert.alert('No image selected from gallery');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Gallery access failed.');
+            }
+          },
+        },
+        {
+          text: 'Upload PDF',
+          onPress: async () => {
+            try {
+              const [res] = await pick({
+                type: [types.pdf, types.images],
               });
-              setPancardUploaded(true);
-            } else {
-              Alert.alert('Error', 'Invalid file selected. Please try again.');
+
+              if (res && res.uri && res.name) {
+                setPanImage({
+                  uri: res.uri,
+                  name: res.name,
+                  type: res.type || 'application/pdf',
+                });
+                setPancardUploaded(true);
+              } else {
+                Alert.alert('Error', 'Invalid file selected. Please try again.');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'PDF selection failed.');
             }
-          } catch (error) {
-            Alert.alert('Error', 'PDF selection failed.');
-            console.error('PDF error:', error);
-          }
+          },
         },
-      },
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-    ],
-    { cancelable: true }
-  );
-};
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
+  const removeVoterFile = () => {
+    setVoterImage(null);
+    setVoterUploaded(false);
+  };
 
-  // const handlePancardUpload = async () => {
-  //   try {
-  //     const [result] = await pick({
-  //       mode: 'open',
-  //       type: [types.pdf, types.images],
-  //     });
-  //     if (result.uri && result.name) {
-  //       setPanImage({ uri: result.uri, name: result.name });
-  //       setPancardUploaded(true);
-  //     }
-  //   } catch (error) {
-  //     Alert.alert('Error', 'Failed to pick Pancard document. Please try again.');
-  //     console.error('Pancard upload error:', error);
-  //   }
-  // };
+  const removePanFile = () => {
+    setPanImage(null);
+    setPancardUploaded(false);
+  };
+
+  const viewFile = async (file: { uri: string, type?: string }) => {
+    try {
+      // For Android, we can try to open the file with the default app
+      const supported = await Linking.canOpenURL(file.uri);
+
+      if (supported) {
+        await Linking.openURL(file.uri);
+      } else {
+        Alert.alert('Error', 'Cannot open this file type on your device.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open the file.');
+    }
+  };
 
   const validateVoterNumber = (number: string) => {
-    // Assuming Voter ID is 10 characters (e.g., ABC1234567)
     const voterRegex = /^[A-Z]{3}[0-9]{7}$/;
     return voterRegex.test(number);
   };
@@ -167,15 +173,12 @@ const [modalVisible, setModalVisible] = useState(false);
   };
 
   const handleNext = async () => {
-    // if (!voterUploaded) {
-
     if (!termsAccepted) {
       Alert.alert('Error', 'Please accept the Terms & Conditions.');
       return;
     }
-   
+
     if (!panNumber && !pancardUploaded) {
-      console.log("panNumber", panNumber)
       try {
         setLoading(true);
         await AsyncStorage.setItem('currentStep', 'ConfirmationScreen');
@@ -187,11 +190,8 @@ const [modalVisible, setModalVisible] = useState(false);
           visibilityTime: 3000,
         });
 
-  console.log(AsyncStorage.getItem('currentStep'), "userCurren step")
-
         navigation.navigate('ConfirmationScreen');
       } catch (error) {
-        console.error('Error skipping KYC details:', error);
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -205,36 +205,21 @@ const [modalVisible, setModalVisible] = useState(false);
       return;
     }
 
-
-
-    
-    
-    // if (!pancardUploaded) {
-    //   Alert.alert('Error', 'Please upload Pancard document.');
-    //   return;
-    // }
-    // if (!voterNumber || !validateVoterNumber(voterNumber)) {
-    //   Alert.alert('Error', 'Please enter a valid 10-character Voter ID number (e.g., ABC1234567).');
-    //   return;
-    // }
     if (!panNumber || !validatePanNumber(panNumber)) {
       Alert.alert('Error', 'Please enter a valid 10-character PAN number (e.g., ABCDE1234F).');
       return;
     }
 
-
-   
-
-    // Prepare FormData for Axios POST request
     try {
-       setLoading(true);
+      setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       const userId = await AsyncStorage.getItem('userId');
-      console.log("userId", userId)
+
       if (!token) {
         Alert.alert('Error', 'Authentication token is missing. Please log in again.');
         return;
       }
+
       if (!userId) {
         Alert.alert('Error', 'User ID is missing. Please log in again.');
         return;
@@ -247,30 +232,19 @@ const [modalVisible, setModalVisible] = useState(false);
 
       const formData = new FormData();
       formData.append('userId', userId);
-      // formData.append('voterNumber', voterNumber);
       formData.append('panNumber', panNumber);
-      // if (voterImage?.uri) {
-      //   formData.append('voterFile', {
-      //     uri: voterImage.uri,
-      //     name: voterImage.name,
-      //     type: voterImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
-      //   } as any);
-      // }
+
       if (panImage?.uri) {
         formData.append('panFile', {
           uri: panImage.uri,
           name: panImage.name,
-          type: panImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+          type: panImage.type || (panImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
         } as any);
       }
 
-      console.log('Submitting KYC data: addKYCDetails', formData);
-       const response = await UploadFiles('users/addKYCDetails', formData, token);
+      const response = await UploadFiles('users/addKYCDetails', formData, token);
 
-       console.log('KYC submission response:', response);
-      
       if (response.status === 'success') {
-
         Toast.show({
           type: 'success',
           text1: 'Success',
@@ -278,51 +252,44 @@ const [modalVisible, setModalVisible] = useState(false);
           position: 'top',
           visibilityTime: 3000,
         });
+
         setTimeout(async () => {
           setLoading(false)
           await AsyncStorage.setItem('currentStep', 'ConfirmationScreen');
           navigation.navigate('ConfirmationScreen');
         }, 2000);
       } else {
-      Alert.alert(response?.message?.error ||'Error', 'Failed to submit KYC details. Please try again.');
-
-
-      setLoading(false); // 👉 Hide loader on failure
-      
+        Alert.alert(response?.message?.error || 'Error', 'Failed to submit KYC details. Please try again.');
+        setLoading(false);
+      }
+    } catch (error: any) {
+      setLoading(false);
+      const errorMessage =
+        (error?.response?.data?.message as string) ||
+        (error?.message as string) ||
+        'Failed to submit KYC details. Please try again.';
+      Alert.alert('Error', errorMessage);
     }
- } catch (error: any) {
-  console.log(error)
-  setLoading(false);
-  const errorMessage =
-    (error?.response?.data?.message as string) ||
-    (error?.message as string) ||
-    'Failed to submit KYC details. Please try again.';
-  Alert.alert('Error', errorMessage);
-  console.error('KYC submission error:', error);
-}
-
   };
 
-
-     const fetchUserData = async () => {
-
-  console.log(AsyncStorage.getItem('currentStep'), "userCurren step")
+  const fetchUserData = async () => {
 
     try {
       const token = await AsyncStorage.getItem('authToken');
-      if (!token){
+      if (!token) {
         navigation.navigate("/Login")
       }
       const response = await AuthFetch('users/getKycByUserId', token);
-      console.log(response, "123456")
+
       if (response?.data?.status === 'success') {
         const userData = response?.data?.data;
-      // console.log(userDat, "complete response")
-
-       
+        // Set existing data if available
+        if (userData.panNumber) {
+          setPanNumber(userData.panNumber);
+        }
+        // You might want to handle pre-uploaded files here as well
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -336,7 +303,6 @@ const [modalVisible, setModalVisible] = useState(false);
   useEffect(() => {
     fetchUserData();
   }, []);
-  
 
   const handleBack = () => {
     navigation.navigate('FinancialSetupScreen');
@@ -344,13 +310,13 @@ const [modalVisible, setModalVisible] = useState(false);
 
   return (
     <View style={styles.container}>
+      {loading && (
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#00203F" />
+          <Text style={styles.loaderText}>Processing...</Text>
+        </View>
+      )}
 
-         {loading && (
-                                <View style={styles.loaderOverlay}>
-                                  <ActivityIndicator size="large" color="#00203F" />
-                                  <Text style={styles.loaderText}>Processing...</Text>
-                                </View>
-                              )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -358,44 +324,38 @@ const [modalVisible, setModalVisible] = useState(false);
         </TouchableOpacity>
         <Text style={styles.headerTitle}>KYC Details</Text>
       </View>
+
       <ProgressBar currentStep={getCurrentStepIndex('KYCDetailsScreen')} totalSteps={TOTAL_STEPS} />
 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
-          {/* <Text style={styles.label}>Upload Voter ID Proof</Text>
-          <TouchableOpacity style={styles.uploadBox} onPress={handleVoterUpload}>
-            <Icon name="card-account-details" size={width * 0.08} color="#00203F" style={styles.icon} />
-            <Text style={styles.uploadText}>Upload</Text>
-            <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
-          </TouchableOpacity>
-          {voterUploaded && (
-            <Text style={styles.successText}>
-              File uploaded: {voterImage?.name || 'Voter ID uploaded successfully!'}
-            </Text>
-          )} */}
-
-          {/* <Text style={styles.label}>Enter Voter ID Number *</Text>
-          <TextInput
-            style={styles.input}
-            value={voterNumber}
-            onChangeText={setVoterNumber}
-            placeholder="Enter 10-character Voter ID Number"
-            keyboardType="default"
-            maxLength={10}
-            autoCapitalize="characters"
-          /> */}
-
-          <Text style={styles.label}>Upload Pancard Proof</Text>
+          <Text style={styles.label}>Upload PAN card Proof</Text>
           <TouchableOpacity style={styles.uploadBox} onPress={handlePancardUpload}>
             <Icon name="card" size={width * 0.08} color="#00203F" style={styles.icon} />
             <Text style={styles.uploadText}>Upload</Text>
             <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
           </TouchableOpacity>
-          {pancardUploaded && (
-            <Text style={styles.successText}>
-              File uploaded: {panImage?.name || 'Pancard uploaded successfully!'}
-            </Text>
+
+          {pancardUploaded && panImage && (
+            <View style={styles.uploadedFileContainer}>
+              <View style={styles.fileInfo}>
+                <Icon name={panImage.type?.includes('pdf') ? "file-pdf-box" : "image"} size={20} color="#00203F" />
+                <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
+                  {panImage.name}
+                </Text>
+              </View>
+
+              <View style={styles.fileActions}>
+                <TouchableOpacity onPress={() => viewFile(panImage)} style={styles.actionButton}>
+                  <Icon name="eye" size={20} color="#007AFF" />
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={removePanFile} style={styles.actionButton}>
+                  <Icon name="delete" size={20} color="#FF3B30" />
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
 
           <Text style={styles.label}>Enter PAN Number </Text>
@@ -404,29 +364,23 @@ const [modalVisible, setModalVisible] = useState(false);
             value={panNumber}
             onChangeText={setPanNumber}
             placeholder="Enter 10-character PAN Number"
+            placeholderTextColor="#9aa0a6"
             keyboardType="default"
             maxLength={10}
             autoCapitalize="characters"
           />
 
           <View style={styles.termsContainer}>
-  <TouchableOpacity onPress={() => setTermsAccepted(!termsAccepted)}>
-    <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
-      {termsAccepted && <Icon name="check" size={width * 0.04} color="#fff" />}
-    </View>
-  </TouchableOpacity>
+            <TouchableOpacity onPress={() => setTermsAccepted(!termsAccepted)}>
+              <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                {termsAccepted && <Icon name="check" size={width * 0.04} color="#fff" />}
+              </View>
+            </TouchableOpacity>
 
-  <Text style={styles.linkText} onPress={() => setModalVisible(true)}>
-    Terms & Conditions
-  </Text>
-
-  <TermsAndConditionsModal
-    modalVisible={modalVisible}
-    setModalVisible={setModalVisible}
-    setTermsAccepted={setTermsAccepted} // ✅ pass this down
-  />
-</View>
-
+            <Text style={styles.linkText} onPress={() => Linking.openURL('https://vydhyo.com/terms-and-conditions')}>
+              Terms & Conditions
+            </Text>
+          </View>
         </View>
 
         {/* Spacer to ensure content is not hidden by the Next button */}
@@ -434,7 +388,6 @@ const [modalVisible, setModalVisible] = useState(false);
       </ScrollView>
 
       {/* Next Button */}
-      
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextText}>Next</Text>
       </TouchableOpacity>
@@ -447,44 +400,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#DCFCE7',
   },
-   linkText: {
-    color: '#007BFF', // blue link color
+  linkText: {
+    color: '#007BFF',
     textDecorationLine: 'underline',
-  },
-  termsText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalContent: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 20,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 10,
-  },
-  modalBody: {
-    fontSize: 14,
-    marginBottom: 20,
-  },
-  closeButton: {
-    alignSelf: 'flex-end',
-    padding: 10,
-    backgroundColor: '#007BFF',
-    borderRadius: 5,
-  },
-  closeButtonText: {
-    color: 'white',
+    marginLeft: 8,
   },
   header: {
     flexDirection: 'row',
@@ -528,6 +447,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 10,
     color: '#000',
+    fontWeight: '500',
   },
   input: {
     borderWidth: 1,
@@ -568,12 +488,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-  successText: {
-    color: '#00203F',
-    fontSize: width * 0.035,
-    marginTop: height * 0.005,
-    marginBottom: height * 0.01,
-    textAlign: 'center',
+  uploadedFileContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  fileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  fileName: {
+    marginLeft: 10,
+    color: '#495057',
+    flexShrink: 1,
+  },
+  fileActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    padding: 5,
+    marginLeft: 10,
   },
   termsContainer: {
     flexDirection: 'row',
@@ -595,7 +537,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#00203F',
     borderColor: '#00203F',
   },
-  
   nextButton: {
     backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
@@ -617,10 +558,9 @@ const styles = StyleSheet.create({
   spacer: {
     height: height * 0.1,
   },
-  
- loaderOverlay: {
+  loaderOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -630,33 +570,6 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     marginTop: height * 0.02,
   },
-   skipButton: {
-    backgroundColor: '#fff',
-    // borderWidth: 1,
-    borderColor: '#00203F',
-  },
-  buttonText2: {
-    color: '#fff',
-    fontSize: width * 0.045,
-    fontWeight: '600',
-  },
-  skipButtonText: {
-    color: '#00203F',
-  },
-   button2: {
-    backgroundColor: '#00203F',
-    paddingVertical: height * 0.02,
-    borderRadius: 8,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: width * 0.02,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 5,
-  },
 });
 
 export default KYCDetailsScreen;
-

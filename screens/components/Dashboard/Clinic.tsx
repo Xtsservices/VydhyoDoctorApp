@@ -98,7 +98,6 @@ const ClinicManagementScreen = () => {
     const currentuserDetails =  useSelector((state: any) => state.currentUser);
     const isPhysiotherapist = currentuserDetails?.specialization?.name === "Physiotherapist";
     const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
-    console.log(currentuserDetails, "currentuserDetails")// Make sure your Redux state has currentUser with firstname and lastname
     const [form, setForm] = useState({
     id: '',
     name: '',
@@ -127,7 +126,6 @@ const ClinicManagementScreen = () => {
     labPAN: '',
     labAddress: '',
   });
-  console.log("clincccccc",clinics)
 
   type FormKeys = keyof typeof form;
 
@@ -218,7 +216,6 @@ const ClinicManagementScreen = () => {
         setClinic(formattedClinics);
       }
     } catch (error) {
-      console.error('Error fetching appointments:', error);
     } finally {
       setInitialLoading(false);
     }
@@ -373,7 +370,6 @@ const ClinicManagementScreen = () => {
                 }
               } catch (error) {
                 Alert.alert('Error', 'Camera access failed.');
-                console.error('Camera error:', error);
               }
             },
           },
@@ -410,7 +406,6 @@ const ClinicManagementScreen = () => {
                 }
               } catch (error) {
                 Alert.alert('Error', 'Gallery access failed.');
-                console.error('Gallery error:', error);
               }
             },
           },
@@ -423,7 +418,6 @@ const ClinicManagementScreen = () => {
       );
     } catch (error) {
       Alert.alert('Error', 'Failed to pick file. Please try again.');
-      console.error('File upload error:', error);
     }
   };
 
@@ -460,7 +454,6 @@ const ClinicManagementScreen = () => {
         });
       }
     } catch (error) {
-      console.error('Header upload error:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -552,7 +545,6 @@ const ClinicManagementScreen = () => {
         });
       }
     } catch (error) {
-      console.error('Error updating clinic:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -581,7 +573,6 @@ const ClinicManagementScreen = () => {
       if (pharmacyHeaderFile) formData.append('pharmacyHeader', pharmacyHeaderFile as any);
 
       const response = await UploadFiles('users/addPharmacyToClinic', formData, token);
-console.log(response, "pharmacyres")
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -603,7 +594,6 @@ console.log(response, "pharmacyres")
         // });
       }
     } catch (error) {
-      console.error('Pharmacy submit error:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -656,7 +646,6 @@ console.log(response, "pharmacyres")
         // });
       }
     } catch (error) {
-      console.error('Lab submit error:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -706,7 +695,6 @@ console.log(response, "pharmacyres")
         });
       }
     } catch (err: any) {
-      console.error('Delete error:', err);
       Toast.show({
         type: 'error',
         text1: 'Error',

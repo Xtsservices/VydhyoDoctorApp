@@ -20,7 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { REGISTRATION_STEPS } from '../utility/registrationSteps';
-import { AuthFetch , UsePost} from '../auth/auth';
+import { AuthFetch, UsePost } from '../auth/auth';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,7 +37,8 @@ const DoctorLoginScreen = () => {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
-
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
   const otpRefs = useRef<(TextInput | null)[]>(Array(6).fill(null));
 
   const validateMobile = (number: string) => /^[6-9]\d{9}$/.test(number);
@@ -49,6 +50,21 @@ const DoctorLoginScreen = () => {
     if (text && index < 5) otpRefs.current[index + 1]?.focus();
     if (!text && index > 0) otpRefs.current[index - 1]?.focus();
   };
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isOtpSent && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (resendTimer === 0) {
+      setCanResend(true);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isOtpSent, resendTimer]);
 
   const handleSendOtp = async () => {
     if (!mobile) return setMobileError('Mobile number is required');
@@ -64,7 +80,6 @@ const DoctorLoginScreen = () => {
         userType: 'doctor',
         language: 'tel',
       });
-      console.log("responselogin", response);
       if (response?.status === 'success' && response?.data) {
         setUserId(response?.data?.userId);
         setShowOtp(true);
@@ -80,11 +95,43 @@ const DoctorLoginScreen = () => {
         setIsOtpSent(false);
       }
     } catch (err) {
-      console.log('Error sending OTP:', err);
       setMobileError('Network error. Please try again.');
       setIsOtpSent(false);
     } finally {
       setSendingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!canResend) return;
+
+    setCanResend(false);
+    setResendTimer(60);
+    setOtp(['', '', '', '', '', '']);
+    setOtpError('');
+
+    try {
+      const response = await UsePost('auth/login', {
+        mobile,
+        userType: 'doctor',
+        language: 'tel',
+      });
+
+      if (response?.status === 'success' && response?.data) {
+        setUserId(response?.data?.userId);
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: response?.data?.message || 'OTP resent successfully',
+          position: 'top',
+        });
+      } else {
+        setMobileError(response?.message || 'Failed to resend OTP');
+        setCanResend(true);
+      }
+    } catch (err) {
+      setMobileError('Network error. Please try again.');
+      setCanResend(true);
     }
   };
 
@@ -123,7 +170,6 @@ const DoctorLoginScreen = () => {
         setOtpError(response?.message || 'Invalid OTP');
       }
     } catch (err) {
-      console.log('Error validating OTP:', err);
       setOtpError('Network error. Please try again.');
     } finally {
       setVerifyingOtp(false);
@@ -137,13 +183,12 @@ const DoctorLoginScreen = () => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Doctor Login</Text>
+        <Text style={styles.headerTitle}>Partner Login</Text>
       </View>
 
       <ScrollView style={styles.formContainer}>
         <View style={styles.logoContainer1}>
           <Image source={require('../assets/doclogo.png')} style={styles.doclogo} />
-          <Text style={styles.portalTitle}>VYDHYO Doctor Portal</Text>
         </View>
 
         <Text style={styles.label}>Mobile Number*</Text>
@@ -153,16 +198,23 @@ const DoctorLoginScreen = () => {
             style={styles.input}
             placeholder="9876543210"
             placeholderTextColor="#999"
-            keyboardType="phone-pad"
+            keyboardType="number-pad"
             editable={!isOtpSent}
             value={mobile}
             onChangeText={(text) => {
-              setMobile(text);
+              const digitsOnly = text.replace(/\D/g, "");
+              if (digitsOnly.length === 1 && !/[6-9]/.test(digitsOnly[0])) {
+                setMobileError("Enter a valid mobile number.");
+                setIsOtpSent(false);
+                return;
+              }
+              setMobile(digitsOnly);
               setMobileError('');
               setIsOtpSent(false);
             }}
             maxLength={10}
           />
+
         </View>
         {mobileError ? <Text style={styles.errorText}>{mobileError}</Text> : null}
 
@@ -183,6 +235,19 @@ const DoctorLoginScreen = () => {
               ))}
             </View>
             {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
+
+            {/* Add resend OTP option */}
+            <View style={styles.resendContainer}>
+              {canResend ? (
+                <TouchableOpacity onPress={handleResendOtp}>
+                  <Text style={styles.resendText}>Resend OTP</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.resendTimerText}>
+                  Resend OTP in {resendTimer} seconds
+                </Text>
+              )}
+            </View>
           </>
         )}
         <View style={styles.spacer} />
@@ -237,13 +302,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     textAlign: 'center',
-    marginTop: 30,
+    marginTop: 10,
   },
   formContainer: {
     flex: 1,
     paddingHorizontal: width * 0.05,
     paddingVertical: height * 0.03,
-    
+
   },
   logoContainer: {
     alignItems: 'center',
@@ -316,6 +381,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: height * 0.01,
     marginBottom: height * 0.02,
+  },
+  resendContainer: {
+    alignItems: 'center',
+    marginBottom: height * 0.02,
+  },
+  resendText: {
+    color: '#00203F',
+    fontSize: width * 0.035,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  resendTimerText: {
+    color: '#666',
+    fontSize: width * 0.035,
   },
   otpBox: {
     borderWidth: 1,

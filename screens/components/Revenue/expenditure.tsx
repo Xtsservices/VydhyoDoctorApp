@@ -67,14 +67,12 @@ const TotalExpenditureScreen: React.FC = () => {
       const token = await AsyncStorage.getItem('authToken');
 
       const response = await AuthFetch(`finance/getExpense/${user.userId}?startDate=${startDate}&endDate=${endDate}`, token);
-      console.log(response, "expenditure response");
 
       if (response.data.success) {
         setExpenses(response.data.data);
         setTotalExpenses(response.data.data.length);
       }
     } catch (error) {
-      console.error('Error fetching expenses:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -152,7 +150,6 @@ const TotalExpenditureScreen: React.FC = () => {
       const token = await AsyncStorage.getItem('authToken');
 
       const response = await AuthPost('finance/createExpense', payload, token);
-      console.log(response);
 
       if (response?.data?.success) {
         Toast.show({
@@ -164,7 +161,6 @@ const TotalExpenditureScreen: React.FC = () => {
         setIsModalVisible(false);
       }
     } catch (error) {
-      console.error('Error creating expense:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -179,7 +175,7 @@ const TotalExpenditureScreen: React.FC = () => {
     <View style={styles.card}>
       <Text style={styles.cardText}><Text style={styles.label}>Transaction ID:</Text> {item._id || 'N/A'}</Text>
       <Text style={styles.cardText}><Text style={styles.label}>Description:</Text> {item.description || 'N/A'}</Text>
-      <Text style={styles.cardText}><Text style={styles.label}>Date:</Text> {moment(item.date).format('DD-MMM-YYYY') || 'N/A'}</Text>
+      <Text style={styles.cardText}><Text style={styles.label}>Date:</Text> {moment(item.date).format('DD MMM, YYYY') || 'N/A'}</Text>
       <Text style={styles.cardText}><Text style={styles.label}>Amount:</Text> ₹{item.amount || 'N/A'}</Text>
       <Text style={styles.cardText}><Text style={styles.label}>Payment Method:</Text> {item.paymentMethod ? item.paymentMethod.charAt(0).toUpperCase() + item.paymentMethod.slice(1) : 'N/A'}</Text>
       <Text style={styles.cardText}><Text style={styles.label}>Notes:</Text> {item.notes || 'N/A'}</Text>
@@ -208,7 +204,7 @@ const TotalExpenditureScreen: React.FC = () => {
           onPress={() => setShowDatePicker(true)}
         >
           <Text style={styles.datePickerText}>
-            {selectedDate.format('MM/DD/YYYY')}
+            {selectedDate.format('DD-MM-YYYY')}
           </Text>
         </TouchableOpacity>
         {showDatePicker && (
@@ -241,7 +237,7 @@ const TotalExpenditureScreen: React.FC = () => {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Showing 1 to {Math.min(currentPage * 10, totalExpenses)} of {totalExpenses} entries
+          Showing {(currentPage - 1) * 10 + 1} to {Math.min(currentPage * 10, totalExpenses)} of {totalExpenses}
         </Text>
         <View style={styles.pagination}>
           <TouchableOpacity
@@ -278,7 +274,7 @@ const TotalExpenditureScreen: React.FC = () => {
                 onPress={() => setShowDatePicker(true)}
               >
                 <Text style={styles.datePickerText}>
-                  {formData.date.format('MM/DD/YYYY')}
+                  {formData.date.format('DD-MM-YYYY')}
                 </Text>
               </TouchableOpacity>
               {showDatePicker && (
@@ -330,6 +326,7 @@ const TotalExpenditureScreen: React.FC = () => {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Additional notes (optional)"
+                placeholderTextColor="#9CA3AF"
                 value={formData.notes}
                 onChangeText={text => setFormData({ ...formData, notes: text })}
                 multiline
@@ -444,14 +441,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
     flexWrap: 'wrap',
+    width: '100%', // Add this
   },
   footerText: {
     fontSize: 14,
     color: '#666666',
+    flex: 1, // Add this to make it take available space
+    marginRight: 16, // Add some spacing
   },
   pagination: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0, // Add this to prevent shrinking
   },
   pageButton: {
     backgroundColor: '#2563EB',

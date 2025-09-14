@@ -180,7 +180,6 @@ const AvailabilityScreen: React.FC = () => {
         throw new Error(response.data?.message || 'Failed to fetch clinics');
       }
     } catch (error: any) {
-      console.error('Error fetching clinics:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -243,7 +242,6 @@ const AvailabilityScreen: React.FC = () => {
         setUnAvailableSlots(unavailable);
       }
     } catch (err) {
-      console.error(err);
     }
   };
 
@@ -457,7 +455,6 @@ useEffect(() => {
         throw new Error(response.data?.message || 'Failed to update slots');
       }
     } catch (error: any) {
-      console.error('Error marking unavailable slots:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -524,7 +521,6 @@ useEffect(() => {
         position: 'top',
         visibilityTime: 3000,
       });
-      console.error(error);
     } finally {
       setIsDeletingSlots(false); // Stop loading regardless of success/error
     }

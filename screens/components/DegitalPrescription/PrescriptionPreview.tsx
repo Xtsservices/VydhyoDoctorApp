@@ -26,7 +26,6 @@ const PrescriptionPreview = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { patientDetails, formData } = route.params;
-  console.log("formData in preview", formData)
 
   const currentuserDetails = useSelector((state) => state.currentUser);
   const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy;
@@ -38,7 +37,6 @@ const PrescriptionPreview = () => {
 
   function transformEprescriptionData(formData) {
     const { doctorInfo, patientInfo, vitals, diagnosis, advice } = formData;
-    console.log("formDataaaaaaaaaaa", formData)
     const appointmentId = patientDetails?.id;
 
     return {
@@ -145,7 +143,27 @@ const PrescriptionPreview = () => {
       ? dayjs(data.doctorInfo.appointmentDate).format('DD MMM YYYY')
       : null;
     const appointmentTime = data.doctorInfo?.appointmentStartTime || null;
-
+    const formattedTime = appointmentTime
+      ? (() => {
+        try {
+          // Ensure the time is in a valid format (e.g., HH:mm or HH:mm:ss)
+          const timeParts = appointmentTime.split(':');
+          const validTime = timeParts.length >= 2
+            ? `${timeParts[0]}:${timeParts[1]}${timeParts[2] ? `:${timeParts[2]}` : ':00'}`
+            : appointmentTime;
+          return new Date(`2000-01-01T${validTime}`)
+            .toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })
+            .replace(' AM', ' AM')
+            .replace(' PM', ' PM');
+        } catch (e) {
+          return 'Time not provided';
+        }
+      })()
+      : null;
     return `
       <html>
         <head>
@@ -203,18 +221,12 @@ const PrescriptionPreview = () => {
               </div>
             `}
  
-            ${(appointmentDate || appointmentTime) ? `
-              <div class="appointment-info">
-                ${appointmentDate ? `<div>📅 Date: ${appointmentDate}</div>` : ''}
-${appointmentTime ? `<div>⏰ Time: ${new Date(`2000-01-01T${appointmentTime}`)
-          .toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          })
-          .replace('AM', ' AM')
-          .replace('PM', ' PM')}</div>` : ''}              </div>
-            ` : ''}
+       ${(appointmentDate || formattedTime) ? `
+      <div class="appointment-info">
+        ${appointmentDate ? `<div>📅 Date: ${appointmentDate}</div>` : ''}
+        ${formattedTime ? `<div>⏰ Time: ${formattedTime}</div>` : ''}
+      </div>
+    ` : ''}
  
             <div class="doctor-patient-container">
               <div class="doctor-info">
@@ -426,10 +438,8 @@ ${data?.advice?.followUpDate ? `
       await RNFS.moveFile(pdf.filePath, downloadPath);
 
       Alert.alert('Success', `Prescription saved in Downloads as ${fileName}.pdf`);
-      console.log('PDF saved at:', downloadPath);
       return { filePath: downloadPath, fileName: `${fileName}.pdf` };
     } catch (err) {
-      console.error('Download error:', err);
       Alert.alert('Error', 'Failed to generate and save PDF.');
       throw err;
     }
@@ -443,18 +453,31 @@ ${data?.advice?.followUpDate ? `
         return;
       }
       const cleanedNumber = patientNumber.replace(/\D/g, '');
+      const formattedTime = formData.doctorInfo?.appointmentStartTime
+        ? (() => {
+          try {
+            const timeParts = formData.doctorInfo.appointmentStartTime.split(':');
+            const validTime = timeParts.length >= 2
+              ? `${timeParts[0]}:${timeParts[1]}${timeParts[2] ? `:${timeParts[2]}` : ':00'}`
+              : formData.doctorInfo.appointmentStartTime;
+            return new Date(`2000-01-01T${validTime}`)
+              .toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              })
+              .replace(' AM', ' AM')
+              .replace(' PM', ' PM');
+          } catch (e) {
+            return 'Time not provided';
+          }
+        })()
+        : 'N/A';
       const message = `Here's my medical prescription from ${selectedClinic?.clinicName || "Clinic"}\n` +
         `Patient: ${formData.patientInfo?.patientName || "N/A"}\n` +
         `Doctor: ${formData.doctorInfo?.doctorName || "N/A"}\n` +
-        `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}` +
-        `${formData.doctorInfo?.appointmentStartTime ? `\nTime: ${new Date(`2000-01-01T${formData.doctorInfo.appointmentStartTime}`)
-          .toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          })
-          .replace('AM', ' AM')
-          .replace('PM', ' PM')}` : ''}`;
+        `Date: ${formData.doctorInfo?.appointmentDate ? dayjs(formData.doctorInfo.appointmentDate).format('DD MMM YYYY') : "N/A"}\n` +
+        `Time: ${formattedTime}`;
       let fileUri = pdfPath;
       if (Platform.OS === 'android') {
         fileUri = `file://${pdfPath}`;
@@ -474,7 +497,6 @@ ${data?.advice?.followUpDate ? `
         }
       });
     } catch (error) {
-      console.error('Error sharing via WhatsApp:', error);
       Toast.show({ type: 'error', text1: 'Failed to share prescription' });
     }
   };
@@ -486,11 +508,9 @@ ${data?.advice?.followUpDate ? `
       if (type === 'save') setIsSaving(true);
 
       const formattedData = transformEprescriptionData(formData, type);
-      console.log(formattedData, "123")
       const token = await AsyncStorage.getItem('authToken');
 
       const response = await AuthPost('pharmacy/addPrescription', formattedData, token);
-      console.log(response, "pre response")
 
       const statusVal = response?.status ?? response?.data?.statusCode ?? response?.data?.status;
       const isOk = statusVal === 201 || statusVal === 200 || statusVal === 'success';
@@ -503,8 +523,8 @@ ${data?.advice?.followUpDate ? `
           const successMessage = type === 'save'
             ? 'Prescription saved successfully'
             : 'Prescription successfully added';
-          Alert.alert('success', successMessage)
-          // Toast.show({ type: 'success', text1: successMessage });
+          // Alert.alert('success', successMessage)
+          Toast.show({ type: 'success', text1: successMessage });
         }
 
         if (hasWarnings) {
@@ -520,7 +540,6 @@ ${data?.advice?.followUpDate ? `
         if (type === 'whatsapp' || type === 'share') {
           const prescriptionId = response?.data?.prescriptionId;
           if (!prescriptionId) {
-            console.error('Prescription ID is missing');
             Toast.show({ type: 'error', text1: 'Failed to upload attachment: Prescription ID missing' });
             return;
           }
@@ -563,10 +582,9 @@ ${data?.advice?.followUpDate ? `
                 uploadResponse?.data?.message ||
                 uploadResponse?.data?.error ||
                 'Failed to upload attachment';
-              Toast.show({ type: 'error', text1: apiMsg });
+              Toast.show({ type: 'success', text1: apiMsg });
             }
           } catch (uploadErr) {
-            console.error('Upload error:', uploadErr);
             Toast.show({ type: 'error', text1: 'Failed to upload attachment' });
           }
           return;
@@ -588,7 +606,6 @@ ${data?.advice?.followUpDate ? `
         // Toast.show({ type: 'error', text1: response?.data?.message || 'Failed to add prescription' });
       }
     } catch (error) {
-      console.error('Error in handlePrescriptionAction:', error);
       Toast.show({ type: 'error', text1: error?.response?.data?.message || 'Failed to add prescription' });
     } finally {
       setIsSaving(false);
@@ -599,13 +616,11 @@ ${data?.advice?.followUpDate ? `
   useEffect(() => {
     const fetchClinics = async () => {
       if (!doctorId) {
-        console.error("No doctorId available. User:", currentuserDetails);
         setError("No doctor ID available");
         return;
       }
 
       try {
-        console.log("Fetching clinics for doctorId:", doctorId);
         const token = await AsyncStorage.getItem('authToken');
         const response = await AuthFetch(`users/getClinicAddress?doctorId=${doctorId}`, token);
 
@@ -617,7 +632,6 @@ ${data?.advice?.followUpDate ? `
           setError("Failed to fetch clinics");
         }
       } catch (err) {
-        console.error("Fetch error:", err);
         setError(err.message);
       }
     };
@@ -626,47 +640,41 @@ ${data?.advice?.followUpDate ? `
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-{/* Replace your entire header section with this code */}
-<View style={[
-  styles.header,
-  !selectedClinic?.headerImage && styles.headerNoImage,
-  selectedClinic?.headerImage && styles.headerWithImageBackground
-]}>
-  {selectedClinic?.headerImage ? (
-    <Image
-      source={{ uri: selectedClinic.headerImage }}
-      style={styles.headerImage}
-      resizeMode="contain"
-    />
-  ) : (
-    <View style={styles.headerContent}>
-      <Text style={styles.headerClinicName}>
-        {selectedClinic?.clinicName || 'Clinic Name'}
-      </Text>
-      <View style={styles.headerContactInfo}>
-        <Text style={styles.headerContactText}>
-          📍 {selectedClinic?.address || 'Address not provided'}
-        </Text>
-        <Text style={styles.headerContactText}>
-          📞 {selectedClinic?.mobile || 'Contact not provided'}
-        </Text>
+      {/* Replace your entire header section with this code */}
+      <View style={[
+        styles.header,
+        !selectedClinic?.headerImage && styles.headerNoImage,
+        selectedClinic?.headerImage && styles.headerWithImageBackground
+      ]}>
+        {selectedClinic?.headerImage ? (
+          <Image
+            source={{ uri: selectedClinic.headerImage }}
+            style={styles.headerImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={styles.headerContent}>
+            <Text style={styles.headerClinicName}>
+              {selectedClinic?.clinicName || 'Clinic Name'}
+            </Text>
+            <View style={styles.headerContactInfo}>
+              <Text style={styles.headerContactText}>
+                📍 {selectedClinic?.address || 'Address not provided'}
+              </Text>
+              <Text style={styles.headerContactText}>
+                📞 {selectedClinic?.mobile || 'Contact not provided'}
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
-    </View>
-  )}
-</View>
 
       {(formData.doctorInfo?.appointmentDate || formData.doctorInfo?.appointmentStartTime) && (
         <View style={styles.appointmentSection}>
           {formData.doctorInfo?.appointmentStartTime && (
             <Text style={styles.appointmentText}>
-              Time: {new Date(`2000-01-01T${formData.doctorInfo.appointmentStartTime}`)
-                .toLocaleTimeString('en-US', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true
-                })
-                .replace('AM', ' AM')
-                .replace('PM', ' PM')}
+              Time: {`${formData.doctorInfo.appointmentStartTime}`}
+                
             </Text>
           )}
         </View>
@@ -878,6 +886,13 @@ ${data?.advice?.followUpDate ? `
           </Text>
         </TouchableOpacity>
       </View>
+      <TouchableOpacity
+  style={styles.homeButton}
+  activeOpacity={0.8}
+  onPress={() => navigation.navigate('DoctorDashboard')}
+>
+  <Text style={styles.homeButtonText}>Go To Dashboard</Text>
+</TouchableOpacity>
     </ScrollView>
   );
 };
@@ -896,34 +911,48 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
   },
-    headerContent: {
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: '100%',
-},
-headerClinicName: {
-  fontSize: 18,
+  homeButtonText: {
+  color: 'white',
   fontWeight: 'bold',
-  color: 'white',
-  marginBottom: 8,
-  textAlign: 'center',
+  alignItems:'center',
+  justifyContent:'center',
+  textAlign:'center'
 },
-headerContactInfo: {
-  alignItems: 'center',
-},
-headerContactText: {
-  fontSize: 14,
-  color: 'white',
-  textAlign: 'center',
-  marginBottom: 4,
-},
-headerImage: {
-  width: '100%',
-  height: 120,
-  resizeMode: 'contain',
-},
+homeButton: {
+    backgroundColor: '#000000ff',
+    paddingVertical: 10,
+    marginBottom: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  headerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  headerClinicName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  headerContactInfo: {
+    alignItems: 'center',
+  },
+  headerContactText: {
+    fontSize: 14,
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  headerImage: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'contain',
+  },
   headerNoImage: {
-    backgroundColor: '#007bff', 
+    backgroundColor: '#007bff',
   },
   headerNoImagePadding: {
     padding: 16,

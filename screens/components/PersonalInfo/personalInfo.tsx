@@ -126,9 +126,7 @@ const PersonalInfoScreen: React.FC = () => {
       { mediaType: 'photo' },
       (response: import('react-native-image-picker').ImagePickerResponse) => {
         if (response.didCancel) {
-          console.log('User cancelled image picker');
         } else if (response.errorCode) {
-          console.log('Image picker error: ', response.errorMessage);
         } else if (
           response.assets &&
           response.assets[0] &&
@@ -205,7 +203,6 @@ const PersonalInfoScreen: React.FC = () => {
 
     if (!validateForm()) {
        setLoading(true);
-       console.log('Form data after validation:', formData);
       try {
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
@@ -233,11 +230,8 @@ const PersonalInfoScreen: React.FC = () => {
           spokenLanguage: formData.spokenLanguages,
         };
 
-        console.log('Form data to be sent:', body);
-
         const response = await AuthPut('users/updateUser', body, token);
 
-        console.log('Response from updateUser:', response);
         if (response?.status === 'success') {
           Toast.show({
             type: 'success',
@@ -247,7 +241,6 @@ const PersonalInfoScreen: React.FC = () => {
             visibilityTime: 3000,
           });
          setLoading(false);
-          console.log('Form data sent successfully:', body);
           await AsyncStorage.setItem('currentStep', 'Specialization');
           navigation.navigate('Specialization');
         } else {
@@ -261,11 +254,9 @@ const PersonalInfoScreen: React.FC = () => {
             position: 'top',
             visibilityTime: 3000,
           });
-          console.log('Error response from updateUser:', response);
            setLoading(false);
         }
         } catch (error) {
-        console.error('Error updating profile:', error);
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -316,9 +307,7 @@ const PersonalInfoScreen: React.FC = () => {
           throw new Error(response.data.message || 'Failed to fetch user data');
         }
         const userData = response.data.data;
-console.log(userData, "userDetails")
 
-        // Format phone number to match +XX XXX XXX XXXX
         setFormData({
           firstName:userData.firstname || '',
           lastName: userData.lastname || '',
@@ -338,7 +327,6 @@ console.log(userData, "userDetails")
       } catch (error: any) {
         // setLoading(false);
 
-        console.error('Error fetching user data:', error.message);
       }finally {
         setLoading(false); // Stop loading regardless of success or failure
       }
@@ -349,8 +337,6 @@ console.log(userData, "userDetails")
   useEffect(() => {
     fetchUserData();
    }, []);
-
-   console.log(formData)
 
   return (
     <ScrollView>
@@ -376,26 +362,10 @@ console.log(userData, "userDetails")
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
 <KeyboardAvoidingView
           style={{ flex: 1 }}
-          // behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          // keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
         >
-           <ScrollView style={styles.formContainer}>
-        {/* <View style={styles.photoContainer}>
-          <TouchableOpacity onPress={handleImagePick}>
-            <View style={styles.profilePhotoWrapper}>
-              <Image source={formData.profilePhoto} style={styles.profilePhoto} />
-              <Icon
-                name="camera"
-                size={20}
-                color="#00203F"
-                style={styles.cameraIcon}
-              />
-            </View>
-            <Text style={styles.changePhotoText}>Tap to change photo</Text>
-          </TouchableOpacity>
-        </View> */}
+          <ScrollView style={styles.formContainer}>
 
-        <Text style={styles.label}>First Name</Text>
+            <Text style={styles.label}>First Name*</Text>
         <TextInput
           style={styles.input}
           value={formData.firstName}
@@ -410,7 +380,7 @@ console.log(userData, "userDetails")
           <Text style={styles.errorText}>{errors.firstName}</Text>
         ) : null}
 
-        <Text style={styles.label}>Last Name</Text>
+        <Text style={styles.label}>Last Name*</Text>
         <TextInput
           style={styles.input}
           value={formData.lastName}
@@ -425,7 +395,7 @@ console.log(userData, "userDetails")
           <Text style={styles.errorText}>{errors.lastName}</Text>
         ) : null}
 
-        <Text style={styles.label}>Medical Registration Number</Text>
+        <Text style={styles.label}>Medical Registration Number*</Text>
         <TextInput
           style={styles.input}
           value={formData.medicalRegNumber}
@@ -442,7 +412,7 @@ console.log(userData, "userDetails")
           <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
         ) : null}
 
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.label}>Email*</Text>
         <TextInput
           style={styles.input}
           value={formData.email}
@@ -459,7 +429,7 @@ console.log(userData, "userDetails")
           <Text style={styles.errorText}>{errors.email}</Text>
         ) : null}
 
-        <Text style={styles.label}>Gender</Text>
+        <Text style={styles.label}>Gender*</Text>
         <View style={styles.input}>
           <Picker
             selectedValue={formData.gender}
@@ -479,161 +449,9 @@ console.log(userData, "userDetails")
         {errors.gender ? (
           <Text style={styles.errorText}>{errors.gender}</Text>
         ) : null}
+       
 
-        {/* <Text style={styles.label}>Date of Birth</Text>
-        <TouchableOpacity
-          onPress={() => setShowDatePicker(true)}
-          style={styles.input}
-        >
-          <Text style={styles.dateText}>
-            {formData.dateOfBirth
-              ? formData.dateOfBirth.toLocaleDateString('en-US', {
-                  month: '2-digit',
-                  day: '2-digit',
-                  year: 'numeric',
-                })
-              : 'mm/dd/yyyy'}
-          </Text>
-          <Icon
-            name="calendar"
-            size={20}
-            color="#00203F"
-            style={styles.calendarIcon}
-          />
-        </TouchableOpacity>
-        {errors.dateOfBirth ? (
-          <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
-        ) : null}
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={formData.dateOfBirth || new Date()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-            onChange={handleDateChange}
-            minimumDate={new Date(1900, 0, 1)}
-            maximumDate={new Date()}
-          />
-        )} */}
-
-        {/* <Text style={styles.label}>App Language</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.appLanguage}
-            onValueChange={itemValue => {
-              setFormData(prev => ({
-                ...prev,
-                appLanguage: itemValue as string,
-              }));
-              setErrors(prev => ({ ...prev, appLanguage: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-            enabled={false}
-          >
-            <Picker.Item label="English" value="en" />
-          </Picker>
-        </View>
-        {errors.appLanguage ? (
-          <Text style={styles.errorText}>{errors.appLanguage}</Text>
-        ) : null} */}
-
-        {/* <Text style={styles.label}>Relationship</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.relationship}
-            onValueChange={itemValue => {
-              setFormData(prev => ({
-                ...prev,
-                relationship: itemValue as string,
-              }));
-              setErrors(prev => ({ ...prev, relationship: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-          >
-            <Picker.Item label="Select relationship" value="" />
-            <Picker.Item label="Self" value="self" />
-            <Picker.Item label="Other" value="other" />
-          </Picker>
-        </View>
-        {errors.relationship ? (
-          <Text style={styles.errorText}>{errors.relationship}</Text>
-        ) : null} */}
-
-        {/* <Text style={styles.label}>Blood Group</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.bloodGroup}
-            onValueChange={itemValue => {
-              setFormData(prev => ({ ...prev, bloodGroup: itemValue as string }));
-              setErrors(prev => ({ ...prev, bloodGroup: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-          >
-            <Picker.Item label="Select blood group" value="" />
-            <Picker.Item label="O+" value="O+" />
-            <Picker.Item label="O-" value="O-" />
-            <Picker.Item label="A+" value="A+" />
-            <Picker.Item label="A-" value="A-" />
-            <Picker.Item label="B+" value="B+" />
-            <Picker.Item label="B-" value="B-" />
-            <Picker.Item label="AB+" value="AB+" />
-            <Picker.Item label="AB-" value="AB-" />
-          </Picker>
-        </View>
-        {errors.bloodGroup ? (
-          <Text style={styles.errorText}>{errors.bloodGroup}</Text>
-        ) : null} */}
-
-        {/* <Text style={styles.label}>Marital Status</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.maritalStatus}
-            onValueChange={itemValue => {
-              setFormData(prev => ({
-                ...prev,
-                maritalStatus: itemValue as string,
-              }));
-              setErrors(prev => ({ ...prev, maritalStatus: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-          >
-            <Picker.Item label="Select marital status" value="" />
-            <Picker.Item label="Single" value="single" />
-            <Picker.Item label="Married" value="married" />
-            <Picker.Item label="Divorced" value="divorced" />
-            <Picker.Item label="Widowed" value="widowed" />
-          </Picker>
-        </View>
-        {errors.maritalStatus ? (
-          <Text style={styles.errorText}>{errors.maritalStatus}</Text>
-        ) : null} */}
-
-        <Text style={styles.label}>Languages Spoken</Text>
-        {/* <View style={styles.languagesContainer}>
-          {formData.spokenLanguages.map((lang, index) => (
-            <View key={index} style={styles.languageChip}>
-              <Text style={styles.languageText}>{lang}</Text>
-              <TouchableOpacity
-                onPress={() => handleRemoveLanguage(lang)}
-                style={styles.removeButton}
-              >
-                <Text style={styles.removeText}>x</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-        <TextInput
-          style={[styles.input, styles.addLanguageInput]}
-          value={newLanguage}
-          onChangeText={setNewLanguage}
-          onSubmitEditing={handleAddLanguage}
-          placeholder="Add a language..."
-          placeholderTextColor="#999"
-        /> */}
+        <Text style={styles.label}>Languages Spoken*</Text>
 
         <MultiSelect
           style={styles.input}

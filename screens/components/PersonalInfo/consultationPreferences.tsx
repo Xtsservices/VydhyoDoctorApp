@@ -38,7 +38,6 @@ const ConsultationPreferences = () => {
 
   const handleFeeChange = (mode: string, value: string) => {
     const numericValue = value.replace(/[^0-9]/g, "");
-    console.log(numericValue, value, mode)
     if (numericValue === "" || (parseInt(numericValue) >= 0 && numericValue.length <= 5)) {
       setFees({ ...fees, [mode]: numericValue });
     }
@@ -70,7 +69,6 @@ const isFormValid = () => {
       return;
     }
 
-    console.log(fees)
 
     const payload = {
       consultationModeFee: [
@@ -79,7 +77,6 @@ const isFormValid = () => {
         { type: 'Home Visit', fee: parseInt(fees?.homeVisit) },
       ],
     };
-    console.log(payload)
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
@@ -92,10 +89,8 @@ const isFormValid = () => {
         });
         return;
       }
-      console.log('Sending payload:', payload);
       const response = await AuthPost('users/updateConsultationModes', payload, token);
 
-      console.log('API Response:', response);
       if (response.status == 'success') {
         Toast.show({
           type: 'success',
@@ -107,7 +102,6 @@ const isFormValid = () => {
 
       // navigation.navigate('FinancialSetupScreen');
     } catch (error: any) {
-      console.error('API Error:', error?.response?.data || error.message);
       Toast.show({
         type: 'error',
         text1: 'Failed to update preferences',
@@ -152,7 +146,6 @@ const isFormValid = () => {
         }
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
     }
   };
 

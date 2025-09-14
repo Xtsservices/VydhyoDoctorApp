@@ -106,7 +106,6 @@ const [searchText, setSearchText] = useState('');
 const [originalStaffData, setOriginalStaffData] = useState<Staff[]>([]); // Unfiltered data
 
   const openModal = (type: 'view' | 'edit' | 'delete', staff: Staff) => {
-    console.log('Opening modal for:', type, staff);
   setSelectedStaff(staff);
   setForm({
     userId: staff.userId,
@@ -134,7 +133,6 @@ const closeModal = () => {
 
 const handleEditSubmit = async () => {
 
-  console.log(form, "completeform data")
   try {
      const token = await AsyncStorage.getItem('authToken');
      const formatDOBToDDMMYYYY = (dobString: string): string => {
@@ -159,9 +157,7 @@ const payload = {
   // : `${firstName} ${lastName}`, // using before removal
 };
 
-     console.log('Editing staff with ID:', selectedStaff?.userId, payload);
     const res = await AuthPut('doctor/editReceptionist', payload, token);
-    console.log(res, 'Edit response');
     if (res.status === 'success') {
      fetchStaff(); // Refresh staff list after edit
       Alert.alert('Success', 'Staff updated successfully');
@@ -184,9 +180,7 @@ const payload = {
 const handleDelete = async () => {
   try {
     const token = await AsyncStorage.getItem('authToken');
-    console.log('Deleting staff with ID:', selectedStaff?.userId);
     const res = await AuthFetch(`users/deleteMyAccount?userId=${selectedStaff?.userId}`, token);
-    console.log('Delete response:', res);
 if (res?.data?.status === 'success') {
   fetchStaff(); // Refresh staff list after deletion
 Toast.show({
@@ -229,7 +223,6 @@ useEffect(()=>{
 
 
 }, [selectedStatus])
-console.log("filter after", staffData)
 
 
 
@@ -243,7 +236,6 @@ const clearSearch = () => {
 
   const fetchStaff = async () => {
   if (!userId) {
-      console.error('User ID is not available');
       return;
     }
   try {
@@ -251,11 +243,9 @@ const clearSearch = () => {
 
     const token = await AsyncStorage.getItem('authToken');
     
-    console.log('User ID:', token);
 
     const response = await AuthFetch(`doctor/getStaffByCreator/${userId}`, token);
 
-    console.log('Staff data fetched:', response);
 
 let filterData: any[] = [];
 if ('data' in response && response.data && Array.isArray(response.data.data)) {
@@ -269,8 +259,6 @@ const sortedData = [...filterData].sort((a, b) => {
   const dateB = new Date(b.joinDate).getTime();
   return dateB - dateA;
 });
-
-console.log(sortedData, "sortedData")
 
 const formattedData: Staff[] = sortedData.map((staff, index) => ({
   id: staff._id || String(index + 1),
@@ -298,7 +286,6 @@ setOriginalStaffData(formattedData); // Store unfiltered data
 
     setStaffData(formattedData);
   } catch (error: any) {
-    console.error('Error fetching staff:', error);
 
     let errorMessage = 'Failed to fetch staff data';
     if (error?.response?.data?.message) {
@@ -313,8 +300,6 @@ setOriginalStaffData(formattedData); // Store unfiltered data
 
 
   const [fetchLoading, setFetchLoading] = React.useState<boolean>(false);
-
-  console.log(selectedStatus, "selectedstaff data")
 
 // Fetch staff data on component mount  
 useEffect(() => {
@@ -431,8 +416,13 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
 
 {['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB', 'access'].map((field, i) => (
   <View key={i} style={styles.inputGroup}>
-    <Text style={styles.label}>{field}</Text>
-
+    <Text style={styles.label}>
+      {field === 'firstName' ? 'Firstname' : 
+       field === 'lastName' ? 'Lastname' : 
+       field === 'DOB' ? 'Date of Birth' : 
+       field === 'access' ? 'Access' : 
+       field.charAt(0).toUpperCase() + field.slice(1)}
+    </Text>
     {mode === 'view' ? (
       <Text style={styles.value}>
         {field === 'access'
@@ -740,6 +730,7 @@ overlay: {
     fontWeight: '700',
     marginBottom: 16,
     textAlign: 'center',
+    color: '#111827',
   },
   inputGroup: {
     marginBottom: 10,

@@ -38,7 +38,6 @@ const { width, height } = Dimensions.get('window');
 
 const ConfirmationScreen: React.FC = () => {
   const userId = useSelector((state: any) => state.currentUserID);
-  console.log('Current User ID:', userId);
   const navigation = useNavigation<any>();
   const [formData, setFormData] = useState<FormData>({
     userId: '',
@@ -98,8 +97,6 @@ const ConfirmationScreen: React.FC = () => {
     await AsyncStorage.setItem('currentStep', 'ProfileReview');
     const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
 
-    console.log('Email sent successfully:', response);
-
     Toast.show({
       type: 'success',
       text1: 'Success',
@@ -110,44 +107,12 @@ const ConfirmationScreen: React.FC = () => {
 
     navigation.navigate('ProfileReview');
   } catch (error) {
-    console.error('Error in handleSubmit:', error);
     Alert.alert('Error', 'Failed to submit profile. Please try again.');
   } finally {
     setLoading(false); // Re-enable the button after processing
   }
 };
 
-
-//   const handleSubmit = async() => { 
-//      if (loading) return;
-//     if (!validateForm()) {
-//       Alert.alert(
-//         'Error',
-//         'Please correct the errors in the form before submitting.',
-//       );
-//       return;
-//     }
-//     const userdata = {
-//     "userId" : userId
-//   }
-//      const token = await AsyncStorage.getItem('authToken');
-//     await AsyncStorage.setItem('currentStep', 'ProfileReview');
-//  const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
-
-
-
-//  console.log('Email sent successfully:', response);
-//     Toast.show({
-//       type: 'success',
-//       text1: 'Success',
-//       text2: 'Profile submitted successfully',
-//       position: 'top',
-//       visibilityTime: 3000,
-//     });
-//     navigation.navigate('ProfileReview');
-//   };
-
-  
 
   const handleChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -172,13 +137,7 @@ const ConfirmationScreen: React.FC = () => {
 
         AsyncStorage.setItem('stepNo', '7');
   const response = await AuthFetch('users/getUser', token);
-
-  console.log(AsyncStorage.getItem('currentStep'), "userCurren step")
-
-        // Make API call
         
-        console.log('User data fetched successfully:', response?.data?.data);
-        // Check if response status is success
         if (response?.data?.status !== 'success') {
           throw new Error(response.data.message || 'Failed to fetch user data');
         }
@@ -229,21 +188,15 @@ const ConfirmationScreen: React.FC = () => {
           ),
           addresses: userData.addresses || [],
         });
-        // setLoading(false);
       } catch (error: any) {
-        // setLoading(false);
 
-        console.error('Error fetching user data:', error.message);
       }finally {
-        setLoading(false); // Stop loading regardless of success or failure
+        setLoading(false);
       }
     };
     fetchUserData();
   }, []);
 
-  // if (loading) {
-  //   return <LoadingScreen />;
-  // }
 
   return (
     <View style={styles.container}>

@@ -53,6 +53,17 @@ const EPrescriptionList = () => {
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [hasPreviousPrescriptions, setHasPreviousPrescriptions] = useState(false);
+  const convertTo12HourFormat = (time24) => {
+    if (!time24) return '';
+
+    const [hours, minutes] = time24.split(':');
+    const hourInt = parseInt(hours, 10);
+
+    const period = hourInt >= 12 ? 'PM' : 'AM';
+    const hour12 = hourInt % 12 || 12; // Convert 0 to 12 for 12 AM
+
+    return `${hour12}:${minutes} ${period}`;
+  };
 
   const getStatusTag = (status) => {
     const statusConfig = {
@@ -65,7 +76,6 @@ const EPrescriptionList = () => {
   };
 
   const handleEPrescription = (appointment) => {
-    console.log(appointment, "appointmentDetails")
     const patientDetails = {
       doctorId: appointment.doctorId,
       patientId: appointment?.userId || appointment?.appointmentId,
@@ -81,8 +91,7 @@ const EPrescriptionList = () => {
       statusColor: appointment.appointmentStatus === 'Completed' ? '#E0E7FF' : '#D1FAE5',
       typeIcon: 'General',
       avatar: "https://i.pravatar.cc/150?img=12",
-      appointmentTime: appointment.appointmentTime,
-      addressId: appointment.addressId,
+      appointmentTime: appointment.appointmentTime ? convertTo12HourFormat(appointment.appointmentTime) : '', addressId: appointment.addressId,
     };
 
     navigation.navigate('PatientDetails', { patientDetails });
@@ -104,7 +113,6 @@ const EPrescriptionList = () => {
         response.data.data &&
         response.data.data.length > 0;
     } catch (error) {
-      console.error('Error checking prescriptions:', error);
       return false;
     }
   };
@@ -161,7 +169,6 @@ const EPrescriptionList = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching prescriptions:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -261,7 +268,6 @@ const EPrescriptionList = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching appointments:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -330,7 +336,6 @@ const EPrescriptionList = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching appointments count:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -664,7 +669,7 @@ const styles = StyleSheet.create({
   picker: {
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
-    color:'black'
+    color: 'black'
   },
   datePickerButton: {
     flexDirection: 'row',

@@ -89,14 +89,16 @@ const PracticeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResultsPerAddress, setSearchResultsPerAddress] = useState<{[key: number]: any[]}>({});
+  const [searchResultsPerAddress, setSearchResultsPerAddress] = useState<{ [key: number]: any[] }>({});
   const [showSearchResults, setShowSearchResults] = useState(false);
   const mapRefs = useRef<MapView[]>([]);
-  const [searchQueryPerAddress, setSearchQueryPerAddress] = useState<{[key: number]: string}>({});
-  const [showSearchResultsPerAddress, setShowSearchResultsPerAddress] = useState<{[key: number]: boolean}>({});
+  const [searchQueryPerAddress, setSearchQueryPerAddress] = useState<{ [key: number]: string }>({});
+  const [showSearchResultsPerAddress, setShowSearchResultsPerAddress] = useState<{ [key: number]: boolean }>({});
   const [locationRetryCount, setLocationRetryCount] = useState(0);
   const locationRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  const isValidMobile = (mobile: string): boolean => {
+    return mobile.length === 10 && /^[6-9]\d{9}$/.test(mobile);
+  };
   useEffect(() => {
     setCurrentOpdIndex(opdAddresses.length - 1);
   }, [opdAddresses.length]);
@@ -108,9 +110,9 @@ const PracticeScreen = () => {
         await initLocation(i);
       }
     };
-    
+
     initializeAllLocations();
-    
+
     // Clean up any pending timeouts when component unmounts
     return () => {
       if (locationRetryTimeoutRef.current) {
@@ -135,7 +137,6 @@ const PracticeScreen = () => {
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
-        console.warn('Permission error:', err);
         return false;
       }
     }
@@ -147,11 +148,11 @@ const PracticeScreen = () => {
     setIsFetchingLocation(true);
     try {
       const response = await Geocoder.from(latitude, longitude);
-      
+
       if (response.results && response.results.length > 0) {
         const result = response.results[0];
         const addressComponents = result.address_components;
-        
+
         let address = '';
         let city = '';
         let state = '';
@@ -190,13 +191,13 @@ const PracticeScreen = () => {
           longitude: longitude.toString(),
         };
         setOpdAddresses(updatedAddresses);
-        
+
         // Update search query for this address
         setSearchQueryPerAddress(prev => ({
           ...prev,
           [index]: address
         }));
-        
+
         // Reset retry count on success
         setLocationRetryCount(0);
       } else {
@@ -209,7 +210,6 @@ const PracticeScreen = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching address details:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -227,7 +227,7 @@ const PracticeScreen = () => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
       Alert.alert(
-        'Permission Denied', 
+        'Permission Denied',
         'Location permission is required to show your current location.',
         [
           { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -238,7 +238,7 @@ const PracticeScreen = () => {
     }
 
     setIsFetchingLocation(true);
-    
+
     // Configure high accuracy for better indoor positioning
     const locationOptions = {
       enableHighAccuracy: true,
@@ -255,7 +255,7 @@ const PracticeScreen = () => {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
-        
+
         const updatedAddresses = [...opdAddresses];
         updatedAddresses[index] = {
           ...updatedAddresses[index],
@@ -263,19 +263,18 @@ const PracticeScreen = () => {
           longitude: longitude.toString(),
         };
         setOpdAddresses(updatedAddresses);
-        
+
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 1000);
         }
-        
+
         fetchAddressDetails(latitude, longitude, index);
       },
       (error) => {
-        console.error('Location Error:', error);
-        
+
         // Handle different error codes
         let errorMessage = 'Unable to fetch current location.';
-        
+
         if (error.code === error.PERMISSION_DENIED) {
           errorMessage = 'Location permission denied. Please enable location permissions in settings.';
         } else if (error.code === error.POSITION_UNAVAILABLE) {
@@ -283,11 +282,11 @@ const PracticeScreen = () => {
         } else if (error.code === error.TIMEOUT) {
           errorMessage = 'Location request timed out. Please try again.';
         }
-        
+
         // If we're indoors or have poor GPS, try again with a different approach
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
-          
+
           Toast.show({
             type: 'info',
             text1: 'Getting Location',
@@ -295,7 +294,7 @@ const PracticeScreen = () => {
             position: 'top',
             visibilityTime: 2000,
           });
-          
+
           // Retry after a delay with different settings
           locationRetryTimeoutRef.current = setTimeout(() => {
             initLocationWithRetry(index);
@@ -306,15 +305,17 @@ const PracticeScreen = () => {
             `${errorMessage} Please ensure location services are enabled and try again, or select a location manually.`,
             [
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
-              { text: 'Try Again', onPress: () => {
-                setLocationRetryCount(0);
-                initLocation(index);
-              }},
+              {
+                text: 'Try Again', onPress: () => {
+                  setLocationRetryCount(0);
+                  initLocation(index);
+                }
+              },
               { text: 'Select Manually', style: 'cancel' },
             ]
           );
         }
-        
+
         setIsFetchingLocation(false);
       },
       locationOptions
@@ -342,7 +343,7 @@ const PracticeScreen = () => {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
-        
+
         const updatedAddresses = [...opdAddresses];
         updatedAddresses[index] = {
           ...updatedAddresses[index],
@@ -350,17 +351,16 @@ const PracticeScreen = () => {
           longitude: longitude.toString(),
         };
         setOpdAddresses(updatedAddresses);
-        
+
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 1000);
         }
-        
+
         fetchAddressDetails(latitude, longitude, index);
       },
       (error) => {
-        console.error('Location Retry Error:', error);
         setIsFetchingLocation(false);
-        
+
         // If this retry also failed, try the original method again
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
@@ -408,14 +408,12 @@ const PracticeScreen = () => {
           [index]: true
         }));
       } else {
-        console.log('Autocomplete failed:', data.status);
         setSearchResultsPerAddress(prev => ({
           ...prev,
           [index]: []
         }));
       }
     } catch (error) {
-      console.error('Search error:', error);
       setSearchResultsPerAddress(prev => ({
         ...prev,
         [index]: []
@@ -453,7 +451,7 @@ const PracticeScreen = () => {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
-        
+
         const updatedAddresses = [...opdAddresses];
         updatedAddresses[index] = {
           ...updatedAddresses[index],
@@ -461,17 +459,15 @@ const PracticeScreen = () => {
           longitude: longitude.toString(),
         };
         setOpdAddresses(updatedAddresses);
-        
+
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 500);
         }
-        
+
         fetchAddressDetails(latitude, longitude, index);
       } else {
-        console.log('Place details failed:', data.status);
       }
     } catch (error) {
-      console.error('Place details error:', error);
       Alert.alert('Error', 'Unable to fetch place details. Please try again.');
     } finally {
       setIsFetchingLocation(false);
@@ -482,7 +478,7 @@ const PracticeScreen = () => {
   const handleMapPress = (index: number, event: any) => {
     const { coordinate } = event.nativeEvent;
     const { latitude, longitude } = coordinate;
-    
+
     const updatedAddresses = [...opdAddresses];
     updatedAddresses[index] = {
       ...updatedAddresses[index],
@@ -490,7 +486,7 @@ const PracticeScreen = () => {
       longitude: longitude.toString(),
     };
     setOpdAddresses(updatedAddresses);
-    
+
     // Center map on selected location
     const newRegion = {
       latitude,
@@ -498,11 +494,11 @@ const PracticeScreen = () => {
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
     };
-    
+
     if (mapRefs.current[index]) {
       mapRefs.current[index].animateToRegion(newRegion, 500);
     }
-    
+
     fetchAddressDetails(latitude, longitude, index);
   };
 
@@ -528,7 +524,7 @@ const PracticeScreen = () => {
       longitude: '78.9629',
     };
     setOpdAddresses([...opdAddresses, newAddress]);
-    
+
     // Initialize location for the new address
     setTimeout(() => {
       initLocation(opdAddresses.length);
@@ -564,25 +560,36 @@ const PracticeScreen = () => {
     return hours * 60;
   };
 
-const handleInputChange = (index: number, field: keyof Address, value: string) => {
-  const updatedAddresses = [...opdAddresses];
-  (updatedAddresses[index][field] as string) = value;
-  setOpdAddresses(updatedAddresses);
+  const handleInputChange = (index: number, field: keyof Address, value: string) => {
+    const updatedAddresses = [...opdAddresses];
+    (updatedAddresses[index][field] as string) = value;
+    setOpdAddresses(updatedAddresses);
 
-  // If address field is being updated, also update the search query
-  if (field === 'address') {
-    setSearchQueryPerAddress(prev => ({
-      ...prev,
-      [index]: value
-    }));
-  }
-};
+    if (field === 'address') {
+      setSearchQueryPerAddress(prev => ({
+        ...prev,
+        [index]: value
+      }));
+    }
+  };
   const handleNext = async () => {
     const token = await AsyncStorage.getItem('authToken');
+    const hasInvalidMobile = opdAddresses.some(addr => !isValidMobile(addr.mobile));
+
+    if (hasInvalidMobile) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+      return;
+    }
     const hasInvalidAddress = opdAddresses.some(
       addr => !addr.address || !addr.pincode || !addr.city || !addr.state,
     );
-     if (hasInvalidAddress) {
+    if (hasInvalidAddress) {
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -613,23 +620,16 @@ const handleInputChange = (index: number, field: keyof Address, value: string) =
       return `${hrs.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
     }
 
-    console.log(
-      'Converting times to 24-hour format...',
-      convertTo24HourFormat(opdAddresses[0].startTime),
-    );
-
     const payload = opdAddresses.map(addr => ({
       ...addr,
       startTime: convertTo24HourFormat(addr?.startTime) || '06:00',
-      endTime: convertTo24HourFormat(addr?.endTime )|| '21:00',
+      endTime: convertTo24HourFormat(addr?.endTime) || '21:00',
     }));
 
-    console.log('Payload for API:', payload);
 
     for (const clinic of payload) {
       const response = await AuthPost('users/addAddress', clinic, token);
-      console.log('API Response:12', response);
-   
+
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -656,50 +656,42 @@ const handleInputChange = (index: number, field: keyof Address, value: string) =
   const handleBack = () => {
     navigation.navigate('Specialization');
   };
-  
+
   const [specialization, setSpecialization] = useState('')
 
-const fetchUserData = async () => {
-  try {
-    const token = await AsyncStorage.getItem('authToken');
-    const response = await AuthFetch('users/getUser', token);
-    console.log(response)
-    if (response.data.status === 'success') {
-      const userData = response.data.data;
-      setSpecialization(userData?.specialization[0]?.name)
-      
-      // Only set addresses if the user actually has addresses
-      if (userData?.addresses && userData.addresses.length > 0) {
-        setOpdAddresses(userData.addresses)
-        
-        // Initialize locations for existing addresses
-        setTimeout(() => {
-          userData.addresses.forEach((_, index) => {
-            initLocation(index);
-          });
-        }, 500);
+  const fetchUserData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch('users/getUser', token);
+      if (response.data.status === 'success') {
+        const userData = response.data.data;
+        setSpecialization(userData?.specialization[0]?.name)
+
+        if (userData?.addresses && userData.addresses.length > 0) {
+          setOpdAddresses(userData.addresses)
+
+          setTimeout(() => {
+            userData.addresses.forEach((_, index) => {
+              initLocation(index);
+            });
+          }, 500);
+        }
       }
-      // Otherwise, keep the initial address form that was already set
-      
-      console.log(userData, "complete response")
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch user data.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
     }
-  } catch (error) {
-    console.error('Error fetching user data:', error);
-    Toast.show({
-      type: 'error',
-      text1: 'Error',
-      text2: 'Failed to fetch user data.',
-      position: 'top',
-      visibilityTime: 4000,
-    }); 
-  }
-};
+  };
 
   useEffect(() => {
     fetchUserData();
   }, []);
 
-  // Check if user is physiotherapist
   const isPhysio =
     Array.isArray(specialization)
       ? specialization.some(s => s?.trim().toLowerCase() === 'physiotherapist')
@@ -766,20 +758,20 @@ const fetchUserData = async () => {
             <View key={index} style={styles.addressContainer}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Location on Map</Text>
-                
+
                 {/* Location status indicator */}
                 {isFetchingLocation && (
                   <View style={styles.locationStatus}>
                     <ActivityIndicator size="small" color="#3182CE" />
                     <Text style={styles.locationStatusText}>
-                      {locationRetryCount > 0 
-                        ? `Getting location (attempt ${locationRetryCount + 1})...` 
+                      {locationRetryCount > 0
+                        ? `Getting location (attempt ${locationRetryCount + 1})...`
                         : 'Getting your location...'
                       }
                     </Text>
                   </View>
                 )}
-                
+
                 {/* Search Input */}
                 <View style={styles.searchContainer}>
                   <View style={styles.searchInputContainer}>
@@ -818,7 +810,7 @@ const fetchUserData = async () => {
                     </View>
                   )}
                 </View>
-                
+
                 <View style={styles.mapContainer}>
                   <MapView
                     ref={(ref) => {
@@ -850,23 +842,23 @@ const fetchUserData = async () => {
                       }}
                     />
                   </MapView>
-                  
+
                   {/* Custom center marker - placed outside MapView */}
                   <View style={styles.markerFixed}>
                     <View style={styles.marker}>
                       <View style={styles.markerInner} />
                     </View>
                   </View>
-                  
-                  <TouchableOpacity 
-                    style={styles.myLocationButton} 
+
+                  <TouchableOpacity
+                    style={styles.myLocationButton}
                     onPress={() => handleMyLocation(index)}
                   >
                     <Icon name="crosshairs-gps" size={24} color="#3182CE" />
                   </TouchableOpacity>
                 </View>
               </View>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Clinic Name *</Text>
                 <TextInput
@@ -879,7 +871,7 @@ const fetchUserData = async () => {
                   }
                 />
               </View>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Mobile *</Text>
                 <TextInput
@@ -887,14 +879,25 @@ const fetchUserData = async () => {
                   placeholder="Enter Mobile Number"
                   placeholderTextColor="#999"
                   value={addr.mobile}
-                  onChangeText={text =>
-                    handleInputChange(index, 'mobile', text)
-                  }
+                  onChangeText={(text) => {
+                    // Filter out non-numeric characters including decimal points
+                    const filteredText = text.replace(/[^0-9]/g, '');
+
+                    // Ensure the number starts with 6, 7, 8, or 9
+                    if (filteredText.length > 0) {
+                      const firstDigit = filteredText.charAt(0);
+                      if (!['6', '7', '8', '9'].includes(firstDigit)) {
+                        // If first digit is not valid, don't update the value
+                        return;
+                      }
+                    }
+
+                    handleInputChange(index, 'mobile', filteredText);
+                  }}
                   keyboardType="numeric"
                   maxLength={10}
                 />
               </View>
-              
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Address *</Text>
                 <TextInput
@@ -907,7 +910,7 @@ const fetchUserData = async () => {
                   }
                 />
               </View>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Pincode *</Text>
                 <TextInput
@@ -922,7 +925,7 @@ const fetchUserData = async () => {
                   keyboardType="numeric"
                 />
               </View>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>City *</Text>
                 <TextInput
@@ -933,7 +936,7 @@ const fetchUserData = async () => {
                   onChangeText={text => handleInputChange(index, 'city', text)}
                 />
               </View>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>State *</Text>
                 <TextInput
@@ -944,7 +947,7 @@ const fetchUserData = async () => {
                   onChangeText={text => handleInputChange(index, 'state', text)}
                 />
               </View>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Country *</Text>
                 <TextInput
@@ -957,7 +960,7 @@ const fetchUserData = async () => {
                   }
                 />
               </View>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Latitude</Text>
                 <TextInput
@@ -971,7 +974,7 @@ const fetchUserData = async () => {
                   editable={false}
                 />
               </View>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Longitude</Text>
                 <TextInput
@@ -985,7 +988,7 @@ const fetchUserData = async () => {
                   editable={false}
                 />
               </View>
-              
+
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => handleRemoveAddress(index)}

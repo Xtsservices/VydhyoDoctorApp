@@ -60,7 +60,23 @@ const AddStaffScreen = () => {
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.DOB || !form.mobile || !form.email || !form.role) {
-      Alert.alert('Error', 'Please fill all required fields');
+      Toast.show({
+        type: 'error',
+        text1: 'Alert',
+        text2: 'Please fill all required fields',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
+    }
+    if (!form.access || form.access.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Alert',
+        text2: 'Please select at least one access',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
     setIsLoading(true);
@@ -75,7 +91,6 @@ const AddStaffScreen = () => {
       access: form.access, // If backend expects a string, use: access: form.access.join(',')
     };
 
-    console.log(staffData, 'Staff Data to be sent');
 
     try {
       const token = await AsyncStorage.getItem('authToken');
@@ -87,12 +102,9 @@ const AddStaffScreen = () => {
       }
 
       const response = await AuthPost(`doctor/createReceptionist/${userId}`, staffData, token);
-      console.log('Staff created:', response.status, response);
       if (response.status === 'success') {
         if ('data' in response) {
-          console.log('Staff added successfully:', response.data);
         } else {
-          console.log('Staff added successfully');
         }
         // Handle success case
         Toast.show({
@@ -122,7 +134,6 @@ const AddStaffScreen = () => {
         Alert.alert('Error', message);
       }
     } catch (error) {
-      console.error('Error creating staff:', error);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
@@ -137,7 +148,7 @@ const AddStaffScreen = () => {
       <Text style={styles.title}>Add New Staff Member</Text>
       <Text style={styles.subtitle}>Fill in the details below to add a new staff member</Text>
 
-      <Text style={styles.label}>First Name</Text>
+      <Text style={styles.label}>First Name*</Text>
 
       <TextInput
         style={styles.input}
@@ -148,8 +159,7 @@ const AddStaffScreen = () => {
 
       />
 
-      <Text style={styles.label}>Last Name</Text>
-
+      <Text style={styles.label}>Last Name*</Text>
 
       <TextInput
         style={styles.input}
@@ -159,7 +169,7 @@ const AddStaffScreen = () => {
 
         onChangeText={(text) => setForm({ ...form, lastName: text })}
       />
-      <Text style={styles.label}>Date of Birth</Text>
+      <Text style={styles.label}>Date of Birth*</Text>
 
 
       <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
@@ -177,7 +187,7 @@ const AddStaffScreen = () => {
         />
       )}
 
-      <Text style={styles.label}>Gender</Text>
+      <Text style={styles.label}>Gender*</Text>
       <View style={styles.genderGroup}>
         {['Male', 'Female', 'Other'].map((g) => (
           <TouchableOpacity
@@ -190,7 +200,7 @@ const AddStaffScreen = () => {
           </TouchableOpacity>
         ))}
       </View>
-      <Text style={styles.label}>Mobile Number</Text>
+      <Text style={styles.label}>Mobile Number*</Text>
 
       <TextInput
         style={styles.input}
@@ -202,7 +212,7 @@ const AddStaffScreen = () => {
         placeholderTextColor={'gray'}
 
       />
-      <Text style={styles.label}>Email</Text>
+      <Text style={styles.label}>Email*</Text>
 
       <TextInput
         style={styles.input}
@@ -213,7 +223,7 @@ const AddStaffScreen = () => {
         placeholderTextColor={'gray'}
 
       />
-      <Text style={styles.label}>Role</Text>
+      <Text style={styles.label}>Role*</Text>
       <DropDownPicker
         open={openRoleDropdown}
         value={form.role}
@@ -230,7 +240,7 @@ const AddStaffScreen = () => {
         zIndex={3000}
         zIndexInverse={1000}
       />
-      <Text style={styles.label}>Access</Text>
+      <Text style={styles.label}>Access*</Text>
       {[
 
         { value: "my-patients", label: "My Patients" },

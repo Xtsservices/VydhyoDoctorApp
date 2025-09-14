@@ -225,12 +225,12 @@ const AppointmentsScreen = () => {
     }
   };
 
-useEffect(() => {
-  if (currentuserDetails && doctorId) {
-    fetchAppointments(1, pagination.pageSize, true);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [search, selectedType, selectedApptType, filterDate]);
+  useEffect(() => {
+    if (currentuserDetails && doctorId) {
+      fetchAppointments(1, pagination.pageSize, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, selectedType, selectedApptType, filterDate]);
 
   useEffect(() => {
     if (currentuserDetails && doctorId) {
@@ -372,13 +372,16 @@ useEffect(() => {
 
       if (status === 'Prescription') {
         setActionModalVisible(false);
-        navigation.navigate('PatientDetails', { patientDetails });
-        return;
-      }
 
-      if (status === 'View Previous Prescription') {
-        setActionModalVisible(false);
-        await fetchAndOpenPrevPrescriptions(patientId, patientName);
+        // Format the time before sending it to PatientDetails
+        const formattedPatientDetails = {
+          ...patientDetails,
+          appointmentTime: patientDetails?.appointmentTime
+            ?  format12h(patientDetails.appointmentTime)
+            : patientDetails?.appointmentTime
+        };
+
+        navigation.navigate('PatientDetails', { patientDetails: formattedPatientDetails });
         return;
       }
 
@@ -393,7 +396,6 @@ useEffect(() => {
           { appointmentId: id, reason },
           token
         );
-        console.log(response, "cancelation response")
         if (response?.data?.status === 'success') {
           Toast.show({ type: 'success', text1: 'Appointment cancelled' });
           fetchAppointments(pagination.current, pagination.pageSize);
@@ -546,7 +548,6 @@ useEffect(() => {
   const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
     const statusKey = (appt.status || '').toLowerCase() as keyof typeof STATUS_COLORS;
     const statusSty = STATUS_COLORS[statusKey] || { bg: '#F3F4F6', fg: '#374151', label: appt.status || 'Unknown' };
-    console.log("123")
     return (
       <View style={styles.apptCard}>
         {loader ? (
@@ -742,7 +743,6 @@ useEffect(() => {
         <View style={styles.rangeWrap}>
           <View style={styles.rangeWrap}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Text style={{ color: '#1977f3', marginRight: 8 }}>📅</Text>
 
               <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}>
                 <TouchableOpacity
@@ -793,27 +793,30 @@ useEffect(() => {
             )}
           </View>
 
-          {/* Summary cards */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={true} persistentScrollbar indicatorStyle="black" >
-            <View style={styles.summaryContainer}>
-              <View style={[styles.card, { borderColor: '#FBBF24' }]}>
-                <Text style={[styles.cardTitle, { color: '#FBBF24' }]}>{totalAppointmentsCount}</Text>
-                <Text style={{ color: '#FBBF24', fontSize: 12 }}>Total Appointments</Text>
-              </View>
-              <View style={[styles.card, { borderColor: '#10B981' }]}>
+          {/* Summary cards - Total in one row, others in another row */}
+          <View style={styles.summaryContainer}>
+            {/* Total Appointments Card (full width) */}
+            <View style={[styles.totalCard, { borderColor: '#FBBF24' }]}>
+              <Text style={[styles.cardTitle, { color: '#FBBF24' }]}>{totalAppointmentsCount}</Text>
+              <Text style={{ color: '#FBBF24', fontSize: 12 }}>Total Appointments</Text>
+            </View>
+
+            {/* Other cards in a row */}
+            <View style={styles.statusCardsRow}>
+              <View style={[styles.statusCard, { borderColor: '#10B981' }]}>
                 <Text style={[styles.cardTitle, { color: '#10B981' }]}>{scheduledAppointmentsCount}</Text>
                 <Text style={{ color: '#10B981', fontSize: 12 }}>Upcoming</Text>
               </View>
-              <View style={[styles.card, { borderColor: '#6366F1' }]}>
+              <View style={[styles.statusCard, { borderColor: '#6366F1' }]}>
                 <Text style={[styles.cardTitle, { color: '#6366F1' }]}>{completedAppointmentsCount}</Text>
                 <Text style={{ color: '#6366F1', fontSize: 12 }}>Completed</Text>
               </View>
-              <View style={[styles.card, { borderColor: 'red' }]}>
+              <View style={[styles.statusCard, { borderColor: 'red' }]}>
                 <Text style={[styles.cardTitle, { color: 'red' }]}>{cancledAppointmentsCount}</Text>
                 <Text style={{ color: 'red', fontSize: 12 }}>Cancelled</Text>
               </View>
             </View>
-          </ScrollView>
+          </View>
         </View>
 
 
@@ -1172,10 +1175,9 @@ const styles = StyleSheet.create({
   rangeHint: { marginTop: 6, color: '#6b7280', fontSize: 12 },
 
   summaryContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     marginBottom: 20,
   },
+
   card: {
     flex: 1,
     borderWidth: 1,
@@ -1185,8 +1187,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
   },
-  cardTitle: { fontSize: 16, fontWeight: 'bold' },
-
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
   searchContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   searchInput: {
     flex: 1,
@@ -1197,6 +1201,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'black',
   },
+  totalCard: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    width: '100%',
+  },
+  statusCardsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statusCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginHorizontal: 4,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+
   filterButton: {
     width: 60,
     height: 45,

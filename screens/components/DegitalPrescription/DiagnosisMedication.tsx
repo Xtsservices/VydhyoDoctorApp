@@ -56,7 +56,6 @@ const PrescriptionScreen = () => {
         }))
       );
     } catch (error) {
-      console.error('Error fetching inventory:', error);
     }
   };
 
@@ -69,7 +68,6 @@ const PrescriptionScreen = () => {
       setTestList(sorted);
       setTestOptions(sorted.map((test) => ({ value: test.testName, label: test.testName })));
     } catch (error) {
-      console.error('Error fetching tests:', error);
     }
   };
 
@@ -142,16 +140,16 @@ const PrescriptionScreen = () => {
 
   const handleAddMedicine = () => {
     if (medications.length > 0 && !validateMedication(medications[medications.length - 1])) return;
-    const newMedication = { 
-      id: Date.now(), 
-      name: '', 
-      type: null, 
-      dosage: '', 
-      duration: null, 
-      timing: [], 
-      frequency: null, 
+    const newMedication = {
+      id: Date.now(),
+      name: '',
+      type: null,
+      dosage: '',
+      duration: null,
+      timing: [],
+      frequency: null,
       quantity: 0,
-      manualQuantity: false 
+      manualQuantity: false
     };
     const updated = [...medications, newMedication];
     setMedications(updated);
@@ -163,7 +161,7 @@ const PrescriptionScreen = () => {
   const handleMedicineChange = (index: number, field: string, value: any) => {
     const updated = [...medications];
     updated[index][field] = value;
-    
+
     // Check if this medicine type requires manual quantity input
     if (field === 'type') {
       updated[index].manualQuantity = manualQuantityTypes.includes(value);
@@ -174,7 +172,7 @@ const PrescriptionScreen = () => {
         updated[index].quantity = calculateQuantity(frequency, duration, value);
       }
     }
-    
+
     // Recalculate quantity if frequency or duration changes for non-manual types
     if ((field === 'frequency' || field === 'duration') && !updated[index].manualQuantity) {
       const { frequency, duration, type } = updated[index];
@@ -214,11 +212,11 @@ const PrescriptionScreen = () => {
     const med = updatedMedications[index];
     med.frequency = value;
     med.timing = value === 'SOS' ? [] : med.timing.slice(0, value.split('-').filter((x) => x === '1').length);
-    
+
     if (!med.manualQuantity) {
       med.quantity = calculateQuantity(med.frequency, med.duration, med.type);
     }
-    
+
     setMedications(updatedMedications);
     setFormData((prev: any) => ({ ...prev, prescribedMedications: updatedMedications }));
   };
@@ -226,18 +224,17 @@ const PrescriptionScreen = () => {
   const validateDosage = (dosage: string) => (/^\d+\s*(mg|ml|g|tablet|tab|capsule|cap|spoon|drop)s?$/i).test(dosage);
 
   const validateMedication = (med: any) => {
-    if (!med.name.trim()) return Alert.alert('error', 'Enter a valid medicine name' ), false;
-    if (!med.type) return Alert.alert('error', 'Select a medicine type' ), false;
-    if (!med.dosage.trim() || !validateDosage(med.dosage)){
-      console.log("dosage")
+    if (!med.name.trim()) return Alert.alert('error', 'Enter a valid medicine name'), false;
+    if (!med.type) return Alert.alert('error', 'Select a medicine type'), false;
+    if (!med.dosage.trim() || !validateDosage(med.dosage)) {
       Alert.alert("Error", 'Enter valid dosage Ex:100mg')
       return;
     }
-    if (med.duration === null || med.duration <= 0) return Alert.alert('error', 'Duration must be > 0' ), false;
-    if (!med.frequency) return Alert.alert('error',  'Select a frequency' ), false;
+    if (med.duration === null || med.duration <= 0) return Alert.alert('error', 'Duration must be > 0'), false;
+    if (!med.frequency) return Alert.alert('error', 'Select a frequency'), false;
     const required = med.frequency === 'SOS' ? 0 : med.frequency.split('-').filter((x) => x === '1').length;
-    if (med.timing.length !== required) return Alert.alert('error', `Select ${required} timing(s)` ), false;
-    if (med.quantity <= 0) return Alert.alert('error',  'Quantity must be greater than 0' ), false;
+    if (med.timing.length !== required) return Alert.alert('error', `Select ${required} timing(s)`), false;
+    if (med.quantity <= 0) return Alert.alert('error', 'Quantity must be greater than 0'), false;
     return true;
   };
 
@@ -252,10 +249,9 @@ const PrescriptionScreen = () => {
   };
 
   const handleNext = () => {
-    if (medications.length > 0 && !validateMedication(medications[medications.length - 1])){
-      console.log("123456")
+    if (medications.length > 0 && !validateMedication(medications[medications.length - 1])) {
       return;
-    } 
+    }
     navigation.navigate('AdviceFollowup', { patientDetails, formData });
   };
 
@@ -290,11 +286,11 @@ const PrescriptionScreen = () => {
         <TouchableOpacity style={styles.addButton} onPress={() => handleAddTest(testInput)}>
           <Text style={styles.addButtonText}>+ Add Test</Text>
         </TouchableOpacity>
-        
+
         {formData?.diagnosis?.selectedTests?.map((test: any, index: number) => (
           <View key={index} style={styles.testItemContainer}>
             <Text style={styles.testTag}>{test.testName}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => handleRemoveTest(index)}
               style={styles.deleteButton}
             >
@@ -323,21 +319,22 @@ const PrescriptionScreen = () => {
         <View style={styles.medHeader}>
           <Text style={styles.sectionTitle}>💊 Prescribed Medications</Text>
         </View>
-        
+
         {formData?.diagnosis?.medications?.map((med: any, index: number) => (
           <View key={index} style={styles.medicationItemContainer}>
-            <View style={styles.row}>
-              <Text style={styles.testTag}>Name: {med.medName}</Text>
-              <Text style={styles.testTag}>Duration: {med.duration}</Text>
-              <Text style={styles.testTag}>Dosage: {med.dosage}</Text>
+            <View style={styles.medicationContent}>
+              <Text style={styles.medicationText}>Name: {med.medName}</Text>
+              <Text style={styles.medicationText}>Duration: {med.duration} days</Text>
+              <Text style={styles.medicationText}>Dosage: {med.dosage}</Text>
+              <Text style={styles.medicationText}>Frequency: {med.frequency}</Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
                 // Remove from both medications array and formData
                 const updatedMeds = [...medications];
                 updatedMeds.splice(index, 1);
                 setMedications(updatedMeds);
-                
+
                 const transformed = updatedMeds.map((med) => ({
                   medInventoryId: medInventory.find(m => m.medName === med.name)?._id || null,
                   medName: med.name,
@@ -348,7 +345,7 @@ const PrescriptionScreen = () => {
                   frequency: med.frequency,
                   timings: med.timing || [],
                 }));
-                
+
                 setFormData((prev) => ({
                   ...prev,
                   diagnosis: {
@@ -356,7 +353,7 @@ const PrescriptionScreen = () => {
                     medications: transformed,
                   },
                 }));
-                
+
                 Toast.show({ type: 'success', text1: 'Medicine removed' });
               }}
               style={styles.deleteButton}
@@ -365,7 +362,6 @@ const PrescriptionScreen = () => {
             </TouchableOpacity>
           </View>
         ))}
-
         {showMedicationForm && medications.map((med, index) => (
           <View key={med.id} style={styles.medBlock}>
             <View style={styles.rowSpaceBetween}>
@@ -393,7 +389,7 @@ const PrescriptionScreen = () => {
                     }}
                     style={styles.dropdownItem}
                   >
-                    <Text style={{color:'black'}}>{medicine}</Text>
+                    <Text style={{ color: 'black' }}>{medicine}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -435,7 +431,7 @@ const PrescriptionScreen = () => {
             </Picker>
 
             <View style={{ marginBottom: 10 }}>
-              <Text style={{ fontWeight: '600', marginBottom: 4 , color:'black'}}>Timing:</Text>
+              <Text style={{ fontWeight: '600', marginBottom: 4, color: 'black' }}>Timing:</Text>
               {timingOptions.map((option) => (
                 <TouchableOpacity
                   key={option}
@@ -497,7 +493,7 @@ const PrescriptionScreen = () => {
             />
           </View>
         ))}
-        
+
         <TouchableOpacity onPress={handleAddMedicine} style={[styles.blueButton, { marginTop: 16 }]}>
           <Text style={styles.blueButtonText}>+ Add Medicine</Text>
         </TouchableOpacity>
@@ -553,12 +549,21 @@ const styles = StyleSheet.create({
   },
   medicationItemContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
     backgroundColor: '#f0f0f0',
-    padding: 8,
-    borderRadius: 6,
+    padding: 12,
+    borderRadius: 8,
+  },
+  medicationContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  medicationText: {
+    color: 'black',
+    marginBottom: 4,
+    fontSize: 14,
   },
   deleteButton: {
     backgroundColor: '#ff4d4d',
@@ -568,6 +573,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
+    flexShrink: 0, // Prevents the button from shrinking
   },
   deleteText: {
     color: 'white',

@@ -34,7 +34,6 @@ const ReviewsScreen = () => {
         const storedToken = await AsyncStorage.getItem('authToken');
         setToken(storedToken);
       } catch (error) {
-        console.error('Error fetching token:', error);
         Alert.alert('Error', JSON.stringify(error) || 'Failed to retrieve authentication token');
       }
     };
@@ -49,11 +48,9 @@ const ReviewsScreen = () => {
       setLoading(true);
       try {
         const response = await AuthFetch(`users/getFeedbackByDoctorId/${doctorId}`, token);
-        console.log('API Response:', response);
 
         if (response.status === 'success' && response.data && response.data.doctor) {
           const doctorData = response.data.doctor;
-          console.log("Doctor Data:", doctorData);
           setOverallRating(doctorData.overallRating || 0);
 
           // Map the feedback array to reviews and fetch conversations for each
@@ -64,7 +61,6 @@ const ReviewsScreen = () => {
               let conversation = [];
               try {
                 const convResponse = await AuthFetch(`users/getFeedbackById/${feedback.feedbackId || feedback.id}`, token);
-                console.log('Conversation API Response:', convResponse);
                 
                 if (convResponse.status === 'success' && convResponse.feedback) {
                   conversation = convResponse.feedback.conversation || [];
@@ -72,7 +68,6 @@ const ReviewsScreen = () => {
                   conversation = convResponse.data.feedback.conversation || [];
                 }
               } catch (error) {
-                console.error('Error fetching conversation:', error);
               }
 
               return {
@@ -88,11 +83,9 @@ const ReviewsScreen = () => {
           
           setReviews(formattedReviews);
         } else {
-          console.log('Unexpected API response structure:', response);
           Alert.alert('Error', JSON.stringify(response.message) || 'Failed to fetch reviews or invalid response');
         }
       } catch (error) {
-        console.error('Error fetching reviews:', error);
         Alert.alert('Error', 'Failed to fetch reviews');
       }
       setLoading(false);
@@ -115,21 +108,17 @@ const ReviewsScreen = () => {
       message: replyText[feedbackId],
     };
 
-    console.log('Submitting payload:', payload);
-
     setSubmitting(prev => ({ ...prev, [feedbackId]: true }));
 
     try {
       const response = await AuthPost('users/submitDoctorReply', payload, token, {
         headers: { 'Content-Type': 'application/json' },
       });
-      console.log('Reply submission response:', response.message.message);
 
       if (response.status === 'success') {
         // Refresh the conversation for this specific review
         try {
           const convResponse = await AuthFetch(`users/getFeedbackById/${feedbackId}`, token);
-          console.log('Updated conversation:', convResponse);
           
           if (convResponse.status === 'success' && convResponse.feedback) {
             setReviews(prevReviews => 
@@ -149,7 +138,6 @@ const ReviewsScreen = () => {
             );
           }
         } catch (error) {
-          console.error('Error fetching updated conversation:', error);
         }
         
         setReplyText((prev) => ({ ...prev, [feedbackId]: '' }));
@@ -158,9 +146,7 @@ const ReviewsScreen = () => {
         Alert.alert('Alert!', response.message.message || 'Failed to submit reply');
       }
     } catch (error) {
-      console.error('Error submitting reply:', error);
       if (error.response) {
-        console.error('Server response:', error.response.data);
         Alert.alert('Error', JSON.stringify(error.response.data.message) || 'Unknown error');
       } else {
         Alert.alert('Error', 'An unexpected error occurred while submitting the reply');

@@ -77,7 +77,7 @@ const Routing = () => {
         <Stack.Screen name="Appointments" component={Appointments} />
         {/* <Stack.Screen name="Dashboard" component={dashboard} /> */}
         <Stack.Screen name="Accounts" component={Accounts} />
-        <Stack.Screen name="expenditure" component={expenditure} />
+        <Stack.Screen name="expenditure" component={expenditure} options={{ title: "Expenditure", headerTitleAlign: "center", }}/>
 
         <Stack.Screen name="Clinic" component={Clinic} options={{ title: "Clinic Management", headerTitleAlign: "center", }} />
         <Stack.Screen name="labs" component={labs} options={{ title: "Lab", headerTitleAlign: "center", }}/>
