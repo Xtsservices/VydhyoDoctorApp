@@ -27,23 +27,23 @@ import { AuthFetch, AuthPut, UploadFiles } from '../../auth/auth';
 import axios from 'axios';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
-
+ 
 import { MultiSelect } from 'react-native-element-dropdown';
 import { useAsyncDebounce } from '../../utility/useAsyncDebounce';
-
+ 
 const languageOptions = [
   { label: 'Telugu', value: 'Telugu' },
   { label: 'Hindi', value: 'Hindi' },
   { label: 'English', value: 'English' },
   { label: 'Urdu', value: 'Urdu' },
 ];
-
+ 
 // Placeholder image for profile photo
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); // Replace with your asset path
-
+ 
 const { width, height } = Dimensions.get('window');
-
-
+ 
+ 
 const PersonalInfoScreen: React.FC = () => {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState<PersonalInfo>({
@@ -74,18 +74,18 @@ const PersonalInfoScreen: React.FC = () => {
     appLanguage: '',
     relationship: '',
     maritalStatus: '',
-    
+   
   });
   const navigation = useNavigation<any>();
-
+ 
   //calcuate minimum date(20 years ago)
   const getMinDate = () => {
     const today = new Date();
     const minDate = new Date(today.setFullYear(today.getFullYear() - 20));
     return minDate;
   };
-
-
+ 
+ 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
@@ -93,7 +93,7 @@ const PersonalInfoScreen: React.FC = () => {
       setErrors(prev => ({ ...prev, dateOfBirth: '' }));
     }
   };
-
+ 
   const handleAddLanguage = () => {
     if (
       newLanguage.trim() &&
@@ -107,7 +107,7 @@ const PersonalInfoScreen: React.FC = () => {
       setErrors(prev => ({ ...prev, spokenLanguages: '' }));
     }
   };
-
+ 
   const handleRemoveLanguage = (languageToRemove: string) => {
     setFormData(prev => ({
       ...prev,
@@ -122,7 +122,7 @@ const PersonalInfoScreen: React.FC = () => {
       }));
     }
   };
-
+ 
   const handleImagePick = () => {
     launchImageLibrary(
       { mediaType: 'photo' },
@@ -149,7 +149,7 @@ const PersonalInfoScreen: React.FC = () => {
       },
     );
   };
-
+ 
   const validateForm = () => {
     const newErrors = {
       firstName: '',
@@ -161,9 +161,9 @@ const PersonalInfoScreen: React.FC = () => {
       appLanguage: '',
       relationship: '',
       maritalStatus: '',
-      yearsExperience: '', 
+      yearsExperience: '',
     };
-
+ 
       if (!formData.yearsExperience || isNaN(Number(formData.yearsExperience))) {
     newErrors.yearsExperience = 'Please enter a valid number for years of experience.';
   }
@@ -200,13 +200,13 @@ const PersonalInfoScreen: React.FC = () => {
     if (!formData.maritalStatus)
       newErrors.maritalStatus = 'Marital Status is required';
     setErrors(newErrors);
-
+ 
     return Object.values(newErrors).every(error => !error);
   };
-
+ 
   const handleNext = async () => {
-
-
+ 
+ 
     if (!validateForm()) {
       setLoading(true);
       try {
@@ -222,7 +222,7 @@ const PersonalInfoScreen: React.FC = () => {
           setLoading(false);
           return;
         }
-
+ 
         const body = {
           firstname: formData.firstName,
           lastname: formData.lastName,
@@ -235,9 +235,9 @@ const PersonalInfoScreen: React.FC = () => {
           maritalStatus: formData.maritalStatus,
           spokenLanguage: formData.spokenLanguages,
         };
-
+ 
         const response = await AuthPut('users/updateUser', body, token);
-
+ 
         if (response?.status === 'success') {
           Toast.show({
             type: 'success',
@@ -274,13 +274,13 @@ const PersonalInfoScreen: React.FC = () => {
       }
     }
   };
-
+ 
   // const debouncedHandleNext = useAsyncDebounce(handleNext, 2000);
-
+ 
   const handleBack = () => {
     navigation.goBack();
   };
-
+ 
   const handleLanguageChange = (selectedLanguages: string[]) => {
     setFormData(prev => ({
       ...prev,
@@ -292,62 +292,62 @@ const PersonalInfoScreen: React.FC = () => {
     }));
   };
   const fetchUserData = async () => {
-
+ 
     setLoading(true);
-
+ 
     try {
       // Retrieve token from AsyncStorage
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
         throw new Error('Authentication token not found');
       }
-
-
+ 
+ 
       AsyncStorage.setItem('stepNo', '7');
       const response = await AuthFetch('users/getUser', token);
       // Make API call
-
-
+ 
+ 
       // Check if response status is success
-      if (response.data.status !== 'success') {
-        throw new Error(response.data.message || 'Failed to fetch user data');
+      if (response?.data?.status !== 'success') {
+        throw new Error(response?.data?.message || 'Failed to fetch user data');
       }
-      const userData = response.data.data;
-
+      const userData = response?.data?.data;
+ 
       setFormData({
-        firstName: userData.firstname || '',
-        lastName: userData.lastname || '',
-        medicalRegNumber: userData.medicalRegistrationNumber || '',
-        email: userData.email || '',
-        gender: userData.gender || '',
-        dateOfBirth: userData.dateOfBirth || '',
+        firstName: userData?.firstname || '',
+        lastName: userData?.lastname || '',
+        medicalRegNumber: userData?.medicalRegistrationNumber || '',
+        email: userData?.email || '',
+        gender: userData?.gender || '',
+        dateOfBirth: userData?.dateOfBirth || '',
         spokenLanguages: userData?.spokenLanguage || [],
-
+ 
         profilePhoto: userData?.profilePhoto || PLACEHOLDER_IMAGE,
         appLanguage: userData?.appLanguage || 'en',
         relationship: userData?.relationship || 'self',
         bloodGroup: userData?.bloodGroup || '',
         maritalStatus: userData?.maritalStatus || 'single',
-
+ 
       });
     } catch (error: any) {
       // setLoading(false);
-
+ 
     } finally {
       setLoading(false); // Stop loading regardless of success or failure
     }
-
-
+ 
+ 
   }
-
+ 
   useEffect(() => {
     fetchUserData();
   }, []);
-
+ 
   return (
     <ScrollView>
       <View style={styles.container}>
-
+ 
         {loading && (
           <View style={styles.loaderOverlay}>
             <ActivityIndicator size="large" color="#00203F" />
@@ -361,16 +361,16 @@ const PersonalInfoScreen: React.FC = () => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Personal Info</Text>
         </View>
-
+ 
         <ProgressBar currentStep={getCurrentStepIndex('PersonalInfo')} totalSteps={TOTAL_STEPS} />
-
+ 
         {/* Form Content */}
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
           >
             <ScrollView style={styles.formContainer}>
-
+ 
               <Text style={styles.label}>First Name*</Text>
               <TextInput
                 style={styles.input}
@@ -385,7 +385,7 @@ const PersonalInfoScreen: React.FC = () => {
               {errors.firstName ? (
                 <Text style={styles.errorText}>{errors.firstName}</Text>
               ) : null}
-
+ 
               <Text style={styles.label}>Last Name*</Text>
               <TextInput
                 style={styles.input}
@@ -400,7 +400,7 @@ const PersonalInfoScreen: React.FC = () => {
               {errors.lastName ? (
                 <Text style={styles.errorText}>{errors.lastName}</Text>
               ) : null}
-
+ 
               <Text style={styles.label}>Medical Registration Number*</Text>
               <TextInput
                 style={styles.input}
@@ -417,7 +417,7 @@ const PersonalInfoScreen: React.FC = () => {
               {errors.medicalRegNumber ? (
                 <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
               ) : null}
-
+ 
               <Text style={styles.label}>Email*</Text>
               <TextInput
                 style={styles.input}
@@ -434,7 +434,7 @@ const PersonalInfoScreen: React.FC = () => {
               {errors.email ? (
                 <Text style={styles.errorText}>{errors.email}</Text>
               ) : null}
-
+ 
               <Text style={styles.label}>Gender*</Text>
               <View style={styles.input}>
                 <Picker
@@ -455,10 +455,10 @@ const PersonalInfoScreen: React.FC = () => {
               {errors.gender ? (
                 <Text style={styles.errorText}>{errors.gender}</Text>
               ) : null}
-
-
+ 
+ 
               <Text style={styles.label}>Languages Spoken*</Text>
-
+ 
               <MultiSelect
                 style={styles.input}
                 data={languageOptions}
@@ -491,16 +491,16 @@ const PersonalInfoScreen: React.FC = () => {
               {errors.spokenLanguages ? (
                 <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
               ) : null}
-
+ 
               {/* Spacer to ensure content is not hidden by the Next button */}
               <View style={styles.spacer} />
             </ScrollView>
-
+ 
           </KeyboardAvoidingView>
         </TouchableWithoutFeedback>
-
-
-
+ 
+ 
+ 
         {/* Next Button */}
         <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
           <Text style={styles.nextText}>Next</Text>
@@ -509,7 +509,7 @@ const PersonalInfoScreen: React.FC = () => {
     </ScrollView>
   );
 };
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -578,10 +578,10 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   label: {
-    fontSize: width * 0.035, 
+    fontSize: width * 0.035,
     fontWeight: '500',
     color: '#333',
-    marginBottom: height * 0.005, 
+    marginBottom: height * 0.005,
     marginTop: height * 0.01,    
   },
   input: {
@@ -744,5 +744,5 @@ const styles = StyleSheet.create({
     marginLeft: width * 0.02,
   },
 });
-
+ 
 export default PersonalInfoScreen;

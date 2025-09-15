@@ -206,7 +206,7 @@ const DoctorProfileView: React.FC = () => {
     if (!token) return;
     try {
       const res = await AuthFetch('catalogue/degree/getAllDegrees', token);
-      
+
       const data = res?.data?.data || [];
       const names = data.map((d: any) => d?.name || d?.degreeName || d?.title).filter(Boolean);
       setDegrees(names);
@@ -409,65 +409,65 @@ const DoctorProfileView: React.FC = () => {
     }
   };
 
- const saveConsultation = async () => {
-  if (!token) return;
+  const saveConsultation = async () => {
+    if (!token) return;
 
-  // Validate: every row must have both fields filled
-  for (let idx = 0; idx < formConsultation.length; idx++) {
-    const row = formConsultation[idx];
+    // Validate: every row must have both fields filled
+    for (let idx = 0; idx < formConsultation.length; idx++) {
+      const row = formConsultation[idx];
 
-    if (!row.type || row.type.trim() === "") {
-      Alert.alert("Missing value", `Row ${idx + 1}: Please fill the Type.`);
-      return;
+      if (!row.type || row.type.trim() === "") {
+        Alert.alert("Missing value", `Row ${idx + 1}: Please fill the Type.`);
+        return;
+      }
+
+      if (row.fee === "" || row.fee == null) {
+        Alert.alert("Missing value", `Row ${idx + 1}: Please fill the Fee.`);
+
+        return;
+      }
+
+      // Safety: initial > 0 should not be saved as 0
+      const initialFee = Number((row as any).__initialFee || 0);
+      if (initialFee > 0 && Number(row.fee) === 0) {
+        Alert.alert("Invalid fee", `Row ${idx + 1}: Fee cannot be 0 since it was initially > 0.`);
+        return;
+      }
     }
 
-    if (row.fee === "" || row.fee == null) {
-      Alert.alert("Missing value", `Row ${idx + 1}: Please fill the Fee.`);
-        
-      return;
-    }
+    try {
+      const cleaned = formConsultation.map((i) => ({
+        type: i.type.trim(),
+        fee: Number(i.fee),
+        currency: i.currency || "₹",
+      }));
 
-    // Safety: initial > 0 should not be saved as 0
-    const initialFee = Number((row as any).__initialFee || 0);
-    if (initialFee > 0 && Number(row.fee) === 0) {
-      Alert.alert("Invalid fee", `Row ${idx + 1}: Fee cannot be 0 since it was initially > 0.`);
-      return;
-    }
-  }
-
-  try {
-    const cleaned = formConsultation.map((i) => ({
-      type: i.type.trim(),
-      fee: Number(i.fee),
-      currency: i.currency || "₹",
-    }));
-
-    const response = await AuthPost(
-      "users/updateConsultationModes",
-      { consultationModeFee: cleaned },
-      token
-    );
+      const response = await AuthPost(
+        "users/updateConsultationModes",
+        { consultationModeFee: cleaned },
+        token
+      );
 
       const userData = response?.data?.data;
       dispatch({ type: 'currentUser', payload: userData });
-    Toast.show({
-      type: "success",
-      text1: "Success",
-      text2: "Consultation fees updated",
-    });
-    handleEditClose();
-    fetchDoctorData();
-  } catch (e: any) {
-    Toast.show({
-      type: "error",
-      text1: "Error",
-      text2:
-        e?.response?.data?.message?.message ||
-        e?.message ||
-        "Failed to update fees",
-    });
-  }
-};
+      Toast.show({
+        type: "success",
+        text1: "Success",
+        text2: "Consultation fees updated",
+      });
+      handleEditClose();
+      fetchDoctorData();
+    } catch (e: any) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2:
+          e?.response?.data?.message?.message ||
+          e?.message ||
+          "Failed to update fees",
+      });
+    }
+  };
 
 
   const saveBank = async () => {
@@ -783,7 +783,7 @@ const DoctorProfileView: React.FC = () => {
                 {doctorData.certifications.length > 0 ? (
                   doctorData.certifications.map((cert, index) => (
                     <View key={index} style={styles.certificationItem}>
-                     
+
                       <View style={styles.certificationActions}>
                         {!!cert.image && (
                           <TouchableOpacity style={styles.viewButton} onPress={() => showDocModal({ type: 'Specialization Certificate', data: cert.image })}>
@@ -1218,44 +1218,44 @@ const DoctorProfileView: React.FC = () => {
                     </View>
                     <View style={{ width: 100, marginRight: 8 }}>
                       <Text style={styles.label}>Fee</Text>
-                     <TextInput
-  style={styles.input}
-  value={String(row.fee ?? "")}
-  onChangeText={(v) => {
-    const digits = v.replace(/[^0-9]/g, "");
+                      <TextInput
+                        style={styles.input}
+                        value={String(row.fee ?? "")}
+                        onChangeText={(v) => {
+                          const digits = v.replace(/[^0-9]/g, "");
 
-    // clone first
-    const next = [...formConsultation];
+                          // clone first
+                          const next = [...formConsultation];
 
-    // capture the initial fee once, store as a non-enumerable field so it won't get sent to APIs
-    if (next[idx].__initialFee == null) {
-      Object.defineProperty(next[idx], "__initialFee", {
-        value: Number(next[idx].fee || 0),
-        writable: true,
-        enumerable: false,
-      });
-    }
-    const initialFee = Number(next[idx].__initialFee || 0);
+                          // capture the initial fee once, store as a non-enumerable field so it won't get sent to APIs
+                          if (next[idx].__initialFee == null) {
+                            Object.defineProperty(next[idx], "__initialFee", {
+                              value: Number(next[idx].fee || 0),
+                              writable: true,
+                              enumerable: false,
+                            });
+                          }
+                          const initialFee = Number(next[idx].__initialFee || 0);
 
-    // allow clearing while typing
-    if (digits.length === 0) {
-      next[idx].fee = "";
-      setFormConsultation(next);
-      return;
-    }
+                          // allow clearing while typing
+                          if (digits.length === 0) {
+                            next[idx].fee = "";
+                            setFormConsultation(next);
+                            return;
+                          }
 
-    // if initial > 0, block editing to an explicit 0
-    if (initialFee > 0 && Number(digits) === 0) {
-      return; // ignore the change
-    }
+                          // if initial > 0, block editing to an explicit 0
+                          if (initialFee > 0 && Number(digits) === 0) {
+                            return; // ignore the change
+                          }
 
-    next[idx].fee = digits;
-    setFormConsultation(next);
-  }}
-  keyboardType="numeric"
-  placeholder="Enter fee"
-  placeholderTextColor="#888"
-/>
+                          next[idx].fee = digits;
+                          setFormConsultation(next);
+                        }}
+                        keyboardType="numeric"
+                        placeholder="Enter fee"
+                        placeholderTextColor="#888"
+                      />
 
                     </View>
                   </View>
@@ -1415,9 +1415,9 @@ const styles = StyleSheet.create({
     borderRadius: 4, marginLeft: SCREEN_WIDTH * 0.02, marginBottom: SCREEN_WIDTH * 0.01,
   },
   viewButtonText: { color: '#fff', fontSize: SCREEN_WIDTH * 0.03 },
-closeButton: {
-    marginLeft: 8, 
-    padding: 4, 
+  closeButton: {
+    marginLeft: 8,
+    padding: 4,
   },
   locationCard: { backgroundColor: '#E8EAF6', borderRadius: 8, padding: SCREEN_WIDTH * 0.03, marginBottom: SCREEN_WIDTH * 0.02 },
   locationInfo: { flexDirection: 'row', alignItems: 'flex-start' },

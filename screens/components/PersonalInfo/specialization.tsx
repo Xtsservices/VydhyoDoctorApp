@@ -28,7 +28,7 @@ import { AuthFetch, UploadFiles } from '../../auth/auth';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { Picker } from '@react-native-picker/picker';
-
+ 
 // Specialization options
 const specializationOptions = [
   'Anatomy',
@@ -96,7 +96,6 @@ const specializationOptions = [
   'Pediatrics',
   'Pedodontics and Preventive Dentistry',
   'Pharmacology / Clinical Pharmacology',
-  'Physiology',
   'Physiotherapist',
   'Plastic & Reconstructive Surgery / Plastic Surgery',
   'Preventive Cardiology',
@@ -119,14 +118,14 @@ const specializationOptions = [
   'Vascular Surgery',
   'Yoga and Naturopathy',
 ];
-
+ 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
   goBack: () => void;
 };
-
+ 
 const { width, height } = Dimensions.get('window');
-
+ 
 const SpecializationDetails = () => {
   const userId = useSelector((state: any) => state.currentUserID);
   const [degrees, setDegrees] = useState<{ id: string; degreeName: string }[]>([]);
@@ -154,7 +153,7 @@ const SpecializationDetails = () => {
     yearsExperience: '',
   });
   const navigation = useNavigation<NavigationProp>();
-  
+ 
   const handleRemoveFile = (field: 'degrees' | 'certifications') => {
     setFormData({
       ...formData,
@@ -165,10 +164,10 @@ const SpecializationDetails = () => {
       [field]: { name: '', file: null }
     }));
   };
-  
+ 
   const handleDegreeChange = (itemValue: string) => {
     let newDegrees: string[];
-
+ 
     if (tempDegrees.includes(itemValue)) {
       // Remove degree if already selected
       newDegrees = tempDegrees.filter(deg => deg !== itemValue);
@@ -176,18 +175,18 @@ const SpecializationDetails = () => {
       // Add degree to selection
       newDegrees = [...tempDegrees, itemValue].filter(deg => deg !== '');
     }
-
+ 
     setTempDegrees(newDegrees);
     setErrors(prev => ({ ...prev, degree: '' }));
   };
-
+ 
   const handleConfirm = () => {
     // Replace "Others" with customDegree value if provided and non-empty, otherwise exclude it
     const finalDegrees = tempDegrees
       .map(deg => (deg === 'Others' && formData.customDegree?.trim() ? formData.customDegree.trim() : deg))
       .filter(deg => deg !== 'Others' && deg.trim() !== '')
       .join(', ');
-
+ 
     setFormData({
       ...formData,
       degree: finalDegrees,
@@ -195,12 +194,12 @@ const SpecializationDetails = () => {
     });
     setModalVisible(false);
   };
-
+ 
   const handleCancel = () => {
     setTempDegrees(formData.degree ? formData.degree.split(',').map(deg => deg.trim()).filter(deg => deg) : []);
     setModalVisible(false);
   };
-
+ 
   const renderDegreeItem = ({ item }: { item: { id: string; degreeName: string } }) => (
     <Pressable style={styles.checkboxContainer} onPress={() => handleDegreeChange(item.degreeName)}>
       <CheckBox
@@ -212,18 +211,18 @@ const SpecializationDetails = () => {
       <Text style={styles.checkboxLabel}>{item.degreeName}</Text>
     </Pressable>
   );
-
+ 
   const degreeList = [...degrees, { id: 'others', degreeName: 'Others' }];
-
+ 
   const validateForm = () => {
     const newErrors = {
       degree: '',
       specialization: '',
       yearsExperience: '',
     };
-
+ 
     let isValid = true;
-
+ 
     if (!formData.degree) {
       newErrors.degree = 'Please select at least one degree.';
       isValid = false;
@@ -240,11 +239,11 @@ const SpecializationDetails = () => {
       newErrors.yearsExperience = 'Please enter a valid number for years of experience.';
       isValid = false;
     }
-
+ 
     setErrors(newErrors);
     return isValid;
   };
-  
+ 
   const handleFileUpload = async (field: 'degrees' | 'certifications') => {
     Alert.alert(
       'Upload File',
@@ -333,7 +332,7 @@ const SpecializationDetails = () => {
                   visibilityTime: 4000,
                 });
               }
-
+ 
             } catch (error) {
               Alert.alert('Error', 'Gallery access failed.');
             }
@@ -389,10 +388,10 @@ const SpecializationDetails = () => {
       { cancelable: true }
     );
   };
-  
+ 
   const handleNext = async () => {
     if (!validateForm()) return;
-
+ 
     const token = await AsyncStorage.getItem('authToken');
     try {
       setIsLoading(true);
@@ -402,7 +401,7 @@ const SpecializationDetails = () => {
       formDataObj.append('experience', formData.yearsExperience);
       formDataObj.append('degree', formData.degree);
       formDataObj.append('bio', formData.bio);
-
+ 
       if (uploadedFiles.degrees.file) {
         formDataObj.append('drgreeCertificate', {
           uri: Platform.OS === 'android' ? uploadedFiles.degrees.file.uri : uploadedFiles.degrees.file.uri.replace('file://', ''),
@@ -410,7 +409,7 @@ const SpecializationDetails = () => {
           name: uploadedFiles.degrees.file.name || 'degree.pdf',
         } as any);
       }
-
+ 
       if (uploadedFiles.certifications.file) {
         formDataObj.append('specializationCertificate', {
           uri: Platform.OS === 'android' ? uploadedFiles.certifications.file.uri : uploadedFiles.certifications.file.uri.replace('file://', ''),
@@ -418,7 +417,7 @@ const SpecializationDetails = () => {
           name: uploadedFiles.certifications.file.name || 'certification.pdf',
         } as any);
       }
-
+ 
       const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
       if (response.status === 'success') {
         Toast.show({
@@ -451,22 +450,22 @@ const SpecializationDetails = () => {
       setIsLoading(false);
     }
   };
-
+ 
   const handleBack = () => {
     navigation.navigate('PersonalInfo');
   };
-
+ 
   const fetchDegrees = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('catalogue/degree/getAllDegrees', token);
       const data = response?.data?.data || [];
-
+ 
       // Sort alphabetically by 'name'
       const sortedData = data.sort((a: { degreeName: string; }, b: { degreeName: any; }) =>
         a.degreeName.localeCompare(b.degreeName)
       );
-
+ 
       setDegrees(sortedData);
     } catch (error) {
       Toast.show({
@@ -478,13 +477,13 @@ const SpecializationDetails = () => {
       });
     }
   };
-
+ 
   const fetchUserData = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
         const response = await AuthFetch('users/getUser', token);
-        if (response.data.status === 'success') {
+        if (response?.data?.status === 'success') {
           const userData = response.data.data;
           setFormData({
             degree: userData?.specialization?.degree || '',
@@ -500,16 +499,16 @@ const SpecializationDetails = () => {
             certifications: userData?.specialization?.certifications && "uploaded successfully" || null,
           });
           setTempDegrees(userData?.specialization?.degree ? userData?.specialization?.degree.split(',').map((deg: string) => deg.trim()).filter((deg: string) => deg) : []);
-
+ 
           // Set file names if they exist
           setUploadedFiles({
             degrees: {
-              name: userData?.specialization?.degreesFileName || '',
-              file: userData?.specialization?.degrees ? 'uploaded successfully' : null
+              name: userData?.specialization?.degree || '',
+              file: userData?.specialization?.degreeCertificateUrl ? 'uploaded successfully' : null
             },
             certifications: {
-              name: userData?.specialization?.certificationsFileName || '',
-              file: userData?.specialization?.certifications ? 'uploaded successfully' : null
+              name: userData?.specialization?.name || '',
+              file: userData?.specialization?.specializationCertificateUrl ? 'uploaded successfully' : null
             }
           });
         }
@@ -517,12 +516,12 @@ const SpecializationDetails = () => {
     } catch (error) {
     }
   };
-
+ 
   useEffect(() => {
     fetchUserData();
     fetchDegrees();
   }, []);
-
+  
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -536,7 +535,7 @@ const SpecializationDetails = () => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Specialization Details</Text>
         </View>
-
+ 
         <ProgressBar currentStep={getCurrentStepIndex('Specialization')} totalSteps={TOTAL_STEPS} />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.formContainer}>
@@ -563,7 +562,7 @@ const SpecializationDetails = () => {
                 <View style={styles.modalContainer}>
                   <View style={styles.modalContent}>
                     <Text style={styles.modalTitle}>Select Degrees</Text>
-
+ 
                     {/* Replace FlatList with ScrollView for better control */}
                     <ScrollView
                       style={styles.listContainer}
@@ -586,7 +585,7 @@ const SpecializationDetails = () => {
                         </Pressable>
                       ))}
                     </ScrollView>
-
+ 
                     {tempDegrees.includes('Others') && (
                       <TextInput
                         style={[styles.input, styles.textInput]}
@@ -597,7 +596,7 @@ const SpecializationDetails = () => {
                         editable={!isLoading}
                       />
                     )}
-
+ 
                     <View style={styles.modalButtons}>
                       <TouchableOpacity style={styles.modalButton} onPress={handleCancel} disabled={isLoading}>
                         <Text style={styles.modalButtonText}>Cancel</Text>
@@ -614,7 +613,7 @@ const SpecializationDetails = () => {
                 {tempDegrees.includes('Others') && formData.customDegree ? ` (${formData.customDegree})` : ''}
               </Text>
             </View>
-
+ 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Specialization(s)*</Text>
               <View style={[styles.input, styles.pickerContainer, errors.specialization ? styles.inputError : null]}>
@@ -637,7 +636,7 @@ const SpecializationDetails = () => {
                 <Text style={styles.errorText}>{errors.specialization}</Text>
               ) : null}
             </View>
-
+ 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Years of Experience *</Text>
               <TextInput
@@ -658,7 +657,7 @@ const SpecializationDetails = () => {
                 <Text style={styles.errorText}>{errors.yearsExperience}</Text>
               ) : null}
             </View>
-
+ 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Bio/Profile Info</Text>
               <TextInput
@@ -672,7 +671,7 @@ const SpecializationDetails = () => {
                 editable={!isLoading}
               />
             </View>
-
+ 
             {/* Degree Certificate Upload Section */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Degree Certificate(s) (Optional)</Text>
@@ -689,7 +688,7 @@ const SpecializationDetails = () => {
                 </View>
               </TouchableOpacity>
               {/* Display file name with remove button */}
-              {uploadedFiles.degrees.name ? (
+              {uploadedFiles?.degrees?.name ? (
                 <View style={styles.fileNameContainer}>
                   <View style={styles.fileNameWrapper}>
                     <Text style={styles.fileNameText} numberOfLines={1} ellipsizeMode="middle">
@@ -705,7 +704,7 @@ const SpecializationDetails = () => {
                 </View>
               ) : null}
             </View>
-
+ 
             {/* Specialization Certificate Upload Section */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Specialization Certificate(s) (Optional)</Text>
@@ -740,7 +739,7 @@ const SpecializationDetails = () => {
             </View>
           </View>
         </ScrollView>
-
+ 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.nextButton, isLoading && styles.disabledButton]}
@@ -751,7 +750,7 @@ const SpecializationDetails = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
+ 
       {isLoading && (
         <View style={styles.loaderOverlay}>
           <ActivityIndicator size="large" color="#00203F" />
@@ -761,7 +760,7 @@ const SpecializationDetails = () => {
     </SafeAreaView>
   );
 };
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -772,7 +771,6 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: height * 0.1,
   },
   header: {
     flexDirection: 'row',
@@ -873,7 +871,7 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     minHeight: height * 0.06,
-    justifyContent: 'center', 
+    justifyContent: 'center',
   },
   dropdownBox: {
     borderWidth: 1,
@@ -1033,5 +1031,6 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.005,
   },
 });
-
+ 
 export default SpecializationDetails;
+ 

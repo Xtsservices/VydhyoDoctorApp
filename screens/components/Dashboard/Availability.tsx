@@ -268,101 +268,93 @@ useEffect(() => {
     }
   }, [fromDate, doctorId, selectedClinic]);
 
-  const generateTimeSlots = async () => {
-    if (!isEndTimeValid()) {
+const generateTimeSlots = async () => {
+  if (!isEndTimeValid()) {
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: 'End time must be after start time',
+      position: 'top',
+      visibilityTime: 3000,
+    });
+    return;
+  }
+
+  setIsAddingSlots(true);
+  try {
+    const startDateObj = dayjs(fromDate);
+    const endDateObj = dayjs(toDate);
+    const daysDifference = endDateObj.diff(startDateObj, 'day');
+
+    if (daysDifference > 6) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'End time must be after start time',
+        text2: 'Cannot add slots for more than 1 week at a time',
         position: 'top',
         visibilityTime: 3000,
       });
+      setIsAddingSlots(false);
       return;
     }
 
-    setIsAddingSlots(true);
-    try {
-      const startDateObj = dayjs(fromDate);
-      const endDateObj = dayjs(toDate);
-      const daysDifference = endDateObj.diff(startDateObj, 'day');
-
-      if (daysDifference > 6) { // 0-6 days = 1 week max (inclusive)
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Cannot add slots for more than 1 week at a time',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-        setIsAddingSlots(false);
-        return;
-      }
-
-      const getDateRangeArray = (fromDate: string, toDate: string): string[] => {
-        const dates: string[] = [];
-        const start = moment(fromDate, 'YYYY-MM-DD');
-        const end = moment(toDate, 'YYYY-MM-DD');
-        if (end.isAfter(start)) {
-          let currentDate = start.clone();
-          while (currentDate.isSameOrBefore(end)) {
-            dates.push(currentDate.format('YYYY-MM-DD'));
-            currentDate.add(1, 'days');
-          }
-        } else {
-          dates.push(start.format('YYYY-MM-DD'));
+    const getDateRangeArray = (fromDate: string, toDate: string): string[] => {
+      const dates: string[] = [];
+      const start = moment(fromDate, 'YYYY-MM-DD');
+      const end = moment(toDate, 'YYYY-MM-DD');
+      if (end.isAfter(start)) {
+        let currentDate = start.clone();
+        while (currentDate.isSameOrBefore(end)) {
+          dates.push(currentDate.format('YYYY-MM-DD'));
+          currentDate.add(1, 'days');
         }
-        return dates;
-      };
+      } else {
+        dates.push(start.format('YYYY-MM-DD'));
+      }
+      return dates;
+    };
 
-      const startDate = dayjs(fromDate).format('YYYY-MM-DD');
-      const endDate = dayjs(toDate).format('YYYY-MM-DD');
-      const selectedDates = fromDate && endDate ? getDateRangeArray(startDate, endDate) : [startDate];
+    const startDate = dayjs(fromDate).format('YYYY-MM-DD');
+    const endDate = dayjs(toDate).format('YYYY-MM-DD');
+    const selectedDates = fromDate && endDate ? getDateRangeArray(startDate, endDate) : [startDate];
 
-      const payload = {
-        doctorId,
-        dates: selectedDates,
-        startTime: start24,
-        endTime: end24,
-        interval: parseInt(duration),
-        isAvailable: true,
-        addressId: selectedClinic,
-      };
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthPost('appointment/createSlotsForDoctor', payload, token);
+    const payload = {
+      doctorId,
+      dates: selectedDates,
+      startTime: start24,
+      endTime: end24,
+      interval: parseInt(duration),
+      isAvailable: true,
+      addressId: selectedClinic,
+    };
+    const token = await AsyncStorage.getItem('authToken');
+    const response = await AuthPost('appointment/createSlotsForDoctor', payload, token);
 
-      if (response?.data && response?.data?.status === 'success') {
-        // Always refresh the slots after a successful API call
-        await fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
-        setToDate(new Date());
+    if (response?.data && response?.data?.status === 'success') {
+      // Always refresh the slots after a successful API call
+      await fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
+      setToDate(new Date());
 
+      // Check if these properties exist before accessing them
+      const overlap = response?.data?.results?.[0]?.reason;
+      const clinicname = response?.data?.results?.[0]?.overlaps?.[0]?.clinic;
+      
+      // Only show success toast if there are no overlaps
+      if (!overlap) {
         Toast.show({
           type: 'success',
           text1: 'Success',
-          text2: 'Slots Added Successfully', // Use fixed text instead of response data
-          position: 'top',
-          visibilityTime: 3000,
-        });
-
-        // Check if these properties exist before accessing them
-        const overlap = response?.data?.results?.[0]?.reason;
-        const clinicname = response?.data?.results?.[0]?.overlaps?.[0]?.clinic;
-        if (overlap && clinicname) {
-          Alert.alert(overlap, `Clinic Name: ${clinicname}`)
-        }
-      } else {
-        // Use a safe fallback message
-        const errorMessage = response?.data?.message || response?.message || 'Please Retry';
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: errorMessage,
+          text2: 'Slots Added Successfully',
           position: 'top',
           visibilityTime: 3000,
         });
       }
-    } catch (error: any) {
-      // Use a safe fallback message for catch block too
-      const errorMessage = error?.message || 'Please Retry';
+      
+      if (overlap && clinicname) {
+        Alert.alert(overlap, `Clinic Name: ${clinicname}`);
+      }
+    } else {
+      const errorMessage = response?.data?.message || response?.message || 'Please Retry';
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -370,11 +362,20 @@ useEffect(() => {
         position: 'top',
         visibilityTime: 3000,
       });
-    } finally {
-      setIsAddingSlots(false);
     }
-  };
-
+  } catch (error: any) {
+    const errorMessage = error?.message || 'Please Retry';
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: errorMessage,
+      position: 'top',
+      visibilityTime: 3000,
+    });
+  } finally {
+    setIsAddingSlots(false);
+  }
+};
   const generateUnavailableTimeSlots = async () => {
     try {
       const startTime = moment(`${unavailableStartTime}:00 ${unavailableStartPeriod}`, 'hh:mm A').format('HH:mm');

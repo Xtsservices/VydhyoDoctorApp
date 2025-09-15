@@ -138,7 +138,7 @@ const ProfileReview: React.FC = () => {
               <View style={styles.titleUnderline} />
             </View>
 
-            <View style={styles.timerContainer}>
+            {/* <View style={styles.timerContainer}>
               <Text style={styles.estimatedTime}>Estimated Time Left</Text>
               <View style={styles.timerCircle}>
                 <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
@@ -147,7 +147,7 @@ const ProfileReview: React.FC = () => {
                 Thank you for submitting your profile. Our medical team will review your information and get back to you within{' '}
                 <Text style={styles.highlightedText}>48 hours</Text>.
               </Text>
-            </View>
+            </View> */}
 
             <View style={styles.supportContainer}>
               <TouchableOpacity
@@ -226,8 +226,8 @@ const styles = StyleSheet.create({
     maxHeight: height * 0.8,
   },
   logoContainer: {
-    marginTop: -50,
-    marginBottom: -50,
+    // marginTop: -50,
+    marginBottom: -10,
   },
   logoWrapper: {
     justifyContent: 'center',

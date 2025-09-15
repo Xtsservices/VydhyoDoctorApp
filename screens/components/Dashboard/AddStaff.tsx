@@ -48,15 +48,30 @@ const AddStaffScreen = () => {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const onDateChange = (event: any, selectedDate: Date | undefined) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      const formattedDate = `${selectedDate.getDate().toString().padStart(2, '0')}-${(selectedDate.getMonth() + 1)
-        .toString()
-        .padStart(2, '0')}-${selectedDate.getFullYear()}`;
-      setForm({ ...form, DOB: formattedDate });
+const onDateChange = (event: any, selectedDate: Date | undefined) => {
+  setShowDatePicker(false);
+  if (selectedDate) {
+    // Check if selected date is in the future
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Set to end of day for accurate comparison
+    
+    if (selectedDate > today) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Date',
+        text2: 'Date of birth cannot be in the future',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
     }
-  };
+    
+    const formattedDate = `${selectedDate.getDate().toString().padStart(2, '0')}-${(selectedDate.getMonth() + 1)
+      .toString()
+      .padStart(2, '0')}-${selectedDate.getFullYear()}`;
+    setForm({ ...form, DOB: formattedDate });
+  }
+};
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.DOB || !form.mobile || !form.email || !form.role) {
@@ -184,6 +199,7 @@ const AddStaffScreen = () => {
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={onDateChange}
+          maximumDate={new Date()} 
         />
       )}
 

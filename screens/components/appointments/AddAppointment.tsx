@@ -767,6 +767,7 @@ const calculateAgeFromDOB = (dob: string): string => {
                 value={new Date()}
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={new Date()}
                 onChange={onDateChange}
               />
             )}

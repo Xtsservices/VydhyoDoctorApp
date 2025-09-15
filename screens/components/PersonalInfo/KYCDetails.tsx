@@ -24,12 +24,12 @@ import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { UploadFiles, AuthFetch } from '../../auth/auth';
 import WebView from 'react-native-webview';
-
+ 
 const voter_icon = require('../../assets/aadhar.png');
 const pancard_icon = require('../../assets/pan.png');
-
+ 
 const { width, height } = Dimensions.get('window');
-
+ 
 const KYCDetailsScreen = () => {
   const [voterImage, setVoterImage] = useState<{ uri: string; name: string; type?: string } | null>(null);
   const [panImage, setPanImage] = useState<{ uri: string; name: string; type?: string } | null>(null);
@@ -43,7 +43,7 @@ const KYCDetailsScreen = () => {
   const [fileViewModalVisible, setFileViewModalVisible] = useState(false);
   const [selectedFile, setSelectedFile] = useState<{ uri: string; type?: string } | null>(null);
   const navigation = useNavigation<any>();
-
+ 
   const termsAndConditionsHTML = `
     <html>
       <head>
@@ -84,7 +84,7 @@ const KYCDetailsScreen = () => {
       <body>
         <h1>Vydhyo Healthcare Platform</h1>
         <p class="effective-date"><strong>Effective Date:</strong> September 1st, 2025 | <strong>Last Updated:</strong> August 30th, 2025 | <strong>Version:</strong> 1.0</p>
-
+ 
         <h2>1. Definitions and Interpretation</h2>
         <p><strong>Vydhyo:</strong> Vydhyo Health Care Pvt. Ltd., a company incorporated under the Companies Act, 2013, with its registered office at E 602, Hallmark Sunnyside, Manchirevula, Hyderabad, operating the Platform (www.vydhyo.com and Vydhyo mobile application).</p>
         <p><strong>User:</strong> Any individual accessing or using the Platform, including patients, healthcare providers, caregivers, and their authorized representatives.</p>
@@ -96,13 +96,13 @@ const KYCDetailsScreen = () => {
         <p><strong>ABDM:</strong> Ayushman Bharat Digital Mission ecosystem.</p>
         <p><strong>Clinical Establishment:</strong> Healthcare facilities registered under the Clinical Establishments Act, 2010.</p>
         <p><strong>Telemedicine:</strong> Practice of medicine using electronic communication as per Telemedicine Practice Guidelines, 2020.</p>
-
+ 
         <h2>2. Acceptance and Modification</h2>
         <p><strong>Acceptance:</strong> By using the Platform, you agree to these Terms and applicable laws. If you do not agree, you must not use the Platform.</p>
         <p><strong>Modifications:</strong> Vydhyo may modify these Terms, with material changes notified 30 days prior unless required by law for immediate implementation.</p>
         <p><strong>Continued Use:</strong> Continued use after modifications constitutes acceptance.</p>
         <p><strong>Language:</strong> English version prevails in case of translation conflicts.</p>
-
+ 
         <h2>3. Eligibility and Registration</h2>
         <p><strong>Age:</strong> Users must be 18 or older; minors require parental/guardian consent.</p>
         <p><strong>Legal Capacity:</strong> Users must have the legal capacity to enter contracts under Indian law.</p>
@@ -131,7 +131,7 @@ const KYCDetailsScreen = () => {
         <ul>
           <li>Those barred by law, with revoked licenses, or previously violating Terms.</li>
         </ul>
-
+ 
         <h2>4. Platform Role and Disclaimers</h2>
         <p><strong>Role:</strong> Vydhyo is a technology platform facilitating connections, not a healthcare provider.</p>
         <p><strong>No Medical Practice:</strong></p>
@@ -142,7 +142,7 @@ const KYCDetailsScreen = () => {
         <p><strong>Facilitation:</strong> Limited to appointment booking, communication, payment processing, and AI-powered informational tools.</p>
         <p><strong>Provider Independence:</strong> Providers are independent contractors, not Vydhyo employees.</p>
         <p><strong>Emergency Disclaimer:</strong> Platform is not for emergencies; contact 108/102 or visit emergency facilities.</p>
-
+ 
         <h2>5. Services</h2>
         <h3>5.1 Doctor Consultations</h3>
         <p><strong>Appointment Scheduling:</strong> Subject to provider availability; confirmation required.</p>
@@ -164,7 +164,7 @@ const KYCDetailsScreen = () => {
         <h3>5.5 AI-Powered Tools</h3>
         <p>Symptom assessment for informational purposes only, not diagnostic.</p>
         <p>Recommends consulting qualified providers.</p>
-
+ 
         <h2>6. Payment Terms</h2>
         <p><strong>Methods:</strong> Credit/debit cards, net banking, UPI, digital wallets, Vydhyo wallet, insurance integration.</p>
         <p><strong>Security:</strong> PCI-DSS compliant, end-to-end encryption, tokenization, fraud detection.</p>
@@ -172,7 +172,7 @@ const KYCDetailsScreen = () => {
         <p><strong>Taxes:</strong> GST, TDS, etc., apply unless specified.</p>
         <p><strong>Refunds:</strong> Per service-specific policies; processed in 5-10 days (card/bank) or immediately (wallet).</p>
         <p><strong>Disputes:</strong> Raised within 30 days; resolved within 60 days.</p>
-
+ 
         <h2>7. User Responsibilities</h2>
         <h3>7.1 Patient Responsibilities</h3>
         <p>Provide accurate information, respect providers, use Platform for legitimate purposes.</p>
@@ -184,7 +184,7 @@ const KYCDetailsScreen = () => {
         <p>Misrepresentation, unauthorized access, illegal activities, harassment, etc.</p>
         <h3>7.5 Professional Conduct</h3>
         <p>Respectful interactions, confidentiality, conflict disclosure.</p>
-
+ 
         <h2>8. Intellectual Property</h2>
         <p><strong>Vydhyo’s IP:</strong> Trademarks, patents, software, content, and data.</p>
         <p><strong>User License:</strong> Limited, non-exclusive, non-transferable for personal use.</p>
@@ -192,14 +192,14 @@ const KYCDetailsScreen = () => {
         <p><strong>Provider Content:</strong> Providers retain ownership; Vydhyo uses for listings and analytics.</p>
         <p><strong>Third-Party IP:</strong> Licensed components; DMCA compliance.</p>
         <p><strong>Violations:</strong> Takedown, suspension, or legal action for infringement.</p>
-
+ 
         <h2>9. Limitation of Liability</h2>
         <p><strong>Limitations:</strong> Vydhyo is not liable for medical errors, provider negligence, technical failures, or force majeure.</p>
         <p><strong>Liability Cap:</strong> Limited to fees paid for the specific service in the past 12 months.</p>
         <p><strong>Consequential Damages:</strong> No liability for indirect or punitive damages.</p>
         <p><strong>Exceptions:</strong> Gross negligence, fraud, data protection violations, or statutory liabilities.</p>
         <p><strong>Indemnification:</strong> Users indemnify Vydhyo for breaches, misuse, or violations.</p>
-
+ 
         <h2>10. Governing Law and Dispute Resolution</h2>
         <p><strong>Governing Law:</strong> Laws of India (e.g., Consumer Protection Act, 2019; Digital Personal Data Protection Act, 2023).</p>
         <p><strong>Jurisdiction:</strong> Courts in Hyderabad, Telangana.</p>
@@ -211,7 +211,7 @@ const KYCDetailsScreen = () => {
           <li>Arbitration under Arbitration and Conciliation Act, 2015 (Hyderabad, English).</li>
         </ul>
         <p><strong>Specialized Disputes:</strong> Medical malpractice, data protection, consumer protection via respective mechanisms.</p>
-
+ 
         <h2>11. Miscellaneous</h2>
         <p><strong>Entire Agreement:</strong> Includes Privacy Policy, Refund Policy, and referenced agreements.</p>
         <p><strong>Severability:</strong> Invalid provisions modified to be enforceable.</p>
@@ -220,10 +220,10 @@ const KYCDetailsScreen = () => {
         <p><strong>Notices:</strong> Written, via registered email/address or electronic means.</p>
         <p><strong>Language:</strong> English controls; translations provided in Hindi, Telugu, etc.</p>
         <p><strong>Survival:</strong> IP, liability, data protection, and dispute resolution provisions survive termination.</p>
-
+ 
         <h2>12. Acknowledgment</h2>
         <p>By using the Platform, you acknowledge that you have read, understood, and agree to these Terms, have legal capacity, and understand your rights and obligations.</p>
-
+ 
         <h2>13. Declaration of Compliance</h2>
         <p>Vydhyo complies with:</p>
         <ul>
@@ -238,7 +238,9 @@ const KYCDetailsScreen = () => {
       </body>
     </html>
   `;
-
+ 
+ 
+ 
   const handleVoterUpload = async () => {
     try {
       const [result] = await pick({
@@ -257,7 +259,7 @@ const KYCDetailsScreen = () => {
       Alert.alert('Error', 'Failed to pick Voter ID image. Please try again.');
     }
   };
-
+ 
   const handlePancardUpload = async () => {
     Alert.alert(
       'Upload PAN Card',
@@ -271,10 +273,10 @@ const KYCDetailsScreen = () => {
                 mediaType: 'photo',
                 includeBase64: false,
               });
-
+ 
               if (result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
-
+ 
                 setPanImage({
                   uri: asset.uri!,
                   name: asset.fileName || 'pan_camera.jpg',
@@ -297,10 +299,10 @@ const KYCDetailsScreen = () => {
                 mediaType: 'photo',
                 includeBase64: false,
               });
-
+ 
               if (result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
-
+ 
                 setPanImage({
                   uri: asset.uri!,
                   name: asset.fileName || 'pan_gallery.jpg',
@@ -322,7 +324,7 @@ const KYCDetailsScreen = () => {
               const [res] = await pick({
                 type: [types.images], // Restrict to images only (PNG, JPG)
               });
-
+ 
               if (res && res.uri && res.name) {
                 setPanImage({
                   uri: res.uri,
@@ -346,17 +348,17 @@ const KYCDetailsScreen = () => {
       { cancelable: true }
     );
   };
-
+ 
   const removeVoterFile = () => {
     setVoterImage(null);
     setVoterUploaded(false);
   };
-
+ 
   const removePanFile = () => {
     setPanImage(null);
     setPancardUploaded(false);
   };
-
+ 
   const viewFile = (file: { uri: string; type?: string }) => {
     if (file.type?.includes('image')) {
       setSelectedFile(file);
@@ -365,23 +367,23 @@ const KYCDetailsScreen = () => {
       Alert.alert('Error', 'Unsupported file type.');
     }
   };
-
+ 
   const validateVoterNumber = (number: string) => {
     const voterRegex = /^[A-Z]{3}[0-9]{7}$/;
     return voterRegex.test(number);
   };
-
+ 
   const validatePanNumber = (number: string) => {
     const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
     return panRegex.test(number);
   };
-
+ 
   const handleNext = async () => {
     if (!termsAccepted) {
       Alert.alert('Error', 'Please accept the Terms & Conditions.');
       return;
     }
-
+ 
     if (!panNumber && !pancardUploaded) {
       try {
         setLoading(true);
@@ -393,7 +395,7 @@ const KYCDetailsScreen = () => {
           position: 'top',
           visibilityTime: 3000,
         });
-
+ 
         navigation.navigate('ConfirmationScreen');
       } catch (error) {
         Toast.show({
@@ -408,46 +410,51 @@ const KYCDetailsScreen = () => {
       }
       return;
     }
-
+ 
     if (!panNumber || !validatePanNumber(panNumber)) {
       Alert.alert('Error', 'Please enter a valid 10-character PAN number (e.g., ABCDE1234F).');
       return;
     }
-
+ 
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       const userId = await AsyncStorage.getItem('userId');
-
+ 
       if (!token) {
         Alert.alert('Error', 'Authentication token is missing. Please log in again.');
+        setLoading(false);
         return;
       }
-
+ 
       if (!userId) {
         Alert.alert('Error', 'User ID is missing. Please log in again.');
+        setLoading(false);
         return;
       }
-
-      if (!panImage?.uri) {
-        Alert.alert('Error', 'Please upload a Pancard image.');
+ 
+      if (!prefill ) {
+if (!panImage?.uri || prefill) {
+        Alert.alert('Error', 'Please upload a Pancard image12.');
+        setLoading(false);
         return;
       }
-
+      }
+ 
+     
+ 
       const formData = new FormData();
       formData.append('userId', userId);
       formData.append('panNumber', panNumber);
-
-      if (panImage?.uri) {
+ 
+      if (prefill || panImage?.uri) {
         formData.append('panFile', {
-          uri: panImage.uri,
-          name: panImage.name,
-          type: panImage.type || 'image/jpeg',
+          uri: panImage?.uri || panImage,
+          name: panImage?.name || 'pan.jpg',
+          type: panImage?.type || 'image/jpeg',
         } as any);
       }
-
       const response = await UploadFiles('users/addKYCDetails', formData, token);
-
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -456,7 +463,7 @@ const KYCDetailsScreen = () => {
           position: 'top',
           visibilityTime: 3000,
         });
-
+ 
         setTimeout(async () => {
           setLoading(false);
           await AsyncStorage.setItem('currentStep', 'ConfirmationScreen');
@@ -475,7 +482,7 @@ const KYCDetailsScreen = () => {
       Alert.alert('Error', errorMessage);
     }
   };
-
+const [prefill, setPrefill] = useState(false);
   const fetchUserData = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
@@ -483,11 +490,14 @@ const KYCDetailsScreen = () => {
         navigation.navigate('/Login');
       }
       const response = await AuthFetch('users/getKycByUserId', token);
-
       if (response?.data?.status === 'success') {
         const userData = response?.data?.data;
-        if (userData.panNumber) {
-          setPanNumber(userData.panNumber);
+        if (userData?.pan?.number) {
+          setPanNumber(userData.pan.number);
+          setPanImage(userData?.pan?.attachmentUrl);
+          setPrefill(true)
+    setPancardUploaded(true);
+ 
         }
       }
     } catch (error) {
@@ -500,15 +510,15 @@ const KYCDetailsScreen = () => {
       });
     }
   };
-
+ 
   useEffect(() => {
     fetchUserData();
   }, []);
-
+ 
   const handleBack = () => {
     navigation.navigate('FinancialSetupScreen');
   };
-
+ 
   return (
     <View style={styles.container}>
       {loading && (
@@ -517,7 +527,7 @@ const KYCDetailsScreen = () => {
           <Text style={styles.loaderText}>Processing...</Text>
         </View>
       )}
-
+ 
       {/* Terms and Conditions Modal */}
       <Modal
         animationType="slide"
@@ -541,7 +551,7 @@ const KYCDetailsScreen = () => {
           </View>
         </View>
       </Modal>
-
+ 
       {/* File View Modal for Images */}
       <Modal
         animationType="slide"
@@ -571,7 +581,7 @@ const KYCDetailsScreen = () => {
           </View>
         </View>
       </Modal>
-
+ 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -579,9 +589,9 @@ const KYCDetailsScreen = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>KYC Details</Text>
       </View>
-
+ 
       <ProgressBar currentStep={getCurrentStepIndex('KYCDetailsScreen')} totalSteps={TOTAL_STEPS} />
-
+ 
       {/* Form Content */}
       <ScrollView style={styles.formContainer}>
         <View style={styles.card}>
@@ -591,7 +601,7 @@ const KYCDetailsScreen = () => {
             <Text style={styles.uploadText}>Upload</Text>
             <Text style={styles.acceptedText}>Accepted: JPG, PNG</Text>
           </TouchableOpacity>
-
+ 
           {pancardUploaded && panImage && (
             <View style={styles.uploadedFileContainer}>
               <View style={styles.fileInfo}>
@@ -600,23 +610,30 @@ const KYCDetailsScreen = () => {
                   size={20}
                   color="#00203F"
                 />
+                {prefill && (
+                  <Text style={{color: 'green', marginLeft: 5, fontWeight: 'bold'}}>Uploaded</Text>
+                )}
                 <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
                   {panImage.name}
                 </Text>
               </View>
-
+ 
               <View style={styles.fileActions}>
+{!prefill && (
+ 
+ 
                 <TouchableOpacity onPress={() => viewFile(panImage)} style={styles.actionButton}>
                   <Icon name="eye" size={20} color="#007AFF" />
                 </TouchableOpacity>
-
+                )}
+ 
                 <TouchableOpacity onPress={removePanFile} style={styles.actionButton}>
                   <Icon name="delete" size={20} color="#FF3B30" />
                 </TouchableOpacity>
               </View>
             </View>
           )}
-
+ 
           <Text style={styles.label}>Enter PAN Number</Text>
           <TextInput
             style={styles.input}
@@ -628,24 +645,24 @@ const KYCDetailsScreen = () => {
             maxLength={10}
             autoCapitalize="characters"
           />
-
+ 
           <View style={styles.termsContainer}>
             <TouchableOpacity onPress={() => setTermsAccepted(!termsAccepted)}>
               <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
                 {termsAccepted && <Icon name="check" size={width * 0.04} color="#fff" />}
               </View>
             </TouchableOpacity>
-
+ 
             <TouchableOpacity onPress={() => setTermsModalVisible(true)}>
               <Text style={styles.linkText}>Terms & Conditions</Text>
             </TouchableOpacity>
           </View>
         </View>
-
+ 
         {/* Spacer to ensure content is not hidden by the Next button */}
         <View style={styles.spacer} />
       </ScrollView>
-
+ 
       {/* Next Button */}
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextText}>Next</Text>
@@ -653,7 +670,7 @@ const KYCDetailsScreen = () => {
     </View>
   );
 };
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -853,7 +870,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: width * 0.04,
+    padding: width *  0.04,
     backgroundColor: '#f5f5f5',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
@@ -871,5 +888,5 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 });
-
+ 
 export default KYCDetailsScreen;

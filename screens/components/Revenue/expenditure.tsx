@@ -53,6 +53,10 @@ const TotalExpenditureScreen: React.FC = () => {
     paymentMethod: 'cash',
     notes: '',
   });
+  const [errors, setErrors] = useState({
+    description: '',
+    amount: '',
+  });
 
   // Fetch expenses data
   const fetchExpenses = async (start: moment.Moment | null = null) => {
@@ -120,20 +124,38 @@ const TotalExpenditureScreen: React.FC = () => {
       paymentMethod: 'cash',
       notes: '',
     });
+    setErrors({ description: '', amount: '' });
     setIsModalVisible(true);
   };
 
   const handleCancel = () => {
     setIsModalVisible(false);
+    setErrors({ description: '', amount: '' });
+  };
+
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors = { description: '', amount: '' };
+
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+      isValid = false;
+    }
+
+    if (!formData.amount) {
+      newErrors.amount = 'Amount is required';
+      isValid = false;
+    } else if (!/^[0-9]+(\.[0-9]+)?$/.test(formData.amount)) {
+      newErrors.amount = 'Please enter a valid number';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async () => {
-    if (!formData.description || !formData.amount || !/^[0-9]+$/.test(formData.amount)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please fill in all required fields with valid data.',
-      });
+    if (!validateForm()) {
       return;
     }
 
@@ -159,6 +181,7 @@ const TotalExpenditureScreen: React.FC = () => {
         });
         await fetchExpenses(selectedDate);
         setIsModalVisible(false);
+        setErrors({ description: '', amount: '' });
       }
     } catch (error) {
       Toast.show({
@@ -192,13 +215,7 @@ const TotalExpenditureScreen: React.FC = () => {
       </View>
 
       <View style={styles.filters}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by Transaction ID, Description or Notes"
-          value={searchText}
-          onChangeText={handleSearch}
-          placeholderTextColor="#9CA3AF"
-        />
+      
         <TouchableOpacity
           style={styles.datePickerButton}
           onPress={() => setShowDatePicker(true)}
@@ -291,24 +308,36 @@ const TotalExpenditureScreen: React.FC = () => {
                 />
               )}
 
-              <Text style={styles.formLabel}>Description</Text>
+              <Text style={styles.formLabel}>Description *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.description && styles.inputError]}
                 placeholder="e.g., Rent, Salary, Supplies"
                 value={formData.description}
-                onChangeText={text => setFormData({ ...formData, description: text })}
+                onChangeText={text => {
+                  setFormData({ ...formData, description: text });
+                  setErrors({ ...errors, description: '' });
+                }}
                 placeholderTextColor="#9CA3AF"
               />
+              {errors.description && (
+                <Text style={styles.errorText}>{errors.description}</Text>
+              )}
 
-              <Text style={styles.formLabel}>Amount (₹)</Text>
+              <Text style={styles.formLabel}>Amount (₹) *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.amount && styles.inputError]}
                 placeholder="Enter amount"
                 value={formData.amount}
-                onChangeText={text => setFormData({ ...formData, amount: text })}
+                onChangeText={text => {
+                  setFormData({ ...formData, amount: text });
+                  setErrors({ ...errors, amount: '' });
+                }}
                 keyboardType="numeric"
                 placeholderTextColor="#9CA3AF"
               />
+              {errors.amount && (
+                <Text style={styles.errorText}>{errors.amount}</Text>
+              )}
 
               <Text style={styles.formLabel}>Payment Method</Text>
               <Picker
@@ -345,9 +374,11 @@ const TotalExpenditureScreen: React.FC = () => {
                   onPress={handleSubmit}
                   disabled={loading}
                 >
-                  <Text style={styles.modalButtonText}>
-                    {loading ? 'Submitting...' : 'Submit'}
-                  </Text>
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.modalButtonText}>Submit</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -441,18 +472,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
     flexWrap: 'wrap',
-    width: '100%', // Add this
+    width: '100%',
   },
   footerText: {
     fontSize: 14,
     color: '#666666',
-    flex: 1, // Add this to make it take available space
-    marginRight: 16, // Add some spacing
+    flex: 1,
+    marginRight: 16,
   },
   pagination: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 0, // Add this to prevent shrinking
+    flexShrink: 0,
   },
   pageButton: {
     backgroundColor: '#2563EB',
@@ -501,8 +532,16 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 1,
     borderColor: '#D9D9D9',
-    marginBottom: 16,
+    marginBottom: 8,
     color: 'black',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginBottom: 8,
   },
   textArea: {
     height: 80,

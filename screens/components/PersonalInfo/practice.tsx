@@ -31,10 +31,10 @@ import {
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthFetch, AuthPost } from '../../auth/auth';
-
+ 
 // Initialize Geocoder with your Google Maps API key
 Geocoder.init('AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo');
-
+ 
 interface Address {
   address: string;
   pincode: string;
@@ -49,7 +49,7 @@ interface Address {
   latitude: string;
   longitude: string;
 }
-
+ 
 interface Suggestion {
   description: string;
   place_id: string;
@@ -58,7 +58,7 @@ interface Suggestion {
     secondary_text: string;
   };
 }
-
+ 
 interface Errors {
   clinicName?: string;
   mobile?: string;
@@ -68,9 +68,9 @@ interface Errors {
   state?: string;
   country?: string;
 }
-
+ 
 const { width, height } = Dimensions.get('window');
-
+ 
 const PracticeScreen = () => {
   const navigation = useNavigation<any>();
   const [affiliation, setAffiliation] = useState<string | null>(null);
@@ -107,15 +107,15 @@ const PracticeScreen = () => {
   const [showSearchResultsPerAddress, setShowSearchResultsPerAddress] = useState<{ [key: number]: boolean }>({});
   const [locationRetryCount, setLocationRetryCount] = useState(0);
   const locationRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+ 
   const isValidMobile = (mobile: string): boolean => {
     return mobile.length === 10 && /^[6-9]\d{9}$/.test(mobile);
   };
-
+ 
   useEffect(() => {
     setCurrentOpdIndex(opdAddresses.length - 1);
   }, [opdAddresses.length]);
-
+ 
   // Initialize location for all addresses when component mounts
   useEffect(() => {
     const initializeAllLocations = async () => {
@@ -123,9 +123,9 @@ const PracticeScreen = () => {
         await initLocation(i);
       }
     };
-
+ 
     initializeAllLocations();
-
+ 
     // Clean up any pending timeouts when component unmounts
     return () => {
       if (locationRetryTimeoutRef.current) {
@@ -133,7 +133,7 @@ const PracticeScreen = () => {
       }
     };
   }, []);
-
+ 
   // Request location permission
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
@@ -155,23 +155,23 @@ const PracticeScreen = () => {
     }
     return true;
   };
-
+ 
   // Fetch address from coordinates
   const fetchAddressDetails = async (latitude: number, longitude: number, index: number) => {
     setIsFetchingLocation(true);
     try {
       const response = await Geocoder.from(latitude, longitude);
-
+ 
       if (response.results && response.results.length > 0) {
         const result = response.results[0];
         const addressComponents = result.address_components;
-
+ 
         let address = '';
         let city = '';
         let state = '';
         let pincode = '';
         let country = 'India';
-
+ 
         addressComponents.forEach((component: any) => {
           if (component.types.includes('street_number') || component.types.includes('route')) {
             address += component.long_name + ' ';
@@ -189,9 +189,9 @@ const PracticeScreen = () => {
             country = component.long_name;
           }
         });
-
+ 
         address = address.trim() || result.formatted_address;
-
+ 
         const updatedAddresses = [...opdAddresses];
         updatedAddresses[index] = {
           ...updatedAddresses[index],
@@ -204,13 +204,13 @@ const PracticeScreen = () => {
           longitude: longitude.toString(),
         };
         setOpdAddresses(updatedAddresses);
-
+ 
         // Update search query for this address
         setSearchQueryPerAddress(prev => ({
           ...prev,
           [index]: address
         }));
-
+ 
         // Reset retry count on success
         setLocationRetryCount(0);
       } else {
@@ -234,7 +234,7 @@ const PracticeScreen = () => {
       setIsFetchingLocation(false);
     }
   };
-
+ 
   // Initialize map with current location
   const initLocation = async (index: number) => {
     const hasPermission = await requestLocationPermission();
@@ -249,16 +249,16 @@ const PracticeScreen = () => {
       );
       return;
     }
-
+ 
     setIsFetchingLocation(true);
-
+ 
     // Configure high accuracy for better indoor positioning
     const locationOptions = {
       enableHighAccuracy: true,
       timeout: 15000, // 15 seconds timeout
       maximumAge: 10000, // Accept cached location up to 10 seconds old
     };
-
+ 
     Geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
@@ -268,7 +268,7 @@ const PracticeScreen = () => {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
-
+ 
         const updatedAddresses = [...opdAddresses];
         updatedAddresses[index] = {
           ...updatedAddresses[index],
@@ -276,17 +276,17 @@ const PracticeScreen = () => {
           longitude: longitude.toString(),
         };
         setOpdAddresses(updatedAddresses);
-
+ 
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 1000);
         }
-
+ 
         fetchAddressDetails(latitude, longitude, index);
       },
       (error) => {
         // Handle different error codes
         let errorMessage = 'Unable to fetch current location.';
-
+ 
         if (error.code === error.PERMISSION_DENIED) {
           errorMessage = 'Location permission denied. Please enable location permissions in settings.';
         } else if (error.code === error.POSITION_UNAVAILABLE) {
@@ -294,11 +294,11 @@ const PracticeScreen = () => {
         } else if (error.code === error.TIMEOUT) {
           errorMessage = 'Location request timed out. Please try again.';
         }
-
+ 
         // If we're indoors or have poor GPS, try again with a different approach
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
-
+ 
           Toast.show({
             type: 'info',
             text1: 'Getting Location',
@@ -306,7 +306,7 @@ const PracticeScreen = () => {
             position: 'top',
             visibilityTime: 2000,
           });
-
+ 
           // Retry after a delay with different settings
           locationRetryTimeoutRef.current = setTimeout(() => {
             initLocationWithRetry(index);
@@ -327,25 +327,25 @@ const PracticeScreen = () => {
             ]
           );
         }
-
+ 
         setIsFetchingLocation(false);
       },
       locationOptions
     );
   };
-
+ 
   // Alternative method for getting location with different settings
   const initLocationWithRetry = async (index: number) => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) return;
-
+ 
     // Use different settings for retry
     const retryOptions = {
       enableHighAccuracy: locationRetryCount > 1, // Try high accuracy on second retry
       timeout: 20000, // Longer timeout
       maximumAge: 30000, // Accept older locations
     };
-
+ 
     Geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
@@ -355,7 +355,7 @@ const PracticeScreen = () => {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
-
+ 
         const updatedAddresses = [...opdAddresses];
         updatedAddresses[index] = {
           ...updatedAddresses[index],
@@ -363,16 +363,16 @@ const PracticeScreen = () => {
           longitude: longitude.toString(),
         };
         setOpdAddresses(updatedAddresses);
-
+ 
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 1000);
         }
-
+ 
         fetchAddressDetails(latitude, longitude, index);
       },
       (error) => {
         setIsFetchingLocation(false);
-
+ 
         // If this retry also failed, try the original method again
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
@@ -382,14 +382,14 @@ const PracticeScreen = () => {
       retryOptions
     );
   };
-
+ 
   // Update handleSearch function
   const handleSearch = async (query: string, index: number) => {
     setSearchQueryPerAddress(prev => ({
       ...prev,
       [index]: query
     }));
-
+ 
     if (query.length < 3) {
       setSearchResultsPerAddress(prev => ({
         ...prev,
@@ -401,14 +401,14 @@ const PracticeScreen = () => {
       }));
       return;
     }
-
+ 
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
           query
         )}&key=AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo&components=country:in`
       );
-
+ 
       const data = await response.json();
       if (data.status === 'OK') {
         setSearchResultsPerAddress(prev => ({
@@ -432,7 +432,7 @@ const PracticeScreen = () => {
       }));
     }
   };
-
+ 
   // Handle selecting a search result
   const handleSelectSearchResult = async (result: any, index: number) => {
     setSearchQueryPerAddress(prev => ({
@@ -444,26 +444,26 @@ const PracticeScreen = () => {
       [index]: false
     }));
     setIsFetchingLocation(true);
-
+ 
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/details/json?place_id=${result.place_id}&key=AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo`
       );
-
+ 
       const data = await response.json();
       if (data.status === 'OK') {
         const place = data.result;
         const location = place.geometry.location;
         const latitude = location.lat;
         const longitude = location.lng;
-
+ 
         const newRegion = {
           latitude,
           longitude,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
-
+ 
         const updatedAddresses = [...opdAddresses];
         updatedAddresses[index] = {
           ...updatedAddresses[index],
@@ -471,11 +471,11 @@ const PracticeScreen = () => {
           longitude: longitude.toString(),
         };
         setOpdAddresses(updatedAddresses);
-
+ 
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 500);
         }
-
+ 
         fetchAddressDetails(latitude, longitude, index);
       }
     } catch (error) {
@@ -484,12 +484,12 @@ const PracticeScreen = () => {
       setIsFetchingLocation(false);
     }
   };
-
+ 
   // Handle map press to select a location
   const handleMapPress = (index: number, event: any) => {
     const { coordinate } = event.nativeEvent;
     const { latitude, longitude } = coordinate;
-
+ 
     const updatedAddresses = [...opdAddresses];
     updatedAddresses[index] = {
       ...updatedAddresses[index],
@@ -497,7 +497,7 @@ const PracticeScreen = () => {
       longitude: longitude.toString(),
     };
     setOpdAddresses(updatedAddresses);
-
+ 
     // Center map on selected location
     const newRegion = {
       latitude,
@@ -505,20 +505,20 @@ const PracticeScreen = () => {
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
     };
-
+ 
     if (mapRefs.current[index]) {
       mapRefs.current[index].animateToRegion(newRegion, 500);
     }
-
+ 
     fetchAddressDetails(latitude, longitude, index);
   };
-
+ 
   // Move to current location
   const handleMyLocation = async (index: number) => {
     setLocationRetryCount(0);
     await initLocation(index);
   };
-
+ 
   const handleAddAddress = () => {
     const newAddress: Address = {
       address: '',
@@ -535,13 +535,13 @@ const PracticeScreen = () => {
       longitude: '78.9629',
     };
     setOpdAddresses([...opdAddresses, newAddress]);
-
+ 
     // Initialize location for the new address
     setTimeout(() => {
       initLocation(opdAddresses.length);
     }, 100);
   };
-
+ 
   const handleRemoveAddress = (index: number) => {
     setOpdAddresses(opdAddresses.filter((_, i) => i !== index));
     setErrors(prev => {
@@ -550,7 +550,7 @@ const PracticeScreen = () => {
       return newErrors;
     });
   };
-
+ 
   const handleTimeChange = (
     event: any,
     selectedTime: Date | undefined,
@@ -566,7 +566,7 @@ const PracticeScreen = () => {
       .replace(':00', '');
     setOpdAddresses(updatedAddresses);
   };
-
+ 
   const parseTimeToMinutes = (timeStr: string): number => {
     if (!timeStr) return -1;
     const [hourStr, period] = timeStr.split(' ');
@@ -575,19 +575,19 @@ const PracticeScreen = () => {
     if (period?.toLowerCase() === 'am' && hours === 12) hours = 0;
     return hours * 60;
   };
-
+ 
   const handleInputChange = (index: number, field: keyof Address, value: string) => {
     const updatedAddresses = [...opdAddresses];
     (updatedAddresses[index][field] as string) = value;
     setOpdAddresses(updatedAddresses);
-
+ 
     if (field === 'address') {
       setSearchQueryPerAddress(prev => ({
         ...prev,
         [index]: value
       }));
     }
-
+ 
     // Clear error for the field when user starts typing
     setErrors(prev => ({
       ...prev,
@@ -597,7 +597,7 @@ const PracticeScreen = () => {
       },
     }));
   };
-
+ 
   const validateFields = (address: Address, index: number) => {
     const newErrors: Errors = {};
     if (!address.clinicName.trim()) {
@@ -627,13 +627,13 @@ const PracticeScreen = () => {
     }
     return newErrors;
   };
-
+ 
   const handleNext = async () => {
     setLoading(true);
     const token = await AsyncStorage.getItem('authToken');
     let hasErrors = false;
     const newErrors: { [key: number]: Errors } = {};
-
+ 
     // Validate all addresses
     opdAddresses.forEach((addr, index) => {
       const addressErrors = validateFields(addr, index);
@@ -642,9 +642,9 @@ const PracticeScreen = () => {
         hasErrors = true;
       }
     });
-
+ 
     setErrors(newErrors);
-
+ 
     if (hasErrors) {
       Toast.show({
         type: 'error',
@@ -656,35 +656,35 @@ const PracticeScreen = () => {
       setLoading(false);
       return;
     }
-
+ 
     function convertTo24HourFormat(timeStr: string): string {
       if (!timeStr || typeof timeStr !== 'string') return '';
-
+ 
       const parts = timeStr.trim().toLowerCase().split(/\s+/);
       if (parts.length !== 2) return '';
-
+ 
       const [time, marker] = parts;
       let [hours, minutes] = time.split(':');
       minutes = minutes || '00';
-
+ 
       let hrs = parseInt(hours, 10);
       if (isNaN(hrs)) return '';
-
+ 
       if (marker === 'pm' && hrs !== 12) hrs += 12;
       if (marker === 'am' && hrs === 12) hrs = 0;
-
+ 
       return `${hrs.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
     }
-
+ 
     const payload = opdAddresses.map(addr => ({
       ...addr,
       startTime: convertTo24HourFormat(addr?.startTime) || '06:00',
       endTime: convertTo24HourFormat(addr?.endTime) || '21:00',
     }));
-
+ 
     for (const clinic of payload) {
       const response = await AuthPost('users/addAddress', clinic, token);
-
+ 
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -709,24 +709,44 @@ const PracticeScreen = () => {
     }
     setLoading(false);
   };
-
+ 
+  const handleSkip = async () => {
+    await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
+        navigation.navigate('ConsultationPreferences');
+  };
   const handleBack = () => {
     navigation.navigate('Specialization');
   };
-
+ 
   const [specialization, setSpecialization] = useState('');
-
+  const [skipButton, setSkipButton] = useState(false);
+ 
   const fetchUserData = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('users/getUser', token);
-      if (response.data.status === 'success') {
+      if (response?.data?.status === 'success') {
         const userData = response.data.data;
         setSpecialization(userData?.specialization[0]?.name);
-
-        if (userData?.addresses && userData.addresses.length > 0) {
-          setOpdAddresses(userData.addresses);
-
+ 
+        if (userData?.addresses && userData?.addresses?.length > 0) {
+          setSkipButton(true)
+          setOpdAddresses(
+         userData.addresses.map((a) => ({
+           address: a.address ?? '',
+           pincode: a.pincode ?? '',
+           city: a.city ?? '',
+           state: a.state ?? '',
+           startTime: a.startTime ?? '',
+           endTime: a.endTime ?? '',
+           clinicName: a.clinicName ?? '',
+           mobile: a.mobile ?? '',
+           type: a.type ?? 'Clinic',
+           country: a.country ?? 'India',
+           latitude: String(a.latitude ?? '20.5937'),
+           longitude: String(a.longitude ?? '78.9629'),
+         }))
+       );
           setTimeout(() => {
             userData.addresses.forEach((_, index) => {
               initLocation(index);
@@ -744,16 +764,16 @@ const PracticeScreen = () => {
       });
     }
   };
-
+ 
   useEffect(() => {
     fetchUserData();
   }, []);
-
+ 
   const isPhysio =
     Array.isArray(specialization)
       ? specialization.some(s => s?.trim().toLowerCase() === 'physiotherapist')
       : String(specialization ?? '').trim().toLowerCase() === 'physiotherapist';
-
+ 
   const renderSearchItem = (result: any, index: number) => (
     <TouchableOpacity
       style={styles.searchItem}
@@ -767,10 +787,9 @@ const PracticeScreen = () => {
       </Text>
     </TouchableOpacity>
   );
-
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      // behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
     >
@@ -786,12 +805,12 @@ const PracticeScreen = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Practice</Text>
       </View>
-
+ 
       <ProgressBar
         currentStep={getCurrentStepIndex('Practice')}
         totalSteps={TOTAL_STEPS}
       />
-
+ 
       <ScrollView
         style={styles.formContainer}
         keyboardShouldPersistTaps="handled"
@@ -810,12 +829,12 @@ const PracticeScreen = () => {
               <Text style={styles.addButtonText}>+ Add Location</Text>
             </TouchableOpacity>
           </View>
-
+ 
           {opdAddresses.map((addr, index) => (
             <View key={index} style={styles.addressContainer}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Location on Map</Text>
-
+ 
                 {/* Location status indicator */}
                 {isFetchingLocation && (
                   <View style={styles.locationStatus}>
@@ -828,7 +847,7 @@ const PracticeScreen = () => {
                     </Text>
                   </View>
                 )}
-
+ 
                 {/* Search Input */}
                 <View style={styles.searchContainer}>
                   <View style={styles.searchInputContainer}>
@@ -855,7 +874,7 @@ const PracticeScreen = () => {
                       </TouchableOpacity>
                     )}
                   </View>
-
+ 
                   {/* Search Results */}
                   {showSearchResultsPerAddress[index] && searchResultsPerAddress[index] && searchResultsPerAddress[index].length > 0 && (
                     <View style={styles.searchResultsContainer}>
@@ -869,7 +888,7 @@ const PracticeScreen = () => {
                     </View>
                   )}
                 </View>
-
+ 
                 <View style={styles.mapContainer}>
                   <MapView
                     ref={(ref) => {
@@ -901,14 +920,14 @@ const PracticeScreen = () => {
                       }}
                     />
                   </MapView>
-
+ 
                   {/* Custom center marker - placed outside MapView */}
                   <View style={styles.markerFixed}>
                     <View style={styles.marker}>
                       <View style={styles.markerInner} />
                     </View>
                   </View>
-
+ 
                   <TouchableOpacity
                     style={styles.myLocationButton}
                     onPress={() => handleMyLocation(index)}
@@ -917,7 +936,7 @@ const PracticeScreen = () => {
                   </TouchableOpacity>
                 </View>
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Clinic Name *</Text>
                 <TextInput
@@ -931,7 +950,7 @@ const PracticeScreen = () => {
                   <Text style={styles.errorText}>{errors[index].clinicName}</Text>
                 )}
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Mobile *</Text>
                 <TextInput
@@ -956,7 +975,7 @@ const PracticeScreen = () => {
                   <Text style={styles.errorText}>{errors[index].mobile}</Text>
                 )}
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Address *</Text>
                 <TextInput
@@ -970,7 +989,7 @@ const PracticeScreen = () => {
                   <Text style={styles.errorText}>{errors[index].address}</Text>
                 )}
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Pincode *</Text>
                 <TextInput
@@ -986,7 +1005,7 @@ const PracticeScreen = () => {
                   <Text style={styles.errorText}>{errors[index].pincode}</Text>
                 )}
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>City *</Text>
                 <TextInput
@@ -1000,7 +1019,7 @@ const PracticeScreen = () => {
                   <Text style={styles.errorText}>{errors[index].city}</Text>
                 )}
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>State *</Text>
                 <TextInput
@@ -1014,7 +1033,7 @@ const PracticeScreen = () => {
                   <Text style={styles.errorText}>{errors[index].state}</Text>
                 )}
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Country *</Text>
                 <TextInput
@@ -1028,7 +1047,7 @@ const PracticeScreen = () => {
                   <Text style={styles.errorText}>{errors[index].country}</Text>
                 )}
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Latitude</Text>
                 <TextInput
@@ -1040,7 +1059,7 @@ const PracticeScreen = () => {
                   editable={false}
                 />
               </View>
-
+ 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Longitude</Text>
                 <TextInput
@@ -1052,7 +1071,7 @@ const PracticeScreen = () => {
                   editable={false}
                 />
               </View>
-
+ 
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => handleRemoveAddress(index)}
@@ -1065,13 +1084,22 @@ const PracticeScreen = () => {
         </View>
         <View style={styles.spacer} />
       </ScrollView>
+      <View style={styles.buttonsContainer}>
+       
+      </View>
+      {skipButton &&(
+<TouchableOpacity style={styles.nextButton} onPress={handleSkip}>
+        <Text style={styles.nextButtonText}>Skip</Text>
+      </TouchableOpacity>
+      )}
+     
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 };
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1356,5 +1384,5 @@ const styles = StyleSheet.create({
     color: '#3182CE',
   },
 });
-
+ 
 export default PracticeScreen;

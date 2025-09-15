@@ -406,7 +406,7 @@ const StaffManagement = () => {
                       </TouchableOpacity>
                       {accessDropdownVisible && (
                         <View style={styles.accessDropdown}>
-                          <ScrollView style={{ maxHeight: 150 }}>
+                          <ScrollView >
                             {accessOptions.map((option) => (
                               <TouchableOpacity
                                 key={option.value}

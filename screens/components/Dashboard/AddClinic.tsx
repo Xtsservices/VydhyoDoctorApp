@@ -908,29 +908,6 @@ const handleSubmit = async () => {
           </View>
         </View>
 
-        <View style={styles.row}>
-          <View style={styles.column}>
-            <Text style={styles.label}>Start Time</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="09:00"
-              value={form.startTime}
-              onChangeText={(text) => handleChange('startTime', text)}
-              placeholderTextColor="gray"
-            />
-          </View>
-          <View style={styles.column}>
-            <Text style={styles.label}>End Time</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="17:00"
-              value={form.endTime}
-              onChangeText={(text) => handleChange('endTime', text)}
-              placeholderTextColor="gray"
-            />
-          </View>
-        </View>
-
         {renderFileUpload('header', 'Clinic Header Image', headerPreview)}
         {renderFileUpload('signature', 'Digital Signature (Optional)', signaturePreview)}
 
