@@ -59,6 +59,16 @@ interface Suggestion {
   };
 }
 
+interface Errors {
+  clinicName?: string;
+  mobile?: string;
+  address?: string;
+  pincode?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+}
+
 const { width, height } = Dimensions.get('window');
 
 const PracticeScreen = () => {
@@ -80,6 +90,7 @@ const PracticeScreen = () => {
       longitude: '78.9629',
     },
   ]);
+  const [errors, setErrors] = useState<{ [key: number]: Errors }>({});
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
@@ -96,9 +107,11 @@ const PracticeScreen = () => {
   const [showSearchResultsPerAddress, setShowSearchResultsPerAddress] = useState<{ [key: number]: boolean }>({});
   const [locationRetryCount, setLocationRetryCount] = useState(0);
   const locationRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const isValidMobile = (mobile: string): boolean => {
     return mobile.length === 10 && /^[6-9]\d{9}$/.test(mobile);
   };
+
   useEffect(() => {
     setCurrentOpdIndex(opdAddresses.length - 1);
   }, [opdAddresses.length]);
@@ -271,7 +284,6 @@ const PracticeScreen = () => {
         fetchAddressDetails(latitude, longitude, index);
       },
       (error) => {
-
         // Handle different error codes
         let errorMessage = 'Unable to fetch current location.';
 
@@ -371,7 +383,7 @@ const PracticeScreen = () => {
     );
   };
 
-  // Update handleSearch function:
+  // Update handleSearch function
   const handleSearch = async (query: string, index: number) => {
     setSearchQueryPerAddress(prev => ({
       ...prev,
@@ -465,7 +477,6 @@ const PracticeScreen = () => {
         }
 
         fetchAddressDetails(latitude, longitude, index);
-      } else {
       }
     } catch (error) {
       Alert.alert('Error', 'Unable to fetch place details. Please try again.');
@@ -533,6 +544,11 @@ const PracticeScreen = () => {
 
   const handleRemoveAddress = (index: number) => {
     setOpdAddresses(opdAddresses.filter((_, i) => i !== index));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[index];
+      return newErrors;
+    });
   };
 
   const handleTimeChange = (
@@ -571,33 +587,73 @@ const PracticeScreen = () => {
         [index]: value
       }));
     }
-  };
-  const handleNext = async () => {
-    const token = await AsyncStorage.getItem('authToken');
-    const hasInvalidMobile = opdAddresses.some(addr => !isValidMobile(addr.mobile));
 
-    if (hasInvalidMobile) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-      return;
+    // Clear error for the field when user starts typing
+    setErrors(prev => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        [field]: undefined,
+      },
+    }));
+  };
+
+  const validateFields = (address: Address, index: number) => {
+    const newErrors: Errors = {};
+    if (!address.clinicName.trim()) {
+      newErrors.clinicName = 'Clinic Name is required';
     }
-    const hasInvalidAddress = opdAddresses.some(
-      addr => !addr.address || !addr.pincode || !addr.city || !addr.state,
-    );
-    if (hasInvalidAddress) {
+    if (!address.mobile.trim()) {
+      newErrors.mobile = 'Mobile Number is required';
+    } else if (!isValidMobile(address.mobile)) {
+      newErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9';
+    }
+    if (!address.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+    if (!address.pincode.trim()) {
+      newErrors.pincode = 'Pincode is required';
+    } else if (!/^\d{6}$/.test(address.pincode)) {
+      newErrors.pincode = 'Enter a valid 6-digit pincode';
+    }
+    if (!address.city.trim()) {
+      newErrors.city = 'City is required';
+    }
+    if (!address.state.trim()) {
+      newErrors.state = 'State is required';
+    }
+    if (!address.country.trim()) {
+      newErrors.country = 'Country is required';
+    }
+    return newErrors;
+  };
+
+  const handleNext = async () => {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('authToken');
+    let hasErrors = false;
+    const newErrors: { [key: number]: Errors } = {};
+
+    // Validate all addresses
+    opdAddresses.forEach((addr, index) => {
+      const addressErrors = validateFields(addr, index);
+      if (Object.keys(addressErrors).length > 0) {
+        newErrors[index] = addressErrors;
+        hasErrors = true;
+      }
+    });
+
+    setErrors(newErrors);
+
+    if (hasErrors) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2:
-          'Please fill all required OPD Address fields (address, pincode, city, state, and times)',
+        text2: 'Please fill all required fields correctly',
         position: 'top',
         visibilityTime: 4000,
       });
+      setLoading(false);
       return;
     }
 
@@ -626,7 +682,6 @@ const PracticeScreen = () => {
       endTime: convertTo24HourFormat(addr?.endTime) || '21:00',
     }));
 
-
     for (const clinic of payload) {
       const response = await AuthPost('users/addAddress', clinic, token);
 
@@ -648,16 +703,18 @@ const PracticeScreen = () => {
           position: 'top',
           visibilityTime: 4000,
         });
+        setLoading(false);
         return;
       }
     }
+    setLoading(false);
   };
 
   const handleBack = () => {
     navigation.navigate('Specialization');
   };
 
-  const [specialization, setSpecialization] = useState('')
+  const [specialization, setSpecialization] = useState('');
 
   const fetchUserData = async () => {
     try {
@@ -665,10 +722,10 @@ const PracticeScreen = () => {
       const response = await AuthFetch('users/getUser', token);
       if (response.data.status === 'success') {
         const userData = response.data.data;
-        setSpecialization(userData?.specialization[0]?.name)
+        setSpecialization(userData?.specialization[0]?.name);
 
         if (userData?.addresses && userData.addresses.length > 0) {
-          setOpdAddresses(userData.addresses)
+          setOpdAddresses(userData.addresses);
 
           setTimeout(() => {
             userData.addresses.forEach((_, index) => {
@@ -786,12 +843,14 @@ const PracticeScreen = () => {
                       }}
                     />
                     {searchQueryPerAddress[index] && searchQueryPerAddress[index].length > 0 && (
-                      <TouchableOpacity onPress={() => {
-                        setSearchQueryPerAddress(prev => ({
-                          ...prev,
-                          [index]: ''
-                        }));
-                      }}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSearchQueryPerAddress(prev => ({
+                            ...prev,
+                            [index]: ''
+                          }));
+                        }}
+                      >
                         <Icon name="close" size={20} color="#6B7280" />
                       </TouchableOpacity>
                     )}
@@ -862,103 +921,112 @@ const PracticeScreen = () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Clinic Name *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors[index]?.clinicName && styles.inputError]}
                   placeholder="Enter Clinic Name"
                   placeholderTextColor="#999"
                   value={addr.clinicName}
-                  onChangeText={text =>
-                    handleInputChange(index, 'clinicName', text)
-                  }
+                  onChangeText={text => handleInputChange(index, 'clinicName', text)}
                 />
+                {errors[index]?.clinicName && (
+                  <Text style={styles.errorText}>{errors[index].clinicName}</Text>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Mobile *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors[index]?.mobile && styles.inputError]}
                   placeholder="Enter Mobile Number"
                   placeholderTextColor="#999"
                   value={addr.mobile}
                   onChangeText={(text) => {
-                    // Filter out non-numeric characters including decimal points
                     const filteredText = text.replace(/[^0-9]/g, '');
-
-                    // Ensure the number starts with 6, 7, 8, or 9
                     if (filteredText.length > 0) {
                       const firstDigit = filteredText.charAt(0);
                       if (!['6', '7', '8', '9'].includes(firstDigit)) {
-                        // If first digit is not valid, don't update the value
                         return;
                       }
                     }
-
                     handleInputChange(index, 'mobile', filteredText);
                   }}
                   keyboardType="numeric"
                   maxLength={10}
                 />
+                {errors[index]?.mobile && (
+                  <Text style={styles.errorText}>{errors[index].mobile}</Text>
+                )}
               </View>
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Address *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors[index]?.address && styles.inputError]}
                   placeholder="Address"
                   placeholderTextColor="#999"
                   value={addr.address}
-                  onChangeText={text =>
-                    handleInputChange(index, 'address', text)
-                  }
+                  onChangeText={text => handleInputChange(index, 'address', text)}
                 />
+                {errors[index]?.address && (
+                  <Text style={styles.errorText}>{errors[index].address}</Text>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Pincode *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors[index]?.pincode && styles.inputError]}
                   placeholder="Pincode"
                   placeholderTextColor="#999"
                   value={addr.pincode}
                   maxLength={6}
-                  onChangeText={text =>
-                    handleInputChange(index, 'pincode', text)
-                  }
+                  onChangeText={text => handleInputChange(index, 'pincode', text)}
                   keyboardType="numeric"
                 />
+                {errors[index]?.pincode && (
+                  <Text style={styles.errorText}>{errors[index].pincode}</Text>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>City *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors[index]?.city && styles.inputError]}
                   placeholder="City"
                   placeholderTextColor="#999"
                   value={addr.city}
                   onChangeText={text => handleInputChange(index, 'city', text)}
                 />
+                {errors[index]?.city && (
+                  <Text style={styles.errorText}>{errors[index].city}</Text>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>State *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors[index]?.state && styles.inputError]}
                   placeholder="State"
                   placeholderTextColor="#999"
                   value={addr.state}
                   onChangeText={text => handleInputChange(index, 'state', text)}
                 />
+                {errors[index]?.state && (
+                  <Text style={styles.errorText}>{errors[index].state}</Text>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Country *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors[index]?.country && styles.inputError]}
                   placeholder="Country"
                   placeholderTextColor="#999"
                   value={addr.country}
-                  onChangeText={text =>
-                    handleInputChange(index, 'country', text)
-                  }
+                  onChangeText={text => handleInputChange(index, 'country', text)}
                 />
+                {errors[index]?.country && (
+                  <Text style={styles.errorText}>{errors[index].country}</Text>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
@@ -968,9 +1036,7 @@ const PracticeScreen = () => {
                   placeholder="Latitude"
                   placeholderTextColor="#999"
                   value={String(addr?.latitude)}
-                  onChangeText={text =>
-                    handleInputChange(index, 'latitude', text)
-                  }
+                  onChangeText={text => handleInputChange(index, 'latitude', text)}
                   editable={false}
                 />
               </View>
@@ -982,9 +1048,7 @@ const PracticeScreen = () => {
                   placeholder="Longitude"
                   placeholderTextColor="#999"
                   value={String(addr?.longitude)}
-                  onChangeText={text =>
-                    handleInputChange(index, 'longitude', text)
-                  }
+                  onChangeText={text => handleInputChange(index, 'longitude', text)}
                   editable={false}
                 />
               </View>
@@ -1088,6 +1152,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     fontSize: width * 0.04,
   },
+  inputError: {
+    borderColor: '#D32F2F',
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: width * 0.035,
+    marginTop: height * 0.005,
+  },
   removeButton: {
     position: 'absolute',
     top: height * 0.0001,
@@ -1158,10 +1230,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     top: '50%',
-    marginLeft: -12, // Half the width of markerInner
-    marginTop: -24, // Height of marker (48) divided by 2
+    marginLeft: -12,
+    marginTop: -24,
     zIndex: 15,
-    pointerEvents: 'none', // Allow clicks to pass through to map
+    pointerEvents: 'none',
   },
   marker: {
     height: 48,

@@ -94,11 +94,11 @@ const ClinicManagementScreen = () => {
   const [labHeaderFile, setLabHeaderFile] = useState<any>(null);
   const [labHeaderPreview, setLabHeaderPreview] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-    const userId = useSelector((state: any) => state.currentUserId);
-    const currentuserDetails =  useSelector((state: any) => state.currentUser);
-    const isPhysiotherapist = currentuserDetails?.specialization?.name === "Physiotherapist";
-    const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
-    const [form, setForm] = useState({
+  const userId = useSelector((state: any) => state.currentUserId);
+  const currentuserDetails = useSelector((state: any) => state.currentUser);
+  const isPhysiotherapist = currentuserDetails?.specialization?.name === "Physiotherapist";
+  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy
+  const [form, setForm] = useState({
     id: '',
     name: '',
     type: 'General',
@@ -273,13 +273,13 @@ const ClinicManagementScreen = () => {
   };
 
   const formatTimeTo12Hour = (time24: string): string => {
-  if (!time24) return '—';
-  const [hours, minutes] = time24.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hours);
-  date.setMinutes(minutes);
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-};
+    if (!time24) return '—';
+    const [hours, minutes] = time24.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours);
+    date.setMinutes(minutes);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
 
   const closeModal = () => {
     setModalVisible(false);
@@ -421,19 +421,27 @@ const ClinicManagementScreen = () => {
     }
   };
 
-  const handleHeaderSubmit = async () => {
-    if (!headerFile || !selectedClinic) return;
+const handleHeaderSubmit = async () => {
+  if (!selectedClinic || !headerFile || !signatureFile) {
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Both header image and signature are required.',
+      position: 'top',
+      visibilityTime: 3000,
+    });
+    return;
+  }
 
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('authToken');
-      const formData = new FormData();
-      formData.append('file', headerFile as any);
-      if (signatureFile) formData.append('signature', signatureFile as any);
-      formData.append('addressId', selectedClinic.addressId || '');
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('authToken');
+    const formData = new FormData();
+    formData.append('file', headerFile as any);
+    formData.append('signature', signatureFile as any);
+    formData.append('addressId', selectedClinic.addressId || '');
 
-      const response = await UploadFiles('users/uploadClinicHeader', formData, token);
-
+    const response = await UploadFiles('users/uploadClinicHeader', formData, token);
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -710,14 +718,14 @@ const ClinicManagementScreen = () => {
       <View style={styles.headerContainer}>
         <Text style={styles.header}></Text>
         {!isPhysiotherapist && (
-  <TouchableOpacity
-    style={styles.addButton}
-    onPress={() => navigation.navigate('AddClinic')}
-  >
-    <Icon name="plus" size={20} color="#fff" />
-    <Text style={styles.addButtonText}>Add Clinic</Text>
-  </TouchableOpacity>
-)}
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate('AddClinic')}
+          >
+            <Icon name="plus" size={20} color="#fff" />
+            <Text style={styles.addButtonText}>Add Clinic</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.searchContainer}>
@@ -872,9 +880,9 @@ const ClinicManagementScreen = () => {
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveButton, !headerFile && styles.disabledButton]}
+                style={[styles.saveButton, (!headerFile || !signatureFile) && styles.disabledButton]}
                 onPress={handleHeaderSubmit}
-                disabled={!headerFile}
+                disabled={!headerFile || !signatureFile}
               >
                 <Text style={styles.saveText}>Upload</Text>
               </TouchableOpacity>
@@ -918,7 +926,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyRegNum: text }))}
                   style={styles.input}
                   placeholder="Enter registration number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -929,7 +937,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyGST: text }))}
                   style={styles.input}
                   placeholder="Enter GST number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -940,7 +948,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyPAN: text }))}
                   style={styles.input}
                   placeholder="Enter PAN number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -952,7 +960,7 @@ const ClinicManagementScreen = () => {
                   style={[styles.input, { height: 80 }]}
                   multiline
                   placeholder="Enter pharmacy address"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1016,7 +1024,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, labName: text }))}
                   style={styles.input}
                   placeholder="Enter lab name"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1027,7 +1035,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, labRegNum: text }))}
                   style={styles.input}
                   placeholder="Enter registration number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1038,7 +1046,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, labGST: text }))}
                   style={styles.input}
                   placeholder="Enter GST number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1049,7 +1057,7 @@ const ClinicManagementScreen = () => {
                   onChangeText={(text) => setForm(prev => ({ ...prev, labPAN: text }))}
                   style={styles.input}
                   placeholder="Enter PAN number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1061,7 +1069,7 @@ const ClinicManagementScreen = () => {
                   style={[styles.input, { height: 80 }]}
                   multiline
                   placeholder="Enter lab address"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1157,8 +1165,8 @@ const ClinicManagementScreen = () => {
                   <View style={styles.cardHeader}>
 
                     <View style={styles.placeholderCircle}>
-                            <Text style={styles.placeholderText}>{clinic.name[0].toUpperCase() || ""}</Text>
-                          </View>
+                      <Text style={styles.placeholderText}>{clinic.name[0].toUpperCase() || ""}</Text>
+                    </View>
                     {/* <Image source={{ uri: clinic.Avatar }} style={styles.avatar} /> */}
                     <View style={styles.clinicInfo}>
                       <Text style={styles.clinicName}>{clinic.name}</Text>
@@ -1666,7 +1674,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
   },
-     placeholderCircle: {
+  placeholderCircle: {
     width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
     justifyContent: 'center', alignItems: 'center', marginRight: 16,
   },

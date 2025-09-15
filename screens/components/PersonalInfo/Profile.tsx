@@ -21,10 +21,11 @@ import Toast from 'react-native-toast-message';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { pick, types } from '@react-native-documents/picker';
 import moment from 'moment';
+import { Dispatch } from 'redux';
 
 // API functions (keep your implementations)
 import { AuthFetch, AuthPut, UploadFiles, AuthPost } from '../../auth/auth';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -152,7 +153,7 @@ const DoctorProfileView: React.FC = () => {
     email: '',
     spokenLanguage: [] as string[],
   });
-
+  const dispatch = useDispatch();
   const [formProfessional, setFormProfessional] = useState({
     selectedDegrees: [] as string[], // multi-select
     experience: '',
@@ -205,6 +206,7 @@ const DoctorProfileView: React.FC = () => {
     if (!token) return;
     try {
       const res = await AuthFetch('catalogue/degree/getAllDegrees', token);
+      
       const data = res?.data?.data || [];
       const names = data.map((d: any) => d?.name || d?.degreeName || d?.title).filter(Boolean);
       setDegrees(names);
@@ -235,8 +237,8 @@ const DoctorProfileView: React.FC = () => {
       const certifications = specializations.map((spec: Specialization) => ({
         name: spec?.name || 'Specialization',
         registrationNo: spec?.id || 'N/A',
-        image: spec?.specializationCertificate || null,
-        degreeCertificate: spec?.degreeCertificate || spec?.drgreeCertificate || null,
+        image: spec?.specializationCertificateUrl || null,
+        degreeCertificate: spec?.degreeCertificateUrl || spec?.drgreeCertificateUrl || null,
       }));
 
       const bankDetails = userData.bankDetails || {};
@@ -362,7 +364,7 @@ const DoctorProfileView: React.FC = () => {
         return;
       }
 
-      await AuthPut(
+      const response = await AuthPut(
         'users/updateUser',
         {
           firstname: formPersonal.firstname,
@@ -372,6 +374,8 @@ const DoctorProfileView: React.FC = () => {
         },
         token
       );
+      const userData = response?.data?.data;
+      dispatch({ type: 'currentUser', payload: userData });
 
       Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
       handleEditClose();
@@ -392,7 +396,10 @@ const DoctorProfileView: React.FC = () => {
       formData.append('degree', formProfessional.selectedDegrees.join(','));
       formData.append('bio', String(formProfessional.about || ''));
 
-      await UploadFiles('users/updateSpecialization', formData, token);
+      const response = await UploadFiles('users/updateSpecialization', formData, token);
+
+      const userData = response?.data?.data;
+      dispatch({ type: 'currentUser', payload: userData });
 
       Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
       handleEditClose();
@@ -402,25 +409,66 @@ const DoctorProfileView: React.FC = () => {
     }
   };
 
-  const saveConsultation = async () => {
-    if (!token) return;
-    try {
-      const cleaned = formConsultation
-        .filter((i) => i.type && i.fee !== '')
-        .map((i) => ({
-          type: i.type,
-          fee: Number(i.fee),
-          currency: i.currency || '₹',
-        }));
+ const saveConsultation = async () => {
+  if (!token) return;
 
-      await AuthPost('users/updateConsultationModes', { consultationModeFee: cleaned }, token);
-      Toast.show({ type: 'success', text1: 'Success', text2: 'Consultation fees updated' });
-      handleEditClose();
-      fetchDoctorData();
-    } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Error', text2: e?.response?.data?.message?.message || e?.message || 'Failed to update fees' });
+  // Validate: every row must have both fields filled
+  for (let idx = 0; idx < formConsultation.length; idx++) {
+    const row = formConsultation[idx];
+
+    if (!row.type || row.type.trim() === "") {
+      Alert.alert("Missing value", `Row ${idx + 1}: Please fill the Type.`);
+      return;
     }
-  };
+
+    if (row.fee === "" || row.fee == null) {
+      Alert.alert("Missing value", `Row ${idx + 1}: Please fill the Fee.`);
+        
+      return;
+    }
+
+    // Safety: initial > 0 should not be saved as 0
+    const initialFee = Number((row as any).__initialFee || 0);
+    if (initialFee > 0 && Number(row.fee) === 0) {
+      Alert.alert("Invalid fee", `Row ${idx + 1}: Fee cannot be 0 since it was initially > 0.`);
+      return;
+    }
+  }
+
+  try {
+    const cleaned = formConsultation.map((i) => ({
+      type: i.type.trim(),
+      fee: Number(i.fee),
+      currency: i.currency || "₹",
+    }));
+
+    const response = await AuthPost(
+      "users/updateConsultationModes",
+      { consultationModeFee: cleaned },
+      token
+    );
+
+      const userData = response?.data?.data;
+      dispatch({ type: 'currentUser', payload: userData });
+    Toast.show({
+      type: "success",
+      text1: "Success",
+      text2: "Consultation fees updated",
+    });
+    handleEditClose();
+    fetchDoctorData();
+  } catch (e: any) {
+    Toast.show({
+      type: "error",
+      text1: "Error",
+      text2:
+        e?.response?.data?.message?.message ||
+        e?.message ||
+        "Failed to update fees",
+    });
+  }
+};
+
 
   const saveBank = async () => {
     if (!token) return;
@@ -439,7 +487,7 @@ const DoctorProfileView: React.FC = () => {
         return;
       }
 
-      await AuthPost('users/updateBankDetails', {
+      const response = await AuthPost('users/updateBankDetails', {
         bankDetails: {
           bankName: formBank.bankName,
           accountHolderName: formBank.accountHolderName,
@@ -448,6 +496,8 @@ const DoctorProfileView: React.FC = () => {
         },
       }, token);
 
+      const userData = response?.data?.data;
+      dispatch({ type: 'currentUser', payload: userData });
       Toast.show({ type: 'success', text1: 'Success', text2: 'Bank details updated' });
       handleEditClose();
       fetchDoctorData();
@@ -733,10 +783,7 @@ const DoctorProfileView: React.FC = () => {
                 {doctorData.certifications.length > 0 ? (
                   doctorData.certifications.map((cert, index) => (
                     <View key={index} style={styles.certificationItem}>
-                      <View style={styles.certificationInfo}>
-                        <Text style={styles.certificationName}>{cert.name || 'N/A'}</Text>
-                        {/* <Text style={styles.certificationNumber}>{cert.registrationNo || 'N/A'}</Text> */}
-                      </View>
+                     
                       <View style={styles.certificationActions}>
                         {!!cert.image && (
                           <TouchableOpacity style={styles.viewButton} onPress={() => showDocModal({ type: 'Specialization Certificate', data: cert.image })}>
@@ -853,7 +900,7 @@ const DoctorProfileView: React.FC = () => {
                     </View>
                   </View>
                   <Text style={styles.consultationPrice}>
-                    {mode.currency || '₹'}{mode.fee}
+                    {mode.currency || '₹'} {mode.fee}
                   </Text>
                 </View>
               ))}
@@ -1171,18 +1218,45 @@ const DoctorProfileView: React.FC = () => {
                     </View>
                     <View style={{ width: 100, marginRight: 8 }}>
                       <Text style={styles.label}>Fee</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={String(row.fee)}
-                        onChangeText={(v) => {
-                          const next = [...formConsultation];
-                          next[idx].fee = v.replace(/[^0-9]/g, '');
-                          setFormConsultation(next);
-                        }}
-                        keyboardType="numeric"
-                        placeholder="Enter fee"
-                        placeholderTextColor="#888"
-                      />
+                     <TextInput
+  style={styles.input}
+  value={String(row.fee ?? "")}
+  onChangeText={(v) => {
+    const digits = v.replace(/[^0-9]/g, "");
+
+    // clone first
+    const next = [...formConsultation];
+
+    // capture the initial fee once, store as a non-enumerable field so it won't get sent to APIs
+    if (next[idx].__initialFee == null) {
+      Object.defineProperty(next[idx], "__initialFee", {
+        value: Number(next[idx].fee || 0),
+        writable: true,
+        enumerable: false,
+      });
+    }
+    const initialFee = Number(next[idx].__initialFee || 0);
+
+    // allow clearing while typing
+    if (digits.length === 0) {
+      next[idx].fee = "";
+      setFormConsultation(next);
+      return;
+    }
+
+    // if initial > 0, block editing to an explicit 0
+    if (initialFee > 0 && Number(digits) === 0) {
+      return; // ignore the change
+    }
+
+    next[idx].fee = digits;
+    setFormConsultation(next);
+  }}
+  keyboardType="numeric"
+  placeholder="Enter fee"
+  placeholderTextColor="#888"
+/>
+
                     </View>
                   </View>
                 ))}

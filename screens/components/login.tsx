@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Toast from 'react-native-toast-message';
-// import { AuthFetch, UsePost } from '../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
@@ -50,6 +49,7 @@ const DoctorLoginScreen = () => {
     if (text && index < 5) otpRefs.current[index + 1]?.focus();
     if (!text && index > 0) otpRefs.current[index - 1]?.focus();
   };
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
@@ -186,7 +186,11 @@ const DoctorLoginScreen = () => {
         <Text style={styles.headerTitle}>Partner Login</Text>
       </View>
 
-      <ScrollView style={styles.formContainer}>
+      <ScrollView
+        style={styles.formContainer}
+        contentContainerStyle={styles.formContentContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.logoContainer1}>
           <Image source={require('../assets/doclogo.png')} style={styles.doclogo} />
         </View>
@@ -202,9 +206,9 @@ const DoctorLoginScreen = () => {
             editable={!isOtpSent}
             value={mobile}
             onChangeText={(text) => {
-              const digitsOnly = text.replace(/\D/g, "");
+              const digitsOnly = text.replace(/\D/g, '');
               if (digitsOnly.length === 1 && !/[6-9]/.test(digitsOnly[0])) {
-                setMobileError("Enter a valid mobile number.");
+                setMobileError('Enter a valid mobile number.');
                 setIsOtpSent(false);
                 return;
               }
@@ -214,7 +218,6 @@ const DoctorLoginScreen = () => {
             }}
             maxLength={10}
           />
-
         </View>
         {mobileError ? <Text style={styles.errorText}>{mobileError}</Text> : null}
 
@@ -250,7 +253,6 @@ const DoctorLoginScreen = () => {
             </View>
           </>
         )}
-        <View style={styles.spacer} />
       </ScrollView>
 
       {!showOtp ? (
@@ -277,7 +279,6 @@ const DoctorLoginScreen = () => {
     </KeyboardAvoidingView>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
@@ -306,42 +307,23 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
+    backgroundColor: '#DCFCE7', // Ensure ScrollView has the same background
     paddingHorizontal: width * 0.05,
     paddingVertical: height * 0.03,
-
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: height * 0.04,
+  formContentContainer: {
+    paddingBottom: height * 0.15, // Ensure enough padding for button to stay visible
+    backgroundColor: '#DCFCE7', // Match container background
+    minHeight: height, // Ensure content fills screen height
   },
   logoContainer1: {
     marginTop: 80,
     alignItems: 'center',
     marginBottom: height * 0.0,
   },
-  logoWrapper: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logo: {
-    width: width * 0.7,
-    height: width * 0.7,
-  },
   doclogo: {
     width: width * 0.5,
     height: width * 0.5,
-  },
-  portalTitle: {
-    fontSize: width * 0.05,
-    fontWeight: '600',
-    color: '#333',
-    marginVertical: height * 0.01,
-  },
-  signInLink: {
-    color: '#00203F',
-    fontSize: width * 0.04,
-    fontWeight: '500',
-    textDecorationLine: 'underline',
   },
   label: {
     fontSize: width * 0.04,

@@ -112,13 +112,13 @@ const specializationOptions = [
   'Surgical Oncology',
   'Trauma Surgery and Critical Care',
   'Tropical Medicine / Tropical Medicine and Health',
+  'Tropical Medicine and Health',
   'Tuberculosis and Chest Diseases',
   'Unani',
   'Urology',
   'Vascular Surgery',
   'Yoga and Naturopathy',
 ];
-
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -148,7 +148,13 @@ const SpecializationDetails = () => {
     degrees: { name: '', file: null as { uri: string; type: string; name: string } | null },
     certifications: { name: '', file: null as { uri: string; type: string; name: string } | null }
   });
+  const [errors, setErrors] = useState({
+    degree: '',
+    specialization: '',
+    yearsExperience: '',
+  });
   const navigation = useNavigation<NavigationProp>();
+  
   const handleRemoveFile = (field: 'degrees' | 'certifications') => {
     setFormData({
       ...formData,
@@ -159,6 +165,7 @@ const SpecializationDetails = () => {
       [field]: { name: '', file: null }
     }));
   };
+  
   const handleDegreeChange = (itemValue: string) => {
     let newDegrees: string[];
 
@@ -171,6 +178,7 @@ const SpecializationDetails = () => {
     }
 
     setTempDegrees(newDegrees);
+    setErrors(prev => ({ ...prev, degree: '' }));
   };
 
   const handleConfirm = () => {
@@ -208,48 +216,35 @@ const SpecializationDetails = () => {
   const degreeList = [...degrees, { id: 'others', degreeName: 'Others' }];
 
   const validateForm = () => {
+    const newErrors = {
+      degree: '',
+      specialization: '',
+      yearsExperience: '',
+    };
+
+    let isValid = true;
+
     if (!formData.degree) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please select at least one degree.',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-      return false;
+      newErrors.degree = 'Please select at least one degree.';
+      isValid = false;
     }
     if (tempDegrees.includes('Others') && !formData.customDegree?.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please enter a custom degree for "Others".',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-      return false;
+      newErrors.degree = 'Please enter a custom degree for "Others".';
+      isValid = false;
     }
     if (!formData.specialization) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please select a specialization.',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-      return false;
+      newErrors.specialization = 'Please select a specialization.';
+      isValid = false;
     }
     if (!formData.yearsExperience || isNaN(Number(formData.yearsExperience))) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please enter a valid number for years of experience.',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-      return false;
+      newErrors.yearsExperience = 'Please enter a valid number for years of experience.';
+      isValid = false;
     }
-    return true;
+
+    setErrors(newErrors);
+    return isValid;
   };
+  
   const handleFileUpload = async (field: 'degrees' | 'certifications') => {
     Alert.alert(
       'Upload File',
@@ -394,6 +389,7 @@ const SpecializationDetails = () => {
       { cancelable: true }
     );
   };
+  
   const handleNext = async () => {
     if (!validateForm()) return;
 
@@ -472,8 +468,6 @@ const SpecializationDetails = () => {
       );
 
       setDegrees(sortedData);
-      // const data = response?.data?.data || [];
-      // setDegrees(data);
     } catch (error) {
       Toast.show({
         type: 'error',
@@ -549,16 +543,17 @@ const SpecializationDetails = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Degree*</Text>
               <TouchableOpacity
-                style={[styles.input, styles.dropdownButton]}
+                style={[styles.input, styles.dropdownButton, errors.degree ? styles.inputError : null]}
                 onPress={() => !isLoading && setModalVisible(true)}
                 disabled={isLoading}
               >
-
                 <Text style={styles.dropdownText}>
                   {formData.degree || 'Select degrees'}
                 </Text>
-
               </TouchableOpacity>
+              {errors.degree ? (
+                <Text style={styles.errorText}>{errors.degree}</Text>
+              ) : null}
               <Modal
                 visible={modalVisible}
                 transparent={true}
@@ -622,10 +617,13 @@ const SpecializationDetails = () => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Specialization(s)*</Text>
-              <View style={[styles.input, styles.pickerContainer]}>
+              <View style={[styles.input, styles.pickerContainer, errors.specialization ? styles.inputError : null]}>
                 <Picker
                   selectedValue={formData.specialization}
-                  onValueChange={(itemValue) => setFormData({ ...formData, specialization: itemValue })}
+                  onValueChange={(itemValue) => {
+                    setFormData({ ...formData, specialization: itemValue });
+                    setErrors(prev => ({ ...prev, specialization: '' }));
+                  }}
                   style={styles.picker}
                   enabled={!isLoading}
                 >
@@ -635,16 +633,20 @@ const SpecializationDetails = () => {
                   ))}
                 </Picker>
               </View>
+              {errors.specialization ? (
+                <Text style={styles.errorText}>{errors.specialization}</Text>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Years of Experience *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.yearsExperience ? styles.inputError : null]}
                 value={formData?.yearsExperience}
                 onChangeText={(text) => {
                   const filteredText = text.replace(/[^0-9]/g, '');
                   setFormData({ ...formData, yearsExperience: filteredText });
+                  setErrors(prev => ({ ...prev, yearsExperience: '' }));
                 }}
                 keyboardType="numeric"
                 placeholder="e.g. 5"
@@ -652,6 +654,9 @@ const SpecializationDetails = () => {
                 editable={!isLoading}
                 maxLength={2}
               />
+              {errors.yearsExperience ? (
+                <Text style={styles.errorText}>{errors.yearsExperience}</Text>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
@@ -814,7 +819,6 @@ const styles = StyleSheet.create({
     fontSize: width * 0.035,
     fontWeight: '500',
   },
-
   backButton: {
     padding: width * 0.02,
   },
@@ -855,6 +859,9 @@ const styles = StyleSheet.create({
     elevation: 2,
     justifyContent: 'center',
   },
+  inputError: {
+    borderColor: '#D32F2F',
+  },
   textArea: {
     height: height * 0.15,
     textAlignVertical: 'top',
@@ -864,7 +871,7 @@ const styles = StyleSheet.create({
     height: height * 0.06,
     color: '#333',
   },
-    pickerContainer: {
+  pickerContainer: {
     minHeight: height * 0.06,
     justifyContent: 'center', 
   },
@@ -874,8 +881,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    flexWrap: 'wrap',       // allows wrapping text
-    minHeight: 40,          // minimum height for small text
+    flexWrap: 'wrap',
+    minHeight: 40,
     justifyContent: 'center',
   },
   uploadContainer: {
@@ -1018,6 +1025,12 @@ const styles = StyleSheet.create({
     color: '#00203F',
     marginTop: height * 0.005,
     fontStyle: 'italic',
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: width * 0.035,
+    marginTop: height * 0.005,
+    marginBottom: height * 0.005,
   },
 });
 

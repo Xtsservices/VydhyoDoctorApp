@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, Pressable, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, TextInput, ActivityIndicator, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  Modal,
+  Pressable,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ScrollView,
+  Dimensions,
+  Alert,
+  TextInput,
+  ActivityIndicator,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { pick, types } from '@react-native-documents/picker';
@@ -10,41 +23,238 @@ import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { UploadFiles, AuthFetch } from '../../auth/auth';
+import WebView from 'react-native-webview';
 
 const voter_icon = require('../../assets/aadhar.png');
 const pancard_icon = require('../../assets/pan.png');
 
 const { width, height } = Dimensions.get('window');
-import TermsAndConditionsModal from './TermsAndConditionsModal';
 
 const KYCDetailsScreen = () => {
-  const [voterImage, setVoterImage] = useState<{ uri: string, name: string, type?: string } | null>(null);
-  const [panImage, setPanImage] = useState<{ uri: string, name: string, type?: string } | null>(null);
+  const [voterImage, setVoterImage] = useState<{ uri: string; name: string; type?: string } | null>(null);
+  const [panImage, setPanImage] = useState<{ uri: string; name: string; type?: string } | null>(null);
   const [voterUploaded, setVoterUploaded] = useState(false);
   const [pancardUploaded, setPancardUploaded] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [voterNumber, setVoterNumber] = useState('');
   const [panNumber, setPanNumber] = useState('');
-  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [fileViewModalVisible, setFileViewModalVisible] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ uri: string; type?: string } | null>(null);
+  const navigation = useNavigation<any>();
+
+  const termsAndConditionsHTML = `
+    <html>
+      <head>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+          }
+          h1 {
+            font-size: 24px;
+            color: #00203F;
+            text-align: center;
+          }
+          .effective-date {
+            text-align: center;
+            font-size: 16px;
+            margin-bottom: 20px;
+          }
+          p, li {
+            font-size: 16px;
+            margin-bottom: 10px;
+            text-align: justify;
+          }
+          h2 {
+            font-size: 20px;
+            color: #00203F;
+            margin-top: 20px;
+            text-align: left;
+          }
+          ul {
+            padding-left: 20px;
+            text-align: justify;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Vydhyo Healthcare Platform</h1>
+        <p class="effective-date"><strong>Effective Date:</strong> September 1st, 2025 | <strong>Last Updated:</strong> August 30th, 2025 | <strong>Version:</strong> 1.0</p>
+
+        <h2>1. Definitions and Interpretation</h2>
+        <p><strong>Vydhyo:</strong> Vydhyo Health Care Pvt. Ltd., a company incorporated under the Companies Act, 2013, with its registered office at E 602, Hallmark Sunnyside, Manchirevula, Hyderabad, operating the Platform (www.vydhyo.com and Vydhyo mobile application).</p>
+        <p><strong>User:</strong> Any individual accessing or using the Platform, including patients, healthcare providers, caregivers, and their authorized representatives.</p>
+        <p><strong>Patient:</strong> An individual seeking healthcare services or their parent/legal guardian for minors or persons with disabilities.</p>
+        <p><strong>Healthcare Provider:</strong> Registered medical practitioners, hospitals, clinics, diagnostic centers, ambulance services, home care providers, physiotherapists, nutritionists, mental health professionals, and others listed on the Platform.</p>
+        <p><strong>Services:</strong> Appointment booking, teleconsultation facilitation, ambulance services, home care services, diagnostic services, AI-powered guidance, health information, and related offerings.</p>
+        <p><strong>Personal Data:</strong> Information relating to an identifiable person as defined under the Digital Personal Data Protection Act, 2023.</p>
+        <p><strong>Sensitive Personal Data:</strong> Includes passwords, financial information, health information, biometric data, etc.</p>
+        <p><strong>ABDM:</strong> Ayushman Bharat Digital Mission ecosystem.</p>
+        <p><strong>Clinical Establishment:</strong> Healthcare facilities registered under the Clinical Establishments Act, 2010.</p>
+        <p><strong>Telemedicine:</strong> Practice of medicine using electronic communication as per Telemedicine Practice Guidelines, 2020.</p>
+
+        <h2>2. Acceptance and Modification</h2>
+        <p><strong>Acceptance:</strong> By using the Platform, you agree to these Terms and applicable laws. If you do not agree, you must not use the Platform.</p>
+        <p><strong>Modifications:</strong> Vydhyo may modify these Terms, with material changes notified 30 days prior unless required by law for immediate implementation.</p>
+        <p><strong>Continued Use:</strong> Continued use after modifications constitutes acceptance.</p>
+        <p><strong>Language:</strong> English version prevails in case of translation conflicts.</p>
+
+        <h2>3. Eligibility and Registration</h2>
+        <p><strong>Age:</strong> Users must be 18 or older; minors require parental/guardian consent.</p>
+        <p><strong>Legal Capacity:</strong> Users must have the legal capacity to enter contracts under Indian law.</p>
+        <p><strong>Registration:</strong></p>
+        <ul>
+          <li>Provide accurate, complete, and current information.</li>
+          <li>Verify mobile number and email via OTP.</li>
+          <li>Healthcare Providers must provide valid registration numbers.</li>
+          <li>Clinical Establishments must provide valid registrations.</li>
+          <li>Vydhyo may verify credentials and reject applications.</li>
+        </ul>
+        <p><strong>ABDM Integration:</strong> Optional integration with ABHA ID, HIP/HIU systems, and consent manager framework.</p>
+        <ul>
+          <li>Creation of ABHA (Ayushman Bharat Health Account) ID.</li>
+          <li>Integration with Health Information Provider (HIP) and Health Information User (HIU) systems.</li>
+          <li>Consent manager framework compliance.</li>
+          <li>Digital health records interoperability.</li>
+        </ul>
+        <p><strong>Account Security:</strong></p>
+        <ul>
+          <li>Users are responsible for credential confidentiality and must notify Vydhyo of unauthorized use.</li>
+          <li>Users are liable for all activities conducted through their account.</li>
+          <li>Multi-factor authentication is strongly recommended.</li>
+        </ul>
+        <p><strong>Prohibited Users:</strong></p>
+        <ul>
+          <li>Those barred by law, with revoked licenses, or previously violating Terms.</li>
+        </ul>
+
+        <h2>4. Platform Role and Disclaimers</h2>
+        <p><strong>Role:</strong> Vydhyo is a technology platform facilitating connections, not a healthcare provider.</p>
+        <p><strong>No Medical Practice:</strong></p>
+        <ul>
+          <li>Vydhyo does not diagnose, treat, or provide medical advice; medical decisions are between patients and providers.</li>
+          <li>Vydhyo does not endorse any particular healthcare provider or treatment.</li>
+        </ul>
+        <p><strong>Facilitation:</strong> Limited to appointment booking, communication, payment processing, and AI-powered informational tools.</p>
+        <p><strong>Provider Independence:</strong> Providers are independent contractors, not Vydhyo employees.</p>
+        <p><strong>Emergency Disclaimer:</strong> Platform is not for emergencies; contact 108/102 or visit emergency facilities.</p>
+
+        <h2>5. Services</h2>
+        <h3>5.1 Doctor Consultations</h3>
+        <p><strong>Appointment Scheduling:</strong> Subject to provider availability; confirmation required.</p>
+        <p><strong>Telemedicine Compliance:</strong> Complies with 2020 Guidelines; providers maintain valid registrations.</p>
+        <p><strong>Payment Processing:</strong> Vydhyo acts as a payment aggregator; taxes and fees apply.</p>
+        <p><strong>Rescheduling:</strong> Allowed with 2-hour notice; multiple rescheduling may incur fees.</p>
+        <p><strong>Cancellation:</strong> Full refund (>24 hours), no refund (no-show).</p>
+        <h3>5.2 Ambulance Services</h3>
+        <p>Facilitates connection with independent providers.</p>
+        <p>Vydhyo is not liable for quality, timing, or disputes.</p>
+        <p>Suitable for non-critical transport; emergencies should use 108/102.</p>
+        <h3>5.3 Home Care Services</h3>
+        <p>Includes nursing, elder care, physiotherapy, etc.</p>
+        <p>Providers undergo verification; comply with Biomedical Waste Management Rules, 2016.</p>
+        <p>Vydhyo is not liable for disputes.</p>
+        <h3>5.4 Specialized Consultations</h3>
+        <p>Includes physiotherapy, nutrition, mental health, and second opinions.</p>
+        <p>Mental health services ensure confidentiality; nutrition services integrate with treatment plans.</p>
+        <h3>5.5 AI-Powered Tools</h3>
+        <p>Symptom assessment for informational purposes only, not diagnostic.</p>
+        <p>Recommends consulting qualified providers.</p>
+
+        <h2>6. Payment Terms</h2>
+        <p><strong>Methods:</strong> Credit/debit cards, net banking, UPI, digital wallets, Vydhyo wallet, insurance integration.</p>
+        <p><strong>Security:</strong> PCI-DSS compliant, end-to-end encryption, tokenization, fraud detection.</p>
+        <p><strong>Pricing:</strong> Set by providers; platform fees disclosed.</p>
+        <p><strong>Taxes:</strong> GST, TDS, etc., apply unless specified.</p>
+        <p><strong>Refunds:</strong> Per service-specific policies; processed in 5-10 days (card/bank) or immediately (wallet).</p>
+        <p><strong>Disputes:</strong> Raised within 30 days; resolved within 60 days.</p>
+
+        <h2>7. User Responsibilities</h2>
+        <h3>7.1 Patient Responsibilities</h3>
+        <p>Provide accurate information, respect providers, use Platform for legitimate purposes.</p>
+        <h3>7.2 Healthcare Provider Responsibilities</h3>
+        <p>Maintain licenses, provide quality care, comply with ethics, maintain insurance.</p>
+        <h3>7.3 Clinical Establishment Compliance</h3>
+        <p>Comply with registration, infrastructure, and waste management regulations.</p>
+        <h3>7.4 Prohibited Activities</h3>
+        <p>Misrepresentation, unauthorized access, illegal activities, harassment, etc.</p>
+        <h3>7.5 Professional Conduct</h3>
+        <p>Respectful interactions, confidentiality, conflict disclosure.</p>
+
+        <h2>8. Intellectual Property</h2>
+        <p><strong>Vydhyo’s IP:</strong> Trademarks, patents, software, content, and data.</p>
+        <p><strong>User License:</strong> Limited, non-exclusive, non-transferable for personal use.</p>
+        <p><strong>User-Generated Content:</strong> Users retain ownership but grant Vydhyo a license for operations.</p>
+        <p><strong>Provider Content:</strong> Providers retain ownership; Vydhyo uses for listings and analytics.</p>
+        <p><strong>Third-Party IP:</strong> Licensed components; DMCA compliance.</p>
+        <p><strong>Violations:</strong> Takedown, suspension, or legal action for infringement.</p>
+
+        <h2>9. Limitation of Liability</h2>
+        <p><strong>Limitations:</strong> Vydhyo is not liable for medical errors, provider negligence, technical failures, or force majeure.</p>
+        <p><strong>Liability Cap:</strong> Limited to fees paid for the specific service in the past 12 months.</p>
+        <p><strong>Consequential Damages:</strong> No liability for indirect or punitive damages.</p>
+        <p><strong>Exceptions:</strong> Gross negligence, fraud, data protection violations, or statutory liabilities.</p>
+        <p><strong>Indemnification:</strong> Users indemnify Vydhyo for breaches, misuse, or violations.</p>
+
+        <h2>10. Governing Law and Dispute Resolution</h2>
+        <p><strong>Governing Law:</strong> Laws of India (e.g., Consumer Protection Act, 2019; Digital Personal Data Protection Act, 2023).</p>
+        <p><strong>Jurisdiction:</strong> Courts in Hyderabad, Telangana.</p>
+        <p><strong>Dispute Resolution:</strong></p>
+        <ul>
+          <li>Informal resolution (30 days).</li>
+          <li>Formal grievance process (30 days).</li>
+          <li>Mediation (60 days) under Mediation Act, 2023.</li>
+          <li>Arbitration under Arbitration and Conciliation Act, 2015 (Hyderabad, English).</li>
+        </ul>
+        <p><strong>Specialized Disputes:</strong> Medical malpractice, data protection, consumer protection via respective mechanisms.</p>
+
+        <h2>11. Miscellaneous</h2>
+        <p><strong>Entire Agreement:</strong> Includes Privacy Policy, Refund Policy, and referenced agreements.</p>
+        <p><strong>Severability:</strong> Invalid provisions modified to be enforceable.</p>
+        <p><strong>Waiver:</strong> Must be written; no implied waivers.</p>
+        <p><strong>Assignment:</strong> Users cannot assign without consent; Vydhyo may assign with notice.</p>
+        <p><strong>Notices:</strong> Written, via registered email/address or electronic means.</p>
+        <p><strong>Language:</strong> English controls; translations provided in Hindi, Telugu, etc.</p>
+        <p><strong>Survival:</strong> IP, liability, data protection, and dispute resolution provisions survive termination.</p>
+
+        <h2>12. Acknowledgment</h2>
+        <p>By using the Platform, you acknowledge that you have read, understood, and agree to these Terms, have legal capacity, and understand your rights and obligations.</p>
+
+        <h2>13. Declaration of Compliance</h2>
+        <p>Vydhyo complies with:</p>
+        <ul>
+          <li>Digital Personal Data Protection Act, 2023</li>
+          <li>Consumer Protection Act, 2019</li>
+          <li>Ayushman Bharat Digital Mission guidelines</li>
+          <li>Telemedicine Practice Guidelines, 2020</li>
+          <li>Clinical Establishments Act</li>
+          <li>Accessibility and insurance regulations</li>
+        </ul>
+        <p><strong>Contact:</strong> Vydhyo@gmail.com, 9666955501, E 602, Hallmark Sunnyside, Manchirevula, Hyderabad-500075.</p>
+      </body>
+    </html>
+  `;
 
   const handleVoterUpload = async () => {
     try {
       const [result] = await pick({
         mode: 'open',
-        type: [types.pdf, types.images],
+        type: [types.images], // Restrict to images only (PNG, JPG)
       });
       if (result.uri && result.name) {
         setVoterImage({
           uri: result.uri,
           name: result.name,
-          type: result.type || (result.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
+          type: result.type || 'image/jpeg',
         });
         setVoterUploaded(true);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick Voter ID document. Please try again.');
+      Alert.alert('Error', 'Failed to pick Voter ID image. Please try again.');
     }
   };
 
@@ -80,7 +290,7 @@ const KYCDetailsScreen = () => {
           },
         },
         {
-          text: 'Gallery',
+          text: '',
           onPress: async () => {
             try {
               const result = await launchImageLibrary({
@@ -106,25 +316,25 @@ const KYCDetailsScreen = () => {
           },
         },
         {
-          text: 'Upload PDF',
+          text: 'Upload File',
           onPress: async () => {
             try {
               const [res] = await pick({
-                type: [types.pdf, types.images],
+                type: [types.images], // Restrict to images only (PNG, JPG)
               });
 
               if (res && res.uri && res.name) {
                 setPanImage({
                   uri: res.uri,
                   name: res.name,
-                  type: res.type || 'application/pdf',
+                  type: res.type || 'image/jpeg',
                 });
                 setPancardUploaded(true);
               } else {
-                Alert.alert('Error', 'Invalid file selected. Please try again.');
+                Alert.alert('Error', 'Invalid image selected. Please try again.');
               }
             } catch (error) {
-              Alert.alert('Error', 'PDF selection failed.');
+              Alert.alert('Error', 'Image selection failed.');
             }
           },
         },
@@ -147,18 +357,12 @@ const KYCDetailsScreen = () => {
     setPancardUploaded(false);
   };
 
-  const viewFile = async (file: { uri: string, type?: string }) => {
-    try {
-      // For Android, we can try to open the file with the default app
-      const supported = await Linking.canOpenURL(file.uri);
-
-      if (supported) {
-        await Linking.openURL(file.uri);
-      } else {
-        Alert.alert('Error', 'Cannot open this file type on your device.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to open the file.');
+  const viewFile = (file: { uri: string; type?: string }) => {
+    if (file.type?.includes('image')) {
+      setSelectedFile(file);
+      setFileViewModalVisible(true);
+    } else {
+      Alert.alert('Error', 'Unsupported file type.');
     }
   };
 
@@ -226,7 +430,7 @@ const KYCDetailsScreen = () => {
       }
 
       if (!panImage?.uri) {
-        Alert.alert('Error', 'Please upload a Pancard document.');
+        Alert.alert('Error', 'Please upload a Pancard image.');
         return;
       }
 
@@ -238,7 +442,7 @@ const KYCDetailsScreen = () => {
         formData.append('panFile', {
           uri: panImage.uri,
           name: panImage.name,
-          type: panImage.type || (panImage.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+          type: panImage.type || 'image/jpeg',
         } as any);
       }
 
@@ -254,7 +458,7 @@ const KYCDetailsScreen = () => {
         });
 
         setTimeout(async () => {
-          setLoading(false)
+          setLoading(false);
           await AsyncStorage.setItem('currentStep', 'ConfirmationScreen');
           navigation.navigate('ConfirmationScreen');
         }, 2000);
@@ -273,21 +477,18 @@ const KYCDetailsScreen = () => {
   };
 
   const fetchUserData = async () => {
-
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-        navigation.navigate("/Login")
+        navigation.navigate('/Login');
       }
       const response = await AuthFetch('users/getKycByUserId', token);
 
       if (response?.data?.status === 'success') {
         const userData = response?.data?.data;
-        // Set existing data if available
         if (userData.panNumber) {
           setPanNumber(userData.panNumber);
         }
-        // You might want to handle pre-uploaded files here as well
       }
     } catch (error) {
       Toast.show({
@@ -317,6 +518,60 @@ const KYCDetailsScreen = () => {
         </View>
       )}
 
+      {/* Terms and Conditions Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={termsModalVisible}
+        onRequestClose={() => setTermsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Terms and Conditions</Text>
+              <TouchableOpacity onPress={() => setTermsModalVisible(false)}>
+                <Icon name="close" size={width * 0.06} color="#00203F" />
+              </TouchableOpacity>
+            </View>
+            <WebView
+              originWhitelist={['*']}
+              source={{ html: termsAndConditionsHTML }}
+              style={styles.webview}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* File View Modal for Images */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={fileViewModalVisible}
+        onRequestClose={() => setFileViewModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.fileModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>View File</Text>
+              <TouchableOpacity onPress={() => setFileViewModalVisible(false)}>
+                <Icon name="close" size={width * 0.06} color="#00203F" />
+              </TouchableOpacity>
+            </View>
+            {selectedFile && (
+              <>
+                {selectedFile.type?.includes('image') ? (
+                  <Image
+                    source={{ uri: selectedFile.uri }}
+                    style={styles.fileImage}
+                    resizeMode="contain"
+                  />
+                ) : null}
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -334,13 +589,17 @@ const KYCDetailsScreen = () => {
           <TouchableOpacity style={styles.uploadBox} onPress={handlePancardUpload}>
             <Icon name="card" size={width * 0.08} color="#00203F" style={styles.icon} />
             <Text style={styles.uploadText}>Upload</Text>
-            <Text style={styles.acceptedText}>Accepted: PDF, JPG, PNG</Text>
+            <Text style={styles.acceptedText}>Accepted: JPG, PNG</Text>
           </TouchableOpacity>
 
           {pancardUploaded && panImage && (
             <View style={styles.uploadedFileContainer}>
               <View style={styles.fileInfo}>
-                <Icon name={panImage.type?.includes('pdf') ? "file-pdf-box" : "image"} size={20} color="#00203F" />
+                <Icon
+                  name="image"
+                  size={20}
+                  color="#00203F"
+                />
                 <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
                   {panImage.name}
                 </Text>
@@ -358,7 +617,7 @@ const KYCDetailsScreen = () => {
             </View>
           )}
 
-          <Text style={styles.label}>Enter PAN Number </Text>
+          <Text style={styles.label}>Enter PAN Number</Text>
           <TextInput
             style={styles.input}
             value={panNumber}
@@ -377,9 +636,9 @@ const KYCDetailsScreen = () => {
               </View>
             </TouchableOpacity>
 
-            <Text style={styles.linkText} onPress={() => Linking.openURL('https://vydhyo.com/terms-and-conditions')}>
-              Terms & Conditions
-            </Text>
+            <TouchableOpacity onPress={() => setTermsModalVisible(true)}>
+              <Text style={styles.linkText}>Terms & Conditions</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -399,11 +658,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#DCFCE7',
-  },
-  linkText: {
-    color: '#007BFF',
-    textDecorationLine: 'underline',
-    marginLeft: 8,
   },
   header: {
     flexDirection: 'row',
@@ -537,6 +791,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#00203F',
     borderColor: '#00203F',
   },
+  linkText: {
+    color: '#007BFF',
+    textDecorationLine: 'underline',
+    marginLeft: 8,
+  },
   nextButton: {
     backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
@@ -569,6 +828,47 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: width * 0.04,
     marginTop: height * 0.02,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: width * 0.9,
+    height: height * 0.8,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  fileModalContent: {
+    width: width * 0.9,
+    height: height * 0.6,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: width * 0.04,
+    backgroundColor: '#f5f5f5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: width * 0.05,
+    fontWeight: '600',
+    color: '#00203F',
+  },
+  webview: {
+    flex: 1,
+  },
+  fileImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 
