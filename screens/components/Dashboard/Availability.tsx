@@ -180,14 +180,8 @@ const AvailabilityScreen: React.FC = () => {
         throw new Error(response.data?.message || 'Failed to fetch clinics');
       }
     } catch (error: any) {
-      console.error('Error fetching clinics:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to fetch clinic data',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to fetch clinic data. Please try again.');
+      
     }
   };
 
@@ -243,7 +237,9 @@ const AvailabilityScreen: React.FC = () => {
         setUnAvailableSlots(unavailable);
       }
     } catch (err) {
-      console.error(err);
+       const errorMessage = err?.message || 'Please Retry';
+       Alert.alert('Error', errorMessage);
+      
     }
   };
 
@@ -363,15 +359,9 @@ useEffect(() => {
         });
       }
     } catch (error: any) {
-      // Use a safe fallback message for catch block too
       const errorMessage = error?.message || 'Please Retry';
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: errorMessage,
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', errorMessage);
+       
     } finally {
       setIsAddingSlots(false);
     }
@@ -457,14 +447,8 @@ useEffect(() => {
         throw new Error(response.data?.message || 'Failed to update slots');
       }
     } catch (error: any) {
-      console.error('Error marking unavailable slots:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.message || 'Failed to update unavailable slots',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to update unavailable slots. Please try again.');
+     
     }
   };
 
@@ -517,14 +501,8 @@ useEffect(() => {
         });
       }
     } catch (error: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.message || 'Please Retry',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      console.error(error);
+      Alert.alert('Error', error?.message || 'Failed to delete slots. Please try again.');
+      
     } finally {
       setIsDeletingSlots(false); // Stop loading regardless of success/error
     }

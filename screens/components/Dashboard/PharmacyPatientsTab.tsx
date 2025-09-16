@@ -163,10 +163,9 @@ export default function PatientsTab({
         setTotalPatients(0);
       }
     } catch (error: any) {
-      console.error("Error fetching patients:", error);
       Toast.show({
         type: "error",
-        text1: error.message || "Failed to fetch patients",
+        text1: error?.message || "Failed to fetch patients",
       });
       setPatients([]);
       setTotalPatients(0);
@@ -194,10 +193,9 @@ export default function PatientsTab({
         throw new Error(response.message || "Failed to update status");
       }
     } catch (error: any) {
-      console.error("Error updating status:", error);
       Toast.show({
         type: "error",
-        text1: error.message || "Failed to update status",
+        text1: error?.message || "Failed to update status",
       });
     }
   }
@@ -250,10 +248,9 @@ export default function PatientsTab({
       });
       setEditablePrices(prev => prev.filter(id => id !== medicineId));
     } catch (error: any) {
-      console.error("Error updating medicine price:", error);
       Toast.show({
         type: "error",
-        text1: error.message || "Failed to update price",
+        text1: error?.message || "Failed to update price",
       });
     } finally {
       setSaving(prev => ({ ...prev, [medicineId]: false }));
@@ -314,11 +311,10 @@ export default function PatientsTab({
         await fetchPatients();
       }
     } catch (error: any) {
-      console.error("Error processing payment:", error);
       setIsPaymentDone(prev => ({ ...prev, [patientId]: false }));
       Toast.show({
         type: "error",
-        text1: error.message || "Failed to process payment",
+        text1: error?.message || "Failed to process payment",
       });
     } finally {
       setPaying(prev => ({ ...prev, [patientId]: false }));
@@ -341,7 +337,11 @@ export default function PatientsTab({
         granted === PermissionsAndroid.RESULTS.GRANTED ||
         granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
       );
-    } catch {
+    } catch(err) {
+      Toast.show({
+        type: "error",
+        text1: err?.message || "Failed to request storage permission",
+      });
       return false;
     }
   };
@@ -397,7 +397,10 @@ export default function PatientsTab({
         try {
           await FileViewer.open(destinationPath);
         } catch (error) {
-          console.log("File downloaded but cannot be opened");
+          Toast.show({
+            type: "error",
+            text1: error?.message || "Failed to open invoice",
+          });
         }
       } else if (file.filePath) {
         // For iOS, just show success and try to open
@@ -409,14 +412,16 @@ export default function PatientsTab({
         try {
           await FileViewer.open(file.filePath);
         } catch (error) {
-          console.log("File generated but cannot be opened");
+          Toast.show({
+            type: "error",
+            text1: error?.message || "Failed to open invoice",
+          });
         }
       }
     } catch (error: any) {
-      console.error("Error downloading invoice:", error);
       Toast.show({
         type: "error",
-        text1: error.message || "Failed to download invoice",
+        text1: error?.message || "Failed to download invoice",
       });
     } finally {
       setDownloading(prev => ({ ...prev, [patient.patientId]: false }));

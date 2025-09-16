@@ -218,7 +218,7 @@ const ClinicManagementScreen = () => {
         setClinic(formattedClinics);
       }
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+      Alert.alert('Error', error?.message ||'Failed to fetch appointments. Please try again.');
     } finally {
       setInitialLoading(false);
     }
@@ -372,8 +372,7 @@ const ClinicManagementScreen = () => {
                   }
                 }
               } catch (error) {
-                Alert.alert('Error', 'Camera access failed.');
-                console.error('Camera error:', error);
+                Alert.alert('Error', error?.message ||'Camera access failed.');
               }
             },
           },
@@ -409,8 +408,7 @@ const ClinicManagementScreen = () => {
                   }
                 }
               } catch (error) {
-                Alert.alert('Error', 'Gallery access failed.');
-                console.error('Gallery error:', error);
+                Alert.alert('Error', error?.message || 'Gallery access failed.');
               }
             },
           },
@@ -422,8 +420,7 @@ const ClinicManagementScreen = () => {
         { cancelable: true }
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick file. Please try again.');
-      console.error('File upload error:', error);
+      Alert.alert('Error', error?.message || 'Failed to pick file. Please try again.');
     }
   };
 
@@ -460,14 +457,8 @@ const ClinicManagementScreen = () => {
         });
       }
     } catch (error) {
-      console.error('Header upload error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to upload header',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to upload header. Please try again.');
+      
     } finally {
       setLoading(false);
     }
@@ -552,14 +543,8 @@ const ClinicManagementScreen = () => {
         });
       }
     } catch (error) {
-      console.error('Error updating clinic:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update clinic',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to update clinic. Please try again.'); 
+     
     }
   };
 
@@ -603,14 +588,8 @@ console.log(response, "pharmacyres")
         // });
       }
     } catch (error) {
-      console.error('Pharmacy submit error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to add pharmacy details',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to add pharmacy details. Please try again.');
+     
     } finally {
       setLoading(false);
     }
@@ -656,14 +635,8 @@ console.log(response, "pharmacyres")
         // });
       }
     } catch (error) {
-      console.error('Lab submit error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to add lab details',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to add lab details. Please try again.');
+      
     } finally {
       setLoading(false);
     }
@@ -706,14 +679,8 @@ console.log(response, "pharmacyres")
         });
       }
     } catch (err: any) {
-      console.error('Delete error:', err);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: err?.message || 'Failed to delete clinic. Please try again.',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', err?.message || 'Failed to delete clinic. Please try again.');
+      
     }
   };
 

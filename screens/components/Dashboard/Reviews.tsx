@@ -34,8 +34,7 @@ const ReviewsScreen = () => {
         const storedToken = await AsyncStorage.getItem('authToken');
         setToken(storedToken);
       } catch (error) {
-        console.error('Error fetching token:', error);
-        Alert.alert('Error', JSON.stringify(error) || 'Failed to retrieve authentication token');
+        Alert.alert('Error', error?.message || 'Failed to retrieve authentication token');
       }
     };
     fetchToken();
@@ -72,7 +71,7 @@ const ReviewsScreen = () => {
                   conversation = convResponse.data.feedback.conversation || [];
                 }
               } catch (error) {
-                console.error('Error fetching conversation:', error);
+                Alert.alert('Error', error?.message || 'Failed to fetch conversation');
               }
 
               return {
@@ -92,8 +91,7 @@ const ReviewsScreen = () => {
           Alert.alert('Error', JSON.stringify(response.message) || 'Failed to fetch reviews or invalid response');
         }
       } catch (error) {
-        console.error('Error fetching reviews:', error);
-        Alert.alert('Error', 'Failed to fetch reviews');
+        Alert.alert('Error', error?.message || 'Failed to fetch reviews');
       }
       setLoading(false);
     };
@@ -149,21 +147,19 @@ const ReviewsScreen = () => {
             );
           }
         } catch (error) {
-          console.error('Error fetching updated conversation:', error);
+          Alert.alert('Error', error?.message || 'Failed to fetch updated conversation');
         }
         
         setReplyText((prev) => ({ ...prev, [feedbackId]: '' }));
         Alert.alert('Success', 'Reply submitted successfully');
       } else {
-        Alert.alert('Alert!', response.message.message || 'Failed to submit reply');
+        Alert.alert('Alert!', response.message.message || 'Failed to fetch updated conversation');
       }
     } catch (error) {
-      console.error('Error submitting reply:', error);
-      if (error.response) {
-        console.error('Server response:', error.response.data);
-        Alert.alert('Error', JSON.stringify(error.response.data.message) || 'Unknown error');
+      if (error?.response) {
+        Alert.alert('Error', error?.response?.message || 'Failed to fetch updated conversation');
       } else {
-        Alert.alert('Error', 'An unexpected error occurred while submitting the reply');
+        Alert.alert('Error', error?.message || 'Failed to fetch updated conversation');
       }
     } finally {
       setSubmitting(prev => ({ ...prev, [feedbackId]: false }));
