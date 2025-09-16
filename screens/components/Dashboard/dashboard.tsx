@@ -249,22 +249,22 @@ const DoctorDashboard = () => {
   const [revenueEndDate, setRevenueEndDate] = useState<string>(today);
   const [whichRangePicker, setWhichRangePicker] = useState<'start' | 'end' | null>(null);
 
-const pieState = useMemo(() => {
-  const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
-  
-  const hasData = total > 0;
-  
-  if (!hasData) {
-    // Return empty data with a special flag
-    const zeroData = revenueSummaryData.map(d => ({ 
-      ...d, 
-      population: 0 
-    }));
-    return { data: zeroData, accessor: 'population', absolute: false, hasData: false };
-  }
-  
-  return { data: revenueSummaryData, accessor: 'population', absolute: true, hasData: true };
-}, [revenueSummaryData]);
+  const pieState = useMemo(() => {
+    const total = revenueSummaryData.reduce((s, d) => s + (Number(d.population) || 0), 0);
+
+    const hasData = total > 0;
+
+    if (!hasData) {
+      // Return empty data with a special flag
+      const zeroData = revenueSummaryData.map(d => ({
+        ...d,
+        population: 0
+      }));
+      return { data: zeroData, accessor: 'population', absolute: false, hasData: false };
+    }
+
+    return { data: revenueSummaryData, accessor: 'population', absolute: true, hasData: true };
+  }, [revenueSummaryData]);
 
   const getRevenueData = useCallback(async () => {
     try {
@@ -448,14 +448,16 @@ const pieState = useMemo(() => {
     const bootstrap = async () => {
       setLoading(true);
       try {
-        await Promise.all([
-          fetchUserData(),
-          getRevenueData(),
-          getTodayAppointmentCount(),
-          fetchClinics(),
-          fetchReviews(),
-        ]);
-        await getRevenueSummaryRange(revenueStartDate, revenueEndDate);
+        if (currentuserDetails) {
+          await Promise.all([
+            fetchUserData(),
+            getRevenueData(),
+            getTodayAppointmentCount(),
+            fetchClinics(),
+            fetchReviews(),
+          ]);
+          await getRevenueSummaryRange(revenueStartDate, revenueEndDate);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -690,25 +692,25 @@ const pieState = useMemo(() => {
               )}
 
               {/* Pie */}
-{/* Pie Chart or No Revenue Message */}
-{pieState.hasData ? (
-  <PieChart
-    data={pieState.data}
-    width={screenWidth - 30}
-    height={200}
-    chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
-    accessor={pieState.accessor}
-    backgroundColor={'transparent'}
-    paddingLeft={'0'}
-    hasLegend={true}
-    absolute={pieState.absolute}
-    style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
-  />
-) : (
-  <View style={styles.noRevenueContainer}>
-    <Text style={styles.noRevenueText}>No revenue data available</Text>
-  </View>
-)}
+              {/* Pie Chart or No Revenue Message */}
+              {pieState.hasData ? (
+                <PieChart
+                  data={pieState.data}
+                  width={screenWidth - 30}
+                  height={200}
+                  chartConfig={{ color: () => `rgba(0, 0, 0, 1)`, decimalPlaces: 0 }}
+                  accessor={pieState.accessor}
+                  backgroundColor={'transparent'}
+                  paddingLeft={'0'}
+                  hasLegend={true}
+                  absolute={pieState.absolute}
+                  style={{ alignSelf: 'flex-start', marginLeft: 6, paddingRight: 10 }}
+                />
+              ) : (
+                <View style={styles.noRevenueContainer}>
+                  <Text style={styles.noRevenueText}>No revenue data available</Text>
+                </View>
+              )}
 
             </View>}
 
@@ -767,28 +769,28 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   noReviewsContainer: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-  minHeight: 100, 
-  marginTop: -40,
-  marginBottom: -40,
-},
-noRevenueContainer: {
-  width: screenWidth - 30,
-  height: 200,
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-noRevenueText: {
-  color: '#6c757d',
-  fontSize: 16,
-  textAlign: 'center',
-},
-noReviewsText: {
-  color: '#6c757d',
-  textAlign: 'center',
-},
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 100,
+    marginTop: -40,
+    marginBottom: -40,
+  },
+  noRevenueContainer: {
+    width: screenWidth - 30,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noRevenueText: {
+    color: '#6c757d',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  noReviewsText: {
+    color: '#6c757d',
+    textAlign: 'center',
+  },
   placeholderCircle: {
     width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
     justifyContent: 'center', alignItems: 'center', marginRight: 16,

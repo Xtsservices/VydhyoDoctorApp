@@ -543,131 +543,131 @@ const AddClinicForm = () => {
       Alert.alert('Error', 'Failed to pick file. Please try again.');
     }
   };
-const validateForm = () => {
-  const newErrors: Record<string, string> = {};
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
 
-  if (!form.clinicName.trim()) newErrors.clinicName = 'Clinic name is required';
-  if (!form.address.trim()) newErrors.address = 'Address is required';
-  if (!form.city.trim()) newErrors.city = 'City is required';
-  if (!form.state.trim()) newErrors.state = 'State is required';
+    if (!form.clinicName.trim()) newErrors.clinicName = 'Clinic name is required';
+    if (!form.address.trim()) newErrors.address = 'Address is required';
+    if (!form.city.trim()) newErrors.city = 'City is required';
+    if (!form.state.trim()) newErrors.state = 'State is required';
 
-  if (!form.mobile) {
-    newErrors.mobile = 'Mobile number is required';
-  } else if (!/^[6-9][0-9]{9}$/.test(form.mobile)) {
-    newErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9';
-  }
-
-  if (!form.latitude) newErrors.latitude = 'Latitude is required';
-  else if (isNaN(Number(form.latitude))) newErrors.latitude = 'Latitude must be a valid number';
-
-  if (!form.longitude) newErrors.longitude = 'Longitude is required';
-  else if (isNaN(Number(form.longitude))) newErrors.longitude = 'Longitude must be a valid number';
-
-  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    newErrors.email = 'Enter a valid email address';
-  }
-
-  if (form.pincode && !/^\d{6}$/.test(form.pincode)) {
-    newErrors.pincode = 'Enter a valid 6-digit pincode';
-  }
-
-  // Add validation for header and signature
-  if (headerFile && !signatureFile) {
-    newErrors.signature = 'Signature is required when uploading a header image';
-  }
-  if (signatureFile && !headerFile) {
-    newErrors.header = 'Header image is required when uploading a signature';
-  }
-
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
-
-const handleSubmit = async () => {
-  if (!validateForm()) {
-    const firstError = Object.values(errors)[0];
-    Toast.show({
-      type: 'error',
-      text1: 'Validation Error',
-      text2: firstError,
-      position: 'top',
-      visibilityTime: 3000,
-    });
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const token = await AsyncStorage.getItem('authToken');
-    const userId = await AsyncStorage.getItem('userId');
-
-    const formData = new FormData();
-
-    formData.append('userId', userId || '');
-    formData.append('type', form.type);
-    formData.append('clinicName', form.clinicName);
-    formData.append('address', form.address);
-    formData.append('city', form.city);
-    formData.append('state', form.state);
-    formData.append('country', form.country);
-    formData.append('mobile', form.mobile);
-    formData.append('pincode', form.pincode);
-    formData.append('startTime', form.startTime);
-    formData.append('endTime', form.endTime);
-    formData.append('latitude', form.latitude);
-    formData.append('longitude', form.longitude);
-
-    if (headerFile && signatureFile) {
-      formData.append('file', headerFile as any);
-      formData.append('signature', signatureFile as any);
+    if (!form.mobile) {
+      newErrors.mobile = 'Mobile number is required';
+    } else if (!/^[6-9][0-9]{9}$/.test(form.mobile)) {
+      newErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9';
     }
 
-    if (form.pharmacyName) formData.append('pharmacyName', form.pharmacyName);
-    if (form.pharmacyRegNum) formData.append('pharmacyRegistrationNo', form.pharmacyRegNum);
-    if (form.pharmacyGST) formData.append('pharmacyGst', form.pharmacyGST);
-    if (form.pharmacyPAN) formData.append('pharmacyPan', form.pharmacyPAN);
-    if (form.pharmacyAddress) formData.append('pharmacyAddress', form.pharmacyAddress);
-    if (pharmacyHeaderFile) formData.append('pharmacyHeader', pharmacyHeaderFile as any);
+    if (!form.latitude) newErrors.latitude = 'Latitude is required';
+    else if (isNaN(Number(form.latitude))) newErrors.latitude = 'Latitude must be a valid number';
 
-    if (form.labName) formData.append('labName', form.labName);
-    if (form.labRegNum) formData.append('labRegistrationNo', form.labRegNum);
-    if (form.labGST) formData.append('labGst', form.labGST);
-    if (form.labPAN) formData.append('labPan', form.labPAN);
-    if (form.labAddress) formData.append('labAddress', form.labAddress);
-    if (labHeaderFile) formData.append('labHeader', labHeaderFile as any);
+    if (!form.longitude) newErrors.longitude = 'Longitude is required';
+    else if (isNaN(Number(form.longitude))) newErrors.longitude = 'Longitude must be a valid number';
 
-    const response = await UploadFiles('users/addAddressFromWeb', formData, token);
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      newErrors.email = 'Enter a valid email address';
+    }
 
-    if (response.status === 'success') {
+    if (form.pincode && !/^\d{6}$/.test(form.pincode)) {
+      newErrors.pincode = 'Enter a valid 6-digit pincode';
+    }
+
+    // Add validation for header and signature
+    if (headerFile && !signatureFile) {
+      newErrors.signature = 'Signature is required when uploading a header image';
+    }
+    if (signatureFile && !headerFile) {
+      newErrors.header = 'Header image is required when uploading a signature';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      const firstError = Object.values(errors)[0];
       Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Clinic added successfully',
+        type: 'error',
+        text1: 'Validation Error',
+        text2: firstError,
         position: 'top',
         visibilityTime: 3000,
       });
-      navigation.navigate('Clinic' as never);
-    } else {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const userId = await AsyncStorage.getItem('userId');
+
+      const formData = new FormData();
+
+      formData.append('userId', userId || '');
+      formData.append('type', form.type);
+      formData.append('clinicName', form.clinicName);
+      formData.append('address', form.address);
+      formData.append('city', form.city);
+      formData.append('state', form.state);
+      formData.append('country', form.country);
+      formData.append('mobile', form.mobile);
+      formData.append('pincode', form.pincode);
+      formData.append('startTime', form.startTime);
+      formData.append('endTime', form.endTime);
+      formData.append('latitude', form.latitude);
+      formData.append('longitude', form.longitude);
+
+      if (headerFile && signatureFile) {
+        formData.append('file', headerFile as any);
+        formData.append('signature', signatureFile as any);
+      }
+
+      if (form.pharmacyName) formData.append('pharmacyName', form.pharmacyName);
+      if (form.pharmacyRegNum) formData.append('pharmacyRegistrationNo', form.pharmacyRegNum);
+      if (form.pharmacyGST) formData.append('pharmacyGst', form.pharmacyGST);
+      if (form.pharmacyPAN) formData.append('pharmacyPan', form.pharmacyPAN);
+      if (form.pharmacyAddress) formData.append('pharmacyAddress', form.pharmacyAddress);
+      if (pharmacyHeaderFile) formData.append('pharmacyHeader', pharmacyHeaderFile as any);
+
+      if (form.labName) formData.append('labName', form.labName);
+      if (form.labRegNum) formData.append('labRegistrationNo', form.labRegNum);
+      if (form.labGST) formData.append('labGst', form.labGST);
+      if (form.labPAN) formData.append('labPan', form.labPAN);
+      if (form.labAddress) formData.append('labAddress', form.labAddress);
+      if (labHeaderFile) formData.append('labHeader', labHeaderFile as any);
+
+      const response = await UploadFiles('users/addAddressFromWeb', formData, token);
+
+      if (response.status === 'success') {
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Clinic added successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        navigation.navigate('Clinic' as never);
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: response.message || 'Failed to add clinic.',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
+    } catch (error) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: response.message || 'Failed to add clinic.',
+        text2: 'Failed to add clinic.',
         position: 'top',
         visibilityTime: 3000,
       });
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    Toast.show({
-      type: 'error',
-      text1: 'Error',
-      text2: 'Failed to add clinic.',
-      position: 'top',
-      visibilityTime: 3000,
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   const renderFileUpload = (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader', label: string, preview: string | null) => (
     <View style={styles.inputGroup}>
       <Text style={styles.label}>{label}</Text>
@@ -850,8 +850,20 @@ const handleSubmit = async () => {
           placeholder="Enter 10-digit mobile number"
           keyboardType="phone-pad"
           value={form.mobile}
-          onChangeText={(text) => handleChange('mobile', text)}
-          maxLength={10}
+          onChangeText={(text) => {
+            const digitsOnly = text.replace(/\D/g, '');
+            if (digitsOnly.length === 1 && !/[6-9]/.test(digitsOnly[0])) {
+              Toast.show({
+                type: 'error',
+                text1: 'Invalid Mobile Number',
+                text2: 'Enter a valid mobile number',
+                position: 'top',
+                visibilityTime: 3000,
+              });
+              return;
+            }
+            handleChange('mobile', digitsOnly)
+          }} maxLength={10}
           placeholderTextColor="gray"
         />
         {errors.mobile && <Text style={styles.errorText}>{errors.mobile}</Text>}

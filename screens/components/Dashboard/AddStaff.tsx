@@ -48,30 +48,30 @@ const AddStaffScreen = () => {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-const onDateChange = (event: any, selectedDate: Date | undefined) => {
-  setShowDatePicker(false);
-  if (selectedDate) {
-    // Check if selected date is in the future
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // Set to end of day for accurate comparison
-    
-    if (selectedDate > today) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Date',
-        text2: 'Date of birth cannot be in the future',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      return;
+  const onDateChange = (event: any, selectedDate: Date | undefined) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      // Check if selected date is in the future
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // Set to end of day for accurate comparison
+
+      if (selectedDate > today) {
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid Date',
+          text2: 'Date of birth cannot be in the future',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        return;
+      }
+
+      const formattedDate = `${selectedDate.getDate().toString().padStart(2, '0')}-${(selectedDate.getMonth() + 1)
+        .toString()
+        .padStart(2, '0')}-${selectedDate.getFullYear()}`;
+      setForm({ ...form, DOB: formattedDate });
     }
-    
-    const formattedDate = `${selectedDate.getDate().toString().padStart(2, '0')}-${(selectedDate.getMonth() + 1)
-      .toString()
-      .padStart(2, '0')}-${selectedDate.getFullYear()}`;
-    setForm({ ...form, DOB: formattedDate });
-  }
-};
+  };
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.DOB || !form.mobile || !form.email || !form.role) {
@@ -199,7 +199,7 @@ const onDateChange = (event: any, selectedDate: Date | undefined) => {
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={onDateChange}
-          maximumDate={new Date()} 
+          maximumDate={new Date()}
         />
       )}
 
@@ -220,12 +220,24 @@ const onDateChange = (event: any, selectedDate: Date | undefined) => {
 
       <TextInput
         style={styles.input}
-        placeholder="+91 XXXXX XXXXX"
+        placeholder="+91 9876543210"
         keyboardType="phone-pad"
         value={form.mobile}
         maxLength={10}
-        onChangeText={(text) => setForm({ ...form, mobile: text })}
-        placeholderTextColor={'gray'}
+        onChangeText={(text) => {
+          const digitsOnly = text.replace(/\D/g, '');
+          if (digitsOnly.length === 1 && !/[6-9]/.test(digitsOnly[0])) {
+            Toast.show({
+              type: 'error',
+              text1: 'Invalid Mobile Number',
+              text2: 'Enter a valid mobile number',
+              position: 'top',
+              visibilityTime: 3000,
+            });
+            return;
+          }
+          setForm({ ...form, mobile: digitsOnly })
+        }} placeholderTextColor={'gray'}
 
       />
       <Text style={styles.label}>Email*</Text>

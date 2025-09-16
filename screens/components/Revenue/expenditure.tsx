@@ -196,9 +196,8 @@ const TotalExpenditureScreen: React.FC = () => {
 
   const renderItem = ({ item }: { item: Expense }) => (
     <View style={styles.card}>
-      <Text style={styles.cardText}><Text style={styles.label}>Transaction ID:</Text> {item._id || 'N/A'}</Text>
       <Text style={styles.cardText}><Text style={styles.label}>Description:</Text> {item.description || 'N/A'}</Text>
-      <Text style={styles.cardText}><Text style={styles.label}>Date:</Text> {moment(item.date).format('DD MMM, YYYY') || 'N/A'}</Text>
+      <Text style={styles.cardText}><Text style={styles.label}>Date:</Text> {moment(item.date).format('DD-MMM-YYYY') || 'N/A'}</Text>
       <Text style={styles.cardText}><Text style={styles.label}>Amount:</Text> ₹{item.amount || 'N/A'}</Text>
       <Text style={styles.cardText}><Text style={styles.label}>Payment Method:</Text> {item.paymentMethod ? item.paymentMethod.charAt(0).toUpperCase() + item.paymentMethod.slice(1) : 'N/A'}</Text>
       <Text style={styles.cardText}><Text style={styles.label}>Notes:</Text> {item.notes || 'N/A'}</Text>

@@ -275,7 +275,6 @@ const MedicinesTab: React.FC<MedicinesTabProps> = ({
     <View style={styles.row}>
       <View>
         <Text style={styles.medName}>{item.medName}</Text>
-        <Text style={styles.medId}>ID: {item.id}</Text>
       </View>
       <Text style={styles.price}>₹ {Number(item.price).toLocaleString("en-IN")}</Text>
     </View>

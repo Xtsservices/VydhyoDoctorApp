@@ -78,7 +78,7 @@ const ProfileReview: React.FC = () => {
 
       // Call logout API if token exists
       if (storedToken) {
-        const response = await AuthPost("auth/logout", storedToken);
+        const response = await AuthPost("auth/logout", {}, storedToken);
       }
 
       await AsyncStorage.removeItem('authToken');
@@ -135,19 +135,13 @@ const ProfileReview: React.FC = () => {
           <View style={styles.contentContainer}>
             <View style={styles.titleContainer}>
               <Text style={styles.title}>Will get back to you Shortly</Text>
-              <View style={styles.titleUnderline} />
             </View>
 
-            {/* <View style={styles.timerContainer}>
-              <Text style={styles.estimatedTime}>Estimated Time Left</Text>
-              <View style={styles.timerCircle}>
-                <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
-              </View>
+            <View style={styles.timerContainer}>
               <Text style={styles.subtitle}>
-                Thank you for submitting your profile. Our medical team will review your information and get back to you within{' '}
-                <Text style={styles.highlightedText}>48 hours</Text>.
+                Thank you for submitting your profile. Our medical team will review your information and get back to you shortly.
               </Text>
-            </View> */}
+            </View>
 
             <View style={styles.supportContainer}>
               <TouchableOpacity
@@ -227,7 +221,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     // marginTop: -50,
-    marginBottom: -10,
+    marginBottom: -100,
   },
   logoWrapper: {
     justifyContent: 'center',

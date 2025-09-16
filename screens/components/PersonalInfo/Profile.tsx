@@ -119,7 +119,11 @@ type EditModalType = 'personal' | 'professional' | 'kyc' | 'consultation' | 'ban
 
 const getImageSrc = (image: any): string | null => {
   if (!image) return null;
-  if (typeof image === 'string') return image;
+  if (typeof image === 'string') {
+    if (image.startsWith('http')) return image;
+    if (image.startsWith('data:')) return image;
+    return `https://your-api-base-url/${image}`;
+  }
   if (image?.data && image?.mimeType) return `data:${image.mimeType};base64,${image.data}`;
   return null;
 };
@@ -864,10 +868,15 @@ const DoctorProfileView: React.FC = () => {
                   <Text style={styles.bold}>PAN Number:</Text> {kycServer?.pan?.number || doctorData.kycDetails?.panNumber || 'N/A'}
                 </Text>
               </View>
-              {!!doctorData?.kycDetails?.panImage && (
-                <TouchableOpacity onPress={() => showDocModal({ type: 'PAN', data: doctorData.kycDetails.panImage })}>
-                  <Icon name="eye" size={18} color="#3b82f6" />
-                </TouchableOpacity>
+              {!!kycServer?.pan?.attachmentUrl && (
+                <View style={styles.kycButtonContainer}>
+                  <TouchableOpacity
+                    style={styles.viewButton}
+                    onPress={() => showDocModal({ type: 'PAN', data: kycServer.pan.attachmentUrl })}
+                  >
+                    <Text style={styles.viewButtonText}>View PAN</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           </View>
@@ -1414,6 +1423,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E88E5', paddingHorizontal: SCREEN_WIDTH * 0.03, paddingVertical: SCREEN_WIDTH * 0.015,
     borderRadius: 4, marginLeft: SCREEN_WIDTH * 0.02, marginBottom: SCREEN_WIDTH * 0.01,
   },
+  kycButtonContainer: {
+  marginTop: SCREEN_WIDTH * 0.02,
+  width: '100%',
+  alignItems: 'flex-start',
+},
   viewButtonText: { color: '#fff', fontSize: SCREEN_WIDTH * 0.03 },
   closeButton: {
     marginLeft: 8,

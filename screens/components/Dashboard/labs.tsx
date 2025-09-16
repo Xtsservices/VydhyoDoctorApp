@@ -85,7 +85,7 @@ export default function LabsScreen() {
             ₹ {cardsData?.today?.revenue || 0}
           </Text>
           <Text style={{ color: "#2563EB" }}>
-            Patient: {cardsData?.today?.patients || 0}
+            Patients: {cardsData?.today?.patients || 0}
           </Text>
         </View>
         <View style={[styles.card, { backgroundColor: "#DCFCE7" }]}>

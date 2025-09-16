@@ -481,7 +481,6 @@ const StaffManagement = () => {
         ListEmptyComponent={
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 }}>
             <Text style={{ fontSize: 16, color: '#6B7280' }}>No staff found.</Text>
-            <Text style={{ fontSize: 16, color: '#3B82F6', marginTop: 5 }}>Add staff</Text>
           </View>
         }
       />
@@ -518,6 +517,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#fff',
     marginRight: 8,
+    color: 'black',
   },
   filterButton: {
     padding: 10,

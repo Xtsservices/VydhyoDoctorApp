@@ -174,7 +174,6 @@ export default function TestManagement() {
     <View style={styles.row}>
       <View>
         <Text style={styles.tname}>{item.testName}</Text>
-        <Text style={styles.tsub}>ID: {item.testId}</Text>
       </View>
       <Text style={styles.price}>₹ {Number(item.price).toLocaleString("en-IN")}</Text>
     </View>

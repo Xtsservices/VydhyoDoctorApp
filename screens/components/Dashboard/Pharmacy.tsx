@@ -357,6 +357,7 @@ export default function Pharmacy() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter medicine name"
+                placeholderTextColor={'#bfbfbf'}
                 value={form.medName}
                 onChangeText={(val) => handleInputChange("medName", val)}
               />

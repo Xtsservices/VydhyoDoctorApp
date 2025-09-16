@@ -359,7 +359,7 @@ const [prefill, setPrefill] = useState(false);
               <TouchableOpacity style={[styles.button, styles.skipButton]} onPress={handleSkip}>
                 <Text style={[styles.buttonText, styles.skipButtonText]}>Skip</Text>
               </TouchableOpacity>
-              {!prefill && (
+              {prefill && (
 <TouchableOpacity style={styles.button} onPress={handleSubmit}>
                 <Text style={styles.buttonText}>Next</Text>
               </TouchableOpacity>

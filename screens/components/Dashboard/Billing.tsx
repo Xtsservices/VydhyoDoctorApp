@@ -208,7 +208,7 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
             year: "numeric",
             month: "short",
             day: "numeric",
-          })
+          }).replace(/(\w+) (\d+), (\d+)/, "$2-$1-$3")
           : "N/A",
         appointmentTime: formatTime12Hour(appointment.appointmentTime) || "N/A",
         status: "Completed",
@@ -238,13 +238,18 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
       bloodgroup: patient.bloodgroup || "Not Specified",
       prescriptionId: patient.prescriptionId,
       prescriptionCreatedAt: patient.prescriptionCreatedAt
-        ? new Date(patient.prescriptionCreatedAt).toLocaleString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
+        ? (() => {
+          const date = new Date(patient.prescriptionCreatedAt);
+          const day = date.getDate();
+          const month = date.toLocaleString("en-US", { month: "short" });
+          const year = date.getFullYear();
+          const hours = date.getHours();
+          const minutes = date.getMinutes();
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          const formattedHours = hours % 12 || 12;
+          const formattedMinutes = minutes.toString().padStart(2, '0');
+          return `${day}-${month}-${year} ${formattedHours}:${formattedMinutes} ${ampm}`;
+        })()
         : "N/A",
       appointmentDetails,
       tests: tests.map((test, idx) => ({
@@ -1378,6 +1383,7 @@ const Billing: React.FC = () => {
         <View style={styles.searchInner}>
           <TextInput
             placeholder="Search patient by name or ID"
+            placeholderTextColor={"#9ca3af"}
             value={searchTerm}
             onChangeText={setSearchTerm}
             style={styles.searchInput}
@@ -1394,6 +1400,18 @@ const Billing: React.FC = () => {
         renderItem={renderPatient}
         contentContainerStyle={{ paddingBottom: 24 }}
         ListFooterComponent={footer}
+        ListEmptyComponent={
+          !loading && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No patients found</Text>
+              {debouncedSearch && (
+                <Text style={styles.emptyStateSubtext}>
+                  No results for "{debouncedSearch}"
+                </Text>
+              )}
+            </View>
+          )
+        }
       />
 
       {/* Missing details modal */}
@@ -1505,7 +1523,22 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 2,
   },
-
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: "#6b7280",
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: "#9ca3af",
+    textAlign: "center",
+  },
   smallButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,

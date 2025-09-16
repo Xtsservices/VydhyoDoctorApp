@@ -218,8 +218,8 @@ const Sidebar = () => {
       // Clear AsyncStorage
       const storedToken = await AsyncStorage.getItem('authToken');
 
-      const response = await AuthPost("auth/logout", storedToken);
-
+      const response = await AuthPost("auth/logout", {}, storedToken);
+      Alert.alert("Success", response?.message || "Logged out successfully");
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('userId');
 

@@ -70,21 +70,21 @@ const Routing = () => {
         <Stack.Screen name="DoctorDashboard" component={DoctorDashboard} options={{ headerShown: false }}/>
         <Stack.Screen name="Sidebar" component={Sidebar} options={{ headerShown: false }}/>
         <Stack.Screen name="AddAppointment" component={AddAppointment}  options={{ title: "Walk-in Consultation", headerTitleAlign: "center", }}  />
-        <Stack.Screen name="Availability" component={Availability} />
+        <Stack.Screen name="Availability" component={Availability} options={{ headerTitleAlign: "center", }} />
         <Stack.Screen name="StaffManagement" component={StaffManagement} options={{ title: "Staff Management", headerTitleAlign: "center", }} />
         <Stack.Screen name="AddStaff" component={AddStaffScreen} options={{ title: "Add Staff", headerTitleAlign: "center", }} />
         <Stack.Screen name="MyPatient" component={MyPatient} options={{ title: "My Patients", headerTitleAlign: "center", }}/>
-        <Stack.Screen name="Appointments" component={Appointments} />
+        <Stack.Screen name="Appointments" component={Appointments} options={{ headerTitleAlign: "center", }}/>
         {/* <Stack.Screen name="Dashboard" component={dashboard} /> */}
-        <Stack.Screen name="Accounts" component={Accounts} />
+        <Stack.Screen name="Accounts" component={Accounts}  />
         <Stack.Screen name="expenditure" component={expenditure} options={{ title: "Expenditure", headerTitleAlign: "center", }}/>
 
         <Stack.Screen name="Clinic" component={Clinic} options={{ title: "Clinic Management", headerTitleAlign: "center", }} />
         <Stack.Screen name="labs" component={labs} options={{ title: "Lab", headerTitleAlign: "center", }}/>
         <Stack.Screen name="LabPatientManagement" component={LabPatientManagement} />
         
-        <Stack.Screen name="Billing" component={Billing} />
-        <Stack.Screen name="Pharmacy" component={Pharmacy} />
+        <Stack.Screen name="Billing" component={Billing} options={{ headerTitleAlign: "center", }} />
+        <Stack.Screen name="Pharmacy" component={Pharmacy}  options={{ headerTitleAlign: "center", }}/>
         <Stack.Screen name="PharmacyPatientsTab" component={PharmacyPatientsTab} />
         <Stack.Screen name="PharmacyMedicinesTab" component={PharmacyMedicinesTab} />
 
