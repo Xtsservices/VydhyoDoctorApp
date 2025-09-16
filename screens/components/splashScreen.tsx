@@ -22,7 +22,7 @@ useEffect(() => {
   return (
     <TouchableOpacity style={styles.container} onPress={handleLogin} >
       <Image
-        source={require('../assets/logo.png')}
+        source={require('../assets/doclogo.png')}
         style={styles.logo}
       />
      

@@ -149,7 +149,7 @@ const AvailabilityScreen: React.FC = () => {
     return endMinutes > startMinutes;
   };
 
-  const durations = ['15 mins', '30 mins', '45 mins'];
+  const durations = ['15 mins', '30 mins', '45 mins', '60 mins'];
 
   const fetchClinicsForDoctor = async (doctorId: string) => {
     try {
@@ -352,6 +352,8 @@ const generateTimeSlots = async () => {
       
       if (overlap && clinicname) {
         Alert.alert(overlap, `Clinic Name: ${clinicname}`);
+      }else if (overlap) {
+        Alert.alert('overlap', overlap);
       }
     } else {
       const errorMessage = response?.data?.message || response?.message || 'Please Retry';

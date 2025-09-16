@@ -128,7 +128,7 @@ const ProfileReview: React.FC = () => {
         <View style={styles.card}>
           <View style={styles.logoContainer}>
             <View style={styles.logoWrapper}>
-              <Image source={require('../../assets/logo.png')} style={styles.logo} />
+              <Image source={require('../../assets/doclogo.png')} style={styles.logo} />
             </View>
           </View>
 

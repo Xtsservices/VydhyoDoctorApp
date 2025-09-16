@@ -477,8 +477,9 @@ const SpecializationDetails = () => {
       });
     }
   };
-
+const [loadingUser, setLoadingUser] = useState(false);
   const fetchUserData = async () => {
+    setLoadingUser(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
@@ -530,6 +531,9 @@ const SpecializationDetails = () => {
         }
       }
     } catch (error) {
+      Alert.alert('Error', error?.message ||'Failed to load user data.');
+    }finally{
+      setLoadingUser(false);
     }
   };
 
@@ -767,7 +771,7 @@ const SpecializationDetails = () => {
         </View>
       </KeyboardAvoidingView>
 
-      {isLoading && (
+      {(isLoading || loadingUser) && (
         <View style={styles.loaderOverlay}>
           <ActivityIndicator size="large" color="#00203F" />
           <Text style={styles.loaderText}>Processing...</Text>
