@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -20,7 +21,7 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import Toast from 'react-native-toast-message';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { PersonalInfo } from '../../utility/formTypes';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { AuthFetch, AuthPut, UploadFiles } from '../../auth/auth';
@@ -64,6 +65,7 @@ const PersonalInfoScreen: React.FC = () => {
   const [newLanguage, setNewLanguage] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(false);
   const [errors, setErrors] = useState({
     firstName: '',
     lastName: '',
@@ -150,130 +152,135 @@ const PersonalInfoScreen: React.FC = () => {
     );
   };
  
-  const validateForm = () => {
-    const newErrors = {
-      firstName: '',
-      lastName: '',
-      medicalRegNumber: '',
-      email: '',
-      gender: '',
-      spokenLanguages: '',
-      appLanguage: '',
-      relationship: '',
-      maritalStatus: '',
-      yearsExperience: '',
-    };
- 
-      if (!formData.yearsExperience || isNaN(Number(formData.yearsExperience))) {
+ const validateForm = () => {
+  const newErrors = {
+    firstName: '',
+    lastName: '',
+    medicalRegNumber: '',
+    email: '',
+    gender: '',
+    spokenLanguages: '',
+    appLanguage: '',
+    relationship: '',
+    maritalStatus: '',
+    yearsExperience: '',
+  };
+
+  // yearsExperience is OPTIONAL: only error if provided and not a number
+  if (formData.yearsExperience && isNaN(Number(formData.yearsExperience))) {
     newErrors.yearsExperience = 'Please enter a valid number for years of experience.';
   }
-    if (!formData.firstName.trim())
-      newErrors.firstName = 'First Name is required';
-    else if (formData.firstName.trim().length < 3)
-      newErrors.firstName = 'First Name must be at least 3 letters';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last Name is required';
-    else if (formData.lastName.trim().length < 3)
-      newErrors.lastName = 'Last Name must be at least 3 letters';
-    if (!formData.medicalRegNumber.trim())
-      newErrors.medicalRegNumber = 'Medical Registration Number is required';
-    else if (!/^\d{4,7}$/.test(formData.medicalRegNumber))
-      newErrors.medicalRegNumber = 'Must be exactly 4 to 7 digits';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-      newErrors.email = 'Please enter a valid email address';
-    if (!formData.gender) newErrors.gender = 'Gender is required';
-    if (!formData.dateOfBirth)
-      newErrors.dateOfBirth = 'Date of Birth is required';
-    else {
-      const minDate = getMinDate();
-      if (formData.dateOfBirth > minDate) {
-        newErrors.dateOfBirth = 'You must be at least 25 years old';
-      }
-    }
-    if (formData.spokenLanguages.length === 0)
-      newErrors.spokenLanguages = 'At least one language is required';
-    if (!formData.appLanguage)
-      newErrors.appLanguage = 'App Language is required';
-    if (!formData.relationship)
-      newErrors.relationship = 'Relationship is required';
-    // if (!formData.bloodGroup) newErrors.bloodGroup = 'Blood Group is required';
-    if (!formData.maritalStatus)
-      newErrors.maritalStatus = 'Marital Status is required';
-    setErrors(newErrors);
- 
-    return Object.values(newErrors).every(error => !error);
-  };
+
+  const fn = formData.firstName.trim();
+  if (!fn) newErrors.firstName = 'First Name is required';
+  else if (!/^[A-Za-z]{3,}$/.test(fn))
+    newErrors.firstName = 'First Name must be letters only (min 3)';
+
+  const ln = formData.lastName.trim();
+  if (!ln) newErrors.lastName = 'Last Name is required';
+  else if (!/^[A-Za-z]{3,}$/.test(ln))
+    newErrors.lastName = 'Last Name must be letters only (min 3)';
+
+  if (!formData.medicalRegNumber.trim())
+    newErrors.medicalRegNumber = 'Medical Registration Number is required';
+  else if (!/^\d{4,7}$/.test(formData.medicalRegNumber))
+    newErrors.medicalRegNumber = 'Must be exactly 4 to 7 digits';
+
+  if (!formData.email.trim()) newErrors.email = 'Email is required';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+    newErrors.email = 'Please enter a valid email address';
+
+  if (!formData.gender) newErrors.gender = 'Gender is required';
+
+  if (formData.spokenLanguages.length === 0)
+    newErrors.spokenLanguages = 'At least one language is required';
+
+  if (!formData.appLanguage) newErrors.appLanguage = 'App Language is required';
+  if (!formData.relationship) newErrors.relationship = 'Relationship is required';
+  if (!formData.maritalStatus) newErrors.maritalStatus = 'Marital Status is required';
+
+  setErrors(newErrors);
+  return Object.values(newErrors).every(err => !err);
+};
+
+
  
   const handleNext = async () => {
- 
- 
-    if (!validateForm()) {
-      setLoading(true);
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        if (!token) {
-          Toast.show({
-            type: 'error',
-            text1: 'Error',
-            text2: 'Authentication token not found',
-            position: 'top',
-            visibilityTime: 3000,
-          });
-          setLoading(false);
-          return;
-        }
- 
-        const body = {
-          firstname: formData.firstName,
-          lastname: formData.lastName,
-          email: formData.email,
-          appLanguage: formData.appLanguage,
-          relationship: formData.relationship,
-          medicalRegistrationNumber: formData.medicalRegNumber,
-          gender: formData.gender,
-          bloodgroup: formData.bloodGroup,
-          maritalStatus: formData.maritalStatus,
-          spokenLanguage: formData.spokenLanguages,
-        };
- 
-        const response = await AuthPut('users/updateUser', body, token);
- 
-        if (response?.status === 'success') {
-          Toast.show({
-            type: 'success',
-            text1: 'Success',
-            text2: 'Profile updated successfully',
-            position: 'top',
-            visibilityTime: 3000,
-          });
-          setLoading(false);
-          await AsyncStorage.setItem('currentStep', 'Specialization');
-          navigation.navigate('Specialization');
-        } else {
-          Toast.show({
-            type: 'error',
-            text1: 'Error',
-            text2:
-              'message' in response && response.message && typeof response.message === 'object' && 'message' in response.message
-                ? response.message.message
-                : 'Failed to update profile',
-            position: 'top',
-            visibilityTime: 3000,
-          });
-          setLoading(false);
-        }
-      } catch (error) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Network error. Please try again.',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-        setLoading(false);
-      }
+  const isValid = validateForm();
+  if (!isValid) {
+    Toast.show({
+      type: 'error',
+      text1: 'Please fix the highlighted fields',
+      position: 'top',
+      visibilityTime: 2500,
+    });
+    return; // stop if invalid
+  }
+
+  setLoading(true);
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    if (!token) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Authentication token not found',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
     }
-  };
+
+    const body = {
+      firstname: formData.firstName,
+      lastname: formData.lastName,
+      email: formData.email,
+      appLanguage: formData.appLanguage,
+      relationship: formData.relationship,
+      medicalRegistrationNumber: formData.medicalRegNumber,
+      gender: formData.gender,
+      bloodgroup: formData.bloodGroup,
+      maritalStatus: formData.maritalStatus,
+      spokenLanguage: formData.spokenLanguages,
+    };
+
+    const response = await AuthPut('users/updateUser', body, token);
+
+    if (response?.status === 'success') {
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Profile updated successfully',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      await AsyncStorage.setItem('currentStep', 'Specialization');
+      navigation.navigate('Specialization');
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2:
+          'message' in response && response.message && typeof response.message === 'object' && 'message' in response.message
+            ? response.message.message
+            : 'Failed to update profile',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    }
+  } catch (error) {
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Network error. Please try again.',
+      position: 'top',
+      visibilityTime: 3000,
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
  
   // const debouncedHandleNext = useAsyncDebounce(handleNext, 2000);
  
@@ -292,8 +299,7 @@ const PersonalInfoScreen: React.FC = () => {
     }));
   };
   const fetchUserData = async () => {
- 
-    setLoading(true);
+ setLoadingUser(true);
  
     try {
       // Retrieve token from AsyncStorage
@@ -311,6 +317,7 @@ const PersonalInfoScreen: React.FC = () => {
       // Check if response status is success
       if (response?.data?.status !== 'success') {
         throw new Error(response?.data?.message || 'Failed to fetch user data');
+        return
       }
       const userData = response?.data?.data;
  
@@ -331,14 +338,16 @@ const PersonalInfoScreen: React.FC = () => {
  
       });
     } catch (error: any) {
-      // setLoading(false);
+      Alert.alert('Error', error?.message || 'An error occurred while fetching user data');
  
     } finally {
-      setLoading(false); // Stop loading regardless of success or failure
+      setLoadingUser(false);
     }
  
  
   }
+
+
  
   useEffect(() => {
     fetchUserData();
@@ -348,10 +357,12 @@ const PersonalInfoScreen: React.FC = () => {
     <ScrollView>
       <View style={styles.container}>
  
-        {loading && (
+        {(loading || loadingUser) && (
           <View style={styles.loaderOverlay}>
             <ActivityIndicator size="large" color="#00203F" />
-            <Text style={styles.loaderText}>Processing...</Text>
+            <Text style={styles.loaderText}>
+              {loadingUser ? 'Loading practice details...' : 'Processing...'}
+            </Text>
           </View>
         )}
         {/* Header */}
@@ -376,7 +387,8 @@ const PersonalInfoScreen: React.FC = () => {
                 style={styles.input}
                 value={formData.firstName}
                 onChangeText={text => {
-                  setFormData(prev => ({ ...prev, firstName: text }));
+                 const lettersOnly = text.replace(/[^A-Za-z]/g, '');
+                  setFormData(prev => ({ ...prev, firstName: lettersOnly }));
                   setErrors(prev => ({ ...prev, firstName: '' }));
                 }}
                 placeholder="Enter first name"
@@ -391,7 +403,8 @@ const PersonalInfoScreen: React.FC = () => {
                 style={styles.input}
                 value={formData.lastName}
                 onChangeText={text => {
-                  setFormData(prev => ({ ...prev, lastName: text }));
+                  const lettersOnly = text.replace(/[^A-Za-z]/g, '');
+                  setFormData(prev => ({ ...prev, lastName: lettersOnly }));
                   setErrors(prev => ({ ...prev, lastName: '' }));
                 }}
                 placeholder="Enter last name"

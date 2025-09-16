@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Picker } from '@react-native-picker/picker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation , useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
@@ -91,7 +91,9 @@ const FinancialSetupScreen = () => {
     return Object.keys(tempErrors).length === 0;
   };
 const [prefill, setPrefill] = useState(false);
+const [loadingUser, setLoadingUser] = useState(false);
    const fetchUserData = async () => {
+    setLoadingUser(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('users/getUser', token);
@@ -115,6 +117,8 @@ const [prefill, setPrefill] = useState(false);
         position: 'top',
         visibilityTime: 4000,
       });
+    } finally {
+      setLoadingUser(false);
     }
   };
  
@@ -233,10 +237,12 @@ const [prefill, setPrefill] = useState(false);
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
-        {loading && (
+        {(loading || loadingUser) && (
           <View style={styles.loaderOverlay}>
             <ActivityIndicator size="large" color="#00203F" />
-            <Text style={styles.loaderText}>Processing...</Text>
+            <Text style={styles.loaderText}>
+              {loadingUser ? 'Loading user data...' : 'Processing...'}
+            </Text>
           </View>
         )}
  
@@ -294,13 +300,15 @@ const [prefill, setPrefill] = useState(false);
                 style={[styles.input, errors.accountNumber && styles.errorInput]}
                 value={accountNumber}
                 onChangeText={(text) => {
-                  setAccountNumber(text);
+                  const onlyDigits = text.replace(/[^\d]/g, '');
+                  setAccountNumber(onlyDigits);
                   setErrors((prev) => ({ ...prev, accountNumber: '' }));
                 }}
                 placeholder="Enter account number"
-                keyboardType="numeric"
+                keyboardType="number-pad"
                 placeholderTextColor="#999"
                 maxLength={18}
+                
                 onFocus={() => scrollToInput('accountNumber')}
               />
               {errors.accountNumber && <Text style={styles.errorText}>{errors.accountNumber}</Text>}
@@ -311,11 +319,12 @@ const [prefill, setPrefill] = useState(false);
                 style={[styles.input, errors.reenterAccountNumber && styles.errorInput]}
                 value={reenterAccountNumber}
                 onChangeText={(text) => {
-                  setReenterAccountNumber(text);
-                  setErrors((prev) => ({ ...prev, reenterAccountNumber: '' }));
+                   const onlyDigits = text.replace(/[^\d]/g, '');
+                   setReenterAccountNumber(onlyDigits);
+                   setErrors((prev) => ({ ...prev, reenterAccountNumber: '' }));
                 }}
                 placeholder="Re-enter account number"
-                keyboardType="numeric"
+                keyboardType="number-pad"
                 placeholderTextColor="#999"
                 maxLength={18}
                 onFocus={() => scrollToInput('reenterAccountNumber')}

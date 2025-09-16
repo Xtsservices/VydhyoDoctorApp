@@ -7,7 +7,8 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
@@ -33,15 +34,24 @@ const ConsultationPreferences = () => {
   const navigation = useNavigation<any>();
 
   const handleModeToggle = (mode: keyof typeof selectedModes) => {
-    setSelectedModes((prev: typeof selectedModes) => ({ ...prev, [mode]: !prev[mode] }));
-  };
+   setSelectedModes(prev => {
+     const next = !prev[mode];
+     if (!next) {
+       // if turning OFF, zero the fee
+       setFees(f => ({ ...f, [mode]: '0' }));
+     }
+     return { ...prev, [mode]: next };
+   });
+ };
 
-  const handleFeeChange = (mode: string, value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, "");
-    if (numericValue === "" || (parseInt(numericValue) >= 0 && numericValue.length <= 5)) {
-      setFees({ ...fees, [mode]: numericValue });
-    }
-  };
+ const handleFeeChange = (mode: keyof typeof selectedModes, value: string) => {
+   if (!selectedModes[mode]) return;
+   let v = value.replace(/\D/g, "");
+   v = v.replace(/^0+(?=\d)/, "");
+   if (v.length > 5) v = v.slice(0, 5);
+   if (v === "") v = "0";
+   setFees(prev => ({ ...prev, [mode]: v }));
+ };
 
 const isFormValid = () => {
   const hasSelectedMode = selectedModes.inPerson || selectedModes.video || selectedModes.homeVisit;
@@ -113,9 +123,10 @@ const isFormValid = () => {
 
   };
 
-
+const [loadingUser, setLoadingUser] = useState(false);
 
   const fetchUserData = async () => {
+    setLoadingUser(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
@@ -146,6 +157,9 @@ const isFormValid = () => {
         }
       }
     } catch (error) {
+      Alert.alert('Error', error?.message || 'Failed to load user data.');
+    } finally {
+      setLoadingUser(false);
     }
   };
 
@@ -158,10 +172,12 @@ const isFormValid = () => {
   return (
     <View style={styles.container}>
 
-      {loading && (
+      {(loading || loadingUser) && (
         <View style={styles.loaderOverlay}>
           <ActivityIndicator size="large" color="#00203F" />
-          <Text style={styles.loaderText}>Processing...</Text>
+          <Text style={styles.loaderText}>
+            {loadingUser ? 'Loading user data...' : 'Processing...'}
+          </Text>
         </View>
       )}
       {/* Header */}

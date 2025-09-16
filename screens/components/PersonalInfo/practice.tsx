@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
   Image,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation,useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -31,6 +31,7 @@ import {
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthFetch, AuthPost } from '../../auth/auth';
+import { typesAreEqual } from '@react-native-documents/picker/lib/typescript/types';
  
 // Initialize Geocoder with your Google Maps API key
 Geocoder.init('AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo');
@@ -90,6 +91,13 @@ const PracticeScreen = () => {
       longitude: '78.9629',
     },
   ]);
+
+  const buildClinicKey = (a: { clinicName?: string; city?: string; pincode?: string }) =>
+    `${(a.clinicName || '').trim().toLowerCase()}|${(a.city || '').trim().toLowerCase()}|${(a.pincode || '').trim()}`;
+
+  const [existingAddressKeys, setExistingAddressKeys] = useState<Set<string>>(new Set());
+  const [prefilledKeys, setPrefilledKeys] = useState<Set<string>>(new Set());
+  const isPrefilledAddr = (addr: Address) => prefilledKeys.has(buildClinicKey(addr));
   const [errors, setErrors] = useState<{ [key: number]: Errors }>({});
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
@@ -111,6 +119,9 @@ const PracticeScreen = () => {
   const isValidMobile = (mobile: string): boolean => {
     return mobile.length === 10 && /^[6-9]\d{9}$/.test(mobile);
   };
+
+
+  
  
   useEffect(() => {
     setCurrentOpdIndex(opdAddresses.length - 1);
@@ -192,18 +203,20 @@ const PracticeScreen = () => {
  
         address = address.trim() || result.formatted_address;
  
-        const updatedAddresses = [...opdAddresses];
-        updatedAddresses[index] = {
-          ...updatedAddresses[index],
-          address: address,
-          pincode: pincode,
-          city: city,
-          state: state,
-          country: country,
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-        };
-        setOpdAddresses(updatedAddresses);
+        setOpdAddresses(prev => {
+            const updated = [...prev];
+   updated[index] = {
+     ...updated[index],
+     address,
+     pincode,
+     city,
+     state,
+     country,
+     latitude: latitude.toString(),
+     longitude: longitude.toString(),
+   };
+   return updated;
+ });
  
         // Update search query for this address
         setSearchQueryPerAddress(prev => ({
@@ -269,13 +282,16 @@ const PracticeScreen = () => {
           longitudeDelta: 0.01,
         };
  
-        const updatedAddresses = [...opdAddresses];
-        updatedAddresses[index] = {
-          ...updatedAddresses[index],
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-        };
-        setOpdAddresses(updatedAddresses);
+        setOpdAddresses(prev => {
+   const updated = [...prev];
+   if (!updated[index]) return prev;
+   updated[index] = {
+     ...updated[index],
+     latitude: latitude.toString(),
+     longitude: longitude.toString(),
+   };
+   return updated;
+ });
  
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 1000);
@@ -355,14 +371,17 @@ const PracticeScreen = () => {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
- 
-        const updatedAddresses = [...opdAddresses];
-        updatedAddresses[index] = {
-          ...updatedAddresses[index],
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-        };
-        setOpdAddresses(updatedAddresses);
+
+        setOpdAddresses(prev => {
+          const updated = [...prev];
+          if (!updated[index]) return prev;
+          updated[index] = {
+            ...updated[index],
+            latitude: latitude.toString(),
+            longitude: longitude.toString(),
+   };
+   return updated;
+ });
  
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 1000);
@@ -463,14 +482,16 @@ const PracticeScreen = () => {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
- 
-        const updatedAddresses = [...opdAddresses];
-        updatedAddresses[index] = {
-          ...updatedAddresses[index],
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-        };
-        setOpdAddresses(updatedAddresses);
+
+        setOpdAddresses(prev => {
+   const updated = [...prev];
+   updated[index] = {
+     ...updated[index],
+     latitude: latitude.toString(),
+     longitude: longitude.toString(),
+   };
+   return updated;
+ });
  
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 500);
@@ -534,7 +555,8 @@ const PracticeScreen = () => {
       latitude: '20.5937',
       longitude: '78.9629',
     };
-    setOpdAddresses([...opdAddresses, newAddress]);
+    setOpdAddresses(prev => [...prev, newAddress]);
+
  
     // Initialize location for the new address
     setTimeout(() => {
@@ -543,7 +565,7 @@ const PracticeScreen = () => {
   };
  
   const handleRemoveAddress = (index: number) => {
-    setOpdAddresses(opdAddresses.filter((_, i) => i !== index));
+    setOpdAddresses(prev => prev.filter((_, i) => i !== index));
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[index];
@@ -577,9 +599,11 @@ const PracticeScreen = () => {
   };
  
   const handleInputChange = (index: number, field: keyof Address, value: string) => {
-    const updatedAddresses = [...opdAddresses];
-    (updatedAddresses[index][field] as string) = value;
-    setOpdAddresses(updatedAddresses);
+ setOpdAddresses(prev => {
+   const updated = [...prev];
+   updated[index] = { ...updated[index], [field]: value } as Address;
+   return updated;
+ });
  
     if (field === 'address') {
       setSearchQueryPerAddress(prev => ({
@@ -682,31 +706,76 @@ const PracticeScreen = () => {
       endTime: convertTo24HourFormat(addr?.endTime) || '21:00',
     }));
  
-    for (const clinic of payload) {
-      const response = await AuthPost('users/addAddress', clinic, token);
- 
-      if (response.status === 'success') {
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'Practice details updated successfully!',
-          position: 'top',
-          visibilityTime: 4000,
-        });
-        await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
-        navigation.navigate('ConsultationPreferences');
-      } else {
-        Toast.show({
+    // Keep only NEW clinics (not already on server) and de-dup within current payload
+const uniqueToAddMap = new Map<string, typeof payload[0]>();
+for (const c of payload) {
+  const key = buildClinicKey(c);
+  if (!existingAddressKeys.has(key)) {
+    // last one wins if user added same clinic twice in this screen
+    uniqueToAddMap.set(key, c);
+  }
+}
+const toAdd = Array.from(uniqueToAddMap.values());
+
+if (toAdd.length === 0) {
+  Toast.show({
+    type: 'info',
+    text1: 'No new clinics',
+    text2: 'All listed clinics are already saved.',
+    position: 'top',
+    visibilityTime: 3000,
+  });
+  setLoading(false);
+  await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
+  navigation.navigate('ConsultationPreferences');
+  return;
+}
+
+// Post only the new clinics, navigate once at the end
+let allOk = true;
+for (const clinic of toAdd) {
+  const res = await AuthPost('users/addAddress', clinic, token);
+  console.log('Add clinic response:', res);
+  if (res?.status !== 'success') {
+    allOk = false;
+    if (response?.message?.message?.includes('E11000 duplicate key error collection: User.addresses index:')) {
+           Toast.show({
           type: 'error',
           text1: 'Failed to update practice details',
-          text2: response?.message?.message,
+          text2: 'Clinic name already exists. Please use a different name. or Skip to next step',
           position: 'top',
           visibilityTime: 4000,
         });
-        setLoading(false);
-        return;
-      }
-    }
+        }else{
+Toast.show({
+          type: 'error',
+          text1: 'Failed to update practice details',
+          text2: response?.message?.message || 'An unexpected error occurred. Please try again.',
+          position: 'top',
+          visibilityTime: 4000,
+        });
+        }
+    break;
+  } else {
+    // optionally remember newly-added keys in this session
+    const k = buildClinicKey(clinic);
+    setExistingAddressKeys(prev => new Set([...Array.from(prev), k]));
+  }
+}
+
+setLoading(false);
+if (allOk) {
+  Toast.show({
+    type: 'success',
+    text1: 'Success',
+    text2: 'Practice details updated successfully!',
+    position: 'top',
+    visibilityTime: 3000,
+  });
+  await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
+  navigation.navigate('ConsultationPreferences');
+}
+
     setLoading(false);
   };
  
@@ -720,8 +789,9 @@ const PracticeScreen = () => {
  
   const [specialization, setSpecialization] = useState('');
   const [skipButton, setSkipButton] = useState(false);
- 
+ const [loadingUser, setLoadingUser] = useState(false);
   const fetchUserData = async () => {
+    setLoadingUser(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('users/getUser', token);
@@ -747,6 +817,9 @@ const PracticeScreen = () => {
            longitude: String(a.longitude ?? '78.9629'),
          }))
        );
+       setPrefilledKeys(
+         new Set((userData.addresses || []).map((a: any) => buildClinicKey(a)))
+       );
           setTimeout(() => {
             userData.addresses.forEach((_, index) => {
               initLocation(index);
@@ -762,12 +835,16 @@ const PracticeScreen = () => {
         position: 'top',
         visibilityTime: 4000,
       });
+    }finally{
+      setLoadingUser(false);
     }
   };
  
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+ useFocusEffect(
+   useCallback(() => {
+     fetchUserData();
+   }, [])
+ );
  
   const isPhysio =
     Array.isArray(specialization)
@@ -793,10 +870,12 @@ const PracticeScreen = () => {
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
     >
-      {loading && (
+      {(loading || loadingUser) && (
         <View style={styles.loaderOverlay}>
           <ActivityIndicator size="large" color="#00203F" />
-          <Text style={styles.loaderText}>Processing...</Text>
+          <Text style={styles.loaderText}>
+            {loadingUser ? 'Loading practice details...' : 'Processing...'}
+          </Text>
         </View>
       )}
       <View style={styles.header}>
@@ -849,17 +928,18 @@ const PracticeScreen = () => {
                 )}
  
                 {/* Search Input */}
-                <View style={styles.searchContainer}>
+                <View style={styles.searchContainer} pointerEvents={isPrefilledAddr(addr) ? 'none' : 'auto'}>
                   <View style={styles.searchInputContainer}>
                     <Icon name="magnify" size={20} color="#6B7280" style={styles.searchIcon} />
                     <TextInput
-                      style={styles.searchInput}
+                      style={[styles.searchInput, isPrefilledAddr(addr) && styles.inputDisabled]}
                       placeholder="Search for an address or location"
                       placeholderTextColor="#A0AEC0"
                       value={searchQueryPerAddress[index] || ''}
                       onChangeText={(text) => {
                         handleSearch(text, index);
                       }}
+                      editable={!isPrefilledAddr(addr)}
                     />
                     {searchQueryPerAddress[index] && searchQueryPerAddress[index].length > 0 && (
                       <TouchableOpacity
@@ -889,7 +969,7 @@ const PracticeScreen = () => {
                   )}
                 </View>
  
-                <View style={styles.mapContainer}>
+                <View style={styles.mapContainer} pointerEvents={isPrefilledAddr(addr) ? 'none' : 'auto'}>
                   <MapView
                     ref={(ref) => {
                       if (ref) {
@@ -929,8 +1009,9 @@ const PracticeScreen = () => {
                   </View>
  
                   <TouchableOpacity
-                    style={styles.myLocationButton}
+                    style={[styles.myLocationButton, isPrefilledAddr(addr) && { opacity: 0.5 }]}
                     onPress={() => handleMyLocation(index)}
+                    disabled={isPrefilledAddr(addr)}
                   >
                     <Icon name="crosshairs-gps" size={24} color="#3182CE" />
                   </TouchableOpacity>
@@ -940,11 +1021,16 @@ const PracticeScreen = () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Clinic Name *</Text>
                 <TextInput
-                  style={[styles.input, errors[index]?.clinicName && styles.inputError]}
+                  style={[
+                    styles.input,
+                    errors[index]?.clinicName && styles.inputError,
+                    isPrefilledAddr(addr) && styles.inputDisabled,
+                  ]}
                   placeholder="Enter Clinic Name"
                   placeholderTextColor="#999"
                   value={addr.clinicName}
                   onChangeText={text => handleInputChange(index, 'clinicName', text)}
+                  editable={!isPrefilledAddr(addr)}
                 />
                 {errors[index]?.clinicName && (
                   <Text style={styles.errorText}>{errors[index].clinicName}</Text>
@@ -954,7 +1040,11 @@ const PracticeScreen = () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Mobile *</Text>
                 <TextInput
-                  style={[styles.input, errors[index]?.mobile && styles.inputError]}
+                  style={[
+                    styles.input,
+                    errors[index]?.mobile && styles.inputError,
+                    isPrefilledAddr(addr) && styles.inputDisabled,
+                  ]}
                   placeholder="Enter Mobile Number"
                   placeholderTextColor="#999"
                   value={addr.mobile}
@@ -970,6 +1060,7 @@ const PracticeScreen = () => {
                   }}
                   keyboardType="numeric"
                   maxLength={10}
+                  editable={!isPrefilledAddr(addr)}
                 />
                 {errors[index]?.mobile && (
                   <Text style={styles.errorText}>{errors[index].mobile}</Text>
@@ -979,11 +1070,16 @@ const PracticeScreen = () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Address *</Text>
                 <TextInput
-                  style={[styles.input, errors[index]?.address && styles.inputError]}
+                  style={[
+    styles.input,
+    errors[index]?.address && styles.inputError,
+    isPrefilledAddr(addr) && styles.inputDisabled,
+  ]}
                   placeholder="Address"
                   placeholderTextColor="#999"
                   value={addr.address}
                   onChangeText={text => handleInputChange(index, 'address', text)}
+                  editable={!isPrefilledAddr(addr)}
                 />
                 {errors[index]?.address && (
                   <Text style={styles.errorText}>{errors[index].address}</Text>
@@ -993,13 +1089,18 @@ const PracticeScreen = () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Pincode *</Text>
                 <TextInput
-                  style={[styles.input, errors[index]?.pincode && styles.inputError]}
+                   style={[
+    styles.input,
+    errors[index]?.pincode && styles.inputError,
+    isPrefilledAddr(addr) && styles.inputDisabled,
+  ]}
                   placeholder="Pincode"
                   placeholderTextColor="#999"
                   value={addr.pincode}
                   maxLength={6}
                   onChangeText={text => handleInputChange(index, 'pincode', text)}
                   keyboardType="numeric"
+                  editable={!isPrefilledAddr(addr)}
                 />
                 {errors[index]?.pincode && (
                   <Text style={styles.errorText}>{errors[index].pincode}</Text>
@@ -1009,11 +1110,16 @@ const PracticeScreen = () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>City *</Text>
                 <TextInput
-                  style={[styles.input, errors[index]?.city && styles.inputError]}
+                  style={[
+                    styles.input,
+                    errors[index]?.city && styles.inputError,
+                    isPrefilledAddr(addr) && styles.inputDisabled,
+                  ]}
                   placeholder="City"
                   placeholderTextColor="#999"
                   value={addr.city}
                   onChangeText={text => handleInputChange(index, 'city', text)}
+                  editable={!isPrefilledAddr(addr)}
                 />
                 {errors[index]?.city && (
                   <Text style={styles.errorText}>{errors[index].city}</Text>
@@ -1023,11 +1129,16 @@ const PracticeScreen = () => {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>State *</Text>
                 <TextInput
-                  style={[styles.input, errors[index]?.state && styles.inputError]}
+                  style={[
+                    styles.input,
+                    errors[index]?.state && styles.inputError,
+                    isPrefilledAddr(addr) && styles.inputDisabled,
+                  ]}
                   placeholder="State"
                   placeholderTextColor="#999"
                   value={addr.state}
                   onChangeText={text => handleInputChange(index, 'state', text)}
+                  editable={!isPrefilledAddr(addr)}
                 />
                 {errors[index]?.state && (
                   <Text style={styles.errorText}>{errors[index].state}</Text>
@@ -1042,6 +1153,7 @@ const PracticeScreen = () => {
                   placeholderTextColor="#999"
                   value={addr.country}
                   onChangeText={text => handleInputChange(index, 'country', text)}
+                  editable={false}
                 />
                 {errors[index]?.country && (
                   <Text style={styles.errorText}>{errors[index].country}</Text>
@@ -1383,6 +1495,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#3182CE',
   },
+  inputDisabled: {
+   backgroundColor: '#F5F5F5',
+   color: '#999',
+ },
 });
  
 export default PracticeScreen;
