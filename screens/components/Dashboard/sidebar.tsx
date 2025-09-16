@@ -26,7 +26,7 @@ const Sidebar = () => {
   const currentuserDetails = useSelector((state: any) => state?.currentUser);
   const doctorId = currentuserDetails?.role === "doctor" ? currentuserDetails?.userId : currentuserDetails?.createdBy
   const [department, setDepartment] = useState(currentuserDetails?.specialization?.name)
-  const [access, setAccess] = useState<string[]>(currentuserDetails?.access); // ← You’ll receive this from backend
+  const [access, setAccess] = useState<string[]>(currentuserDetails?.access); 
 
   const confirmLogout = () => {
     Alert.alert(
@@ -63,7 +63,7 @@ const Sidebar = () => {
       onPress: () => navigation.navigate('Appointments'),
     },
     {
-      key: 'viewPatient',
+      key: 'my-patient',
       label: 'My Patient',
       description: 'Total patient',
       icon: 'groups',
@@ -92,14 +92,14 @@ const Sidebar = () => {
       onPress: () => navigation.navigate('Pharmacy'),
     },
     {
-      key: 'staff',
+      key: 'staff-management',
       label: 'Staff Management',
       description: 'Update Staff Management',
       icon: 'settings',
       onPress: () => navigation.navigate('StaffManagement'),
     },
     {
-      key: 'clinic',
+      key: 'clinic-management',
       label: 'Clinic Management',
       description: 'Manage clinic settings and information',
       icon: 'star',
@@ -146,67 +146,60 @@ const Sidebar = () => {
   const dispatch = useDispatch();
   const userId = useSelector((state: any) => state.currentUser);
 
-  const fetchUserData = async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem('authToken');
-      const storedUserId = await AsyncStorage.getItem('userId');
-      // const storedStep = await AsyncStorage.getItem('currentStep');
+const fetchUserData = async () => {
+  try {
+    const storedToken = await AsyncStorage.getItem('authToken');
+    const storedUserId = await AsyncStorage.getItem('userId');
 
-      if (storedToken) {
-        const profileResponse = await AuthFetch(`users/getUser?userId=${doctorId}`, storedToken);
-        if (profileResponse?.status === 'success') {
-          if (profileResponse?.data?.data?.role !== 'doctor') {
-            setDepartment(profileResponse.data.data.specialization.name)
-          }
-          if (profileResponse.data.data.access && Array.isArray(profileResponse.data.data.access)) {
-            const accessMap: { [key: string]: string } = {
-              viewPatients: 'viewPatient',
-              dashboard: 'dashboard',
-              appointments: 'appointments',
-              availability: 'availability',
-              labs: 'labs',
-              pharmacy: 'pharmacy',
-              staff: 'staff',
-              clinic: 'clinic',
-              accounts: 'accounts',
-              billing: 'billing',
-
-              reviews: 'reviews',
-            };
-
-            const transformedAccess = profileResponse.data.data.access.map(item => accessMap[item])
-            setAccess(transformedAccess);
-          }
-
+    if (storedToken) {
+      const profileResponse = await AuthFetch(`users/getUser?userId=${doctorId}`, storedToken);
+      console.log('Profile Response:', profileResponse?.data?.data?.access);
+      if (profileResponse?.status === 'success') {
+        if (profileResponse?.data?.data?.role !== 'doctor') {
+          setDepartment(profileResponse.data.data.specialization.name)
         }
-        // setAccess(access);
+        if (profileResponse.data.data.access && Array.isArray(profileResponse.data.data.access)) {
+          // Update this mapping to match your menuItems keys
+          const accessMap: { [key: string]: string } = {
+            viewPatients: 'viewPatient',
+            myPatients: 'viewPatient', // Add alternative mapping
+            dashboard: 'dashboard',
+            appointments: 'appointments',
+            availability: 'availability',
+            labs: 'labs',
+            pharmacy: 'pharmacy',
+            staff: 'staff',
+            staffManagement: 'staff', // Add alternative mapping
+            clinic: 'clinic',
+            clinicManagement: 'clinic', // Add alternative mapping
+            accounts: 'accounts',
+            billing: 'billing',
+            reviews: 'reviews',
+            digitalPrescription: 'prescription', // Add if needed
+            prescription: 'prescription' // Add if needed
+          };
 
-        if (
-          profileResponse.status === 'success' &&
-          'data' in profileResponse &&
-          profileResponse.data
-        ) {
-          const userData = profileResponse.data.data;
-          dispatch({ type: 'currentDoctor', payload: userData });
-
-          // dispatch({ type: 'currentUserID', payload: storedUserId });
-
-
-          // Toast.show({
-          //   type: 'success',
-          //   text1: 'Success',
-          //   text2: 'Auto-login successful',
-          //   position: 'top',
-          //   visibilityTime: 3000,
-          // });
-
+          const transformedAccess = profileResponse.data.data.access
+            .map(item => accessMap[item])
+            .filter(item => item !== undefined); // Filter out undefined values
+          setAccess(transformedAccess);
         }
-
+        console.log('Transformed Access:', access);
       }
 
-    } catch (error) {
+      if (
+        profileResponse.status === 'success' &&
+        'data' in profileResponse &&
+        profileResponse.data
+      ) {
+        const userData = profileResponse.data.data;
+        dispatch({ type: 'currentDoctor', payload: userData });
+      }
     }
-  };
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+  }
+};
 
   useEffect(() => {
     fetchUserData();

@@ -391,14 +391,21 @@ const DoctorProfileView: React.FC = () => {
 
   const saveProfessional = async () => {
     if (!token || !doctorData) return;
+
+    // Validate at least one degree is selected
+    if (formProfessional.selectedDegrees.length === 0) {
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select at least one degree' });
+      return;
+    }
+
     try {
-      const firstSpec = doctorData.specialization?.[0];
+      const firstSpec = doctorData?.specialization?.[0];
       const formData = new FormData();
-      formData.append('id', String(doctorData.userId || ''));
+      formData.append('id', String(doctorData?.userId || ''));
       formData.append('name', String(firstSpec?.name || ''));
-      formData.append('experience', String(formProfessional.experience || ''));
-      formData.append('degree', formProfessional.selectedDegrees.join(','));
-      formData.append('bio', String(formProfessional.about || ''));
+      formData.append('experience', String(formProfessional?.experience || ''));
+      formData.append('degree', formProfessional?.selectedDegrees?.join(','));
+      formData.append('bio', String(formProfessional?.about || ''));
 
       const response = await UploadFiles('users/updateSpecialization', formData, token);
 
@@ -779,7 +786,7 @@ const DoctorProfileView: React.FC = () => {
 
                 <View style={styles.infoItem}>
                   <Text style={styles.infoText}>
-                    <Text style={styles.bold}>About:</Text> {doctorData.specialization?.[0]?.bio || 'N/A'}
+                    <Text style={styles.bold}>About:</Text> {doctorData.specialization?.[0]?.bio || 'Not Mentioned'}
                   </Text>
                 </View>
 
@@ -1013,47 +1020,56 @@ const DoctorProfileView: React.FC = () => {
 
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Languages</Text>
-                  {(formPersonal.spokenLanguage || []).map((lang, idx) => (
-                    <View key={`${lang}-${idx}`} style={styles.languageItem}>
-                      <Picker
-                        selectedValue={lang}
-                        onValueChange={(value) => {
-                          const next = [...formPersonal.spokenLanguage];
-                          next[idx] = String(value);
-                          setFormPersonal((s) => ({ ...s, spokenLanguage: next }));
-                        }}
-                        style={styles.picker}
-                      >
-                        {languageOptions.map((opt) => (
-                          <Picker.Item
-                            key={opt.value}
-                            label={opt.label}
-                            value={opt.value}
-                            enabled={!formPersonal.spokenLanguage.includes(opt.value) || opt.value === lang}
-                          />
-                        ))}
-                      </Picker>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setFormPersonal((s) => ({ ...s, spokenLanguage: s.spokenLanguage.filter((_, i) => i !== idx) }));
-                        }}
-                        style={{ padding: 8 }}
-                      >
-                        <Icon name="close" size={16} color="#D32F2F" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
 
-                  {(formPersonal.spokenLanguage || []).length < languageOptions.length && (
-                    <TouchableOpacity
-                      style={styles.addButton}
-                      onPress={() => {
-                        const firstAvailable = languageOptions.find((o) => !formPersonal.spokenLanguage.includes(o.value));
-                        if (firstAvailable) setFormPersonal((s) => ({ ...s, spokenLanguage: [...s.spokenLanguage, firstAvailable.value] }));
+                  {/* Single dropdown for selecting languages */}
+                  <View style={styles.dropdownContainer}>
+                    <Picker
+                      selectedValue={""}
+                      onValueChange={(value) => {
+                        if (value && !formPersonal.spokenLanguage.includes(value)) {
+                          setFormPersonal((s) => ({
+                            ...s,
+                            spokenLanguage: [...s.spokenLanguage, value],
+                          }));
+                        }
                       }}
+                      style={styles.picker}
                     >
-                      <Text style={styles.addButtonText}>Add Language</Text>
-                    </TouchableOpacity>
+                      <Picker.Item label="Select a language" value="" />
+                      {languageOptions.map((opt) => (
+                        <Picker.Item
+                          key={opt.value}
+                          label={opt.label}
+                          value={opt.value}
+                          enabled={!formPersonal.spokenLanguage.includes(opt.value)}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+
+                  {/* Display selected languages as tags */}
+                  {formPersonal.spokenLanguage.length > 0 && (
+                    <>
+                      <Text style={[styles.label, { marginTop: 10 }]}>Selected Languages:</Text>
+                      <View style={styles.tagsContainer}>
+                        {formPersonal.spokenLanguage.map((lang, index) => (
+                          <View key={index} style={[styles.tag, { marginBottom: 8 }]}>
+                            <Text style={styles.tagText}>{lang}</Text>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setFormPersonal((s) => ({
+                                  ...s,
+                                  spokenLanguage: s.spokenLanguage.filter((l) => l !== lang),
+                                }));
+                              }}
+                              style={{ marginLeft: 6, padding: 2 }}
+                            >
+                              <Icon name="close" size={14} color="#D32F2F" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    </>
                   )}
                 </View>
               </ScrollView>
@@ -1069,7 +1085,6 @@ const DoctorProfileView: React.FC = () => {
             </View>
           </View>
         </Modal>
-
         <Modal visible={editModalType === 'professional'} transparent animationType="slide" onRequestClose={handleEditClose}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
@@ -1107,8 +1122,9 @@ const DoctorProfileView: React.FC = () => {
                       <Text style={[styles.label, { marginTop: 10 }]}>Selected Degrees:</Text>
                       <View style={styles.tagsContainer}>
                         {formProfessional.selectedDegrees.map((deg, index) => (
-                          <View key={index} style={styles.tag}>
+                          <View key={index} style={[styles.tag, { marginBottom: 8 }]}>
                             <Text style={styles.tagText}>{deg}</Text>
+                            {/* Always show remove button - allow removing last degree */}
                             <TouchableOpacity
                               onPress={() => {
                                 setFormProfessional((s) => ({
@@ -1116,7 +1132,7 @@ const DoctorProfileView: React.FC = () => {
                                   selectedDegrees: s.selectedDegrees.filter((d) => d !== deg),
                                 }));
                               }}
-                              style={styles.closeButton} // Updated style for better control
+                              style={{ marginLeft: 6, padding: 2 }}
                             >
                               <Icon name="close" size={14} color="#D32F2F" />
                             </TouchableOpacity>
@@ -1124,6 +1140,13 @@ const DoctorProfileView: React.FC = () => {
                         ))}
                       </View>
                     </>
+                  )}
+
+                  {/* Show validation error message when no degrees are selected */}
+                  {formProfessional.selectedDegrees.length === 0 && (
+                    <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 8 }}>
+                      Please select at least one degree
+                    </Text>
                   )}
                 </View>
                 <View style={styles.formGroup}>
@@ -1163,7 +1186,6 @@ const DoctorProfileView: React.FC = () => {
             </View>
           </View>
         </Modal>
-
         <Modal visible={editModalType === 'kyc'} transparent animationType="slide" onRequestClose={handleEditClose}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
@@ -1208,67 +1230,102 @@ const DoctorProfileView: React.FC = () => {
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Edit Consultation Charges</Text>
+
               <ScrollView style={styles.formContainer}>
-                {(formConsultation || []).map((row, idx) => (
-                  <View key={idx} style={[styles.consultationRow, { borderBottomColor: '#eee', borderBottomWidth: 1 }]}>
-                    <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text style={styles.label}>Type</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={row.type}
-                        onChangeText={(v) => {
-                          const next = [...formConsultation];
-                          next[idx].type = v;
-                          setFormConsultation(next);
-                        }}
-                        placeholder="e.g., In-Person, Video, Home Visit"
-                        placeholderTextColor="#888"
-                      />
-                    </View>
-                    <View style={{ width: 100, marginRight: 8 }}>
-                      <Text style={styles.label}>Fee</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={String(row.fee ?? "")}
-                        onChangeText={(v) => {
-                          const digits = v.replace(/[^0-9]/g, "");
+                {(formConsultation || []).map((row, idx) => {
+                  const active = row.active ?? Number(row.fee) > 0; // default checked if fee > 0
 
-                          // clone first
-                          const next = [...formConsultation];
-
-                          // capture the initial fee once, store as a non-enumerable field so it won't get sent to APIs
-                          if (next[idx].__initialFee == null) {
-                            Object.defineProperty(next[idx], "__initialFee", {
-                              value: Number(next[idx].fee || 0),
-                              writable: true,
-                              enumerable: false,
-                            });
-                          }
-                          const initialFee = Number(next[idx].__initialFee || 0);
-
-                          // allow clearing while typing
-                          if (digits.length === 0) {
-                            next[idx].fee = "";
+                  return (
+                    <View
+                      key={idx}
+                      style={[
+                        styles.consultationRow,
+                        { borderBottomColor: '#eee', borderBottomWidth: 1, flexDirection: 'row', alignItems: 'flex-start' }
+                      ]}
+                    >
+                      {/* Checkbox */}
+                      <View style={{ justifyContent: 'center', marginRight: 8, paddingTop: 26 }}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const next = [...formConsultation];
+                            const wasActive = next[idx].active ?? Number(next[idx].fee) > 0;
+                            next[idx].active = !wasActive;
+                            if (!next[idx].active) {
+                              // on uncheck: force fee to "0" and keep input disabled
+                              next[idx].fee = '0';
+                            } else {
+                              // on re-check: optionally clear 0 so user can type a value
+                              if (next[idx].fee === '0') next[idx].fee = '';
+                            }
                             setFormConsultation(next);
-                            return;
-                          }
+                          }}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: active }}
+                          style={{
+                            width: 22, height: 22, borderRadius: 4, borderWidth: 1, borderColor: '#666',
+                            alignItems: 'center', justifyContent: 'center',
+                            backgroundColor: active ? '#00796B' : '#fff'
+                          }}
+                        >
+                          {active ? <Text style={{ color: '#fff', fontWeight: '700' }}>✓</Text> : null}
+                        </TouchableOpacity>
+                      </View>
 
-                          // if initial > 0, block editing to an explicit 0
-                          if (initialFee > 0 && Number(digits) === 0) {
-                            return; // ignore the change
-                          }
+                      {/* Type */}
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={styles.label}>Type</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={row.type}
+                          onChangeText={(v) => {
+                            const next = [...formConsultation];
+                            next[idx].type = v;
+                            setFormConsultation(next);
+                          }}
+                          placeholder="e.g., In-Person, Video, Home Visit"
+                          placeholderTextColor="#888"
+                        />
+                      </View>
 
-                          next[idx].fee = digits;
-                          setFormConsultation(next);
-                        }}
-                        keyboardType="numeric"
-                        placeholder="Enter fee"
-                        placeholderTextColor="#888"
-                      />
+                      {/* Fee */}
+                      {/* Fee */}
+                      <View style={{ width: 100, marginRight: 8 }}>
+                        <Text style={styles.label}>Fee</Text>
+                        {(() => {
+                          const isFeeInvalid = active && (!row.fee || Number(row.fee) <= 0);
+                          return (
+                            <>
+                              <TextInput
+                                style={[
+                                  styles.input,
+                                  { opacity: active ? 1 : 0.5, borderColor: isFeeInvalid ? '#D32F2F' : '#E0E0E0', borderWidth: 1 }
+                                ]}
+                                value={String(row.fee ?? '')}
+                                onChangeText={(v) => {
+                                  const next = [...formConsultation];
+                                  const digits = v.replace(/[^0-9]/g, '');
+                                  next[idx].fee = digits;
+                                  // active is controlled by checkbox; keep as-is
+                                  setFormConsultation(next);
+                                }}
+                                editable={!!active}           // disabled when unchecked
+                                keyboardType="numeric"
+                                placeholder="Enter fee"
+                                placeholderTextColor="#888"
+                              />
+                              {isFeeInvalid && (
+                                <Text style={{ color: '#D32F2F', marginTop: 4, fontSize: 12 }}>
+                                  Enter amount &gt; 0
+                                </Text>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </View>
 
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </ScrollView>
 
               <View style={styles.modalActions}>
@@ -1424,10 +1481,10 @@ const styles = StyleSheet.create({
     borderRadius: 4, marginLeft: SCREEN_WIDTH * 0.02, marginBottom: SCREEN_WIDTH * 0.01,
   },
   kycButtonContainer: {
-  marginTop: SCREEN_WIDTH * 0.02,
-  width: '100%',
-  alignItems: 'flex-start',
-},
+    marginTop: SCREEN_WIDTH * 0.02,
+    width: '100%',
+    alignItems: 'flex-start',
+  },
   viewButtonText: { color: '#fff', fontSize: SCREEN_WIDTH * 0.03 },
   closeButton: {
     marginLeft: 8,

@@ -70,15 +70,15 @@ const AddAppointment = () => {
   const [message, setMessage] = useState('');
   const [isPatientAdded, setIsPatientAdded] = useState(false);
   const [patientCreated, setPatientCreated] = useState(false);
+  const [fieldsDisabled, setFieldsDisabled] = useState(false);
+  const validateAge = (age: string): boolean => {
+    if (!age) return false;
+    const trimmed = age.trim();
 
-const validateAge = (age: string): boolean => {
-  if (!age) return false;
-  const trimmed = age.trim();
-  
 
-  return /^\d+$/.test(trimmed) || 
-         /^(\d+[myd])(\s?\d+[myd])*$/i.test(trimmed);
-};
+    return /^\d+$/.test(trimmed) ||
+      /^(\d+[myd])(\s?\d+[myd])*$/i.test(trimmed);
+  };
 
   // Calculate age from DOB
   const calculateAgeFromDOB = (dob: string): string => {
@@ -126,14 +126,19 @@ const validateAge = (age: string): boolean => {
       }
     } else if (field === "visitReason" && value.length > 500) {
       validatedValue = value.substring(0, 500);
-    } else if (field === "discount") {
-      const numValue = value.replace(/\D/g, "");
-      validatedValue = numValue;
-      if (formData.discountType === "percentage" && Number(numValue) > 100) {
-        validatedValue = "100";
-      }
-    }
-
+} else if (field === "discount") {
+  const numValue = value.replace(/\D/g, "");
+  
+  if (numValue === "") {
+    validatedValue = "";
+  } 
+  else if (Number(numValue) >= 0 && Number(numValue) <= 100) {
+    validatedValue = numValue;
+  }
+  else {
+    validatedValue = formData.discount; 
+  }
+}
     setpatientFormData((prev) => {
       const newData = { ...prev, [field]: validatedValue };
 
@@ -144,34 +149,34 @@ const validateAge = (age: string): boolean => {
         } else {
           newData.age = "";
         }
-} else if (field === "age" && validatedValue && validateAge(validatedValue)) {
-  const today = new Date();
-  let calculatedDOB = new Date(today);
-  
-  if (/^\d+$/.test(validatedValue)) {
-    // If plain number, assume years
-    calculatedDOB.setFullYear(today.getFullYear() - parseInt(validatedValue));
-  } else {
-    // Use regex to find all number-unit pairs (with or without spaces)
-    const ageParts = validatedValue.match(/\d+[myd]/gi) || [];
-    
-    ageParts.forEach(part => {
-      const match = part.match(/(\d+)([myd])/i);
-      if (match) {
-        const value = parseInt(match[1]);
-        const unit = match[2].toLowerCase();
-        if (unit === 'y') calculatedDOB.setFullYear(calculatedDOB.getFullYear() - value);
-        else if (unit === 'm') calculatedDOB.setMonth(calculatedDOB.getMonth() - value);
-        else if (unit === 'd') calculatedDOB.setDate(calculatedDOB.getDate() - value);
-      }
-    });
-  }
+      } else if (field === "age" && validatedValue && validateAge(validatedValue)) {
+        const today = new Date();
+        let calculatedDOB = new Date(today);
 
-  const day = String(calculatedDOB.getDate()).padStart(2, '0');
-  const month = String(calculatedDOB.getMonth() + 1).padStart(2, '0');
-  const year = calculatedDOB.getFullYear();
-  newData.dob = `${day}-${month}-${year}`;
-}
+        if (/^\d+$/.test(validatedValue)) {
+          // If plain number, assume years
+          calculatedDOB.setFullYear(today.getFullYear() - parseInt(validatedValue));
+        } else {
+          // Use regex to find all number-unit pairs (with or without spaces)
+          const ageParts = validatedValue.match(/\d+[myd]/gi) || [];
+
+          ageParts.forEach(part => {
+            const match = part.match(/(\d+)([myd])/i);
+            if (match) {
+              const value = parseInt(match[1]);
+              const unit = match[2].toLowerCase();
+              if (unit === 'y') calculatedDOB.setFullYear(calculatedDOB.getFullYear() - value);
+              else if (unit === 'm') calculatedDOB.setMonth(calculatedDOB.getMonth() - value);
+              else if (unit === 'd') calculatedDOB.setDate(calculatedDOB.getDate() - value);
+            }
+          });
+        }
+
+        const day = String(calculatedDOB.getDate()).padStart(2, '0');
+        const month = String(calculatedDOB.getMonth() + 1).padStart(2, '0');
+        const year = calculatedDOB.getFullYear();
+        newData.dob = `${day}-${month}-${year}`;
+      }
 
       return newData;
     });
@@ -345,7 +350,6 @@ const validateAge = (age: string): boolean => {
     }
   };
 
-  // Prefill patient details
   const prefillPatientDetails = (patient: any) => {
     setpatientFormData({
       firstName: patient?.firstname,
@@ -357,6 +361,7 @@ const validateAge = (age: string): boolean => {
     });
     setPatientCreated(true);
     setPatientId(patient.userId);
+    setFieldsDisabled(true);
   };
 
   // Handle adding a new patient
@@ -591,7 +596,7 @@ const validateAge = (age: string): boolean => {
               style={styles.inputFlex}
               value={patientformData.firstName}
               onChangeText={(text) => handleInputChange("firstName", text)}
-              editable={!isPatientAdded}
+              editable={!isPatientAdded && !fieldsDisabled} // Add !fieldsDisabled
               placeholderTextColor="#9CA3AF"
             />
           </View>
@@ -602,7 +607,7 @@ const validateAge = (age: string): boolean => {
               style={styles.inputFlex}
               value={patientformData.lastName}
               onChangeText={(text) => handleInputChange("lastName", text)}
-              editable={!isPatientAdded}
+              editable={!isPatientAdded && !fieldsDisabled} // Add !fieldsDisabled
               placeholderTextColor="#9CA3AF"
             />
           </View>
@@ -652,7 +657,7 @@ const validateAge = (age: string): boolean => {
               maxLength={10}
               value={patientformData.mobile}
               onChangeText={(text) => handleInputChange("mobile", text)}
-              editable={!isPatientAdded}
+              editable={!isPatientAdded && !fieldsDisabled} // Add !fieldsDisabled
               onBlur={() => validateMobile(patientformData.mobile)}
               placeholderTextColor="#9CA3AF"
             />
@@ -666,7 +671,12 @@ const validateAge = (age: string): boolean => {
               <RadioButton
                 value={option}
                 status={patientformData.gender === option ? 'checked' : 'unchecked'}
-                onPress={() => setpatientFormData({ ...patientformData, gender: option })}
+                onPress={() => {
+                  if (!fieldsDisabled && !isPatientAdded) {
+                    setpatientFormData({ ...patientformData, gender: option });
+                  }
+                }}
+                disabled={fieldsDisabled || isPatientAdded} // Add this line
               />
               <Text style={styles.radioText}>{option}</Text>
             </View>
@@ -677,7 +687,7 @@ const validateAge = (age: string): boolean => {
           onPress={handleAddPatient}
           disabled={isAddPatientDisabled}
         >
-          <Text style={styles.addButtonText}>Add Patient</Text>
+          <Text style={styles.addButtonText}>Create Patient</Text>
         </TouchableOpacity>
       </View>
 
@@ -824,8 +834,20 @@ const validateAge = (age: string): boolean => {
             placeholderTextColor="#9CA3AF"
             style={[styles.inputFlex, fieldErrors.discount ? styles.errorInput : null]}
             keyboardType="numeric"
-            value={formData.discount}
+            value={formData.discount === "0" ? "0" : formData.discount} // Show "0" initially
             onChangeText={(text) => handleInputChange("discount", text)}
+            onFocus={() => {
+              // Clear the field when user focuses on it if it's "0"
+              if (formData.discount === "0") {
+                handleInputChange("discount", "");
+              }
+            }}
+            onBlur={() => {
+              // If field is empty after blur, set it back to "0"
+              if (formData.discount === "") {
+                setFormData((prev) => ({ ...prev, discount: "0" }));
+              }
+            }}
           />
           <View style={styles.pickerContainer}>
             <Picker
