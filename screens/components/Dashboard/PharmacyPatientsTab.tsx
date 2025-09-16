@@ -397,10 +397,12 @@ export default function PatientsTab({
         try {
           await FileViewer.open(destinationPath);
         } catch (error) {
+
           Toast.show({
             type: "error",
             text1: error?.message || "Failed to open invoice",
           });
+          
         }
       } else if (file.filePath) {
         // For iOS, just show success and try to open
@@ -412,10 +414,12 @@ export default function PatientsTab({
         try {
           await FileViewer.open(file.filePath);
         } catch (error) {
+          
           Toast.show({
             type: "error",
             text1: error?.message || "Failed to open invoice",
           });
+
         }
       }
     } catch (error: any) {

@@ -45,7 +45,6 @@ export default function TestManagement() {
 
       setLoading(true);
       const res = await AuthFetch(`lab/getTestsByDoctorId/${doctorId}?page=${pg}&limit=${pageSize}`, token);
-      console.log(res, "rest response")
       const fetched = (res?.data?.data?.tests || []).map((t: any) => ({
         testId: t.id,
         testName: t.testName,
@@ -82,7 +81,6 @@ export default function TestManagement() {
       const token = await AsyncStorage.getItem('authToken');
 
       const resp = await AuthPost("lab/addtest", { testName: name.trim(), testPrice: p, doctorId }, token);
-      console.log("response of test", resp)
       if (resp?.status === 'success') {
         Toast.show({ type: "success", text1: "Test added" });
         setAddOpen(false);
@@ -92,7 +90,6 @@ export default function TestManagement() {
         // throw new Error(resp?.message?.message);
       }
     } catch (e: any) {
-      console.log(e?.response, "error response")
       const msg = e?.response?.status === 400 && e?.response?.data?.message?.message === "A test with this name already exists"
         ? "A test with this name already exists"
         : (e?.response?.data?.message?.message || "Failed to   ");
@@ -177,7 +174,6 @@ export default function TestManagement() {
     <View style={styles.row}>
       <View>
         <Text style={styles.tname}>{item.testName}</Text>
-        <Text style={styles.tsub}>ID: {item.testId}</Text>
       </View>
       <Text style={styles.price}>₹ {Number(item.price).toLocaleString("en-IN")}</Text>
     </View>

@@ -76,7 +76,7 @@ const AdviceScreen = () => {
         <TouchableOpacity onPress={() => setShowDatePicker(true)}>
           <TextInput
             style={styles.input}
-            placeholder="mm/dd/yyyy"
+            placeholder="dd-mmm-yyyy"
             value={
               formData.advice.followUpDate
                 ? moment(formData.advice.followUpDate).format('DD-MMM-YYYY')

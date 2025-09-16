@@ -52,7 +52,10 @@ const AccountsScreen = () => {
     setSelectedTxn(txn);
     setShowTxnModal(true);
   };
-
+  const capitalizeFirstLetter = (string) => {
+    if (!string) return '-';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
   const [accountSummary, setAccountSummary] = useState({
     totalReceived: 0,
     totalExpenditure: 0,
@@ -86,7 +89,6 @@ const AccountsScreen = () => {
         throw new Error('Failed to fetch revenue data');
       }
     } catch (error) {
-      console.error('Error fetching revenue:', error);
       Alert.alert('Error', 'Failed to fetch revenue data');
     } finally {
       setLoadingRevenue(false);
@@ -118,7 +120,6 @@ const AccountsScreen = () => {
         setTotalItems(response.data.totalResults || 0);
       }
     } catch (err) {
-      console.error('Error fetching transactions:', err);
       Alert.alert('Error', 'Failed to fetch transactions');
     } finally {
       setLoadingTransactions(false);
@@ -222,7 +223,6 @@ const AccountsScreen = () => {
 
       Alert.alert('Success', `PDF saved in Files > Downloads as ${fileName}`);
     } catch (error) {
-      console.error('PDF export failed:', error);
       Alert.alert('Error', 'Failed to generate PDF.');
     } finally {
       setExportingPdf(false);
@@ -258,7 +258,6 @@ const AccountsScreen = () => {
     );
   };
 
-  console.log('recentTraselectedTxnnsactions', selectedTxn);
   return (
     <ScrollView style={styles.container}>
       {/* Summary Cards */}
@@ -406,9 +405,11 @@ const AccountsScreen = () => {
           >
             <View style={styles.modalOverlay}>
               <View style={styles.serviceModalContent}>
-                <Text style={styles.modalTitle}>Select Service</Text>
+                <Text style={[styles.modalTitle, { alignSelf: 'flex-start' }]}>Select Service</Text>
+
+                {/* Change each TouchableOpacity to have left alignment */}
                 <TouchableOpacity
-                  style={styles.serviceOption}
+                  style={[styles.serviceOption, { alignItems: 'flex-start' }]}
                   onPress={() => {
                     setFilterService('');
                     setServiceModalVisible(false);
@@ -416,8 +417,9 @@ const AccountsScreen = () => {
                 >
                   <Text style={styles.serviceOptionText}>All Services</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  style={styles.serviceOption}
+                  style={[styles.serviceOption, { alignItems: 'flex-start' }]}
                   onPress={() => {
                     setFilterService('appointment');
                     setServiceModalVisible(false);
@@ -425,8 +427,9 @@ const AccountsScreen = () => {
                 >
                   <Text style={styles.serviceOptionText}>Appointments</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  style={styles.serviceOption}
+                  style={[styles.serviceOption, { alignItems: 'flex-start' }]}
                   onPress={() => {
                     setFilterService('lab');
                     setServiceModalVisible(false);
@@ -434,8 +437,9 @@ const AccountsScreen = () => {
                 >
                   <Text style={styles.serviceOptionText}>Lab</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  style={styles.serviceOption}
+                  style={[styles.serviceOption, { alignItems: 'flex-start' }]}
                   onPress={() => {
                     setFilterService('pharmacy');
                     setServiceModalVisible(false);
@@ -443,6 +447,7 @@ const AccountsScreen = () => {
                 >
                   <Text style={styles.serviceOptionText}>Pharmacy</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={styles.closeButton}
                   onPress={() => setServiceModalVisible(false)}
@@ -452,21 +457,6 @@ const AccountsScreen = () => {
               </View>
             </View>
           </Modal>
-
-          <TouchableOpacity
-            style={styles.exportBtn}
-            onPress={exportTransactionsToPDF}
-            disabled={exportingPdf}
-          >
-            {exportingPdf ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Icon name="download" size={18} color="#fff" />
-                <Text style={styles.exportText}>Export</Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
       )}
 
@@ -486,17 +476,17 @@ const AccountsScreen = () => {
                 <View style={styles.txnHeader}>
                   <Text style={styles.txnId}>{item?.paymentId}</Text>
                   <Text style={styles.txnDate}>
-                    {dayjs(item?.paidAt || item?.updatedAt).format('YYYY-MM-DD')}
+                    {dayjs(item?.paidAt || item?.updatedAt).format('DD MMM, YYYY')}
                   </Text>
                 </View>
                 <View style={styles.txnRow}>
                   <Text style={styles.txnName}>{item.patientName}</Text>
                   <Text style={styles.txnName}>
-                    {dayjs(item?.paidAt || item?.updatedAt).format('HH:mm')}
+                    {dayjs(item?.paidAt || item?.updatedAt).format('h:mm A')}
                   </Text>
                 </View>
                 <View style={styles.txnRow}>
-                  <Text style={styles.txnLabel}>{item?.paymentFrom}</Text>
+                  <Text style={styles.txnLabel}>{capitalizeFirstLetter(item?.paymentFrom)}</Text>
                   <Text style={styles.txnAmount}>₹{item.finalAmount}</Text>
                 </View>
                 <View style={styles.txnRow}>
@@ -508,15 +498,15 @@ const AccountsScreen = () => {
                         item.paymentStatus === 'paid'
                           ? styles.paidStatusSuccess
                           : item.paymentStatus === 'pending'
-                          ? styles.paidStatusPending
-                          : styles.paidStatusRefunded,
+                            ? styles.paidStatusPending
+                            : styles.paidStatusRefunded,
                       ]}
                     >
                       {item.paymentStatus === 'paid'
                         ? 'Paid'
                         : item.paymentStatus === 'pending'
-                        ? 'Pending'
-                        : 'Refunded'}
+                          ? 'Pending'
+                          : 'Refunded'}
                     </Text>
                     <TouchableOpacity
                       style={{
@@ -962,13 +952,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     width: '80%',
-    alignItems: 'center',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
     color: '#111827',
+    alignSelf: 'flex-start', // Add this
   },
   modalLabel: {
     fontWeight: '600',
@@ -1005,7 +995,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     width: '100%',
-    alignItems: 'center',
+    alignItems: 'flex-start', // Change from 'center' to 'flex-start'
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
@@ -1014,4 +1004,5 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
+
 });

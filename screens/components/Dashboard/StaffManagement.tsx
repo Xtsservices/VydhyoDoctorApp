@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Alert } from 'react-native';
+import { Alert, ScrollView } from 'react-native';
 import {
   View,
   Text,
@@ -17,9 +17,6 @@ import { AuthPost, AuthFetch, AuthPut } from '../../auth/auth';
 import dayjs from 'dayjs';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
-import { Picker } from '@react-native-picker/picker';
-
-
 
 interface Staff {
   profilepic: string;
@@ -35,15 +32,14 @@ interface Staff {
   avatar: string;
   lastLogin: string;
   isBlocked?: boolean;
+  access?: string[];
 }
 
-
-
 const StaffManagement = () => {
-
-    const currentuserDetails =  useSelector((state: any) => state.currentUser);
-      const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
+  const currentuserDetails = useSelector((state: any) => state.currentUser);
+  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy;
   const userId = doctorId;
+
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
       case 'doctor':
@@ -56,26 +52,26 @@ const StaffManagement = () => {
         return '#6B7280';
     }
   };
-  
-    const navigation = useNavigation<any>();
+
+  const navigation = useNavigation<any>();
 
   const [modalVisible, setModalVisible] = useState(false);
-const [mode, setMode] = useState<'view' | 'edit' | 'delete' | null>(null);
-const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
-const [form, setForm] = useState({
-  userId: '',
-  firstName: '',
-  lastName: '',
-  email: '',
-  mobile: '',
-  gender:'',
-  DOB: '',
-  profilepic: {},
-  access:[],
-  role:''
-});
+  const [mode, setMode] = useState<'view' | 'edit' | 'delete' | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [form, setForm] = useState({
+    userId: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    mobile: '',
+    gender: '',
+    DOB: '',
+    profilepic: {},
+    access: [] as string[],
+    role: ''
+  });
 
-const accessOptions = [
+  const accessOptions = [
     { value: "my-patients", label: "My Patients" },
     { value: "appointments", label: "Appointments" },
     { value: "labs", label: "Labs" },
@@ -86,314 +82,252 @@ const accessOptions = [
     { value: "clinic-management", label: "Clinic Management" },
     { value: "billing", label: "Billing" },
     { value: "reviews", label: "Reviews" },
-];
+  ];
 
-  const [staffData, setStaffData] = React.useState<Staff[]>([]);
-    const [dropdownVisible, setDropdownVisible] = useState(false);
-      const [selectedStatus, setSelectedStatus] = useState<'all' | 'Lab Assistant' | 'Pharmacy Assistant' | 'Assistant' | 'Receptionist' >('all');
+  const [staffData, setStaffData] = useState<Staff[]>([]);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [accessDropdownVisible, setAccessDropdownVisible] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'Lab Assistant' | 'Pharmacy Assistant' | 'Assistant' | 'Receptionist'>('all');
 
-     const options = [
+  const options = [
     { label: 'All', value: 'all' },
     { label: 'Lab Assistant', value: 'lab_assistant' },
     { label: 'Pharmacy Assistant', value: 'pharmacy_assistant' },
     { label: 'Assistant', value: 'assistant' },
     { label: 'Receptionist', value: 'receptionist' },
-
-
   ];
 
-const [searchText, setSearchText] = useState('');
-const [originalStaffData, setOriginalStaffData] = useState<Staff[]>([]); // Unfiltered data
+  const [searchText, setSearchText] = useState('');
+  const [originalStaffData, setOriginalStaffData] = useState<Staff[]>([]);
+  const [fetchLoading, setFetchLoading] = useState<boolean>(false);
 
   const openModal = (type: 'view' | 'edit' | 'delete', staff: Staff) => {
-    console.log('Opening modal for:', type, staff);
-  setSelectedStaff(staff);
-  setForm({
-    userId: staff.userId,
-    firstName: staff.name.split(' ')[0],
-    lastName: staff.name.split(' ')[1] || '',
-    email: staff.email,
-    mobile:  staff.mobile || '',
-    gender:  staff.gender || '',
-    DOB:  staff.DOB || 'N/A',
-    profilepic: staff.profilepic || {},
-    access: staff?.access,
-    role: staff.role || '',
-  });
-  setMode(type);
-  setModalVisible(true);
-}
-  
+    setSelectedStaff(staff);
+    setForm({
+      userId: staff.userId,
+      firstName: staff.name.split(' ')[0],
+      lastName: staff.name.split(' ')[1] || '',
+      email: staff.email,
+      mobile: staff.mobile || '',
+      gender: staff.gender || '',
+      DOB: staff.DOB || 'N/A',
+      profilepic: staff.profilepic || {},
+      access: staff.access || [],
+      role: staff.role || '',
+    });
+    setMode(type);
+    setModalVisible(true);
+  };
 
-  
-const closeModal = () => {
-  setModalVisible(false);
-  setMode(null);
-  setSelectedStaff(null);
-};
+  const closeModal = () => {
+    setModalVisible(false);
+    setMode(null);
+    setSelectedStaff(null);
+    setAccessDropdownVisible(false);
+  };
 
-const handleEditSubmit = async () => {
+  const handleEditSubmit = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const formatDOBToDDMMYYYY = (dobString: string): string => {
+        const date = new Date(dobString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      };
 
-  console.log(form, "completeform data")
-  try {
-     const token = await AsyncStorage.getItem('authToken');
-     const formatDOBToDDMMYYYY = (dobString: string): string => {
-  const date = new Date(dobString);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-  const year = date.getFullYear();
+      const { firstName, lastName, ...restForm } = form;
+      const payload = {
+        ...restForm,
+        stafftype: form.role,
+        userId: form.userId,
+        DOB: form.DOB,
+        firstname: form.firstName,
+        lastname: form.lastName
+      };
 
-  return `${day}-${month}-${year}`;
-
-  
-};
-    const { firstName, lastName,  ...restForm } = form;
-
-const payload = {
-  ...restForm,
-  stafftype: form.role,
-  userId: form.userId,
-  DOB: form.DOB,
-  firstname:form.firstName,
-  lastname:form.lastName
-  // : `${firstName} ${lastName}`, // using before removal
-};
-
-     console.log('Editing staff with ID:', selectedStaff?.userId, payload);
-    const res = await AuthPut('doctor/editReceptionist', payload, token);
-    console.log(res, 'Edit response');
-    if (res.status === 'success') {
-     fetchStaff(); // Refresh staff list after edit
-      Alert.alert('Success', 'Staff updated successfully');
-    closeModal();
-      Toast.show({type: 'success',
-           text1: 'Success',
-           text2: 'Edited Successfully',
-           position: 'top',
-           visibilityTime: 3000,
-         });
-         closeModal();
-      return;
+      const res = await AuthPut('doctor/editReceptionist', payload, token);
+      if (res.status === 'success') {
+        fetchStaff();
+        Alert.alert('Success', 'Staff updated successfully');
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Edited Successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        closeModal();
+        return;
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update staff');
     }
-   
-  } catch (err) {
-    Alert.alert('Error', 'Failed to update staff');
-  }
-};
+  };
 
-const handleDelete = async () => {
-  try {
-    const token = await AsyncStorage.getItem('authToken');
-    console.log('Deleting staff with ID:', selectedStaff?.userId);
-    const res = await AuthFetch(`users/deleteMyAccount?userId=${selectedStaff?.userId}`, token);
-    console.log('Delete response:', res);
-if (res?.data?.status === 'success') {
-  fetchStaff(); // Refresh staff list after deletion
-Toast.show({
-           type: 'success',
-           text1: 'Success',
-           text2: 'Staff Deleted Successfully',
-           position: 'top',
-           visibilityTime: 3000,
-         });
-    closeModal();
-fetchStaff();
-}
-  } catch (err) {
-    Alert.alert('Error', 'Failed to delete staff');
-  }
-};
+  const handleDelete = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const res = await AuthFetch(`users/deleteMyAccount?userId=${selectedStaff?.userId}`, token);
+      if (res?.data?.status === 'success') {
+        fetchStaff();
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Staff Deleted Successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        closeModal();
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to delete staff');
+    }
+  };
 
-const handleSearch = (text: string) => {
-  setSearchText(text);
+  const handleSearch = (text: string) => {
+    setSearchText(text);
+    if (text.trim() === '') {
+      setStaffData(originalStaffData);
+    } else {
+      const filtered = originalStaffData.filter((staff) =>
+        staff.email.toLowerCase().includes(text.toLowerCase())
+      );
+      setStaffData(filtered);
+    }
+  };
 
-  if (text.trim() === '') {
-    setStaffData(originalStaffData); // Reset on empty
-  } else {
-    const filtered = originalStaffData.filter((staff) =>
-      staff.email.toLowerCase().includes(text.toLowerCase())
-    );
-    setStaffData(filtered);
-  }
-};
-
-useEffect(()=>{
-  if (selectedStatus !== 'all'){
-  const filtered = originalStaffData.filter((staff) =>
-      staff.role.toLowerCase() === (selectedStatus.toLowerCase())
-    );
-    setStaffData(filtered);
-  }else{
-    setStaffData(originalStaffData)
-  }
-
-
-}, [selectedStatus])
-console.log("filter after", staffData)
-
-
-
-
-
-const clearSearch = () => {
-  setSearchText('');
-  setStaffData(originalStaffData);
-};
-
+  useEffect(() => {
+    if (selectedStatus !== 'all') {
+      const filtered = originalStaffData.filter((staff) =>
+        staff.role.toLowerCase() === selectedStatus.toLowerCase()
+      );
+      setStaffData(filtered);
+    } else {
+      setStaffData(originalStaffData);
+    }
+  }, [selectedStatus]);
 
   const fetchStaff = async () => {
-  if (!userId) {
-      console.error('User ID is not available');
-      return;
+    if (!userId) return;
+    try {
+      setFetchLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch(`doctor/getStaffByCreator/${userId}`, token);
+
+      let filterData: any[] = [];
+      if ('data' in response && response.data && Array.isArray(response.data.data)) {
+        filterData = response.data.data.filter(
+          (each: { userId: any }) => each.userId !== currentuserDetails.createdBy
+        );
+      }
+
+      const sortedData = [...filterData].sort((a, b) => {
+        const dateA = new Date(a.joinDate).getTime();
+        const dateB = new Date(b.joinDate).getTime();
+        return dateB - dateA;
+      });
+
+      const formattedData: Staff[] = sortedData.map((staff, index) => ({
+        id: staff._id || String(index + 1),
+        name: staff.name,
+        userId: staff.userId,
+        role: staff.stafftype || 'Unknown',
+        email: staff.email,
+        mobile: staff.mobile || 'N/A',
+        gender: staff.gender || 'Unknown',
+        DOB: staff.DOB || 'N/A',
+        profilepic: staff.profilepic || '',
+        avatar: staff.avatar || 'https://via.placeholder.com/150',
+        status: staff.isLoggedIn ? 'Online' : (staff.status?.toLowerCase() === 'blocked' ? 'Blocked' : 'Offline'),
+        lastLogin: staff.lastLogin && staff.lastLogin !== "N/A"
+          ? dayjs(staff.lastLogin).isValid()
+            ? dayjs(staff.lastLogin).format("YYYY-MM-DD HH:mm:ss")
+            : staff.lastLogin
+          : "-",
+        isBlocked: staff.status?.toLowerCase() === 'blocked',
+        access: staff.access || []
+      }));
+
+      setOriginalStaffData(formattedData);
+      setStaffData(formattedData);
+    } catch (error: any) {
+      let errorMessage = 'Failed to fetch staff data';
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      Alert.alert('Error Fetching Staff', errorMessage);
+    } finally {
+      setFetchLoading(false);
     }
-  try {
-    setFetchLoading(true);
+  };
 
-    const token = await AsyncStorage.getItem('authToken');
-    
-    console.log('User ID:', token);
-
-    const response = await AuthFetch(`doctor/getStaffByCreator/${userId}`, token);
-
-    console.log('Staff data fetched:', response);
-
-let filterData: any[] = [];
-if ('data' in response && response.data && Array.isArray(response.data.data)) {
-  filterData = response.data.data.filter(
-    (each: { userId: any; }) => each.userId !== currentuserDetails.createdBy
-  );
-}
-
-const sortedData = [...filterData].sort((a, b) => {
-  const dateA = new Date(a.joinDate).getTime();
-  const dateB = new Date(b.joinDate).getTime();
-  return dateB - dateA;
-});
-
-console.log(sortedData, "sortedData")
-
-const formattedData: Staff[] = sortedData.map((staff, index) => ({
-  id: staff._id || String(index + 1),
-  name: staff.name,
-  userId: staff.userId,
-  role: staff.stafftype || 'Unknown',
-  email: staff.email,
-  mobile: staff.mobile || 'N/A',
-  gender: staff.gender || 'Unknown',
-  DOB: staff.DOB ||'N/A',
-  profilepic: staff.profilepic || '',
-  avatar: staff.avatar || 'https://via.placeholder.com/150',
-  status: staff.isLoggedIn ? 'Online' : (staff.status?.toLowerCase() === 'blocked' ? 'Blocked' : 'Offline'),
-  lastLogin:
-    staff.lastLogin && staff.lastLogin !== "N/A"
-      ? dayjs(staff.lastLogin).isValid()
-        ? dayjs(staff.lastLogin).format("YYYY-MM-DD HH:mm:ss")
-        : staff.lastLogin
-      : "-",
-  isBlocked: staff.status?.toLowerCase() === 'blocked',
-  access:staff.access
-}));
-   
-setOriginalStaffData(formattedData); // Store unfiltered data
-
-    setStaffData(formattedData);
-  } catch (error: any) {
-    console.error('Error fetching staff:', error);
-
-    let errorMessage = 'Failed to fetch staff data';
-    if (error?.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    }
-
-    Alert.alert('Error Fetching Staff', errorMessage);
-  } finally {
-    setFetchLoading(false);
-  }
-};
-
-
-  const [fetchLoading, setFetchLoading] = React.useState<boolean>(false);
-
-  console.log(selectedStatus, "selectedstaff data")
-
-// Fetch staff data on component mount  
-useEffect(() => {
+  useEffect(() => {
     fetchStaff();
   }, []);
-const renderStaffCard = ({ item }: { item: Staff }) => (
-  <View style={styles.card}>
-    <View style={styles.avatarContainer}>
-    {/* If there's an image URL, show the image; otherwise show first letter */}
-    {item.avatar ? (
-      <Text style={styles.avatarText}>{item.name[0]?.toUpperCase()}</Text>
-    ) : (
-      <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
-      
-    )}
-  </View>
 
-    {/* <Image source={{ uri: item.avatar }} style={styles.avatar} /> */}
-    <View style={styles.content}>
-      <View style={styles.nameRow}>
-        <Text style={styles.name}>{item.name}</Text>
-        <View style={[styles.roleBadge, { backgroundColor: getRoleColor(item.role) }]}>
-          <Text style={styles.roleText}>{item.role}</Text>
-        </View>
-        <View style={[
-          styles.statusDot,
-          {
-            backgroundColor:
-              item.status === 'Online' ? '#22C55E' :
-              item.status === 'Offline' ? '#FBBF24' : 'gray',
-          },
-        ]} />
+  const renderStaffCard = ({ item }: { item: Staff }) => (
+    <View style={styles.card}>
+      <View style={styles.avatarContainer}>
+        {item.avatar ? (
+          <Text style={styles.avatarText}>{item.name[0]?.toUpperCase()}</Text>
+        ) : (
+          <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
+        )}
       </View>
-
-      <Text style={styles.email}>{item.email}</Text>
-      <Text style={styles.lastLogin}>
-        {item.isBlocked ? 'Account blocked' : `Last login: ${item.lastLogin}`}
-      </Text>
+      <View style={styles.content}>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{item.name}</Text>
+          <View style={[styles.roleBadge, { backgroundColor: getRoleColor(item.role) }]}>
+            <Text style={styles.roleText}>{item.role}</Text>
+          </View>
+          <View style={[
+            styles.statusDot,
+            {
+              backgroundColor:
+                item.status === 'Online' ? '#22C55E' :
+                item.status === 'Offline' ? '#FBBF24' : 'gray',
+            },
+          ]} />
+        </View>
+        <Text style={styles.email}>{item.email}</Text>
+        <Text style={styles.lastLogin}>
+          {item.isBlocked ? 'Account blocked' : `Last login: ${item.lastLogin}`}
+        </Text>
+      </View>
+      <View style={styles.bottomRow}>
+        <View style={styles.actionIcons}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => openModal('view', item)}>
+            <Icon name="visibility" size={20} color="#6B7280" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton} onPress={() => openModal('edit', item)}>
+            <Icon name="edit" size={20} color="#6B7280" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton} onPress={() => openModal('delete', item)}>
+            <Icon name="delete" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
-<View style={styles.bottomRow}>
-  
-
-  <View style={styles.actionIcons}>
-    <TouchableOpacity style={styles.iconButton} onPress={() => openModal('view', item)}>
-      <Icon name="visibility" size={20} color="#6B7280" />
-    </TouchableOpacity>
-    <TouchableOpacity style={styles.iconButton} onPress={() => openModal('edit', item)}>
-      <Icon name="edit" size={20} color="#6B7280" />
-    </TouchableOpacity>
-    <TouchableOpacity style={styles.iconButton} onPress={() => openModal('delete', item)}>
-      <Icon name="delete" size={20} color="#EF4444" />
-    </TouchableOpacity>
-  </View>
-</View>
-  </View>
-);
-
-
-
+  );
 
   return (
     <View style={styles.container}>
-      {/* <Text style={styles.header}>Staff Management</Text> */}
-
-      {/* Search Bar */}
       <View style={styles.searchRow}>
         <View style={styles.searchContainer}>
-  <TextInput
-    style={styles.searchInput}
-    value={searchText}
-    onChangeText={handleSearch}
-    placeholder="Search by email"
-    placeholderTextColor="#999"
-  />
-   <TouchableOpacity style={styles.filterButton}>
-          <Icon name="filter-list" size={24} color="#fff" onPress={() => setDropdownVisible((prev) => !prev)}  />
-        </TouchableOpacity>
-</View>
- {dropdownVisible && (
+          <TextInput
+            style={styles.searchInput}
+            value={searchText}
+            onChangeText={handleSearch}
+            placeholder="Search by email"
+            placeholderTextColor="#999"
+          />
+          <TouchableOpacity style={styles.filterButton}>
+            <Icon name="filter-list" size={24} color="#fff" onPress={() => setDropdownVisible((prev) => !prev)} />
+          </TouchableOpacity>
+        </View>
+        {dropdownVisible && (
           <View style={styles.dropdown}>
             {options.map((option) => (
               <TouchableOpacity
@@ -409,144 +343,148 @@ const renderStaffCard = ({ item }: { item: Staff }) => (
             ))}
           </View>
         )}
-
-        
       </View>
-
-      {/* Add Staff Button */}
 
       <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddStaff')}>
-  <Text style={styles.addButtonText}>+ Add Staff</Text>
-</TouchableOpacity>
+        <Text style={styles.addButtonText}>+ Add Staff</Text>
+      </TouchableOpacity>
 
-<Modal visible={modalVisible}  >
-      
-  <View style={styles.overlay}>
-    <View style={styles.modal}>
-      <Text style={styles.title}>
-        {mode === 'view' && 'Staff Details'}
-        {mode === 'edit' && 'Edit Staff'}
-        {mode === 'delete' && 'Delete Staff'}
-      </Text>
+      <Modal visible={modalVisible}>
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              <Text style={styles.title}>
+                {mode === 'view' && 'Staff Details'}
+                {mode === 'edit' && 'Edit Staff'}
+                {mode === 'delete' && 'Delete Staff'}
+              </Text>
 
-{['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB', 'access'].map((field, i) => (
-  <View key={i} style={styles.inputGroup}>
-    <Text style={styles.label}>{field}</Text>
+              {['firstName', 'lastName', 'email', 'mobile', 'gender', 'DOB', 'access'].map((field, i) => (
+                <View key={i} style={styles.inputGroup}>
+                  <Text style={styles.label}>
+                    {field === 'firstName' ? 'Firstname' : 
+                     field === 'lastName' ? 'Lastname' : 
+                     field === 'DOB' ? 'Date of Birth' : 
+                     field === 'access' ? 'Access' : 
+                     field.charAt(0).toUpperCase() + field.slice(1)}
+                  </Text>
+                  {mode === 'view' ? (
+                    <Text style={styles.value}>
+                      {field === 'access'
+                        ? Array.isArray(form.access)
+                          ? form.access.join(', ')
+                          : ''
+                        : String(form[field as keyof typeof form] ?? '')}
+                    </Text>
+                  ) : field === 'access' ? (
+                    <>
+                      <View style={styles.accessContainer}>
+                        {Array.isArray(form.access) &&
+                          form.access.map((item, index) => (
+                            <View key={index} style={styles.accessItem}>
+                              <Text style={styles.accessText}>{item}</Text>
+                              <Text
+                                style={styles.removeButton}
+                                onPress={() =>
+                                  setForm({
+                                    ...form,
+                                    access: form.access.filter((_, i) => i !== index),
+                                  })
+                                }
+                              >
+                                ✕
+                              </Text>
+                            </View>
+                          ))}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.dropdownButton}
+                        onPress={() => setAccessDropdownVisible((prev) => !prev)}
+                      >
+                        <Text style={styles.dropdownButtonText}>Select access to add...</Text>
+                        <Icon name={accessDropdownVisible ? "arrow-drop-up" : "arrow-drop-down"} size={20} color="#6B7280" />
+                      </TouchableOpacity>
+                      {accessDropdownVisible && (
+                        <View style={styles.accessDropdown}>
+                          <ScrollView >
+                            {accessOptions.map((option) => (
+                              <TouchableOpacity
+                                key={option.value}
+                                onPress={() => {
+                                  if (!form.access.includes(option.value)) {
+                                    setForm({ ...form, access: [...form.access, option.value] });
+                                  }
+                                  setAccessDropdownVisible(false);
+                                }}
+                                style={styles.dropdownOption}
+                              >
+                                <Text style={styles.dropdownText}>{option.label}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      )}
+                    </>
+                  ) : field === 'mobile' ? (
+                    <TextInput
+                      value={String(form.mobile ?? '')}
+                      onChangeText={(text) => {
+                        const onlyDigits = text.replace(/\D/g, '').slice(0, 10);
+                        setForm({ ...form, mobile: onlyDigits });
+                      }}
+                      keyboardType="number-pad"
+                      maxLength={10}
+                      style={styles.input}
+                      editable={mode === 'edit'}
+                      placeholder="10-digit mobile"
+                    />
+                  ) : (
+                    <TextInput
+                      value={
+                        Array.isArray(form[field as keyof typeof form])
+                          ? ''
+                          : String(form[field as keyof typeof form] ?? '')
+                      }
+                      onChangeText={(text) => setForm({ ...form, [field]: text })}
+                      style={styles.input}
+                      editable={mode === 'edit'}
+                    />
+                  )}
+                </View>
+              ))}
 
-    {mode === 'view' ? (
-      <Text style={styles.value}>
-        {field === 'access'
-          ? Array.isArray(form.access)
-            ? form.access.join(', ')
-            : ''
-          : String(form[field as keyof typeof form] ?? '')}
-      </Text>
-    ) : field === 'access' ? (
-      <>
-        <View style={styles.accessContainer}>
-          {Array.isArray(form.access) &&
-            form.access.map((item, index) => (
-              <View key={index} style={styles.accessItem}>
-                <Text style={styles.accessText}>{item}</Text>
-                <Text
-                  style={styles.removeButton}
-                  onPress={() =>
-                    setForm({
-                      ...form,
-                      access: form.access.filter((_, i) => i !== index),
-                    })
-                  }
-                >
-                  ✕
-                </Text>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                {mode === 'edit' && (
+                  <TouchableOpacity style={styles.saveButton} onPress={handleEditSubmit}>
+                    <Text style={styles.saveText}>Save</Text>
+                  </TouchableOpacity>
+                )}
+                {mode === 'delete' && (
+                  <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                    <Text style={styles.deleteText}>Delete</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            ))}
+            </ScrollView>
+          </View>
         </View>
+      </Modal>
 
-        <Picker
-          selectedValue="Add Access"
-          style={styles.picker}
-          onValueChange={(itemValue) => {
-            if (itemValue && !form.access.includes(itemValue)) {
-              setForm({ ...form, access: [...form.access, itemValue] });
-            }
-          }}
-        >
-          <Picker.Item label="Select access to add..." value=""  style={{color:"black"}}/>
-          {accessOptions.map((option) => (
-            <Picker.Item key={option.value} label={option.label} value={option.value} />
-          ))}
-        </Picker>
-      </>
-    ) : field === 'mobile' ? (
-      <TextInput
-        value={String(form.mobile ?? '')}
-        onChangeText={(text) => {
-          const onlyDigits = text.replace(/\D/g, '').slice(0, 10); // keep digits, cap at 10
-          setForm({ ...form, mobile: onlyDigits });
-        }}
-        keyboardType="number-pad"
-        // inputMode="numeric" // (optional, RN 0.71+) helps on web as well
-        maxLength={10}
-        style={styles.input}
-        editable={mode === 'edit'}
-        placeholder="10-digit mobile"
-      />
-    ) : (
-      <TextInput
-        value={
-          Array.isArray(form[field as keyof typeof form])
-            ? ''
-            : String(form[field as keyof typeof form] ?? '')
-        }
-        onChangeText={(text) => setForm({ ...form, [field]: text })}
-        style={styles.input}
-        editable={mode === 'edit'}
-      />
-    )}
-  </View>
-))}
-
-
-
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-
-        {mode === 'edit' && (
-          <TouchableOpacity style={styles.saveButton} onPress={handleEditSubmit}>
-            <Text style={styles.saveText}>Save</Text>
-          </TouchableOpacity>
-        )}
-
-        {mode === 'delete' && (
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteText}>Delete</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  </View>
-</Modal>
-
-      {/* Staff List */}
       <FlatList
         data={staffData}
         keyExtractor={(item) => item.id}
         renderItem={renderStaffCard}
         contentContainerStyle={{ paddingBottom: 100 }}
-         ListEmptyComponent={
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 }}>
-      <Text style={{ fontSize: 16, color: '#6B7280' }}>No staff found.</Text>
-      <Text style={{ fontSize: 16, color: '#3B82F6', marginTop: 5 }}>Add staff</Text>
-    </View>
-  }
+        ListEmptyComponent={
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 }}>
+            <Text style={{ fontSize: 16, color: '#6B7280' }}>No staff found.</Text>
+          </View>
+        }
       />
     </View>
-
-    
   );
 };
 
@@ -558,18 +496,17 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#F0FDF4',
   },
-
-
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#111827',
-  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    paddingHorizontal: 10,
   },
   searchInput: {
     flex: 1,
@@ -580,6 +517,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#fff',
     marginRight: 8,
+    color: 'black',
   },
   filterButton: {
     padding: 10,
@@ -598,62 +536,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  // card: {
-  //   flexDirection: 'row',
-  //   alignItems: 'flex-start',
-  //   backgroundColor: '#fff',
-  //   padding: 12,
-  //   borderRadius: 12,
-  //   marginBottom: 12,
-  //   elevation: 2,
-  //   shadowColor: '#000',
-  //   shadowOpacity: 0.1,
-  //   shadowRadius: 4,
-  // },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    justifyContent: 'space-between',
-  },
-  staffName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  roleTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  
-  staffEmail: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  staffLogin: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  iconBtn: {
-    marginLeft: 8,
-  },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -667,12 +549,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  // avatar: {
-  //   width: 50,
-  //   height: 50,
-  //   borderRadius: 25,
-  //   marginRight: 12,
-  // },
   content: {
     flex: 1,
   },
@@ -722,8 +598,7 @@ const styles = StyleSheet.create({
   iconButton: {
     paddingHorizontal: 6,
   },
-
-overlay: {
+  overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
@@ -735,11 +610,15 @@ overlay: {
     padding: 20,
     borderRadius: 12,
   },
+  modalScrollContent: {
+    paddingBottom: 20,
+  },
   title: {
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 16,
     textAlign: 'center',
+    color: '#111827',
   },
   inputGroup: {
     marginBottom: 10,
@@ -761,7 +640,7 @@ overlay: {
     padding: 10,
     fontSize: 15,
     backgroundColor: '#f9fafb',
-    color:'black',
+    color: 'black',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -800,92 +679,96 @@ overlay: {
     fontWeight: '600',
   },
   bottomRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginTop: 40,
-},
-
-searchContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#f1f5f9',
-  borderRadius: 10,
-  paddingHorizontal: 10,
-},
-
-
-
-searchIcon: {
-  marginLeft: 0
-},
-
-
-dropdown: {
-  position: 'absolute',
-  top: 55,
-  right: 0,
-  backgroundColor: '#fff',
-  borderRadius: 8,
-  elevation: 5,
-  zIndex: 999,
-  width: 150,
-  paddingVertical: 8,
-},
-
-dropdownOption: {
-  paddingVertical: 8,
-  paddingHorizontal: 12,
-},
-dropdownText: {
-  fontSize: 14,
-  color: '#1E293B',
-},
-
-avatarContainer: {
-  width: 50,
-  height: 50,
-  borderRadius: 25,
-  backgroundColor: '#1e3a5f', // Light gray
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginRight: 12,
-},
-
-avatarImage: {
-  width: 50,
-  height: 50,
-  borderRadius: 25,
-},
-
-avatarText: {
-  color: '#f6f8fcff', // Dark text
-  fontSize: 20,
-  fontWeight: 'bold',
-},
-accessContainer: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  gap: 8,
-  marginTop: 4,
-},
-accessItem: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#eee',
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-  borderRadius: 16,
-  marginRight: 8,
-  marginBottom: 8,
-},
-accessText: {
-  marginRight: 6,
-  color:'black'
-},
-removeButton: {
-  color: 'red',
-  fontWeight: 'bold',
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 40,
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 55,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    elevation: 5,
+    zIndex: 999,
+    width: 150,
+    paddingVertical: 8,
+  },
+  dropdownOption: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#1E293B',
+  },
+  avatarContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#1e3a5f',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  avatarText: {
+    color: '#f6f8fcff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  accessContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  accessItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eee',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  accessText: {
+    marginRight: 6,
+    color: 'black',
+  },
+  removeButton: {
+    color: 'red',
+    fontWeight: 'bold',
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: '#f9fafb',
+    marginTop: 8,
+  },
+  dropdownButtonText: {
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  accessDropdown: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    elevation: 5,
+    zIndex: 999,
+    marginTop: 4,
+    width: '100%',
+  },
 });
-

@@ -48,11 +48,9 @@ const ReviewsScreen = () => {
       setLoading(true);
       try {
         const response = await AuthFetch(`users/getFeedbackByDoctorId/${doctorId}`, token);
-        console.log('API Response:', response);
 
         if (response.status === 'success' && response.data && response.data.doctor) {
           const doctorData = response.data.doctor;
-          console.log("Doctor Data:", doctorData);
           setOverallRating(doctorData.overallRating || 0);
 
           // Map the feedback array to reviews and fetch conversations for each
@@ -63,7 +61,6 @@ const ReviewsScreen = () => {
               let conversation = [];
               try {
                 const convResponse = await AuthFetch(`users/getFeedbackById/${feedback.feedbackId || feedback.id}`, token);
-                console.log('Conversation API Response:', convResponse);
                 
                 if (convResponse.status === 'success' && convResponse.feedback) {
                   conversation = convResponse.feedback.conversation || [];
@@ -87,11 +84,12 @@ const ReviewsScreen = () => {
           
           setReviews(formattedReviews);
         } else {
-          console.log('Unexpected API response structure:', response);
           Alert.alert('Error', JSON.stringify(response.message) || 'Failed to fetch reviews or invalid response');
         }
       } catch (error) {
+
         Alert.alert('Error', error?.message || 'Failed to fetch reviews');
+
       }
       setLoading(false);
     };
@@ -113,21 +111,17 @@ const ReviewsScreen = () => {
       message: replyText[feedbackId],
     };
 
-    console.log('Submitting payload:', payload);
-
     setSubmitting(prev => ({ ...prev, [feedbackId]: true }));
 
     try {
       const response = await AuthPost('users/submitDoctorReply', payload, token, {
         headers: { 'Content-Type': 'application/json' },
       });
-      console.log('Reply submission response:', response.message.message);
 
       if (response.status === 'success') {
         // Refresh the conversation for this specific review
         try {
           const convResponse = await AuthFetch(`users/getFeedbackById/${feedbackId}`, token);
-          console.log('Updated conversation:', convResponse);
           
           if (convResponse.status === 'success' && convResponse.feedback) {
             setReviews(prevReviews => 
@@ -147,7 +141,9 @@ const ReviewsScreen = () => {
             );
           }
         } catch (error) {
+
           Alert.alert('Error', error?.message || 'Failed to fetch updated conversation');
+
         }
         
         setReplyText((prev) => ({ ...prev, [feedbackId]: '' }));
@@ -156,8 +152,10 @@ const ReviewsScreen = () => {
         Alert.alert('Alert!', response.message.message || 'Failed to fetch updated conversation');
       }
     } catch (error) {
+
       if (error?.response) {
         Alert.alert('Error', error?.response?.message || 'Failed to fetch updated conversation');
+
       } else {
         Alert.alert('Error', error?.message || 'Failed to fetch updated conversation');
       }

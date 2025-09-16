@@ -182,7 +182,7 @@ const AddClinicForm = () => {
       }
     } catch (error) {
       Alert?.alert('Error', error?.message || 'Failed to fetch address details. Please try again.');
-     
+
     } finally {
       setIsFetchingLocation(false);
     }
@@ -236,7 +236,6 @@ const AddClinicForm = () => {
         fetchAddress(latitude, longitude);
       },
       (error) => {
-        console.error('Location Error:', error);
 
         let errorMessage = 'Unable to fetch current location.';
         if (error.code === error.PERMISSION_DENIED) {
@@ -319,7 +318,6 @@ const AddClinicForm = () => {
         fetchAddress(latitude, longitude);
       },
       (error) => {
-        console.error('Location Retry Error:', error);
         setIsFetchingLocation(false);
 
         if (locationRetryCount < 3) {
@@ -363,7 +361,6 @@ const AddClinicForm = () => {
         setSearchResults(data.predictions);
         setShowSearchResults(true);
       } else {
-        console.log('Autocomplete failed:', data.status);
         setSearchResults([]);
       }
     } catch (error) {
@@ -414,7 +411,6 @@ const AddClinicForm = () => {
         mapRef.current?.animateToRegion(newRegion, 500);
         fetchAddress(latitude, longitude);
       } else {
-        console.log('Place details failed:', data.status);
         Alert.alert('Error', 'Failed to fetch location details.');
       }
     } catch (error) {
@@ -550,7 +546,6 @@ const AddClinicForm = () => {
       Alert.alert('Error', error?.message || 'Failed to pick file. Please try again.');
     }
   };
-
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -579,6 +574,14 @@ const AddClinicForm = () => {
       newErrors.pincode = 'Enter a valid 6-digit pincode';
     }
 
+    // Add validation for header and signature
+    if (headerFile && !signatureFile) {
+      newErrors.signature = 'Signature is required when uploading a header image';
+    }
+    if (signatureFile && !headerFile) {
+      newErrors.header = 'Header image is required when uploading a signature';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -586,7 +589,13 @@ const AddClinicForm = () => {
   const handleSubmit = async () => {
     if (!validateForm()) {
       const firstError = Object.values(errors)[0];
-      Alert.alert('Validation Error', firstError);
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: firstError,
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
 
@@ -611,8 +620,10 @@ const AddClinicForm = () => {
       formData.append('latitude', form.latitude);
       formData.append('longitude', form.longitude);
 
-      if (headerFile) formData.append('file', headerFile as any);
-      if (signatureFile) formData.append('signature', signatureFile as any);
+      if (headerFile && signatureFile) {
+        formData.append('file', headerFile as any);
+        formData.append('signature', signatureFile as any);
+      }
 
       if (form.pharmacyName) formData.append('pharmacyName', form.pharmacyName);
       if (form.pharmacyRegNum) formData.append('pharmacyRegistrationNo', form.pharmacyRegNum);
@@ -629,7 +640,6 @@ const AddClinicForm = () => {
       if (labHeaderFile) formData.append('labHeader', labHeaderFile as any);
 
       const response = await UploadFiles('users/addAddressFromWeb', formData, token);
-      console.log('Add Clinic Response:', response);
 
       if (response.status === 'success') {
         Toast.show({
@@ -641,7 +651,13 @@ const AddClinicForm = () => {
         });
         navigation.navigate('Clinic' as never);
       } else {
-        Alert.alert('Error', response.message || 'Failed to add clinic.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: response.message || 'Failed to add clinic.',
+          position: 'top',
+          visibilityTime: 3000,
+        });
       }
     } catch (error) {
       Alert.alert('Error', error?.message || 'Failed to add clinic.');
@@ -649,7 +665,6 @@ const AddClinicForm = () => {
       setLoading(false);
     }
   };
-
   const renderFileUpload = (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader', label: string, preview: string | null) => (
     <View style={styles.inputGroup}>
       <Text style={styles.label}>{label}</Text>
@@ -832,8 +847,20 @@ const AddClinicForm = () => {
           placeholder="Enter 10-digit mobile number"
           keyboardType="phone-pad"
           value={form.mobile}
-          onChangeText={(text) => handleChange('mobile', text)}
-          maxLength={10}
+          onChangeText={(text) => {
+            const digitsOnly = text.replace(/\D/g, '');
+            if (digitsOnly.length === 1 && !/[6-9]/.test(digitsOnly[0])) {
+              Toast.show({
+                type: 'error',
+                text1: 'Invalid Mobile Number',
+                text2: 'Enter a valid mobile number',
+                position: 'top',
+                visibilityTime: 3000,
+              });
+              return;
+            }
+            handleChange('mobile', digitsOnly)
+          }} maxLength={10}
           placeholderTextColor="gray"
         />
         {errors.mobile && <Text style={styles.errorText}>{errors.mobile}</Text>}
@@ -887,29 +914,6 @@ const AddClinicForm = () => {
               placeholderTextColor="gray"
             />
             {errors.longitude && <Text style={styles.errorText}>{errors.longitude}</Text>}
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <View style={styles.column}>
-            <Text style={styles.label}>Start Time</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="09:00"
-              value={form.startTime}
-              onChangeText={(text) => handleChange('startTime', text)}
-              placeholderTextColor="gray"
-            />
-          </View>
-          <View style={styles.column}>
-            <Text style={styles.label}>End Time</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="17:00"
-              value={form.endTime}
-              onChangeText={(text) => handleChange('endTime', text)}
-              placeholderTextColor="gray"
-            />
           </View>
         </View>
 

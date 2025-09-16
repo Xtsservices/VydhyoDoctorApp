@@ -106,8 +106,6 @@ export default function Pharmacy() {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      console.log(response, "123")
-
       if (response.status === "success" || response.data?.status === "success") {
         setForm({ medName: "", dosage: "", quantity: "", price: "", cgst: "", gst: "" });
         setErrors({});
@@ -121,7 +119,6 @@ export default function Pharmacy() {
         // throw new Error(response.message || response.data?.message || "Failed to add medicine");
       }
     } catch (error: any) {
-      console.error("Error adding medicine:", error);
       if (error.response?.status === 409 && error.response?.data?.message?.message === "Medicine already exists") {
       // Alert.alert("Error", "Medicine already exists")
         Toast.show({ type: "error", text1: "Medicine already exists" });
@@ -181,7 +178,6 @@ export default function Pharmacy() {
         Toast.show({ type: "error", text1: "Some medicines already exist in inventory" });
       }
     } catch (error: any) {
-      console.error("Error uploading bulk data:", error);
       Toast.show({
         type: "error",
         text1: error.response?.data?.message || "Failed to upload medicines",
@@ -240,7 +236,6 @@ export default function Pharmacy() {
         month: revenueData.month || { revenue: 0, patients: 0 },
       });
     } catch (error: any) {
-      console.error("Error fetching revenue:", error);
       Toast.show({
         type: "error",
         text1: error.message || "Failed to fetch revenue",
@@ -274,7 +269,7 @@ export default function Pharmacy() {
           <Text style={styles.title}>Pharmacy</Text>
         </View>
         <TextInput
-          placeholder="Search by PatientId"
+          placeholder="Search by Patient Id"
           value={searchQuery}
           onChangeText={(t) => setSearchQuery(t.trim())}
           style={styles.search}
@@ -362,6 +357,7 @@ export default function Pharmacy() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter medicine name"
+                placeholderTextColor={'#bfbfbf'}
                 value={form.medName}
                 onChangeText={(val) => handleInputChange("medName", val)}
               />
