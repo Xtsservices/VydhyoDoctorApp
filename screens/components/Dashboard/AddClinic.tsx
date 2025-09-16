@@ -102,7 +102,14 @@ const AddClinicForm = () => {
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
-        return false;
+        Alert.alert(
+    'Location Permission Error',
+    err?.message
+      ? `Could not request location permission.\n\nDetails: ${err?.message}`
+      : 'Could not request location permission. Please try again or enable it from Settings.',
+    [{ text: 'OK' }]
+  );
+  return false;
       }
     }
     return true;
@@ -174,13 +181,8 @@ const AddClinicForm = () => {
         });
       }
     } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to fetch address details',
-        position: 'top',
-        visibilityTime: 4000,
-      });
+      Alert?.alert('Error', error?.message || 'Failed to fetch address details. Please try again.');
+
     } finally {
       setIsFetchingLocation(false);
     }
@@ -362,6 +364,7 @@ const AddClinicForm = () => {
         setSearchResults([]);
       }
     } catch (error) {
+      Alert.alert('Error', error?.message || 'Unable to fetch search results. Please try again.');
       setSearchResults([]);
     }
   };
@@ -411,7 +414,7 @@ const AddClinicForm = () => {
         Alert.alert('Error', 'Failed to fetch location details.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to fetch place details. Please try again.');
+      Alert.alert('Error', error?.message || 'Unable to fetch place details. Please try again.');
     } finally {
       setIsFetchingLocation(false);
     }
@@ -492,7 +495,7 @@ const AddClinicForm = () => {
                   }
                 }
               } catch (error) {
-                Alert.alert('Error', 'Camera access failed.');
+                Alert.alert('Error', error?.message || 'Camera access failed.');
               }
             },
           },
@@ -528,7 +531,7 @@ const AddClinicForm = () => {
                   }
                 }
               } catch (error) {
-                Alert.alert('Error', 'Gallery access failed.');
+                Alert.alert('Error', error?.message || 'Gallery access failed.');
               }
             },
           },
@@ -540,7 +543,7 @@ const AddClinicForm = () => {
         { cancelable: true }
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick file. Please try again.');
+      Alert.alert('Error', error?.message || 'Failed to pick file. Please try again.');
     }
   };
   const validateForm = () => {
@@ -657,13 +660,7 @@ const AddClinicForm = () => {
         });
       }
     } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to add clinic.',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to add clinic.');
     } finally {
       setLoading(false);
     }

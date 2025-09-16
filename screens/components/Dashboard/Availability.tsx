@@ -180,13 +180,8 @@ const AvailabilityScreen: React.FC = () => {
         throw new Error(response.data?.message || 'Failed to fetch clinics');
       }
     } catch (error: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to fetch clinic data',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+
+      Alert.alert('Error', error?.message || 'Failed to fetch clinic data. Please try again.');
     }
   };
 
@@ -242,6 +237,9 @@ const AvailabilityScreen: React.FC = () => {
         setUnAvailableSlots(unavailable);
       }
     } catch (err) {
+       const errorMessage = err?.message || 'Please Retry';
+       Alert.alert('Error', errorMessage);
+      
     }
   };
 
@@ -349,6 +347,8 @@ const generateTimeSlots = async () => {
           visibilityTime: 3000,
         });
       }
+
+  
       
       if (overlap && clinicname) {
         Alert.alert(overlap, `Clinic Name: ${clinicname}`);
@@ -362,6 +362,7 @@ const generateTimeSlots = async () => {
         position: 'top',
         visibilityTime: 3000,
       });
+
     }
   } catch (error: any) {
     const errorMessage = error?.message || 'Please Retry';
@@ -456,13 +457,7 @@ const generateTimeSlots = async () => {
         throw new Error(response.data?.message || 'Failed to update slots');
       }
     } catch (error: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.message || 'Failed to update unavailable slots',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to update unavailable slots. Please try again.');
     }
   };
 
@@ -515,13 +510,7 @@ const generateTimeSlots = async () => {
         });
       }
     } catch (error: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.message || 'Please Retry',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      Alert.alert('Error', error?.message || 'Failed to delete slots. Please try again.');
     } finally {
       setIsDeletingSlots(false); // Stop loading regardless of success/error
     }
