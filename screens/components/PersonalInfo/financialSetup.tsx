@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,10 +20,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
-import { AuthPost } from '../../auth/auth';
-
+import { AuthFetch, AuthPost } from '../../auth/auth';
+ 
 const { width, height } = Dimensions.get('window');
-
+ 
 const FinancialSetupScreen = () => {
   const [bank, setBank] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -32,11 +32,11 @@ const FinancialSetupScreen = () => {
   const [accountHolderName, setAccountHolderName] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
-
+ 
   const navigation = useNavigation<any>();
   const scrollViewRef = useRef<ScrollView>(null); // Ref for ScrollView to scroll to focused input
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({}); // Refs for input fields
-
+ 
   // Popular Indian banks with account number length requirements
   const banks = [
     { name: 'State Bank of India (SBI)', accountLength: 7 },
@@ -55,14 +55,14 @@ const FinancialSetupScreen = () => {
     { name: 'IndusInd Bank', accountLength: 13 },
     { name: 'Bank of India (BOI)', accountLength: 15 },
   ];
-
+ 
   const validateForm = () => {
     let tempErrors: { [key: string]: string } = {};
-
+ 
     if (!bank) {
       tempErrors.bank = 'Please select a bank';
     }
-
+ 
     if (!accountNumber) {
       tempErrors.accountNumber = 'Account number is required';
     } else {
@@ -72,25 +72,56 @@ const FinancialSetupScreen = () => {
         tempErrors.accountNumber = 'Account number must be between 7 to 18 digits';
       }
     }
-
+ 
     if (accountNumber !== reenterAccountNumber) {
       tempErrors.reenterAccountNumber = 'Account numbers do not match';
     }
-
+ 
     if (!ifscCode || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
       tempErrors.ifscCode = 'Invalid IFSC code';
     }
-
+ 
     if (!accountHolderName.trim()) {
       tempErrors.accountHolderName = 'Account holder name is required';
     } else if (!/^[a-zA-Z\s]+$/.test(accountHolderName)) {
       tempErrors.accountHolderName = 'Account holder name must contain only letters and spaces';
     }
-
+ 
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
-
+const [prefill, setPrefill] = useState(false);
+   const fetchUserData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch('users/getUser', token);
+      if (response?.data?.status === 'success') {
+        const userData = response.data.data;
+        if (userData?.bankDetails) {
+          setPrefill(true)
+          setBank(userData?.bankDetails?.bankName);
+        setAccountNumber(userData?.bankDetails?.accountNumber || '');
+        setReenterAccountNumber(userData?.bankDetails?.accountNumber || '');
+        setIfscCode(userData?.bankDetails?.ifscCode || '');
+        setAccountHolderName(userData?.bankDetails?.accountHolderName || '');
+        }
+       
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch user data.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    }
+  };
+ 
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+ 
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
@@ -107,7 +138,7 @@ const FinancialSetupScreen = () => {
           });
           return;
         }
-
+ 
         const body = {
           bankDetails: {
             accountNumber,
@@ -116,12 +147,12 @@ const FinancialSetupScreen = () => {
             accountHolderName,
           },
         };
-
+ 
         const response = await AuthPost('users/updateBankDetails', body, token);
         const status = (response as any).data?.status ?? response.status;
         const message =
           (response as any).data?.message ?? (response as any).message ?? 'Failed to update bank details';
-
+ 
         if (status === 'success') {
           Toast.show({
             type: 'success',
@@ -142,7 +173,6 @@ const FinancialSetupScreen = () => {
           });
         }
       } catch (error) {
-        console.error('Error updating bank details:', error);
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -155,13 +185,13 @@ const FinancialSetupScreen = () => {
       }
     }
   };
-
-  
-
+ 
+ 
+ 
   const handleBack = () => {
     navigation.navigate('ConsultationPreferences');
   };
-
+ 
   const handleSkip = async () => {
     try {
       setLoading(true);
@@ -175,7 +205,6 @@ const FinancialSetupScreen = () => {
       });
       navigation.navigate('KYCDetailsScreen');
     } catch (error) {
-      console.error('Error skipping financial setup:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -187,7 +216,7 @@ const FinancialSetupScreen = () => {
       setLoading(false);
     }
   };
-
+ 
   // Scroll to the focused input field
   const scrollToInput = (inputKey: string) => {
     if (inputRefs.current[inputKey]) {
@@ -200,7 +229,7 @@ const FinancialSetupScreen = () => {
       );
     }
   };
-
+ 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
@@ -210,7 +239,7 @@ const FinancialSetupScreen = () => {
             <Text style={styles.loaderText}>Processing...</Text>
           </View>
         )}
-
+ 
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -218,9 +247,9 @@ const FinancialSetupScreen = () => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Financial Setup</Text>
         </View>
-
+ 
         <ProgressBar currentStep={getCurrentStepIndex('FinancialSetupScreen')} totalSteps={TOTAL_STEPS} />
-
+ 
         {/* Form Content */}
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingContainer}
@@ -238,7 +267,7 @@ const FinancialSetupScreen = () => {
               <Icon name="bank" size={width * 0.08} color="#00203F" style={styles.icon} />
               <Text style={styles.title}>Add Bank Details</Text>
               <Text style={styles.subtitle}>Please enter your bank account details to proceed.</Text>
-
+ 
               <Text style={styles.label}>Select Bank</Text>
               <View style={[styles.input, errors.bank && styles.errorInput]}>
                 <Picker
@@ -258,7 +287,7 @@ const FinancialSetupScreen = () => {
                 </Picker>
               </View>
               {errors.bank && <Text style={styles.errorText}>{errors.bank}</Text>}
-
+ 
               <Text style={styles.label}>Account Number</Text>
               <TextInput
                 ref={(ref) => (inputRefs.current['accountNumber'] = ref)}
@@ -275,7 +304,7 @@ const FinancialSetupScreen = () => {
                 onFocus={() => scrollToInput('accountNumber')}
               />
               {errors.accountNumber && <Text style={styles.errorText}>{errors.accountNumber}</Text>}
-
+ 
               <Text style={styles.label}>Re-enter Account Number</Text>
               <TextInput
                 ref={(ref) => (inputRefs.current['reenterAccountNumber'] = ref)}
@@ -292,7 +321,7 @@ const FinancialSetupScreen = () => {
                 onFocus={() => scrollToInput('reenterAccountNumber')}
               />
               {errors.reenterAccountNumber && <Text style={styles.errorText}>{errors.reenterAccountNumber}</Text>}
-
+ 
               <Text style={styles.label}>IFSC Code</Text>
               <TextInput
                 ref={(ref) => (inputRefs.current['ifscCode'] = ref)}
@@ -309,7 +338,7 @@ const FinancialSetupScreen = () => {
                 onFocus={() => scrollToInput('ifscCode')}
               />
               {errors.ifscCode && <Text style={styles.errorText}>{errors.ifscCode}</Text>}
-
+ 
               <Text style={styles.label}>Account Holder Name</Text>
               <TextInput
                 ref={(ref) => (inputRefs.current['accountHolderName'] = ref)}
@@ -325,14 +354,17 @@ const FinancialSetupScreen = () => {
               />
               {errors.accountHolderName && <Text style={styles.errorText}>{errors.accountHolderName}</Text>}
             </View>
-
+ 
             <View style={styles.buttonsContainer}>
               <TouchableOpacity style={[styles.button, styles.skipButton]} onPress={handleSkip}>
                 <Text style={[styles.buttonText, styles.skipButtonText]}>Skip</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+              {prefill && (
+<TouchableOpacity style={styles.button} onPress={handleSubmit}>
                 <Text style={styles.buttonText}>Next</Text>
               </TouchableOpacity>
+              )}
+             
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -340,7 +372,7 @@ const FinancialSetupScreen = () => {
     </TouchableWithoutFeedback>
   );
 };
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -492,5 +524,6 @@ const styles = StyleSheet.create({
     marginTop: height * 0.02,
   },
 });
-
+ 
 export default FinancialSetupScreen;
+ 

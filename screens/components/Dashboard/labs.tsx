@@ -37,18 +37,15 @@ export default function LabsScreen() {
   const hasFetched = useRef(false);
 
   const fetchRevenueCount= async() =>{
-    console.log("revenue count")
     try {
       const token = await AsyncStorage.getItem('authToken');
       const res = await AuthFetch(
         `finance/getDoctorTodayAndThisMonthRevenue/lab?doctorId=${doctorId}`, token
       );
-      console.log(res, "revenue response")
       if (res?.data?.status === "success" && res?.data?.data) {
         setCardsData(res?.data?.data);
       }
     } catch (e: any) {
-        console.log(e, "errro")
       Toast.show({ type: "error", text1: "Failed to load revenue" });
     }
   }
@@ -72,7 +69,7 @@ export default function LabsScreen() {
           <Text style={styles.title}>Labs</Text>
         </View>
         <TextInput
-          placeholder="Search by PatientId"
+          placeholder="Search by Patient Id"
           value={searchValue}
           onChangeText={(t) => setSearchValue(t.trim())}
           style={styles.search}
@@ -88,7 +85,7 @@ export default function LabsScreen() {
             ₹ {cardsData?.today?.revenue || 0}
           </Text>
           <Text style={{ color: "#2563EB" }}>
-            Patient: {cardsData?.today?.patients || 0}
+            Patients: {cardsData?.today?.patients || 0}
           </Text>
         </View>
         <View style={[styles.card, { backgroundColor: "#DCFCE7" }]}>

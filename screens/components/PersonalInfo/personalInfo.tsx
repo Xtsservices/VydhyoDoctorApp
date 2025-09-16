@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
-   ActivityIndicator
+  ActivityIndicator
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -27,23 +27,23 @@ import { AuthFetch, AuthPut, UploadFiles } from '../../auth/auth';
 import axios from 'axios';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
-
+ 
 import { MultiSelect } from 'react-native-element-dropdown';
 import { useAsyncDebounce } from '../../utility/useAsyncDebounce';
-
+ 
 const languageOptions = [
   { label: 'Telugu', value: 'Telugu' },
   { label: 'Hindi', value: 'Hindi' },
   { label: 'English', value: 'English' },
   { label: 'Urdu', value: 'Urdu' },
 ];
-
+ 
 // Placeholder image for profile photo
 const PLACEHOLDER_IMAGE = require('../../assets/img.png'); // Replace with your asset path
-
+ 
 const { width, height } = Dimensions.get('window');
-
-
+ 
+ 
 const PersonalInfoScreen: React.FC = () => {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState<PersonalInfo>({
@@ -59,6 +59,7 @@ const PersonalInfoScreen: React.FC = () => {
     relationship: 'self',
     bloodGroup: '',
     maritalStatus: 'single',
+    yearsExperience: '',
   });
   const [newLanguage, setNewLanguage] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -73,17 +74,18 @@ const PersonalInfoScreen: React.FC = () => {
     appLanguage: '',
     relationship: '',
     maritalStatus: '',
+   
   });
   const navigation = useNavigation<any>();
-
+ 
   //calcuate minimum date(20 years ago)
   const getMinDate = () => {
     const today = new Date();
     const minDate = new Date(today.setFullYear(today.getFullYear() - 20));
     return minDate;
   };
-
-
+ 
+ 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
@@ -91,7 +93,7 @@ const PersonalInfoScreen: React.FC = () => {
       setErrors(prev => ({ ...prev, dateOfBirth: '' }));
     }
   };
-
+ 
   const handleAddLanguage = () => {
     if (
       newLanguage.trim() &&
@@ -105,7 +107,7 @@ const PersonalInfoScreen: React.FC = () => {
       setErrors(prev => ({ ...prev, spokenLanguages: '' }));
     }
   };
-
+ 
   const handleRemoveLanguage = (languageToRemove: string) => {
     setFormData(prev => ({
       ...prev,
@@ -120,15 +122,13 @@ const PersonalInfoScreen: React.FC = () => {
       }));
     }
   };
-
+ 
   const handleImagePick = () => {
     launchImageLibrary(
       { mediaType: 'photo' },
       (response: import('react-native-image-picker').ImagePickerResponse) => {
         if (response.didCancel) {
-          console.log('User cancelled image picker');
         } else if (response.errorCode) {
-          console.log('Image picker error: ', response.errorMessage);
         } else if (
           response.assets &&
           response.assets[0] &&
@@ -149,7 +149,7 @@ const PersonalInfoScreen: React.FC = () => {
       },
     );
   };
-
+ 
   const validateForm = () => {
     const newErrors = {
       firstName: '',
@@ -161,8 +161,12 @@ const PersonalInfoScreen: React.FC = () => {
       appLanguage: '',
       relationship: '',
       maritalStatus: '',
+      yearsExperience: '',
     };
-
+ 
+      if (!formData.yearsExperience || isNaN(Number(formData.yearsExperience))) {
+    newErrors.yearsExperience = 'Please enter a valid number for years of experience.';
+  }
     if (!formData.firstName.trim())
       newErrors.firstName = 'First Name is required';
     else if (formData.firstName.trim().length < 3)
@@ -178,7 +182,7 @@ const PersonalInfoScreen: React.FC = () => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Please enter a valid email address';
     if (!formData.gender) newErrors.gender = 'Gender is required';
-  if (!formData.dateOfBirth)
+    if (!formData.dateOfBirth)
       newErrors.dateOfBirth = 'Date of Birth is required';
     else {
       const minDate = getMinDate();
@@ -196,16 +200,15 @@ const PersonalInfoScreen: React.FC = () => {
     if (!formData.maritalStatus)
       newErrors.maritalStatus = 'Marital Status is required';
     setErrors(newErrors);
-
+ 
     return Object.values(newErrors).every(error => !error);
   };
-
+ 
   const handleNext = async () => {
-
-
+ 
+ 
     if (!validateForm()) {
-       setLoading(true);
-       console.log('Form data after validation:', formData);
+      setLoading(true);
       try {
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
@@ -216,10 +219,10 @@ const PersonalInfoScreen: React.FC = () => {
             position: 'top',
             visibilityTime: 3000,
           });
-            setLoading(false);
+          setLoading(false);
           return;
         }
-
+ 
         const body = {
           firstname: formData.firstName,
           lastname: formData.lastName,
@@ -232,12 +235,9 @@ const PersonalInfoScreen: React.FC = () => {
           maritalStatus: formData.maritalStatus,
           spokenLanguage: formData.spokenLanguages,
         };
-
-        console.log('Form data to be sent:', body);
-
+ 
         const response = await AuthPut('users/updateUser', body, token);
-
-        console.log('Response from updateUser:', response);
+ 
         if (response?.status === 'success') {
           Toast.show({
             type: 'success',
@@ -246,8 +246,7 @@ const PersonalInfoScreen: React.FC = () => {
             position: 'top',
             visibilityTime: 3000,
           });
-         setLoading(false);
-          console.log('Form data sent successfully:', body);
+          setLoading(false);
           await AsyncStorage.setItem('currentStep', 'Specialization');
           navigation.navigate('Specialization');
         } else {
@@ -261,11 +260,9 @@ const PersonalInfoScreen: React.FC = () => {
             position: 'top',
             visibilityTime: 3000,
           });
-          console.log('Error response from updateUser:', response);
-           setLoading(false);
+          setLoading(false);
         }
-        } catch (error) {
-        console.error('Error updating profile:', error);
+      } catch (error) {
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -273,17 +270,17 @@ const PersonalInfoScreen: React.FC = () => {
           position: 'top',
           visibilityTime: 3000,
         });
-         setLoading(false);
+        setLoading(false);
       }
     }
   };
-
+ 
   // const debouncedHandleNext = useAsyncDebounce(handleNext, 2000);
-
+ 
   const handleBack = () => {
     navigation.goBack();
   };
-
+ 
   const handleLanguageChange = (selectedLanguages: string[]) => {
     setFormData(prev => ({
       ...prev,
@@ -296,400 +293,228 @@ const PersonalInfoScreen: React.FC = () => {
   };
   const fetchUserData = async () => {
  
-      setLoading(true);
-
-      try {
-        // Retrieve token from AsyncStorage
-        const token = await AsyncStorage.getItem('authToken');
-        if (!token) {
-          throw new Error('Authentication token not found');
-        }
-
-
-        AsyncStorage.setItem('stepNo', '7');
-  const response = await AuthFetch('users/getUser', token);
-        // Make API call
-        
-       
-        // Check if response status is success
-        if (response.data.status !== 'success') {
-          throw new Error(response.data.message || 'Failed to fetch user data');
-        }
-        const userData = response.data.data;
-console.log(userData, "userDetails")
-
-        // Format phone number to match +XX XXX XXX XXXX
-        setFormData({
-          firstName:userData.firstname || '',
-          lastName: userData.lastname || '',
-          medicalRegNumber: userData.medicalRegistrationNumber || '',
-          email: userData.email || '',
-          gender: userData.gender || '',
-          dateOfBirth: userData.dateOfBirth || '',
-          spokenLanguages: userData?.spokenLanguage || [],
-          
-          profilePhoto: userData?.profilePhoto || PLACEHOLDER_IMAGE,
-          appLanguage: userData?.appLanguage || 'en',
-          relationship: userData?.relationship || 'self',
-          bloodGroup: userData?.bloodGroup || '',
-          maritalStatus: userData?.maritalStatus || 'single',
-
-        });
-      } catch (error: any) {
-        // setLoading(false);
-
-        console.error('Error fetching user data:', error.message);
-      }finally {
-        setLoading(false); // Stop loading regardless of success or failure
+    setLoading(true);
+ 
+    try {
+      // Retrieve token from AsyncStorage
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('Authentication token not found');
       }
-    
-
+ 
+ 
+      AsyncStorage.setItem('stepNo', '7');
+      const response = await AuthFetch('users/getUser', token);
+      // Make API call
+ 
+ 
+      // Check if response status is success
+      if (response?.data?.status !== 'success') {
+        throw new Error(response?.data?.message || 'Failed to fetch user data');
+      }
+      const userData = response?.data?.data;
+ 
+      setFormData({
+        firstName: userData?.firstname || '',
+        lastName: userData?.lastname || '',
+        medicalRegNumber: userData?.medicalRegistrationNumber || '',
+        email: userData?.email || '',
+        gender: userData?.gender || '',
+        dateOfBirth: userData?.dateOfBirth || '',
+        spokenLanguages: userData?.spokenLanguage || [],
+ 
+        profilePhoto: userData?.profilePhoto || PLACEHOLDER_IMAGE,
+        appLanguage: userData?.appLanguage || 'en',
+        relationship: userData?.relationship || 'self',
+        bloodGroup: userData?.bloodGroup || '',
+        maritalStatus: userData?.maritalStatus || 'single',
+ 
+      });
+    } catch (error: any) {
+      // setLoading(false);
+ 
+    } finally {
+      setLoading(false); // Stop loading regardless of success or failure
+    }
+ 
+ 
   }
-
+ 
   useEffect(() => {
     fetchUserData();
-   }, []);
-
-   console.log(formData)
-
+  }, []);
+ 
   return (
     <ScrollView>
-    <View style={styles.container}>
-
-      {loading && (
-        <View style={styles.loaderOverlay}>
-          <ActivityIndicator size="large" color="#00203F" />
-          <Text style={styles.loaderText}>Processing...</Text>
-        </View>
-      )}
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Icon name="arrow-left" size={width * 0.06} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Personal Info</Text>
-      </View>
-
-      <ProgressBar currentStep={getCurrentStepIndex('PersonalInfo')} totalSteps={TOTAL_STEPS} />
-
-      {/* Form Content */}
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-<KeyboardAvoidingView
-          style={{ flex: 1 }}
-          // behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          // keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-        >
-           <ScrollView style={styles.formContainer}>
-        {/* <View style={styles.photoContainer}>
-          <TouchableOpacity onPress={handleImagePick}>
-            <View style={styles.profilePhotoWrapper}>
-              <Image source={formData.profilePhoto} style={styles.profilePhoto} />
-              <Icon
-                name="camera"
-                size={20}
-                color="#00203F"
-                style={styles.cameraIcon}
-              />
-            </View>
-            <Text style={styles.changePhotoText}>Tap to change photo</Text>
+      <View style={styles.container}>
+ 
+        {loading && (
+          <View style={styles.loaderOverlay}>
+            <ActivityIndicator size="large" color="#00203F" />
+            <Text style={styles.loaderText}>Processing...</Text>
+          </View>
+        )}
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Icon name="arrow-left" size={width * 0.06} color="#fff" />
           </TouchableOpacity>
-        </View> */}
-
-        <Text style={styles.label}>First Name</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.firstName}
-          onChangeText={text => {
-            setFormData(prev => ({ ...prev, firstName: text }));
-            setErrors(prev => ({ ...prev, firstName: '' }));
-          }}
-          placeholder="Enter first name"
-          placeholderTextColor="#999"
-        />
-        {errors.firstName ? (
-          <Text style={styles.errorText}>{errors.firstName}</Text>
-        ) : null}
-
-        <Text style={styles.label}>Last Name</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.lastName}
-          onChangeText={text => {
-            setFormData(prev => ({ ...prev, lastName: text }));
-            setErrors(prev => ({ ...prev, lastName: '' }));
-          }}
-          placeholder="Enter last name"
-          placeholderTextColor="#999"
-        />
-        {errors.lastName ? (
-          <Text style={styles.errorText}>{errors.lastName}</Text>
-        ) : null}
-
-        <Text style={styles.label}>Medical Registration Number</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.medicalRegNumber}
-          onChangeText={text => {
-            setFormData(prev => ({ ...prev, medicalRegNumber: text }));
-            setErrors(prev => ({ ...prev, medicalRegNumber: '' }));
-          }}
-          placeholder="Enter registration number"
-          placeholderTextColor="#999"
-          keyboardType="numeric"
-          maxLength={7}
-        />
-        {errors.medicalRegNumber ? (
-          <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
-        ) : null}
-
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.email}
-          onChangeText={text => {
-            setFormData(prev => ({ ...prev, email: text }));
-            setErrors(prev => ({ ...prev, email: '' }));
-          }}
-          placeholder="Enter email"
-          placeholderTextColor="#999"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        {errors.email ? (
-          <Text style={styles.errorText}>{errors.email}</Text>
-        ) : null}
-
-        <Text style={styles.label}>Gender</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.gender}
-            onValueChange={itemValue => {
-              setFormData(prev => ({ ...prev, gender: itemValue as string }));
-              setErrors(prev => ({ ...prev, gender: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-          >
-            <Picker.Item label="Select gender" value="" />
-            <Picker.Item label="Male" value="male" />
-            <Picker.Item label="Female" value="female" />
-            <Picker.Item label="Other" value="other" />
-          </Picker>
+          <Text style={styles.headerTitle}>Personal Info</Text>
         </View>
-        {errors.gender ? (
-          <Text style={styles.errorText}>{errors.gender}</Text>
-        ) : null}
-
-        {/* <Text style={styles.label}>Date of Birth</Text>
-        <TouchableOpacity
-          onPress={() => setShowDatePicker(true)}
-          style={styles.input}
-        >
-          <Text style={styles.dateText}>
-            {formData.dateOfBirth
-              ? formData.dateOfBirth.toLocaleDateString('en-US', {
-                  month: '2-digit',
-                  day: '2-digit',
-                  year: 'numeric',
-                })
-              : 'mm/dd/yyyy'}
-          </Text>
-          <Icon
-            name="calendar"
-            size={20}
-            color="#00203F"
-            style={styles.calendarIcon}
-          />
+ 
+        <ProgressBar currentStep={getCurrentStepIndex('PersonalInfo')} totalSteps={TOTAL_STEPS} />
+ 
+        {/* Form Content */}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+          >
+            <ScrollView style={styles.formContainer}>
+ 
+              <Text style={styles.label}>First Name*</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.firstName}
+                onChangeText={text => {
+                  setFormData(prev => ({ ...prev, firstName: text }));
+                  setErrors(prev => ({ ...prev, firstName: '' }));
+                }}
+                placeholder="Enter first name"
+                placeholderTextColor="#999"
+              />
+              {errors.firstName ? (
+                <Text style={styles.errorText}>{errors.firstName}</Text>
+              ) : null}
+ 
+              <Text style={styles.label}>Last Name*</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.lastName}
+                onChangeText={text => {
+                  setFormData(prev => ({ ...prev, lastName: text }));
+                  setErrors(prev => ({ ...prev, lastName: '' }));
+                }}
+                placeholder="Enter last name"
+                placeholderTextColor="#999"
+              />
+              {errors.lastName ? (
+                <Text style={styles.errorText}>{errors.lastName}</Text>
+              ) : null}
+ 
+              <Text style={styles.label}>Medical Registration Number*</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.medicalRegNumber}
+                onChangeText={text => {
+                  setFormData(prev => ({ ...prev, medicalRegNumber: text }));
+                  setErrors(prev => ({ ...prev, medicalRegNumber: '' }));
+                }}
+                placeholder="Enter registration number"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                maxLength={7}
+              />
+              {errors.medicalRegNumber ? (
+                <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
+              ) : null}
+ 
+              <Text style={styles.label}>Email*</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.email}
+                onChangeText={text => {
+                  setFormData(prev => ({ ...prev, email: text }));
+                  setErrors(prev => ({ ...prev, email: '' }));
+                }}
+                placeholder="Enter email"
+                placeholderTextColor="#999"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              {errors.email ? (
+                <Text style={styles.errorText}>{errors.email}</Text>
+              ) : null}
+ 
+              <Text style={styles.label}>Gender*</Text>
+              <View style={styles.input}>
+                <Picker
+                  selectedValue={formData.gender}
+                  onValueChange={itemValue => {
+                    setFormData(prev => ({ ...prev, gender: itemValue as string }));
+                    setErrors(prev => ({ ...prev, gender: '' }));
+                  }}
+                  style={styles.picker}
+                  dropdownIconColor="#333"
+                >
+                  <Picker.Item label="Select gender" value="" />
+                  <Picker.Item label="Male" value="male" />
+                  <Picker.Item label="Female" value="female" />
+                  <Picker.Item label="Other" value="other" />
+                </Picker>
+              </View>
+              {errors.gender ? (
+                <Text style={styles.errorText}>{errors.gender}</Text>
+              ) : null}
+ 
+ 
+              <Text style={styles.label}>Languages Spoken*</Text>
+ 
+              <MultiSelect
+                style={styles.input}
+                data={languageOptions}
+                labelField="label"
+                valueField="value"
+                placeholder="Select languages"
+                value={formData.spokenLanguages}
+                onChange={handleLanguageChange}
+                selectedStyle={styles.selectedStyle}
+                selectedTextStyle={styles.selectedTextStyle}
+                containerStyle={styles.multiSelectContainer}
+                placeholderStyle={styles.placeholderStyle}
+                itemTextStyle={styles.itemTextStyle}
+                activeColor="#E0F2F1"
+                renderSelectedItem={(item, unSelect) => (
+                  <View style={styles.selectedItemContainer}>
+                    <Text style={styles.selectedItemText}>{item.label}</Text>
+                    <TouchableOpacity onPress={() => unSelect && unSelect(item)} accessibilityLabel={`Remove ${item.label}`}>
+                      <Icon name="times" size={16} color="#D32F2F" style={styles.removeIcon} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                renderItem={(item, selected) => (
+                  <View style={styles.dropdownItemContainer}>
+                    <Text style={styles.dropdownItemText}>{item.label}</Text>
+                    {selected && <Icon name="check" size={16} color="#00796B" style={styles.dropdownTickIcon} />}
+                  </View>
+                )}
+              />
+              {errors.spokenLanguages ? (
+                <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
+              ) : null}
+ 
+              {/* Spacer to ensure content is not hidden by the Next button */}
+              <View style={styles.spacer} />
+            </ScrollView>
+ 
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+ 
+ 
+ 
+        {/* Next Button */}
+        <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+          <Text style={styles.nextText}>Next</Text>
         </TouchableOpacity>
-        {errors.dateOfBirth ? (
-          <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
-        ) : null}
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={formData.dateOfBirth || new Date()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-            onChange={handleDateChange}
-            minimumDate={new Date(1900, 0, 1)}
-            maximumDate={new Date()}
-          />
-        )} */}
-
-        {/* <Text style={styles.label}>App Language</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.appLanguage}
-            onValueChange={itemValue => {
-              setFormData(prev => ({
-                ...prev,
-                appLanguage: itemValue as string,
-              }));
-              setErrors(prev => ({ ...prev, appLanguage: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-            enabled={false}
-          >
-            <Picker.Item label="English" value="en" />
-          </Picker>
-        </View>
-        {errors.appLanguage ? (
-          <Text style={styles.errorText}>{errors.appLanguage}</Text>
-        ) : null} */}
-
-        {/* <Text style={styles.label}>Relationship</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.relationship}
-            onValueChange={itemValue => {
-              setFormData(prev => ({
-                ...prev,
-                relationship: itemValue as string,
-              }));
-              setErrors(prev => ({ ...prev, relationship: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-          >
-            <Picker.Item label="Select relationship" value="" />
-            <Picker.Item label="Self" value="self" />
-            <Picker.Item label="Other" value="other" />
-          </Picker>
-        </View>
-        {errors.relationship ? (
-          <Text style={styles.errorText}>{errors.relationship}</Text>
-        ) : null} */}
-
-        {/* <Text style={styles.label}>Blood Group</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.bloodGroup}
-            onValueChange={itemValue => {
-              setFormData(prev => ({ ...prev, bloodGroup: itemValue as string }));
-              setErrors(prev => ({ ...prev, bloodGroup: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-          >
-            <Picker.Item label="Select blood group" value="" />
-            <Picker.Item label="O+" value="O+" />
-            <Picker.Item label="O-" value="O-" />
-            <Picker.Item label="A+" value="A+" />
-            <Picker.Item label="A-" value="A-" />
-            <Picker.Item label="B+" value="B+" />
-            <Picker.Item label="B-" value="B-" />
-            <Picker.Item label="AB+" value="AB+" />
-            <Picker.Item label="AB-" value="AB-" />
-          </Picker>
-        </View>
-        {errors.bloodGroup ? (
-          <Text style={styles.errorText}>{errors.bloodGroup}</Text>
-        ) : null} */}
-
-        {/* <Text style={styles.label}>Marital Status</Text>
-        <View style={styles.input}>
-          <Picker
-            selectedValue={formData.maritalStatus}
-            onValueChange={itemValue => {
-              setFormData(prev => ({
-                ...prev,
-                maritalStatus: itemValue as string,
-              }));
-              setErrors(prev => ({ ...prev, maritalStatus: '' }));
-            }}
-            style={styles.picker}
-            dropdownIconColor="#333"
-          >
-            <Picker.Item label="Select marital status" value="" />
-            <Picker.Item label="Single" value="single" />
-            <Picker.Item label="Married" value="married" />
-            <Picker.Item label="Divorced" value="divorced" />
-            <Picker.Item label="Widowed" value="widowed" />
-          </Picker>
-        </View>
-        {errors.maritalStatus ? (
-          <Text style={styles.errorText}>{errors.maritalStatus}</Text>
-        ) : null} */}
-
-        <Text style={styles.label}>Languages Spoken</Text>
-        {/* <View style={styles.languagesContainer}>
-          {formData.spokenLanguages.map((lang, index) => (
-            <View key={index} style={styles.languageChip}>
-              <Text style={styles.languageText}>{lang}</Text>
-              <TouchableOpacity
-                onPress={() => handleRemoveLanguage(lang)}
-                style={styles.removeButton}
-              >
-                <Text style={styles.removeText}>x</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-        <TextInput
-          style={[styles.input, styles.addLanguageInput]}
-          value={newLanguage}
-          onChangeText={setNewLanguage}
-          onSubmitEditing={handleAddLanguage}
-          placeholder="Add a language..."
-          placeholderTextColor="#999"
-        /> */}
-
-        <MultiSelect
-          style={styles.input}
-          data={languageOptions}
-          labelField="label"
-          valueField="value"
-          placeholder="Select languages"
-          value={formData.spokenLanguages}
-          onChange={handleLanguageChange}
-          selectedStyle={styles.selectedStyle}
-          selectedTextStyle={styles.selectedTextStyle}
-          containerStyle={styles.multiSelectContainer}
-          placeholderStyle={styles.placeholderStyle}
-          itemTextStyle={styles.itemTextStyle}
-          activeColor="#E0F2F1"
-          renderSelectedItem={(item, unSelect) => (
-            <View style={styles.selectedItemContainer}>
-              <Text style={styles.selectedItemText}>{item.label}</Text>
-              <TouchableOpacity onPress={() => unSelect && unSelect(item)} accessibilityLabel={`Remove ${item.label}`}>
-                <Icon name="times" size={16} color="#D32F2F" style={styles.removeIcon} />
-              </TouchableOpacity>
-            </View>
-          )}
-          renderItem={(item, selected) => (
-            <View style={styles.dropdownItemContainer}>
-              <Text style={styles.dropdownItemText}>{item.label}</Text>
-              {selected && <Icon name="check" size={16} color="#00796B" style={styles.dropdownTickIcon} />}
-            </View>
-          )}
-        />
-        {errors.spokenLanguages ? (
-          <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
-        ) : null}
-
-        {/* Spacer to ensure content is not hidden by the Next button */}
-        <View style={styles.spacer} />
-      </ScrollView>
-
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-       
-     
-
-      {/* Next Button */}
-      <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-        <Text style={styles.nextText}>Next</Text>
-      </TouchableOpacity>
-    </View>
+      </View>
     </ScrollView>
   );
 };
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#DCFCE7',
+    height: height,
   },
   header: {
     flexDirection: 'row',
@@ -716,8 +541,8 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
-    paddingHorizontal: width * 0.05,
-    paddingVertical: height * 0.03,
+    paddingHorizontal: width * 0.04,
+    paddingVertical: height * 0.02,
   },
   photoContainer: {
     alignItems: 'center',
@@ -753,11 +578,11 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   label: {
-    fontSize: width * 0.04,
+    fontSize: width * 0.035,
     fontWeight: '500',
     color: '#333',
-    marginBottom: height * 0.01,
-    marginTop: height * 0.015,
+    marginBottom: height * 0.005,
+    marginTop: height * 0.01,    
   },
   input: {
     backgroundColor: '#fff',
@@ -777,7 +602,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   picker: {
-    height: height * 0.06,
+    height: height * 0.0,
     color: '#333',
     flex: 1,
   },
@@ -891,7 +716,7 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.005,
     marginRight: width * 0.02,
     marginBottom: height * 0.01,
-    marginTop:5,
+    marginTop: 5,
   },
   selectedItemText: {
     color: '#00203F',
@@ -919,5 +744,5 @@ const styles = StyleSheet.create({
     marginLeft: width * 0.02,
   },
 });
-
+ 
 export default PersonalInfoScreen;

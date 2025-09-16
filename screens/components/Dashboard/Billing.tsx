@@ -168,7 +168,20 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
     const appointments = Array.isArray(patient.appointments) ? patient.appointments : [];
     const tests = Array.isArray(patient.tests) ? patient.tests : [];
     const medicines = Array.isArray(patient.medicines) ? patient.medicines : [];
+    const formatTime12Hour = (time24: string) => {
+      if (!time24) return "N/A";
 
+      try {
+        const [hours, minutes] = time24.split(':');
+        const hourNum = parseInt(hours, 10);
+        const period = hourNum >= 12 ? 'PM' : 'AM';
+        const hour12 = hourNum % 12 || 12;
+
+        return `${hour12}:${minutes || '00'} ${period}`;
+      } catch (error) {
+        return time24;
+      }
+    };
     const appointmentDetails: TransformedAppointment[] = appointments.map((appointment, idx) => {
       const addr = appointment.addressId
         ? (user?.addresses || []).find((a: any) => a.addressId === appointment.addressId)
@@ -195,9 +208,9 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
             year: "numeric",
             month: "short",
             day: "numeric",
-          })
+          }).replace(/(\w+) (\d+), (\d+)/, "$2-$1-$3")
           : "N/A",
-        appointmentTime: appointment.appointmentTime || "N/A",
+        appointmentTime: formatTime12Hour(appointment.appointmentTime) || "N/A",
         status: "Completed",
         clinicHeaderUrl: addr?.headerImage || "N/A",
       };
@@ -225,13 +238,18 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
       bloodgroup: patient.bloodgroup || "Not Specified",
       prescriptionId: patient.prescriptionId,
       prescriptionCreatedAt: patient.prescriptionCreatedAt
-        ? new Date(patient.prescriptionCreatedAt).toLocaleString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
+        ? (() => {
+          const date = new Date(patient.prescriptionCreatedAt);
+          const day = date.getDate();
+          const month = date.toLocaleString("en-US", { month: "short" });
+          const year = date.getFullYear();
+          const hours = date.getHours();
+          const minutes = date.getMinutes();
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          const formattedHours = hours % 12 || 12;
+          const formattedMinutes = minutes.toString().padStart(2, '0');
+          return `${day}-${month}-${year} ${formattedHours}:${formattedMinutes} ${ampm}`;
+        })()
         : "N/A",
       appointmentDetails,
       tests: tests.map((test, idx) => ({
@@ -438,74 +456,73 @@ const Billing: React.FC = () => {
     fetchPatients(page, pagination.pageSize, debouncedSearch);
   };
 
-const handleViewClick = async (patientKeyId: number) => {
-  const isCurrentlyExpanded = viewModePatientId === patientKeyId;
-  setViewModePatientId(isCurrentlyExpanded ? null : patientKeyId);
+  const handleViewClick = async (patientKeyId: number) => {
+    const isCurrentlyExpanded = viewModePatientId === patientKeyId;
+    setViewModePatientId(isCurrentlyExpanded ? null : patientKeyId);
 
-  // Reset expanded sections when collapsing
-  if (isCurrentlyExpanded) {
-    setExpandedSections((prev) => {
-      const newState = { ...prev };
-      delete newState[`${patientKeyId}-pharmacy`];
-      delete newState[`${patientKeyId}-labs`];
-      delete newState[`${patientKeyId}-appointments`];
-      return newState;
-    });
-    return;
-  }
+    // Reset expanded sections when collapsing
+    if (isCurrentlyExpanded) {
+      setExpandedSections((prev) => {
+        const newState = { ...prev };
+        delete newState[`${patientKeyId}-pharmacy`];
+        delete newState[`${patientKeyId}-labs`];
+        delete newState[`${patientKeyId}-appointments`];
+        return newState;
+      });
+      return;
+    }
 
-  // Fetch data for the expanded view
-  const patient = transformedPatients.find((p) => p.id === patientKeyId);
-  if (!patient) {
-    Toast.show({ type: "error", text1: "Patient not found." });
-    return;
-  }
+    // Fetch data for the expanded view
+    const patient = transformedPatients.find((p) => p.id === patientKeyId);
+    if (!patient) {
+      Toast.show({ type: "error", text1: "Patient not found." });
+      return;
+    }
 
-  setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: true }));
-  try {
-    const prescriptionId = patient.prescriptionId;
-    const token = await AsyncStorage.getItem("authToken");
+    setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: true }));
+    try {
+      const prescriptionId = patient.prescriptionId;
+      const token = await AsyncStorage.getItem("authToken");
 
-    const res = await AuthFetch(
-      `receptionist/fetchDoctorPatientDetails/${doctorId}/${patient.patientId}/${prescriptionId}`,
-      token
-    );
-
-    const ok = res?.status === "success" || res?.data?.status === "success";
-    const arr = res?.data?.data || [];
-    if (ok && Array.isArray(arr) && arr.length > 0) {
-      const detailed = arr[0] as RawPatient;
-      // Log the fetched data for debugging
-      console.log("Fetched patient details:", JSON.stringify(detailed, null, 2));
-
-      // Update patientsRaw with the fetched data
-      setPatientsRaw((prev) =>
-        prev.map((p) => (p.patientId === patient.patientId ? { ...p, ...detailed } : p))
+      const res = await AuthFetch(
+        `receptionist/fetchDoctorPatientDetails/${doctorId}/${patient.patientId}/${prescriptionId}`,
+        token
       );
 
-      // Explicitly set expandedSections for all sections
+      const ok = res?.status === "success" || res?.data?.status === "success";
+      const arr = res?.data?.data || [];
+      if (ok && Array.isArray(arr) && arr.length > 0) {
+        const detailed = arr[0] as RawPatient;
+        // Log the fetched data for debugging
+
+        // Update patientsRaw with the fetched data
+        setPatientsRaw((prev) =>
+          prev.map((p) => (p.patientId === patient.patientId ? { ...p, ...detailed } : p))
+        );
+
+        // Explicitly set expandedSections for all sections
+        setExpandedSections((prev) => ({
+          ...prev,
+          [`${patientKeyId}-pharmacy`]: detailed.medicines && detailed.medicines.length > 0,
+          [`${patientKeyId}-labs`]: detailed.tests && detailed.tests.length > 0,
+          [`${patientKeyId}-appointments`]: detailed.appointments && detailed.appointments.length > 0,
+        }));
+      } else {
+        throw new Error("No detailed patient data found.");
+      }
+    } catch (e: any) {
+      Toast.show({ type: "error", text1: e?.message || "Failed to load details." });
+      // Set expanded sections even on error, based on existing data
       setExpandedSections((prev) => ({
         ...prev,
-        [`${patientKeyId}-pharmacy`]: detailed.medicines && detailed.medicines.length > 0,
-        [`${patientKeyId}-labs`]: detailed.tests && detailed.tests.length > 0,
-        [`${patientKeyId}-appointments`]: detailed.appointments && detailed.appointments.length > 0,
+        [`${patientKeyId}-pharmacy`]: patient.medicines.length > 0,
+        [`${patientKeyId}-labs`]: patient.tests.length > 0,
+        [`${patientKeyId}-appointments`]: patient.appointmentDetails.length > 0,
       }));
-    } else {
-      throw new Error("No detailed patient data found.");
+    } finally {
+      setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: false }));
     }
-  } catch (e: any) {
-    Toast.show({ type: "error", text1: e?.message || "Failed to load details." });
-    // Set expanded sections even on error, based on existing data
-    setExpandedSections((prev) => ({
-      ...prev,
-      [`${patientKeyId}-pharmacy`]: patient.medicines.length > 0,
-      [`${patientKeyId}-labs`]: patient.tests.length > 0,
-      [`${patientKeyId}-appointments`]: patient.appointmentDetails.length > 0,
-    }));
-  } finally {
-    setLoadingPatients((prev) => ({ ...prev, [patientKeyId]: false }));
-  }
-};
+  };
 
   const handleSectionExpand = (patientKeyId: number, section: "pharmacy" | "labs" | "appointments") => {
     const key = `${patientKeyId}-${section}`;
@@ -1366,6 +1383,7 @@ const handleViewClick = async (patientKeyId: number) => {
         <View style={styles.searchInner}>
           <TextInput
             placeholder="Search patient by name or ID"
+            placeholderTextColor={"#9ca3af"}
             value={searchTerm}
             onChangeText={setSearchTerm}
             style={styles.searchInput}
@@ -1382,6 +1400,18 @@ const handleViewClick = async (patientKeyId: number) => {
         renderItem={renderPatient}
         contentContainerStyle={{ paddingBottom: 24 }}
         ListFooterComponent={footer}
+        ListEmptyComponent={
+          !loading && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No patients found</Text>
+              {debouncedSearch && (
+                <Text style={styles.emptyStateSubtext}>
+                  No results for "{debouncedSearch}"
+                </Text>
+              )}
+            </View>
+          )
+        }
       />
 
       {/* Missing details modal */}
@@ -1493,7 +1523,22 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 2,
   },
-
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: "#6b7280",
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: "#9ca3af",
+    textAlign: "center",
+  },
   smallButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,

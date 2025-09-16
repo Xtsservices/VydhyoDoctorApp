@@ -110,7 +110,6 @@ const PatientDetails = () => {
         }));
       }
     } catch (error) {
-      console.error("Error fetching prescription:", error);
     }
   };
 
@@ -144,7 +143,6 @@ const PatientDetails = () => {
         setAllClinics(allClinics);
       }
     } catch (error) {
-      console.error("Error fetching doctor data:", error);
     } 
   };
 
@@ -169,10 +167,8 @@ const PatientDetails = () => {
           }));
         }
       } else {
-        console.warn('No auth token found');
       }
     } catch (e) {
-      console.error('Error fetching profile:', e);
     }
   };
 

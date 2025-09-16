@@ -94,12 +94,11 @@ const ClinicManagementScreen = () => {
   const [labHeaderFile, setLabHeaderFile] = useState<any>(null);
   const [labHeaderPreview, setLabHeaderPreview] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-    const userId = useSelector((state: any) => state.currentUserId);
-    const currentuserDetails =  useSelector((state: any) => state.currentUser);
-    const isPhysiotherapist = currentuserDetails?.specialization?.name === "Physiotherapist";
-    const doctorId = currentuserDetails.role==="doctor"? currentuserDetails.userId : currentuserDetails.createdBy
-    console.log(currentuserDetails, "currentuserDetails")// Make sure your Redux state has currentUser with firstname and lastname
-    const [form, setForm] = useState({
+  const userId = useSelector((state: any) => state.currentUserId);
+  const currentuserDetails = useSelector((state: any) => state.currentUser);
+  const isPhysiotherapist = currentuserDetails?.specialization?.name === "Physiotherapist";
+  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy
+  const [form, setForm] = useState({
     id: '',
     name: '',
     type: 'General',
@@ -127,7 +126,6 @@ const ClinicManagementScreen = () => {
     labPAN: '',
     labAddress: '',
   });
-  console.log("clincccccc",clinics)
 
   type FormKeys = keyof typeof form;
 
@@ -218,7 +216,6 @@ const ClinicManagementScreen = () => {
         setClinic(formattedClinics);
       }
     } catch (error) {
-      console.error('Error fetching appointments:', error);
     } finally {
       setInitialLoading(false);
     }
@@ -276,13 +273,13 @@ const ClinicManagementScreen = () => {
   };
 
   const formatTimeTo12Hour = (time24: string): string => {
-  if (!time24) return '—';
-  const [hours, minutes] = time24.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hours);
-  date.setMinutes(minutes);
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-};
+    if (!time24) return '—';
+    const [hours, minutes] = time24.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours);
+    date.setMinutes(minutes);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
 
   const closeModal = () => {
     setModalVisible(false);
@@ -373,7 +370,6 @@ const ClinicManagementScreen = () => {
                 }
               } catch (error) {
                 Alert.alert('Error', 'Camera access failed.');
-                console.error('Camera error:', error);
               }
             },
           },
@@ -410,7 +406,6 @@ const ClinicManagementScreen = () => {
                 }
               } catch (error) {
                 Alert.alert('Error', 'Gallery access failed.');
-                console.error('Gallery error:', error);
               }
             },
           },
@@ -423,23 +418,30 @@ const ClinicManagementScreen = () => {
       );
     } catch (error) {
       Alert.alert('Error', 'Failed to pick file. Please try again.');
-      console.error('File upload error:', error);
     }
   };
 
-  const handleHeaderSubmit = async () => {
-    if (!headerFile || !selectedClinic) return;
+const handleHeaderSubmit = async () => {
+  if (!selectedClinic || !headerFile || !signatureFile) {
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Both header image and signature are required.',
+      position: 'top',
+      visibilityTime: 3000,
+    });
+    return;
+  }
 
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('authToken');
-      const formData = new FormData();
-      formData.append('file', headerFile as any);
-      if (signatureFile) formData.append('signature', signatureFile as any);
-      formData.append('addressId', selectedClinic.addressId || '');
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('authToken');
+    const formData = new FormData();
+    formData.append('file', headerFile as any);
+    formData.append('signature', signatureFile as any);
+    formData.append('addressId', selectedClinic.addressId || '');
 
-      const response = await UploadFiles('users/uploadClinicHeader', formData, token);
-
+    const response = await UploadFiles('users/uploadClinicHeader', formData, token);
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -460,7 +462,6 @@ const ClinicManagementScreen = () => {
         });
       }
     } catch (error) {
-      console.error('Header upload error:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -552,7 +553,6 @@ const ClinicManagementScreen = () => {
         });
       }
     } catch (error) {
-      console.error('Error updating clinic:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -581,7 +581,6 @@ const ClinicManagementScreen = () => {
       if (pharmacyHeaderFile) formData.append('pharmacyHeader', pharmacyHeaderFile as any);
 
       const response = await UploadFiles('users/addPharmacyToClinic', formData, token);
-console.log(response, "pharmacyres")
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -603,7 +602,6 @@ console.log(response, "pharmacyres")
         // });
       }
     } catch (error) {
-      console.error('Pharmacy submit error:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -656,7 +654,6 @@ console.log(response, "pharmacyres")
         // });
       }
     } catch (error) {
-      console.error('Lab submit error:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -706,7 +703,6 @@ console.log(response, "pharmacyres")
         });
       }
     } catch (err: any) {
-      console.error('Delete error:', err);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -722,14 +718,14 @@ console.log(response, "pharmacyres")
       <View style={styles.headerContainer}>
         <Text style={styles.header}></Text>
         {!isPhysiotherapist && (
-  <TouchableOpacity
-    style={styles.addButton}
-    onPress={() => navigation.navigate('AddClinic')}
-  >
-    <Icon name="plus" size={20} color="#fff" />
-    <Text style={styles.addButtonText}>Add Clinic</Text>
-  </TouchableOpacity>
-)}
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate('AddClinic')}
+          >
+            <Icon name="plus" size={20} color="#fff" />
+            <Text style={styles.addButtonText}>Add Clinic</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.searchContainer}>
@@ -884,9 +880,9 @@ console.log(response, "pharmacyres")
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveButton, !headerFile && styles.disabledButton]}
+                style={[styles.saveButton, (!headerFile || !signatureFile) && styles.disabledButton]}
                 onPress={handleHeaderSubmit}
-                disabled={!headerFile}
+                disabled={!headerFile || !signatureFile}
               >
                 <Text style={styles.saveText}>Upload</Text>
               </TouchableOpacity>
@@ -930,7 +926,7 @@ console.log(response, "pharmacyres")
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyRegNum: text }))}
                   style={styles.input}
                   placeholder="Enter registration number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -941,7 +937,7 @@ console.log(response, "pharmacyres")
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyGST: text }))}
                   style={styles.input}
                   placeholder="Enter GST number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -952,7 +948,7 @@ console.log(response, "pharmacyres")
                   onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyPAN: text }))}
                   style={styles.input}
                   placeholder="Enter PAN number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -964,7 +960,7 @@ console.log(response, "pharmacyres")
                   style={[styles.input, { height: 80 }]}
                   multiline
                   placeholder="Enter pharmacy address"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1028,7 +1024,7 @@ console.log(response, "pharmacyres")
                   onChangeText={(text) => setForm(prev => ({ ...prev, labName: text }))}
                   style={styles.input}
                   placeholder="Enter lab name"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1039,7 +1035,7 @@ console.log(response, "pharmacyres")
                   onChangeText={(text) => setForm(prev => ({ ...prev, labRegNum: text }))}
                   style={styles.input}
                   placeholder="Enter registration number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1050,7 +1046,7 @@ console.log(response, "pharmacyres")
                   onChangeText={(text) => setForm(prev => ({ ...prev, labGST: text }))}
                   style={styles.input}
                   placeholder="Enter GST number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1061,7 +1057,7 @@ console.log(response, "pharmacyres")
                   onChangeText={(text) => setForm(prev => ({ ...prev, labPAN: text }))}
                   style={styles.input}
                   placeholder="Enter PAN number"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1073,7 +1069,7 @@ console.log(response, "pharmacyres")
                   style={[styles.input, { height: 80 }]}
                   multiline
                   placeholder="Enter lab address"
-                   placeholderTextColor='gray'
+                  placeholderTextColor='gray'
                 />
               </View>
 
@@ -1169,8 +1165,8 @@ console.log(response, "pharmacyres")
                   <View style={styles.cardHeader}>
 
                     <View style={styles.placeholderCircle}>
-                            <Text style={styles.placeholderText}>{clinic.name[0].toUpperCase() || ""}</Text>
-                          </View>
+                      <Text style={styles.placeholderText}>{clinic.name[0].toUpperCase() || ""}</Text>
+                    </View>
                     {/* <Image source={{ uri: clinic.Avatar }} style={styles.avatar} /> */}
                     <View style={styles.clinicInfo}>
                       <Text style={styles.clinicName}>{clinic.name}</Text>
@@ -1678,7 +1674,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
   },
-     placeholderCircle: {
+  placeholderCircle: {
     width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
     justifyContent: 'center', alignItems: 'center', marginRight: 16,
   },

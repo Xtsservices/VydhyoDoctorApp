@@ -54,6 +54,18 @@ const EPrescriptionList = () => {
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [hasPreviousPrescriptions, setHasPreviousPrescriptions] = useState(false);
 
+  const convertTo12HourFormat = (time24) => {
+    if (!time24) return '';
+
+    const [hours, minutes] = time24.split(':');
+    const hourInt = parseInt(hours, 10);
+
+    const period = hourInt >= 12 ? 'PM' : 'AM';
+    const hour12 = hourInt % 12 || 12; // Convert 0 to 12 for 12 AM
+
+    return `${hour12}:${minutes} ${period}`;
+  };
+
   const getStatusTag = (status) => {
     const statusConfig = {
       scheduled: { color: '#10B981', backgroundColor: '#D1FAE5', text: 'Scheduled' },
@@ -65,7 +77,6 @@ const EPrescriptionList = () => {
   };
 
   const handleEPrescription = (appointment) => {
-    console.log(appointment, "appointmentDetails")
     const patientDetails = {
       doctorId: appointment.doctorId,
       patientId: appointment?.userId || appointment?.appointmentId,
@@ -81,7 +92,7 @@ const EPrescriptionList = () => {
       statusColor: appointment.appointmentStatus === 'Completed' ? '#E0E7FF' : '#D1FAE5',
       typeIcon: 'General',
       avatar: "https://i.pravatar.cc/150?img=12",
-      appointmentTime: appointment.appointmentTime,
+      appointmentTime: appointment.appointmentTime ? convertTo12HourFormat(appointment.appointmentTime) : '',
       addressId: appointment.addressId,
     };
 
@@ -104,7 +115,6 @@ const EPrescriptionList = () => {
         response.data.data &&
         response.data.data.length > 0;
     } catch (error) {
-      console.error('Error checking prescriptions:', error);
       return false;
     }
   };
@@ -161,7 +171,6 @@ const EPrescriptionList = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching prescriptions:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -261,7 +270,6 @@ const EPrescriptionList = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching appointments:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -330,7 +338,6 @@ const EPrescriptionList = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching appointments count:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -392,7 +399,6 @@ const EPrescriptionList = () => {
           style={styles.menuItem}
           onPress={() => handleEPrescription(selectedAppointment)}
         >
-          <Icon name="edit" size={18} color="#007AFF" />
           <Text style={styles.menuItemText}>Create Prescription</Text>
         </TouchableOpacity>
 
@@ -403,7 +409,6 @@ const EPrescriptionList = () => {
           onPress={() => hasPreviousPrescriptions && handleViewPreviousPrescriptions(selectedAppointment)}
           disabled={!hasPreviousPrescriptions}
         >
-          <Icon name="file-text" size={18} color={hasPreviousPrescriptions ? "#007AFF" : "#999"} />
           <Text style={[styles.menuItemText, !hasPreviousPrescriptions && styles.disabledText]}>
             Previous Prescriptions
           </Text>
@@ -448,7 +453,7 @@ const EPrescriptionList = () => {
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Date</Text>
               <Text style={styles.infoValue}>
-                {moment(item.appointmentDate).format('MMM DD, YYYY')}
+                {moment(item.appointmentDate).format('DD-MMM-YYYY')}
               </Text>
             </View>
             <View style={styles.infoItem}>
@@ -472,17 +477,6 @@ const EPrescriptionList = () => {
         </View>
       )}
 
-      {/* <View style={styles.header}>
-        <Text style={styles.subtitle}>
-          Create and manage digital prescriptions for your patients
-        </Text>
-        {totalAppointmentsCount > 0 && (
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{totalAppointmentsCount} scheduled appointments</Text>
-          </View>
-        )}
-      </View> */}
-
       <View style={styles.filtersContainer}>
         <View style={styles.searchContainer}>
           <Icon name="search1" size={18} color="#6B7280" style={styles.searchIcon} />
@@ -501,33 +495,39 @@ const EPrescriptionList = () => {
         </View>
 
         <View style={styles.filterRow}>
-          <View style={styles.pickerContainer}>
+          <View style={styles.filterContainer}>
             <Text style={styles.filterLabel}>Type</Text>
-            <Picker
-              selectedValue={filters.type}
-              style={styles.picker}
-              onValueChange={(value) => handleFilterChange('type', value)}
-            >
-              <Picker.Item label="All Types" value="all" />
-              <Picker.Item label="New Walk-in" value="new-walkin" />
-              <Picker.Item label="New Home Care" value="new-homecare" />
-              <Picker.Item label="Follow-up Walk-in" value="followup-walkin" />
-              <Picker.Item label="Follow-up Video" value="followup-video" />
-              <Picker.Item label="Follow-up Home Care" value="followup-homecare" />
-            </Picker>
+            <View style={styles.pickerButton}>
+              <Picker
+                selectedValue={filters.type}
+                style={styles.picker}
+                onValueChange={(value) => handleFilterChange('type', value)}
+                itemStyle={styles.pickerItem}
+              >
+                <Picker.Item label="All Types" value="all" />
+                <Picker.Item label="New Walk-in" value="new-walkin" />
+                <Picker.Item label="New Home Care" value="new-homecare" />
+                <Picker.Item label="Follow-up Walk-in" value="followup-walkin" />
+                <Picker.Item label="Follow-up Video" value="followup-video" />
+                <Picker.Item label="Follow-up Home Care" value="followup-homecare" />
+              </Picker>
+            </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.datePickerButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Icon name="calendar" size={16} color="#6B7280" />
-            <Text style={styles.datePickerText}>
-              {filters.selectedFilterDate
-                ? filters.selectedFilterDate.format('MMM DD, YYYY')
-                : 'Select Date'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.filterContainer}>
+            <Text style={styles.filterLabel}>Date</Text>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Icon name="calendar" size={16} color="#6B7280" />
+              <Text style={styles.pickerText}>
+                {filters.selectedFilterDate
+                  ? filters.selectedFilterDate.format('DD-MMM-YYYY')
+                  : 'Select Date'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {showDatePicker && (
@@ -556,7 +556,6 @@ const EPrescriptionList = () => {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              {/* <Icon name="calendar" size={48} color="#D1D5DB" /> */}
               <Text style={styles.emptyTitle}>No appointments found</Text>
               <Text style={styles.emptySubtitle}>
                 {searchText
@@ -595,35 +594,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
   },
-  header: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  countBadge: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-  },
-  countText: {
-    fontSize: 14,
-    color: '#4F46E5',
-    fontWeight: '500',
-  },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
     padding: 16,
@@ -651,9 +621,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
-  pickerContainer: {
-    flex: 1,
-    marginRight: 12,
+  filterContainer: {
+    width: '48%', // Equal width for both Type and Date pickers
   },
   filterLabel: {
     fontSize: 14,
@@ -661,25 +630,36 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 4,
   },
-  picker: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    color:'black'
-  },
-  datePickerButton: {
+  pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 8,
-    minWidth: 140,
+    height: 44, // Fixed height for consistency
+    justifyContent: 'space-between',
   },
-  datePickerText: {
+  picker: {
+    flex: 1,
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  pickerItem: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  pickerIcon: {
     marginLeft: 8,
+  },
+  pickerText: {
+    flex: 1,
     fontSize: 14,
     color: '#374151',
     fontWeight: '500',
+    marginLeft: 8,
   },
   listContainer: {
     padding: 16,
