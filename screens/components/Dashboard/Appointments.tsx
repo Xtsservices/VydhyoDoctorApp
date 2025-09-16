@@ -70,6 +70,7 @@ const parseApptMoment = (rawDate?: string, rawTime?: string) => {
 
 const AppointmentsScreen = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
+  console.log("currentuserDetails",currentuserDetails)
   const doctorId =
     currentuserDetails?.role === 'doctor'
       ? currentuserDetails?.userId
@@ -508,42 +509,45 @@ const AppointmentsScreen = () => {
   }, [startDate, endDate]);
 
   // ----- Action menu: compute disables like web -----
-  const computeDisables = (appt?: Appointment) => {
-    if (!appt) {
-      return {
-        disablePrescription: true,
-        disableViewPrev: true,
-        disableComplete: true,
-        disableReschedule: true,
-        disableCancel: true,
-      };
-    }
-
-    const status = (appt.status || '').toLowerCase();
-    const isCompleted = status === 'completed';
-    const isCancelled = status === 'cancelled' || status === 'canceled';
-    const isPhysio = (appt.appointmentDepartment || '') === 'Physiotherapist';
-    const notADoctor = currentuserDetails?.role !== 'doctor'
-
-    const m = parseApptMoment(appt.rawDate, appt.appointmentTime);
-    const disabledByTime = !m ? true : moment().isBefore(m.clone().subtract(1, 'hour'));
-
-    const disablePrescription = isCompleted || isCancelled || disabledByTime || isPhysio || notADoctor;
-    const disableComplete = isCompleted || isCancelled || disabledByTime;
-    const disableReschedule = isCompleted || isCancelled;
-    const disableCancel = isCompleted || isCancelled;
-
-    const hasPrev = !!hasPrescriptions[appt.id]; // FIX: correct boolean
-    const disableViewPrev = !hasPrev || isPhysio;
-
+const computeDisables = (appt?: Appointment) => {
+  if (!appt) {
     return {
-      disablePrescription,
-      disableViewPrev,
-      disableComplete,
-      disableReschedule,
-      disableCancel,
+      disablePrescription: true,
+      disableViewPrev: true,
+      disableComplete: true,
+      disableReschedule: true,
+      disableCancel: true,
     };
+  }
+
+  const status = (appt.status || '').toLowerCase();
+  const isCompleted = status === 'completed';
+  const isCancelled = status === 'cancelled' || status === 'canceled';
+  const isPhysio = (appt.appointmentDepartment || '') === 'Physiotherapist';
+  
+  const isReceptionist = currentuserDetails?.role === 'receptionist';
+  const isDoctor = currentuserDetails?.role === 'doctor';
+  const canCreatePrescription = isDoctor || isReceptionist; 
+
+  const m = parseApptMoment(appt.rawDate, appt.appointmentTime);
+  const disabledByTime = !m ? true : moment().isBefore(m.clone().subtract(1, 'hour'));
+
+  const disablePrescription = !canCreatePrescription || isCompleted || isCancelled || disabledByTime || isPhysio;
+  const disableComplete = isCompleted || isCancelled || disabledByTime;
+  const disableReschedule = isCompleted || isCancelled;
+  const disableCancel = isCompleted || isCancelled;
+
+  const hasPrev = !!hasPrescriptions[appt.id];
+  const disableViewPrev = !hasPrev || isPhysio;
+
+  return {
+    disablePrescription,
+    disableViewPrev,
+    disableComplete,
+    disableReschedule,
+    disableCancel,
   };
+};
 
   const renderAppointmentCard = ({ item: appt }: { item: Appointment }) => {
     const statusKey = (appt.status || '').toLowerCase() as keyof typeof STATUS_COLORS;
