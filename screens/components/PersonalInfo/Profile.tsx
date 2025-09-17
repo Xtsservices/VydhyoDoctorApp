@@ -371,15 +371,23 @@ const DoctorProfileView: React.FC = () => {
       const response = await AuthPut(
         'users/updateUser',
         {
-          firstname: formPersonal.firstname,
-          lastname: formPersonal.lastname,
-          email: formPersonal.email,
-          spokenLanguage: formPersonal.spokenLanguage || [],
+          firstname: formPersonal?.firstname,
+          lastname: formPersonal?.lastname,
+          email: formPersonal?.email,
+          spokenLanguage: formPersonal?.spokenLanguage || [],
         },
         token
       );
       const userData = response?.data?.data;
-      dispatch({ type: 'currentUser', payload: userData });
+      if (userData.status === 'success') {
+        dispatch({ type: 'currentUser', payload: userData });
+
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
+        handleEditClose();
+        fetchDoctorData();
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'An unexpected error occurred. Please try again.' });
+      } dispatch({ type: 'currentUser', payload: userData });
 
       Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
       handleEditClose();
