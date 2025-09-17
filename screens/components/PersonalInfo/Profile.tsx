@@ -371,19 +371,24 @@ const DoctorProfileView: React.FC = () => {
       const response = await AuthPut(
         'users/updateUser',
         {
-          firstname: formPersonal.firstname,
-          lastname: formPersonal.lastname,
-          email: formPersonal.email,
-          spokenLanguage: formPersonal.spokenLanguage || [],
+          firstname: formPersonal?.firstname,
+          lastname: formPersonal?.lastname,
+          email: formPersonal?.email,
+          spokenLanguage: formPersonal?.spokenLanguage || [],
         },
         token
       );
-      const userData = response?.data?.data;
-      dispatch({ type: 'currentUser', payload: userData });
+      if (response?.status === 'success') {
+        const userData = response?.data?.data;
 
-      Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
-      handleEditClose();
-      fetchDoctorData();
+        dispatch({ type: 'currentUser', payload: userData });
+
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
+        handleEditClose();
+        fetchDoctorData();
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'An unexpected error occurred. Please try again.' });
+      } 
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Error', text2: e?.response?.data?.message?.message || e?.message || 'Failed to update profile' });
     }
@@ -409,12 +414,19 @@ const DoctorProfileView: React.FC = () => {
 
       const response = await UploadFiles('users/updateSpecialization', formData, token);
 
+      if (response?.status === 'success') {
       const userData = response?.data?.data;
-      dispatch({ type: 'currentUser', payload: userData });
+
+dispatch({ type: 'currentUser', payload: userData });
 
       Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
       handleEditClose();
       fetchDoctorData();
+      }else{
+        Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'Please try again.' });
+      }
+
+      
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Error', text2: e?.response?.data?.message?.message || e?.message || 'Failed to update profile' });
     }
@@ -459,8 +471,12 @@ const DoctorProfileView: React.FC = () => {
         token
       );
 
+
+
+      if (response?.status === 'success') {  
       const userData = response?.data?.data;
-      dispatch({ type: 'currentUser', payload: userData });
+
+dispatch({ type: 'currentUser', payload: userData });
       Toast.show({
         type: "success",
         text1: "Success",
@@ -468,6 +484,10 @@ const DoctorProfileView: React.FC = () => {
       });
       handleEditClose();
       fetchDoctorData();
+      }else{
+        Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'Please try again.' });
+      }
+      
     } catch (e: any) {
       Toast.show({
         type: "error",
@@ -507,11 +527,17 @@ const DoctorProfileView: React.FC = () => {
         },
       }, token);
 
+      if (response?.status === 'success') {  
       const userData = response?.data?.data;
-      dispatch({ type: 'currentUser', payload: userData });
+
+dispatch({ type: 'currentUser', payload: userData });
       Toast.show({ type: 'success', text1: 'Success', text2: 'Bank details updated' });
       handleEditClose();
       fetchDoctorData();
+      }else{
+        Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'Please try again.' });
+      }
+      
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Error', text2: e?.response?.data?.message?.message || e?.message || 'Failed to update bank details' });
     }
