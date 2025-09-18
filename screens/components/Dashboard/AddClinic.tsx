@@ -84,6 +84,13 @@ const AddClinicForm = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [clinicQRFile, setClinicQRFile] = useState<any>(null);
+  const [clinicQRPreview, setClinicQRPreview] = useState<string | null>(null);
+  const [pharmacyQRFile, setPharmacyQRFile] = useState<any>(null);
+  const [pharmacyQRPreview, setPharmacyQRPreview] = useState<string | null>(null);
+  const [labQRFile, setLabQRFile] = useState<any>(null);
+  const [labQRPreview, setLabQRPreview] = useState<string | null>(null);
+
   const GOOGLE_MAPS_API_KEY = 'AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo';
 
   // Request location permission
@@ -103,13 +110,13 @@ const AddClinicForm = () => {
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
         Alert.alert(
-    'Location Permission Error',
-    err?.message
-      ? `Could not request location permission.\n\nDetails: ${err?.message}`
-      : 'Could not request location permission. Please try again or enable it from Settings.',
-    [{ text: 'OK' }]
-  );
-  return false;
+          'Location Permission Error',
+          err?.message
+            ? `Could not request location permission.\n\nDetails: ${err?.message}`
+            : 'Could not request location permission. Please try again or enable it from Settings.',
+          [{ text: 'OK' }]
+        );
+        return false;
       }
     }
     return true;
@@ -457,10 +464,20 @@ const AddClinicForm = () => {
     }
   };
 
-  const handleFileChange = async (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader') => {
+  const handleFileChange = async (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR') => {
     try {
+      // Update the alert title based on type
+      let title = '';
+      if (type === 'header') title = 'Header';
+      else if (type === 'signature') title = 'Signature';
+      else if (type === 'pharmacyHeader') title = 'Pharmacy Header';
+      else if (type === 'labHeader') title = 'Lab Header';
+      else if (type === 'clinicQR') title = 'Clinic QR Code';
+      else if (type === 'pharmacyQR') title = 'Pharmacy QR Code';
+      else if (type === 'labQR') title = 'Lab QR Code';
+
       Alert.alert(
-        `Upload ${type === 'header' ? 'Header' : type === 'signature' ? 'Signature' : type === 'pharmacyHeader' ? 'Pharmacy Header' : 'Lab Header'}`,
+        `Upload ${title}`,
         'Choose an option',
         [
           {
@@ -480,6 +497,7 @@ const AddClinicForm = () => {
                     type: asset.type || 'image/jpeg',
                   };
 
+                  // Handle different file types
                   if (type === 'header') {
                     setHeaderFile(file);
                     setHeaderPreview(asset.uri!);
@@ -492,6 +510,15 @@ const AddClinicForm = () => {
                   } else if (type === 'labHeader') {
                     setLabHeaderFile(file);
                     setLabHeaderPreview(asset.uri!);
+                  } else if (type === 'clinicQR') {
+                    setClinicQRFile(file);
+                    setClinicQRPreview(asset.uri!);
+                  } else if (type === 'pharmacyQR') {
+                    setPharmacyQRFile(file);
+                    setPharmacyQRPreview(asset.uri!);
+                  } else if (type === 'labQR') {
+                    setLabQRFile(file);
+                    setLabQRPreview(asset.uri!);
                   }
                 }
               } catch (error) {
@@ -516,6 +543,7 @@ const AddClinicForm = () => {
                     type: asset.type || 'image/jpeg',
                   };
 
+                  // Handle different file types
                   if (type === 'header') {
                     setHeaderFile(file);
                     setHeaderPreview(asset.uri!);
@@ -528,6 +556,15 @@ const AddClinicForm = () => {
                   } else if (type === 'labHeader') {
                     setLabHeaderFile(file);
                     setLabHeaderPreview(asset.uri!);
+                  } else if (type === 'clinicQR') {
+                    setClinicQRFile(file);
+                    setClinicQRPreview(asset.uri!);
+                  } else if (type === 'pharmacyQR') {
+                    setPharmacyQRFile(file);
+                    setPharmacyQRPreview(asset.uri!);
+                  } else if (type === 'labQR') {
+                    setLabQRFile(file);
+                    setLabQRPreview(asset.uri!);
                   }
                 }
               } catch (error) {
@@ -639,7 +676,12 @@ const AddClinicForm = () => {
       if (form.labAddress) formData.append('labAddress', form.labAddress);
       if (labHeaderFile) formData.append('labHeader', labHeaderFile as any);
 
+      if (clinicQRFile) formData.append('clinicQR', clinicQRFile as any);
+      if (pharmacyQRFile) formData.append('pharmacyQR', pharmacyQRFile as any);
+      if (labQRFile) formData.append('labQR', labQRFile as any);
+
       const response = await UploadFiles('users/addAddressFromWeb', formData, token);
+      console.log('Add Clinic Response:', response);
 
       if (response.status === 'success') {
         Toast.show({
@@ -665,7 +707,11 @@ const AddClinicForm = () => {
       setLoading(false);
     }
   };
-  const renderFileUpload = (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader', label: string, preview: string | null) => (
+  const renderFileUpload = (
+    type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR',
+    label: string,
+    preview: string | null
+  ) => (
     <View style={styles.inputGroup}>
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
@@ -919,6 +965,7 @@ const AddClinicForm = () => {
 
         {renderFileUpload('header', 'Clinic Header Image', headerPreview)}
         {renderFileUpload('signature', 'Digital Signature (Optional)', signaturePreview)}
+        {renderFileUpload('clinicQR', 'Clinic QR Code (Optional)', clinicQRPreview)}
 
         <Text style={styles.sectionTitle}>Pharmacy Details (Optional)</Text>
 
@@ -970,6 +1017,7 @@ const AddClinicForm = () => {
         />
 
         {renderFileUpload('pharmacyHeader', 'Pharmacy Header Image (Optional)', pharmacyHeaderPreview)}
+        {renderFileUpload('pharmacyQR', 'Pharmacy QR Code (Optional)', pharmacyQRPreview)}
 
         <Text style={styles.sectionTitle}>Lab Details (Optional)</Text>
 
@@ -1021,6 +1069,7 @@ const AddClinicForm = () => {
         />
 
         {renderFileUpload('labHeader', 'Lab Header Image (Optional)', labHeaderPreview)}
+        {renderFileUpload('labQR', 'Lab QR Code (Optional)', labQRPreview)}
 
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>

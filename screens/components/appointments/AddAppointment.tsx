@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Alert, View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Platform,
-  Modal, ActivityIndicator
+  Modal, ActivityIndicator,
+  Image
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -21,11 +22,11 @@ const AddAppointment = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy;
   const currentDoctor = useSelector((state: any) => state.currentDoctor);
-
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [gender, setGender] = useState('Male');
   const [selectedTime, setSelectedTime] = useState('10:30 AM');
-  const [paymentMethod, setPaymentMethod] = useState('UPI');
-  const [searchMobile, setSearchMobile] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash');
+  const [showUpiModal, setShowUpiModal] = useState(false); const [searchMobile, setSearchMobile] = useState('');
   const navigation = useNavigation<any>();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [mobileError, setMobileError] = useState<string | null>(null);
@@ -65,7 +66,7 @@ const AddAppointment = () => {
   const [showappointmentDatePicker, setShowappointmentDatePicker] = useState(false);
   const [activeclinicsData, setActiveclinicsData] = useState<any[]>([]);
   const [patientNames, setPatientNames] = useState<any[]>([]);
-  const [isPatientSelectModalVisible, setPatientSelectModalVisible] = useState(false);
+  const [isPatientSelectModalVisible,] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [message, setMessage] = useState('');
   const [isPatientAdded, setIsPatientAdded] = useState(false);
@@ -79,6 +80,7 @@ const AddAppointment = () => {
     return /^\d+$/.test(trimmed) ||
       /^(\d+[myd])(\s?\d+[myd])*$/i.test(trimmed);
   };
+
 
   // Calculate age from DOB
   const calculateAgeFromDOB = (dob: string): string => {
@@ -105,7 +107,33 @@ const AddAppointment = () => {
       return "";
     }
   };
+  const fetchQRCode = async (clinicId: string) => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthFetch(
+        `users/getClinicsQRCode/${clinicId}?userId=${doctorId}`,
+        token
+      );
 
+      if (response?.status === "success") {
+        const qrCodeUrl =
+          response.data?.data?.clinicQrCode ||
+          response.data?.data?.qrCodeUrl ||
+          response.data?.clinicQrCode ||
+          response.data?.qrCodeUrl ||
+          response.data?.data; 
+
+        console.log('Extracted QR Code URL:', qrCodeUrl);
+        setQrCodeUrl(qrCodeUrl || '');
+      } else {
+        console.error('Failed to fetch QR code - API returned non-success status');
+        setQrCodeUrl('');
+      }
+    } catch (error) {
+      console.error('Error fetching QR code:', error);
+      setQrCodeUrl('');
+    }
+  };
   // Handle input changes
   const handleInputChange = (field: string, value: string) => {
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -126,19 +154,19 @@ const AddAppointment = () => {
       }
     } else if (field === "visitReason" && value.length > 500) {
       validatedValue = value.substring(0, 500);
-} else if (field === "discount") {
-  const numValue = value.replace(/\D/g, "");
-  
-  if (numValue === "") {
-    validatedValue = "";
-  } 
-  else if (Number(numValue) >= 0 && Number(numValue) <= 100) {
-    validatedValue = numValue;
-  }
-  else {
-    validatedValue = formData.discount; 
-  }
-}
+    } else if (field === "discount") {
+      const numValue = value.replace(/\D/g, "");
+
+      if (numValue === "") {
+        validatedValue = "";
+      }
+      else if (Number(numValue) >= 0 && Number(numValue) <= 100) {
+        validatedValue = numValue;
+      }
+      else {
+        validatedValue = formData.discount;
+      }
+    }
     setpatientFormData((prev) => {
       const newData = { ...prev, [field]: validatedValue };
 
@@ -455,9 +483,11 @@ const AddAppointment = () => {
         discountType: patientData.discountType,
         paymentStatus: 'paid',
         appSource: "walkIn",
+        paymentMethod: paymentMethod,
       };
 
       const response = await AuthPost('appointment/createAppointment', appointmentRequest, token);
+      console.log('Create Appointment Response:', response);
       if (response.status === 'success') {
         Alert.alert('Success', 'Appointment created successfully!');
         navigation.navigate('DoctorDashboard');
@@ -885,9 +915,97 @@ const AddAppointment = () => {
             </Text>
           </View>
         </View>
+        <Text style={styles.label}>Payment Method *</Text>
+        <View style={styles.radioRow}>
+          <View style={styles.radioItem}>
+            <RadioButton
+              value="cash"
+              status={paymentMethod === 'cash' ? 'checked' : 'unchecked'}
+              onPress={() => setPaymentMethod('cash')}
+            />
+            <Text style={styles.radioText}>Cash</Text>
+          </View>
+          <View style={styles.radioItem}>
+            <RadioButton
+              value="upi"
+              status={paymentMethod === 'upi' ? 'checked' : 'unchecked'}
+              onPress={() => {
+                setPaymentMethod('upi');
+                if (formData.clinicAddressId) {
+                  fetchQRCode(formData.clinicAddressId);
+                }
+              }}
+            />
+            <Text style={styles.radioText}>UPI</Text>
+          </View>
+        </View>
+
+        {/* UPI Payment Modal */}
+        <Modal
+          visible={showUpiModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowUpiModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowUpiModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+
+              <Text style={styles.modalTitle}>UPI Payment</Text>
+
+              <View style={styles.qrContainer}>
+                <Text style={styles.qrText}>Scan QR Code to Pay</Text>
+                {qrCodeUrl ? (
+                  <Image
+                    source={{ uri: qrCodeUrl }}
+                    style={styles.qrImage}
+                    resizeMode="contain"
+                    onError={() => {
+                      console.log('Failed to load QR image');
+                      setQrCodeUrl('');
+                    }}
+                  />
+                ) : (
+                  <View>
+                    <ActivityIndicator size="large" color="#2563EB" />
+                    <Text style={{ marginTop: 10 }}>Loading QR code...</Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.confirmButton, isProcessingPayment && styles.disabledButton]}
+                disabled={isProcessingPayment}
+                onPress={() => {
+                  setShowUpiModal(false);
+                  handleCreateAppointment();
+                }}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {isProcessingPayment ? "Processing..." : "Confirm Payment"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
         <TouchableOpacity
           style={[styles.payNowButton, isProcessingPayment && styles.disabledButton]}
-          onPress={handleCreateAppointment}
+          onPress={() => {
+            if (paymentMethod === 'upi') {
+              if (!formData.clinicAddressId) {
+                Alert.alert('Error', 'Please select a clinic first');
+                return;
+              }
+              setShowUpiModal(true);
+            } else {
+              handleCreateAppointment();
+            }
+          }}
           disabled={isProcessingPayment}
         >
           {isProcessingPayment ? (
@@ -1057,6 +1175,38 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+  },
+  // UPI Modal styles
+  qrContainer: {
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  qrText: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  qrImage: {
+    width: 200,
+    height: 200,
+    marginBottom: 10,
+  },
+  upiId: {
+    fontSize: 14,
+    color: '#666',
+  },
+  confirmButton: {
+    backgroundColor: '#1A3C6A',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    width: '100%',
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
   label: {
     marginBottom: 5,
