@@ -55,6 +55,9 @@ interface Clinic {
   labPAN?: string;
   labAddress?: string;
   labHeaderImage?: string;
+  clinicQrCode?: string;
+  pharmacyQrCode?: string;
+  labQrCode?: string;
 }
 
 const getStatusStyle = (status: string) => {
@@ -93,11 +96,19 @@ const ClinicManagementScreen = () => {
   const [pharmacyHeaderPreview, setPharmacyHeaderPreview] = useState<string | null>(null);
   const [labHeaderFile, setLabHeaderFile] = useState<any>(null);
   const [labHeaderPreview, setLabHeaderPreview] = useState<string | null>(null);
+  const [clinicQrFile, setClinicQrFile] = useState<any>(null);
+  const [clinicQrPreview, setClinicQrPreview] = useState<string | null>(null);
+  const [pharmacyQrFile, setPharmacyQrFile] = useState<any>(null);
+  const [pharmacyQrPreview, setPharmacyQrPreview] = useState<string | null>(null);
+  const [labQrFile, setLabQrFile] = useState<any>(null);
+  const [labQrPreview, setLabQrPreview] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
   const userId = useSelector((state: any) => state.currentUserId);
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const isPhysiotherapist = currentuserDetails?.specialization?.name === "Physiotherapist";
-  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy
+  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy; 
   const [form, setForm] = useState({
     id: '',
     name: '',
@@ -163,6 +174,63 @@ const ClinicManagementScreen = () => {
       { key: 'labAddress', label: 'Lab Address', multiline: true },
     ];
 
+  const fetchClinicQRCode = async (clinicId: string, qrType: 'clinic' | 'pharmacy' | 'lab') => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      const userId = await AsyncStorage.getItem('userId');
+
+      const response = await AuthFetch(
+        `users/getClinicsQRCode/${clinicId}?userId=${userId}`,
+        token
+      );
+
+      if (response.status === 'success' && response.data?.data) {
+        let qrCodeUrl = '';
+
+        switch (qrType) {
+          case 'clinic':
+            qrCodeUrl = response.data.data.clinicQrCode;
+            setPreviewTitle('Clinic QR Code');
+            break;
+          case 'pharmacy':
+            qrCodeUrl = response.data.data.pharmacyQrCode;
+            setPreviewTitle('Pharmacy QR Code');
+            break;
+          case 'lab':
+            qrCodeUrl = response.data.data.labQrCode;
+            setPreviewTitle('Lab QR Code');
+            break;
+        }
+
+        if (qrCodeUrl) {
+          setQrCodeImage(qrCodeUrl);
+          setQrModalVisible(true);
+        } else {
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'QR code not available',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+        }
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to fetch QR code',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
+    } catch (error) {
+      Alert.alert('Error', error?.message || 'Failed to fetch QR code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchClinics = async () => {
     try {
       setInitialLoading(true);
@@ -210,13 +278,16 @@ const ClinicManagementScreen = () => {
             labPAN: appt.labPAN || appt.labPan || '',
             labAddress: appt.labAddress || '',
             labHeaderImage: appt.labHeaderImage || '',
+            clinicQrCode: appt.clinicQrCode || '',
+            pharmacyQrCode: appt.pharmacyQrCode || '',
+            labQrCode: appt.labQrCode || '',
           }));
 
         setTotalClinics(formattedClinics);
         setClinic(formattedClinics);
       }
     } catch (error) {
-      Alert.alert('Error', error?.message ||'Failed to fetch appointments. Please try again.');
+      Alert.alert('Error', error?.message || 'Failed to fetch appointments. Please try again.');
     } finally {
       setInitialLoading(false);
     }
@@ -269,6 +340,11 @@ const ClinicManagementScreen = () => {
       labPAN: clinic.labPAN || '',
       labAddress: clinic.labAddress || '',
     });
+    setHeaderPreview(clinic.headerImage || null);
+    setSignaturePreview(clinic.digitalSignature || null);
+    setClinicQrPreview(clinic.clinicQrCode || null);
+    setPharmacyQrPreview(clinic.pharmacyQrCode || null);
+    setLabQrPreview(clinic.labQrCode || null);
     setMode(type);
     setModalVisible(true);
   };
@@ -285,6 +361,16 @@ const ClinicManagementScreen = () => {
   const closeModal = () => {
     setModalVisible(false);
     setMode(null);
+    setHeaderFile(null);
+    setSignatureFile(null);
+    setClinicQrFile(null);
+    setPharmacyQrFile(null);
+    setLabQrFile(null);
+    setHeaderPreview(null);
+    setSignaturePreview(null);
+    setClinicQrPreview(null);
+    setPharmacyQrPreview(null);
+    setLabQrPreview(null);
   };
 
   const openHeaderModal = (clinic: Clinic) => {
@@ -332,10 +418,10 @@ const ClinicManagementScreen = () => {
     setImagePreviewModalVisible(true);
   };
 
-  const handleFileChange = async (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader') => {
+  const handleFileChange = async (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR') => {
     try {
       Alert.alert(
-        `Upload ${type === 'header' ? 'Header' : type === 'signature' ? 'Signature' : type === 'pharmacyHeader' ? 'Pharmacy Header' : 'Lab Header'}`,
+        `Upload ${type === 'header' ? 'Header' : type === 'signature' ? 'Signature' : type === 'pharmacyHeader' ? 'Pharmacy Header' : type === 'labHeader' ? 'Lab Header' : type === 'clinicQR' ? 'Clinic QR' : type === 'pharmacyQR' ? 'Pharmacy QR' : 'Lab QR'}`,
         'Choose an option',
         [
           {
@@ -367,10 +453,19 @@ const ClinicManagementScreen = () => {
                   } else if (type === 'labHeader') {
                     setLabHeaderFile(file);
                     setLabHeaderPreview(asset.uri!);
+                  } else if (type === 'clinicQR') {
+                    setClinicQrFile(file);
+                    setClinicQrPreview(asset.uri!);
+                  } else if (type === 'pharmacyQR') {
+                    setPharmacyQrFile(file);
+                    setPharmacyQrPreview(asset.uri!);
+                  } else if (type === 'labQR') {
+                    setLabQrFile(file);
+                    setLabQrPreview(asset.uri!);
                   }
                 }
               } catch (error) {
-                Alert.alert('Error', error?.message ||'Camera access failed.');
+                Alert.alert('Error', error?.message || 'Camera access failed.');
               }
             },
           },
@@ -403,6 +498,15 @@ const ClinicManagementScreen = () => {
                   } else if (type === 'labHeader') {
                     setLabHeaderFile(file);
                     setLabHeaderPreview(asset.uri!);
+                  } else if (type === 'clinicQR') {
+                    setClinicQrFile(file);
+                    setClinicQrPreview(asset.uri!);
+                  } else if (type === 'pharmacyQR') {
+                    setPharmacyQrFile(file);
+                    setPharmacyQrPreview(asset.uri!);
+                  } else if (type === 'labQR') {
+                    setLabQrFile(file);
+                    setLabQrPreview(asset.uri!);
                   }
                 }
               } catch (error) {
@@ -422,27 +526,27 @@ const ClinicManagementScreen = () => {
     }
   };
 
-const handleHeaderSubmit = async () => {
-  if (!selectedClinic || !headerFile || !signatureFile) {
-    Toast.show({
-      type: 'error',
-      text1: 'Error',
-      text2: 'Both header image and signature are required.',
-      position: 'top',
-      visibilityTime: 3000,
-    });
-    return;
-  }
+  const handleHeaderSubmit = async () => {
+    if (!selectedClinic || !headerFile || !signatureFile) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Both header image and signature are required.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
+    }
 
-  try {
-    setLoading(true);
-    const token = await AsyncStorage.getItem('authToken');
-    const formData = new FormData();
-    formData.append('file', headerFile as any);
-    formData.append('signature', signatureFile as any);
-    formData.append('addressId', selectedClinic.addressId || '');
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      const formData = new FormData();
+      formData.append('file', headerFile as any);
+      formData.append('signature', signatureFile as any);
+      formData.append('addressId', selectedClinic.addressId || '');
 
-    const response = await UploadFiles('users/uploadClinicHeader', formData, token);
+      const response = await UploadFiles('users/uploadClinicHeader', formData, token);
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -470,34 +574,40 @@ const handleHeaderSubmit = async () => {
   };
 
   const handleEditSubmit = async () => {
-    const token = await AsyncStorage.getItem('authToken');
     try {
-      const updateData = {
-        addressId: form.addressId,
-        clinicName: form.name,
-        mobile: form.mobile,
-        address: form.address,
-        city: form.city,
-        state: form.state,
-        country: form.country,
-        pincode: form.pincode,
-        latitude: form.latitude,
-        longitude: form.longitude,
-        pharmacyName: form.pharmacyName,
-        pharmacyRegistrationNo: form.pharmacyRegNum,
-        pharmacyGst: form.pharmacyGST,
-        pharmacyPan: form.pharmacyPAN,
-        pharmacyAddress: form.pharmacyAddress,
-        labName: form.labName,
-        labRegistrationNo: form.labRegNum,
-        labGst: form.labGST,
-        labPan: form.labPAN,
-        labAddress: form.labAddress,
-      };
+      setLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      const formData = new FormData();
+      formData.append('addressId', form.addressId);
+      formData.append('clinicName', form.name);
+      formData.append('mobile', form.mobile);
+      formData.append('address', form.address);
+      formData.append('city', form.city);
+      formData.append('state', form.state);
+      formData.append('country', form.country);
+      formData.append('pincode', form.pincode);
+      formData.append('latitude', form.latitude);
+      formData.append('longitude', form.longitude);
+      formData.append('pharmacyName', form.pharmacyName);
+      formData.append('pharmacyRegistrationNo', form.pharmacyRegNum);
+      formData.append('pharmacyGst', form.pharmacyGST);
+      formData.append('pharmacyPan', form.pharmacyPAN);
+      formData.append('pharmacyAddress', form.pharmacyAddress);
+      formData.append('labName', form.labName);
+      formData.append('labRegistrationNo', form.labRegNum);
+      formData.append('labGst', form.labGST);
+      formData.append('labPan', form.labPAN);
+      formData.append('labAddress', form.labAddress);
 
-      const res = await AuthPut('users/updateAddress', updateData, token);
+      if (headerFile) formData.append('file', headerFile);
+      if (signatureFile) formData.append('signature', signatureFile);
+      if (clinicQrFile) formData.append('clinicQR', clinicQrFile);
+      if (pharmacyQrFile) formData.append('pharmacyQR', pharmacyQrFile);
+      if (labQrFile) formData.append('labQR', labQrFile);
 
-      if ((res as any)?.status === 'success') {
+      const res = await UploadFiles('users/updateAddressFromWeb', formData, token);
+
+      if (res?.status === 'success') {
         Toast.show({
           type: 'success',
           text1: 'Success',
@@ -534,22 +644,30 @@ const handleHeaderSubmit = async () => {
           labPAN: '',
           labAddress: '',
         });
+        setHeaderFile(null);
+        setSignatureFile(null);
+        setClinicQrFile(null);
+        setPharmacyQrFile(null);
+        setLabQrFile(null);
+        setHeaderPreview(null);
+        setSignaturePreview(null);
+        setClinicQrPreview(null);
+        setPharmacyQrPreview(null);
+        setLabQrPreview(null);
         closeModal();
       } else {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2:
-            (res as any)?.message ||
-            (res as any)?.data?.message ||
-            'Failed to update clinic',
+          text2: res?.message || res?.data?.message || 'Failed to update clinic',
           position: 'top',
           visibilityTime: 3000,
         });
       }
     } catch (error) {
-      Alert.alert('Error', error?.message || 'Failed to update clinic. Please try again.'); 
-
+      Alert.alert('Error', error?.message || 'Failed to update clinic. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -582,19 +700,10 @@ const handleHeaderSubmit = async () => {
         setPharmacyModalVisible(false);
         await fetchClinics();
       } else {
-        Alert.alert("Warning", response?.message?.message)
-        // Toast.show({
-        //   type: 'error',
-        //   text1: 'Error',
-        //   text2: response?.message?.message || 'Failed to add pharmacy details',
-        //   position: 'top',
-        //   visibilityTime: 3000,
-        // });
+        Alert.alert('Warning', response?.message?.message || 'Failed to add pharmacy details');
       }
     } catch (error) {
       Alert.alert('Error', error?.message || 'Failed to add pharmacy details. Please try again.');
-     
-
     } finally {
       setLoading(false);
     }
@@ -768,6 +877,95 @@ const handleHeaderSubmit = async () => {
                   </View>
                 );
               })}
+
+              {mode === 'edit' && (
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Header Image (Optional)</Text>
+                    <TouchableOpacity
+                      style={styles.uploadBox}
+                      onPress={() => handleFileChange('header')}
+                    >
+                      {headerPreview ? (
+                        <Image source={{ uri: headerPreview }} style={styles.previewImage} />
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Icon name="image-outline" size={32} color="#6B7280" />
+                          <Text style={styles.uploadText}>Tap to upload header image</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Digital Signature (Optional)</Text>
+                    <TouchableOpacity
+                      style={styles.uploadBox}
+                      onPress={() => handleFileChange('signature')}
+                    >
+                      {signaturePreview ? (
+                        <Image source={{ uri: signaturePreview }} style={styles.previewImage} />
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Icon name="draw" size={32} color="#6B7280" />
+                          <Text style={styles.uploadText}>Tap to upload signature</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Clinic QR Code (Optional)</Text>
+                    <TouchableOpacity
+                      style={styles.uploadBox}
+                      onPress={() => handleFileChange('clinicQR')}
+                    >
+                      {clinicQrPreview ? (
+                        <Image source={{ uri: clinicQrPreview }} style={styles.previewImage} />
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Icon name="qrcode" size={32} color="#6B7280" />
+                          <Text style={styles.uploadText}>Tap to upload clinic QR code</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Pharmacy QR Code (Optional)</Text>
+                    <TouchableOpacity
+                      style={styles.uploadBox}
+                      onPress={() => handleFileChange('pharmacyQR')}
+                    >
+                      {pharmacyQrPreview ? (
+                        <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} />
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Icon name="qrcode" size={32} color="#6B7280" />
+                          <Text style={styles.uploadText}>Tap to upload pharmacy QR code</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Lab QR Code (Optional)</Text>
+                    <TouchableOpacity
+                      style={styles.uploadBox}
+                      onPress={() => handleFileChange('labQR')}
+                    >
+                      {labQrPreview ? (
+                        <Image source={{ uri: labQrPreview }} style={styles.previewImage} />
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Icon name="qrcode" size={32} color="#6B7280" />
+                          <Text style={styles.uploadText}>Tap to upload lab QR code</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -789,6 +987,45 @@ const handleHeaderSubmit = async () => {
                   <Text style={styles.deleteText}>Delete Clinic</Text>
                 </TouchableOpacity>
               )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={qrModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQrModalVisible(false)}
+      >
+        <View style={styles.overlay}>
+          <View style={[styles.modal, { maxHeight: height * 0.6, width: width * 0.8 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{previewTitle}</Text>
+              <TouchableOpacity onPress={() => setQrModalVisible(false)} style={styles.closeButton}>
+                <Icon name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalContent}>
+              {qrCodeImage ? (
+                <Image
+                  source={{ uri: qrCodeImage }}
+                  style={styles.qrCodeImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <ActivityIndicator size="large" color="#3B82F6" />
+              )}
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setQrModalVisible(false)}
+              >
+                <Text style={styles.cancelText}>Close</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -1137,11 +1374,9 @@ const handleHeaderSubmit = async () => {
               return (
                 <View key={clinic.id} style={styles.card}>
                   <View style={styles.cardHeader}>
-
                     <View style={styles.placeholderCircle}>
                       <Text style={styles.placeholderText}>{clinic.name[0].toUpperCase() || ""}</Text>
                     </View>
-                    {/* <Image source={{ uri: clinic.Avatar }} style={styles.avatar} /> */}
                     <View style={styles.clinicInfo}>
                       <Text style={styles.clinicName}>{clinic.name}</Text>
                       <Text style={styles.clinicType}>{clinic.type}</Text>
@@ -1191,6 +1426,17 @@ const handleHeaderSubmit = async () => {
                         >
                           <Text style={styles.actionButtonText}>Edit</Text>
                         </TouchableOpacity>
+
+                        {clinic.clinicQrCode && (
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => fetchClinicQRCode(clinic.id, 'clinic')}
+                          >
+                            <Icon name="qrcode" size={18} color="#3B82F6" />
+                            <Text style={styles.actionButtonText}>View Clinic QR</Text>
+                          </TouchableOpacity>
+                        )}
+
                         {(!clinic.headerImage || !clinic.digitalSignature) && (
                           <TouchableOpacity
                             style={styles.actionButton}
@@ -1234,16 +1480,23 @@ const handleHeaderSubmit = async () => {
                               style={styles.actionButton}
                               onPress={() => openImagePreview(clinic.pharmacyHeaderImage || '', 'Pharmacy Header')}
                             >
-                              {/* <Icon name="eye-outline" size={18} color="#10B981" /> */}
                               <Text style={styles.actionButtonText}>View</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={styles.actionButton}
                               onPress={() => openPharmacyModal(clinic)}
                             >
-                              {/* <Icon name="pencil-outline" size={18} color="#8B5CF6" /> */}
                               <Text style={styles.actionButtonText}>Edit</Text>
                             </TouchableOpacity>
+                            {clinic.pharmacyQrCode && (
+                              <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => fetchClinicQRCode(clinic.id, 'pharmacy')}
+                              >
+                                <Icon name="qrcode" size={18} color="#3B82F6" />
+                                <Text style={styles.actionButtonText}>View Pharmacy QR</Text>
+                              </TouchableOpacity>
+                            )}
                           </>
                         ) : (
                           <TouchableOpacity
@@ -1266,16 +1519,23 @@ const handleHeaderSubmit = async () => {
                               style={styles.actionButton}
                               onPress={() => openImagePreview(clinic.labHeaderImage || '', 'Lab Header')}
                             >
-                              {/* <Icon name="eye-outline" size={18} color="#10B981" /> */}
                               <Text style={styles.actionButtonText}>View</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={styles.actionButton}
                               onPress={() => openLabModal(clinic)}
                             >
-                              {/* <Icon name="pencil-outline" size={18} color="#8B5CF6" /> */}
                               <Text style={styles.actionButtonText}>Edit</Text>
                             </TouchableOpacity>
+                            {clinic.labQrCode && (
+                              <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => fetchClinicQRCode(clinic.id, 'lab')}
+                              >
+                                <Icon name="qrcode" size={18} color="#3B82F6" />
+                                <Text style={styles.actionButtonText}>View Lab QR</Text>
+                              </TouchableOpacity>
+                            )}
                           </>
                         ) : (
                           <TouchableOpacity
@@ -1304,6 +1564,12 @@ const handleHeaderSubmit = async () => {
         </ScrollView>
       )}
 
+      {loading && (
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loaderText}>Processing...</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -1403,11 +1669,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  avatar: {
+  placeholderCircle: {
     width: 50,
     height: 50,
-    borderRadius: 25,
-    marginRight: 12,
+    borderRadius: 30,
+    backgroundColor: '#1e3a5f',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  placeholderText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   clinicInfo: {
     flex: 1,
@@ -1490,6 +1764,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  qrCodeImage: {
+    width: 200,
+    height: 200,
+    alignSelf: 'center',
+    marginVertical: 20,
+  },
+  qrHelpText: {
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 14,
+    marginTop: 10,
+    marginBottom: 20,
   },
   overlay: {
     flex: 1,
@@ -1648,10 +1935,4 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
   },
-  placeholderCircle: {
-    width: 50, height: 50, borderRadius: 30, backgroundColor: '#1e3a5f',
-    justifyContent: 'center', alignItems: 'center', marginRight: 16,
-  },
-  placeholderText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
 });
-
