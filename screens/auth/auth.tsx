@@ -68,6 +68,16 @@ export async function AuthPut(url: string, body: any, token: string | null | und
   return apiRequest({ url, method: 'put', data: body, token });
 }
 
+export async function UpdateFiles(url: string, body: any, token: string | null | undefined) {
+  return apiRequest({
+    url,
+    method: 'put',
+    data: body,
+    token,
+    contentType: 'multipart/form-data'
+  });
+}
+
 export async function UploadFiles(url: string, body: any, token: string | null | undefined) {
   return apiRequest({ 
     url, 

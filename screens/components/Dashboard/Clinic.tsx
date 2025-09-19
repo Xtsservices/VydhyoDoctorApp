@@ -16,7 +16,7 @@ import {
   Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { AuthFetch, AuthPost, UploadFiles, AuthPut } from '../../auth/auth';
+import { AuthFetch, AuthPost, UploadFiles, UpdateFiles, AuthPut } from '../../auth/auth';
 import Toast from 'react-native-toast-message';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useSelector } from 'react-redux';
@@ -712,32 +712,34 @@ const ClinicManagementScreen = () => {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
-      const userId = await AsyncStorage.getItem('userId');
 
-      const formData = new FormData();
-      formData.append('addressId', form.addressId);
-      formData.append('userId', userId || '');
-      formData.append('clinicName', form.name);
-      formData.append('mobile', form.mobile);
-      formData.append('address', form.address);
-      formData.append('city', form.city);
-      formData.append('state', form.state);
-      formData.append('country', form.country);
-      formData.append('pincode', form.pincode);
-      formData.append('latitude', form.latitude);
-      formData.append('longitude', form.longitude);
-      formData.append('pharmacyName', form.pharmacyName);
-      formData.append('pharmacyRegistrationNo', form.pharmacyRegNum);
-      formData.append('pharmacyGst', form.pharmacyGST);
-      formData.append('pharmacyPan', form.pharmacyPAN);
-      formData.append('pharmacyAddress', form.pharmacyAddress);
-      formData.append('labName', form.labName);
-      formData.append('labRegistrationNo', form.labRegNum);
-      formData.append('labGst', form.labGST);
-      formData.append('labPan', form.labPAN);
-      formData.append('labAddress', form.labAddress);
+      // Create a regular object instead of FormData for text fields
+      const requestData = {
+        addressId: form.addressId,
+        clinicName: form.name,
+        mobile: form.mobile,
+        address: form.address,
+        city: form.city,
+        state: form.state,
+        country: form.country,
+        pincode: form.pincode,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        pharmacyName: form.pharmacyName,
+        pharmacyRegistrationNo: form.pharmacyRegNum,
+        pharmacyGst: form.pharmacyGST,
+        pharmacyPan: form.pharmacyPAN,
+        pharmacyAddress: form.pharmacyAddress,
+        labName: form.labName,
+        labRegistrationNo: form.labRegNum,
+        labGst: form.labGST,
+        labPan: form.labPAN,
+        labAddress: form.labAddress,
+      };
 
-      const res = await UploadFiles('users/updateAddress', formData, token);
+      // Use AuthPut with regular JSON data
+      const res = await AuthPut('users/updateAddress', requestData, token);
+      console.log("Update response:", res);
 
       if (res?.status === 'success') {
         Toast.show({
@@ -801,7 +803,8 @@ const ClinicManagementScreen = () => {
       // }
 
       // Use UploadFiles instead of AuthPut
-      const response = await AuthPut('users/updateImagesAddress', formData, token);
+      const response = await UpdateFiles('users/updateImagesAddress', formData, token);
+      
       console.log('Upload response:', response); // Debug log
       if (response.status === 'success') {
         Toast.show({

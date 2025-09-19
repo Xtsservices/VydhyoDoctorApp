@@ -107,6 +107,27 @@ const AddAppointment = () => {
       return "";
     }
   };
+
+  const validateRequiredFields = () => {
+    const requiredPatientFields = [
+      patientformData.firstName,
+      patientformData.gender,
+      patientformData.mobile,
+      patientformData.age
+    ];
+
+    const requiredAppointmentFields = [
+      formData.appointmentType,
+      formData.appointmentDate,
+      formData.clinicAddressId,
+      formData.selectedTime,
+      formData.fee
+    ];
+
+    return !requiredPatientFields.some(field => !field) &&
+      !requiredAppointmentFields.some(field => !field) &&
+      patientId; // Patient must be created or selected
+  };
   const fetchQRCode = async (clinicId: string) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
@@ -121,7 +142,7 @@ const AddAppointment = () => {
           response.data?.data?.qrCodeUrl ||
           response.data?.clinicQrCode ||
           response.data?.qrCodeUrl ||
-          response.data?.data; 
+          response.data?.data;
 
         console.log('Extracted QR Code URL:', qrCodeUrl);
         setQrCodeUrl(qrCodeUrl || '');
@@ -930,13 +951,21 @@ const AddAppointment = () => {
               value="upi"
               status={paymentMethod === 'upi' ? 'checked' : 'unchecked'}
               onPress={() => {
-                setPaymentMethod('upi');
-                if (formData.clinicAddressId) {
-                  fetchQRCode(formData.clinicAddressId);
+                if (!formData.clinicAddressId) {
+                  Alert.alert('Error', 'Please select a clinic first to use UPI payment');
+                  return;
                 }
+                setPaymentMethod('upi');
+                fetchQRCode(formData.clinicAddressId);
               }}
+              disabled={!formData.clinicAddressId}
             />
-            <Text style={styles.radioText}>UPI</Text>
+            <Text style={[
+              styles.radioText,
+              !formData.clinicAddressId && { color: '#ccc' }
+            ]}>
+              UPI
+            </Text>
           </View>
         </View>
 
@@ -959,28 +988,32 @@ const AddAppointment = () => {
               <Text style={styles.modalTitle}>UPI Payment</Text>
 
               <View style={styles.qrContainer}>
-                <Text style={styles.qrText}>Scan QR Code to Pay</Text>
                 {qrCodeUrl ? (
-                  <Image
-                    source={{ uri: qrCodeUrl }}
-                    style={styles.qrImage}
-                    resizeMode="contain"
-                    onError={() => {
-                      console.log('Failed to load QR image');
-                      setQrCodeUrl('');
-                    }}
-                  />
+                  <>
+                    <Text style={styles.qrText}>Scan QR Code to Pay</Text>
+                    <Image
+                      source={{ uri: qrCodeUrl }}
+                      style={styles.qrImage}
+                      resizeMode="contain"
+                      onError={() => {
+                        console.log('Failed to load QR image');
+                        setQrCodeUrl('');
+                      }}
+                    />
+                  </>
                 ) : (
                   <View>
-                    <ActivityIndicator size="large" color="#2563EB" />
-                    <Text style={{ marginTop: 10 }}>Loading QR code...</Text>
+                    <Text style={styles.errorText}>QR Code not available</Text>
+                    <Text style={{ marginTop: 10, textAlign: 'center' }}>
+                      Please use cash payment or contact clinic administrator
+                    </Text>
                   </View>
                 )}
               </View>
 
               <TouchableOpacity
-                style={[styles.confirmButton, isProcessingPayment && styles.disabledButton]}
-                disabled={isProcessingPayment}
+                style={[styles.confirmButton, (!qrCodeUrl || isProcessingPayment) && styles.disabledButton]}
+                disabled={!qrCodeUrl || isProcessingPayment}
                 onPress={() => {
                   setShowUpiModal(false);
                   handleCreateAppointment();
@@ -990,11 +1023,23 @@ const AddAppointment = () => {
                   {isProcessingPayment ? "Processing..." : "Confirm Payment"}
                 </Text>
               </TouchableOpacity>
+
+              {!qrCodeUrl && (
+                <TouchableOpacity
+                  style={[styles.confirmButton, { backgroundColor: '#6c757d', marginTop: 10 }]}
+                  onPress={() => setShowUpiModal(false)}
+                >
+                  <Text style={styles.confirmButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Modal>
         <TouchableOpacity
-          style={[styles.payNowButton, isProcessingPayment && styles.disabledButton]}
+          style={[
+            styles.payNowButton,
+            (isProcessingPayment || !validateRequiredFields()) && styles.disabledButton
+          ]}
           onPress={() => {
             if (paymentMethod === 'upi') {
               if (!formData.clinicAddressId) {
@@ -1006,7 +1051,7 @@ const AddAppointment = () => {
               handleCreateAppointment();
             }
           }}
-          disabled={isProcessingPayment}
+          disabled={isProcessingPayment || !validateRequiredFields()}
         >
           {isProcessingPayment ? (
             <ActivityIndicator size="small" color="#fff" />
@@ -1281,6 +1326,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  disabledText: {
+  color: '#ccc',
+},
   addButton: {
     backgroundColor: '#0a84ff',
     padding: 14,
