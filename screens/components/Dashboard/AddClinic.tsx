@@ -679,7 +679,7 @@ const AddClinicForm = () => {
       if (clinicQRFile) formData.append('clinicQR', clinicQRFile as any);
       if (pharmacyQRFile) formData.append('pharmacyQR', pharmacyQRFile as any);
       if (labQRFile) formData.append('labQR', labQRFile as any);
-
+console.log("Submitting form data:", formData);
       const response = await UploadFiles('users/addAddressFromWeb', formData, token);
       console.log('Add Clinic Response:', response);
 

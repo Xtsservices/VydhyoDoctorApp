@@ -16,7 +16,7 @@ import {
   Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { AuthFetch, AuthPost, UploadFiles } from '../../auth/auth';
+import { AuthFetch, AuthPost, UploadFiles, AuthPut } from '../../auth/auth';
 import Toast from 'react-native-toast-message';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useSelector } from 'react-redux';
@@ -78,6 +78,7 @@ const ClinicManagementScreen = () => {
   const [totalClinics, setTotalClinics] = useState<Clinic[]>([]);
   const [search, setSearch] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [imageEditModalVisible, setImageEditModalVisible] = useState(false);
   const [headerModalVisible, setHeaderModalVisible] = useState(false);
   const [pharmacyModalVisible, setPharmacyModalVisible] = useState(false);
   const [labModalVisible, setLabModalVisible] = useState(false);
@@ -232,25 +233,20 @@ const ClinicManagementScreen = () => {
       setLoading(false);
     }
   };
+
   const openPharmacyViewModal = async (clinic: Clinic) => {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
 
-      // Fetch pharmacy details
       const response = await AuthFetch(
         `users/getPharmacyByClinicId/${clinic.addressId}`,
         token
       );
-      console.log("Pharmacy fetch response:", response.data.data.pharmacyHeader);
 
       if (response?.status === 'success' && response.data?.data) {
         let pharmacyDetails = response.data.data;
 
-        // Check if pharmacyHeader exists in the response structure
-        console.log("Pharmacy fetch response:", response.data.data);
-
-        // Fetch QR code if pharmacy details exist
         if (pharmacyDetails) {
           const qrResponse = await AuthFetch(
             `users/getClinicsQRCode/${clinic.addressId}?userId=${doctorId}`,
@@ -275,7 +271,6 @@ const ClinicManagementScreen = () => {
           pharmacyAddress: pharmacyDetails.pharmacyAddress || '',
         });
 
-        // Update this line to access the correct property
         setPharmacyHeaderPreview(pharmacyDetails.pharmacyHeaderImage || pharmacyDetails.pharmacyHeader || null);
         setPharmacyQrPreview(pharmacyDetails.pharmacyQrCode || null);
         setPharmacyViewModalVisible(true);
@@ -300,19 +295,14 @@ const ClinicManagementScreen = () => {
       setLoading(true);
       const token = await AsyncStorage.getItem('authToken');
 
-      // Fetch lab details
       const response = await AuthFetch(
         `users/getLabByClinicId/${clinic.addressId}`,
         token
       );
-      console.log("Lab fetch response:", response.data.data.labHeader);
+
       if (response?.status === 'success' && response.data?.data) {
         let labDetails = response.data.data;
 
-        // Check if labHeader exists in the response structure
-        console.log("Lab fetch response:", response.data.data);
-
-        // Fetch QR code if lab details exist
         if (labDetails) {
           const qrResponse = await AuthFetch(
             `users/getClinicsQRCode/${clinic.addressId}?userId=${doctorId}`,
@@ -337,7 +327,6 @@ const ClinicManagementScreen = () => {
           labAddress: labDetails.labAddress || '',
         });
 
-        // Update this line to access the correct property
         setLabHeaderPreview(labDetails.labHeaderImage || labDetails.labHeader || null);
         setLabQrPreview(labDetails.labQrCode || null);
         setLabViewModalVisible(true);
@@ -418,7 +407,6 @@ const ClinicManagementScreen = () => {
       setInitialLoading(false);
     }
   };
-  console.log("totalClinics", totalClinics);
 
   useEffect(() => {
     fetchClinics();
@@ -476,6 +464,23 @@ const ClinicManagementScreen = () => {
     setModalVisible(true);
   };
 
+  const openImageEditModal = (clinic: Clinic) => {
+    setSelectedClinic(clinic);
+    setHeaderPreview(clinic.headerImage || null);
+    setClinicQrPreview(clinic.clinicQrCode || null);
+    setPharmacyHeaderPreview(clinic.pharmacyHeaderImage || null);
+    setPharmacyQrPreview(clinic.pharmacyQrCode || null);
+    setLabHeaderPreview(clinic.labHeaderImage || null);
+    setLabQrPreview(clinic.labQrCode || null);
+    setHeaderFile(null);
+    setClinicQrFile(null);
+    setPharmacyHeaderFile(null);
+    setPharmacyQrFile(null);
+    setLabHeaderFile(null);
+    setLabQrFile(null);
+    setImageEditModalVisible(true);
+  };
+
   const formatTimeTo12Hour = (time24: string): string => {
     if (!time24) return '—';
     const [hours, minutes] = time24.split(':').map(Number);
@@ -487,6 +492,7 @@ const ClinicManagementScreen = () => {
 
   const closeModal = () => {
     setModalVisible(false);
+    setImageEditModalVisible(false);
     setMode(null);
     setHeaderFile(null);
     setSignatureFile(null);
@@ -508,7 +514,6 @@ const ClinicManagementScreen = () => {
     setSignatureFile(null);
     setSignaturePreview(clinic.digitalSignature || null);
   };
-  console.log("clincccc", clinics);
 
   const openPharmacyModal = (clinic: Clinic) => {
     setSelectedClinic(clinic);
@@ -732,12 +737,6 @@ const ClinicManagementScreen = () => {
       formData.append('labPan', form.labPAN);
       formData.append('labAddress', form.labAddress);
 
-      if (headerFile) formData.append('file', headerFile as any);
-      if (signatureFile) formData.append('signature', signatureFile as any);
-      if (clinicQrFile) formData.append('clinicQR', clinicQrFile as any);
-      if (pharmacyQrFile) formData.append('pharmacyQR', pharmacyQrFile as any);
-      if (labQrFile) formData.append('labQR', labQrFile as any);
-
       const res = await UploadFiles('users/updateAddress', formData, token);
 
       if (res?.status === 'success') {
@@ -761,6 +760,70 @@ const ClinicManagementScreen = () => {
       }
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to update clinic. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageEditSubmit = async () => {
+    if (!selectedClinic) return;
+
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      const formData = new FormData();
+      formData.append('userId', userId || (await AsyncStorage.getItem('userId')) || '');
+      formData.append('addressId', selectedClinic.addressId || '');
+      formData.append('type', 'clinic'); // Changed from 'Clinic' to 'clinic'
+
+      // Use the exact field names from the working example
+      if (headerFile) {
+        formData.append('file', headerFile as any); // clinic header
+      }
+      if (clinicQrFile) {
+        formData.append('clinicQR', clinicQrFile as any); // clinic QR
+      }
+      if (pharmacyHeaderFile) {
+        formData.append('pharmacyHeader', pharmacyHeaderFile as any);
+      }
+      if (pharmacyQrFile) {
+        formData.append('pharmacyQR', pharmacyQrFile as any); // pharmacy QR
+      }
+      if (labHeaderFile) {
+        formData.append('labHeader', labHeaderFile as any);
+      }
+      if (labQrFile) {
+        formData.append('labQR', labQrFile as any); // lab QR
+      }
+      // Add signature if needed
+      // if (signatureFile) {
+      //   formData.append('signature', signatureFile as any);
+      // }
+
+      // Use UploadFiles instead of AuthPut
+      const response = await AuthPut('users/updateImagesAddress', formData, token);
+      console.log('Upload response:', response); // Debug log
+      if (response.status === 'success') {
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Images updated successfully',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        setImageEditModalVisible(false);
+        await fetchClinics();
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: response.message || 'Failed to update images',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
+    } catch (error) {
+      Alert.alert('Error', error?.message || 'Failed to update images. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -1044,7 +1107,17 @@ const ClinicManagementScreen = () => {
                   </TouchableOpacity>
                 </View>
               )}
-              
+
+              {labQrPreview && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Lab QR Code</Text>
+                  <TouchableOpacity
+                    onPress={() => openImagePreview(labQrPreview, 'Lab QR Code')}
+                  >
+                    <Image source={{ uri: labQrPreview }} style={styles.previewImage} />
+                  </TouchableOpacity>
+                </View>
+              )}
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -1137,115 +1210,60 @@ const ClinicManagementScreen = () => {
                     </View>
                   )}
 
-                       {labHeaderPreview && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Lab Header Image</Text>
-                  <TouchableOpacity
-                    onPress={() => openImagePreview(labHeaderPreview, 'Lab Header')}
-                  >
-                    <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} />
-                  </TouchableOpacity>
-                </View>
-              )}
-                {pharmacyHeaderPreview && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Pharmacy Header Image</Text>
-                  <TouchableOpacity
-                    onPress={() => openImagePreview(pharmacyHeaderPreview, 'Pharmacy Header')}
-                  >
-                    <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} />
-                  </TouchableOpacity>
-                </View>
-              )}
-                </>
-              )}
-
-              {mode === 'edit' && (
-                <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Header Image (Optional)</Text>
-                    <TouchableOpacity
-                      style={styles.uploadBox}
-                      onPress={() => handleFileChange('header')}
-                    >
-                      {headerPreview ? (
-                        <Image source={{ uri: headerPreview }} style={styles.previewImage} />
-                      ) : (
-                        <View style={styles.uploadPlaceholder}>
-                          <Icon name="image-outline" size={32} color="#6B7280" />
-                          <Text style={styles.uploadText}>Tap to upload header image</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Digital Signature (Optional)</Text>
-                    <TouchableOpacity
-                      style={styles.uploadBox}
-                      onPress={() => handleFileChange('signature')}
-                    >
-                      {signaturePreview ? (
-                        <Image source={{ uri: signaturePreview }} style={styles.previewImage} />
-                      ) : (
-                        <View style={styles.uploadPlaceholder}>
-                          <Icon name="draw" size={32} color="#6B7280" />
-                          <Text style={styles.uploadText}>Tap to upload signature</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Clinic QR Code (Optional)</Text>
-                    <TouchableOpacity
-                      style={styles.uploadBox}
-                      onPress={() => handleFileChange('clinicQR')}
-                    >
-                      {clinicQrPreview ? (
+                  {clinicQrPreview && (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Clinic QR Code</Text>
+                      <TouchableOpacity
+                        onPress={() => openImagePreview(clinicQrPreview, 'Clinic QR Code')}
+                      >
                         <Image source={{ uri: clinicQrPreview }} style={styles.previewImage} />
-                      ) : (
-                        <View style={styles.uploadPlaceholder}>
-                          <Icon name="qrcode" size={32} color="#6B7280" />
-                          <Text style={styles.uploadText}>Tap to upload clinic QR code</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Pharmacy QR Code (Optional)</Text>
-                    <TouchableOpacity
-                      style={styles.uploadBox}
-                      onPress={() => handleFileChange('pharmacyQR')}
-                    >
-                      {pharmacyQrPreview ? (
+                  {pharmacyHeaderPreview && (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Pharmacy Header Image</Text>
+                      <TouchableOpacity
+                        onPress={() => openImagePreview(pharmacyHeaderPreview, 'Pharmacy Header')}
+                      >
+                        <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {pharmacyQrPreview && (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Pharmacy QR Code</Text>
+                      <TouchableOpacity
+                        onPress={() => openImagePreview(pharmacyQrPreview, 'Pharmacy QR Code')}
+                      >
                         <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} />
-                      ) : (
-                        <View style={styles.uploadPlaceholder}>
-                          <Icon name="qrcode" size={32} color="#6B7280" />
-                          <Text style={styles.uploadText}>Tap to upload pharmacy QR code</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Lab QR Code (Optional)</Text>
-                    <TouchableOpacity
-                      style={styles.uploadBox}
-                      onPress={() => handleFileChange('labQR')}
-                    >
-                      {labQrPreview ? (
+                  {labHeaderPreview && (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Lab Header Image</Text>
+                      <TouchableOpacity
+                        onPress={() => openImagePreview(labHeaderPreview, 'Lab Header')}
+                      >
+                        <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {labQrPreview && (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Lab QR Code</Text>
+                      <TouchableOpacity
+                        onPress={() => openImagePreview(labQrPreview, 'Lab QR Code')}
+                      >
                         <Image source={{ uri: labQrPreview }} style={styles.previewImage} />
-                      ) : (
-                        <View style={styles.uploadPlaceholder}>
-                          <Icon name="qrcode" size={32} color="#6B7280" />
-                          <Text style={styles.uploadText}>Tap to upload lab QR code</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </>
               )}
             </ScrollView>
@@ -1269,6 +1287,144 @@ const ClinicManagementScreen = () => {
                   <Text style={styles.deleteText}>Delete Clinic</Text>
                 </TouchableOpacity>
               )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Image Edit Modal */}
+      <Modal
+        visible={imageEditModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageEditModalVisible(false)}
+      >
+        <View style={styles.overlay}>
+          <View style={[styles.modal, { maxHeight: height * 0.8 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Images</Text>
+              <TouchableOpacity onPress={() => setImageEditModalVisible(false)} style={styles.closeButton}>
+                <Icon name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Clinic Header Image (Optional)</Text>
+                <TouchableOpacity
+                  style={styles.uploadBox}
+                  onPress={() => handleFileChange('header')}
+                >
+                  {headerPreview ? (
+                    <Image source={{ uri: headerPreview }} style={styles.previewImage} />
+                  ) : (
+                    <View style={styles.uploadPlaceholder}>
+                      <Icon name="image-outline" size={32} color="#6B7280" />
+                      <Text style={styles.uploadText}>Tap to upload clinic header</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Clinic QR Code (Optional)</Text>
+                <TouchableOpacity
+                  style={styles.uploadBox}
+                  onPress={() => handleFileChange('clinicQR')}
+                >
+                  {clinicQrPreview ? (
+                    <Image source={{ uri: clinicQrPreview }} style={styles.previewImage} />
+                  ) : (
+                    <View style={styles.uploadPlaceholder}>
+                      <Icon name="qrcode" size={32} color="#6B7280" />
+                      <Text style={styles.uploadText}>Tap to upload clinic QR code</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Pharmacy Header Image (Optional)</Text>
+                <TouchableOpacity
+                  style={styles.uploadBox}
+                  onPress={() => handleFileChange('pharmacyHeader')}
+                >
+                  {pharmacyHeaderPreview ? (
+                    <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} />
+                  ) : (
+                    <View style={styles.uploadPlaceholder}>
+                      <Icon name="image-outline" size={32} color="#6B7280" />
+                      <Text style={styles.uploadText}>Tap to upload pharmacy header</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Pharmacy QR Code (Optional)</Text>
+                <TouchableOpacity
+                  style={styles.uploadBox}
+                  onPress={() => handleFileChange('pharmacyQR')}
+                >
+                  {pharmacyQrPreview ? (
+                    <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} />
+                  ) : (
+                    <View style={styles.uploadPlaceholder}>
+                      <Icon name="qrcode" size={32} color="#6B7280" />
+                      <Text style={styles.uploadText}>Tap to upload pharmacy QR code</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Lab Header Image (Optional)</Text>
+                <TouchableOpacity
+                  style={styles.uploadBox}
+                  onPress={() => handleFileChange('labHeader')}
+                >
+                  {labHeaderPreview ? (
+                    <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} />
+                  ) : (
+                    <View style={styles.uploadPlaceholder}>
+                      <Icon name="image-outline" size={32} color="#6B7280" />
+                      <Text style={styles.uploadText}>Tap to upload lab header</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Lab QR Code (Optional)</Text>
+                <TouchableOpacity
+                  style={styles.uploadBox}
+                  onPress={() => handleFileChange('labQR')}
+                >
+                  {labQrPreview ? (
+                    <Image source={{ uri: labQrPreview }} style={styles.previewImage} />
+                  ) : (
+                    <View style={styles.uploadPlaceholder}>
+                      <Icon name="qrcode" size={32} color="#6B7280" />
+                      <Text style={styles.uploadText}>Tap to upload lab QR code</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setImageEditModalVisible(false)}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleImageEditSubmit}
+              >
+                <Text style={styles.saveText}>Save Images</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -1769,6 +1925,13 @@ const ClinicManagementScreen = () => {
                             </Text>
                           </TouchableOpacity>
                         )}
+
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => openImageEditModal(clinic)}
+                        >
+                          <Text style={styles.actionButtonText}>Edit Images</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
 
