@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  Image,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
@@ -573,7 +574,125 @@ const Billing: React.FC = () => {
     );
   };
 
-  const handleMarkAsPaid = async (patientKeyId: number, type: "pharmacy" | "labs" | "all") => {
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<Record<string, Record<"pharmacy" | "labs", "cash" | "upi" | null>>>({});
+  const [showUpiQrs, setShowUpiQrs] = useState<Record<string, Record<"pharmacy" | "labs", boolean>>>({});
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
+  const [currentPatientIdForQr, setCurrentPatientIdForQr] = useState<string | null>(null);
+  const [currentTypeForQr, setCurrentTypeForQr] = useState<"pharmacy" | "labs" | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+
+  const handlePaymentMethodSelect = async (patientId: string, type: "pharmacy" | "labs", method: "cash" | "upi") => {
+    setSelectedPaymentMethods((prev) => ({
+      ...prev,
+      [patientId]: {
+        ...prev[patientId],
+        [type]: method,
+      },
+    }));
+
+    if (method === "upi") {
+      setCurrentPatientIdForQr(patientId);
+      setCurrentTypeForQr(type);
+
+      const patient = transformedPatients.find((p) => p.patientId === patientId);
+      const appt0 = patient?.appointments?.[0];
+      const addressId = appt0?.addressId;
+
+      if (!addressId) {
+        Toast.show({
+          type: "error",
+          text1: "No clinic address found for QR code",
+        });
+        setSelectedPaymentMethods((prev) => ({
+          ...prev,
+          [patientId]: {
+            ...prev[patientId],
+            [type]: null,
+          },
+        }));
+        return;
+      }
+
+      const success = await fetchQRCode(addressId, type);
+      if (success) {
+        setShowUpiQrs((prev) => ({
+          ...prev,
+          [patientId]: {
+            ...prev[patientId],
+            [type]: true,
+          },
+        }));
+        setQrModalVisible(true);
+      } else {
+        setSelectedPaymentMethods((prev) => ({
+          ...prev,
+          [patientId]: {
+            ...prev[patientId],
+            [type]: null,
+          },
+        }));
+      }
+    } else {
+      setShowUpiQrs((prev) => ({
+        ...prev,
+        [patientId]: {
+          ...prev[patientId],
+          [type]: false,
+        },
+      }));
+    }
+  };
+
+  const fetchQRCode = async (addressId: string, type: "pharmacy" | "labs") => {
+    try {
+      setQrLoading(true);
+      const token = await AsyncStorage.getItem("authToken");
+      const res = await AuthFetch(`users/getClinicsQRCode/${addressId}?userId=${user.userId}`, token);
+
+      if (res?.data?.status === "success" && res?.data?.data) {
+        const qrCodeUrl = type === "labs" ? res.data.data.labQrCode : res.data.data.pharmacyQrCode || res.data.data.qrCodeUrl;
+        if (qrCodeUrl) {
+          setQrCodeImage(qrCodeUrl);
+          return true;
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "QR code not available",
+          });
+          return false;
+        }
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to fetch QR code",
+        });
+        return false;
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: error?.response?.data?.message || "Failed to fetch QR code",
+      });
+      return false;
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleUpiPaymentConfirm = (patientId: string, type: "pharmacy" | "labs") => {
+    setQrModalVisible(false);
+    setShowUpiQrs((prev) => ({
+      ...prev,
+      [patientId]: {
+        ...prev[patientId],
+        [type]: false,
+      },
+    }));
+    handlePayment(patientId, type, "upi");
+  };
+
+  const handlePayment = async (patientKeyId: number, type: "pharmacy" | "labs" | "all", method: "cash" | "upi") => {
     const key = `${patientKeyId}-${type}`;
     if (isPaymentInProgress[key]) return;
 
@@ -606,7 +725,9 @@ const Billing: React.FC = () => {
           status: "pending",
           price: m.price,
         })),
+      paymentMethod: method,
     };
+    console.log("Payment payload:", payload);
 
     if (payload.tests.length === 0 && payload.medicines.length === 0) {
       Toast.show({ type: "error", text1: "At least one test or medicine must be provided." });
@@ -618,12 +739,27 @@ const Billing: React.FC = () => {
 
       const token = await AsyncStorage.getItem("authToken");
       const res = await AuthPost("receptionist/totalBillPayFromReception", payload, token);
+      console.log("Payment response:", res);
       const ok = res?.data?.status === "success" || res?.status === "success";
 
       if (ok) {
         applyOptimisticPayment(p, type); // instant reflect
         Toast.show({ type: "success", text1: "Payment processed successfully." });
         fetchPatientsWithoutLoading();   // background sync
+        setSelectedPaymentMethods((prev) => ({
+          ...prev,
+          [p.patientId]: {
+            ...prev[p.patientId],
+            [type]: null,
+          },
+        }));
+        setShowUpiQrs((prev) => ({
+          ...prev,
+          [p.patientId]: {
+            ...prev[p.patientId],
+            [type]: false,
+          },
+        }));
       } else {
         throw new Error("Failed to process payment");
       }
@@ -966,26 +1102,6 @@ const Billing: React.FC = () => {
     return html;
   };
 
-  // ---------- SAVE HTML TO DEVICE ----------
-  //   const saveInvoiceHTML = async (filename: string, html: string) => {
-  //     try {
-  //       const dir =
-  //         Platform.OS === "android"
-  //           ? RNFS.DownloadDirectoryPath // /storage/emulated/0/Download
-  //           : RNFS.DocumentDirectoryPath; // iOS app's documents
-
-  //       const path = `${dir}/${filename}`;
-  //       await RNFS.writeFile(path, html, "utf8");
-  //       Toast.show({ type: "success", text1: "Invoice downloaded", text2: path });
-  //       return path;
-  //     } catch (e: any) {
-  //       Toast.show({ type: "error", text1: "Failed to save invoice", text2: e?.message || "" });
-  //       return null;
-  //     }
-  //   };
-
-
-
   // ---------- GENERATE & SAVE PDF FROM HTML ----------
   const generateAndSavePDF = async (filenameBase: string, html: string) => {
     try {
@@ -1166,6 +1282,48 @@ const Billing: React.FC = () => {
                       </View>
                     ) : null}
 
+                    {totals.medicineTotal > 0 && (
+                      selectedPaymentMethods[item.patientId]?.pharmacy !== null && (
+                        <View style={styles.paymentMethodContainer}>
+                          <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
+
+                          <View style={styles.paymentOptions}>
+                            <TouchableOpacity
+                              style={styles.paymentOption}
+                              onPress={() => handlePaymentMethodSelect(item.patientId, "pharmacy", 'cash')}
+                            >
+                              <View style={styles.radioButton}>
+                                {selectedPaymentMethods[item.patientId]?.pharmacy === 'cash' && <View style={styles.radioButtonSelected} />}
+                              </View>
+                              <Text style={styles.paymentOptionText}>Cash</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.paymentOption}
+                              onPress={() => handlePaymentMethodSelect(item.patientId, "pharmacy", 'upi')}
+                            >
+                              <View style={styles.radioButton}>
+                                {selectedPaymentMethods[item.patientId]?.pharmacy === 'upi' && <View style={styles.radioButtonSelected} />}
+                              </View>
+                              <Text style={styles.paymentOptionText}>UPI</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {selectedPaymentMethods[item.patientId]?.pharmacy === 'cash' && (
+                            <TouchableOpacity
+                              style={[styles.confirmButton, isPaymentInProgress[`${item.id}-pharmacy`] && styles.btnDisabled]}
+                              disabled={isPaymentInProgress[`${item.id}-pharmacy`]}
+                              onPress={() => handlePayment(item.id, "pharmacy", 'cash')}
+                            >
+                              <Text style={styles.confirmButtonText}>
+                                {isPaymentInProgress[`${item.id}-pharmacy`] ? "Processing..." : "Confirm Cash Payment"}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )
+                    )}
+
                     <View style={styles.actionsRow}>
                       {/* DOWNLOAD instead of PRINT */}
                       <TouchableOpacity
@@ -1184,7 +1342,21 @@ const Billing: React.FC = () => {
                           },
                         ]}
                         disabled={totals.medicineTotal === 0 || !!isPaymentInProgress[`${item.id}-pharmacy`]}
-                        onPress={() => handleMarkAsPaid(item.id, "pharmacy")}
+                        onPress={() => {
+                          const method = selectedPaymentMethods[item.patientId]?.pharmacy || null;
+                          if (method === null) {
+                            setSelectedPaymentMethods((prev) => ({
+                              ...prev,
+                              [item.patientId]: {
+                                ...prev[item.patientId],
+                                pharmacy: 'cash',
+                              },
+                            }));
+                            handlePaymentMethodSelect(item.patientId, "pharmacy", 'cash');
+                          } else {
+                            handlePayment(item.id, "pharmacy", method);
+                          }
+                        }}
                       >
                         {isPaymentInProgress[`${item.id}-pharmacy`] ? (
                           <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1232,6 +1404,48 @@ const Billing: React.FC = () => {
                       </View>
                     ) : null}
 
+                    {totals.testTotal > 0 && (
+                      selectedPaymentMethods[item.patientId]?.labs !== null && (
+                        <View style={styles.paymentMethodContainer}>
+                          <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
+
+                          <View style={styles.paymentOptions}>
+                            <TouchableOpacity
+                              style={styles.paymentOption}
+                              onPress={() => handlePaymentMethodSelect(item.patientId, "labs", 'cash')}
+                            >
+                              <View style={styles.radioButton}>
+                                {selectedPaymentMethods[item.patientId]?.labs === 'cash' && <View style={styles.radioButtonSelected} />}
+                              </View>
+                              <Text style={styles.paymentOptionText}>Cash</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.paymentOption}
+                              onPress={() => handlePaymentMethodSelect(item.patientId, "labs", 'upi')}
+                            >
+                              <View style={styles.radioButton}>
+                                {selectedPaymentMethods[item.patientId]?.labs === 'upi' && <View style={styles.radioButtonSelected} />}
+                              </View>
+                              <Text style={styles.paymentOptionText}>UPI</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {selectedPaymentMethods[item.patientId]?.labs === 'cash' && (
+                            <TouchableOpacity
+                              style={[styles.confirmButton, isPaymentInProgress[`${item.id}-labs`] && styles.btnDisabled]}
+                              disabled={isPaymentInProgress[`${item.id}-labs`]}
+                              onPress={() => handlePayment(item.id, "labs", 'cash')}
+                            >
+                              <Text style={styles.confirmButtonText}>
+                                {isPaymentInProgress[`${item.id}-labs`] ? "Processing..." : "Confirm Cash Payment"}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )
+                    )}
+
                     <View style={styles.actionsRow}>
                       {/* DOWNLOAD instead of PRINT */}
                       <TouchableOpacity
@@ -1247,7 +1461,21 @@ const Billing: React.FC = () => {
                           { opacity: totals.testTotal === 0 || isPaymentInProgress[`${item.id}-labs`] ? 0.6 : 1 },
                         ]}
                         disabled={totals.testTotal === 0 || !!isPaymentInProgress[`${item.id}-labs`]}
-                        onPress={() => handleMarkAsPaid(item.id, "labs")}
+                        onPress={() => {
+                          const method = selectedPaymentMethods[item.patientId]?.labs || null;
+                          if (method === null) {
+                            setSelectedPaymentMethods((prev) => ({
+                              ...prev,
+                              [item.patientId]: {
+                                ...prev[item.patientId],
+                                labs: 'cash',
+                              },
+                            }));
+                            handlePaymentMethodSelect(item.patientId, "labs", 'cash');
+                          } else {
+                            handlePayment(item.id, "labs", method);
+                          }
+                        }}
                       >
                         {isPaymentInProgress[`${item.id}-labs`] ? (
                           <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1440,6 +1668,101 @@ const Billing: React.FC = () => {
                 <Text style={styles.primaryText}>Go to Clinic Management</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* QR Modal */}
+      <Modal
+        visible={qrModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setQrModalVisible(false);
+          if (currentPatientIdForQr && currentTypeForQr) {
+            setShowUpiQrs((prev) => ({
+              ...prev,
+              [currentPatientIdForQr]: {
+                ...prev[currentPatientIdForQr],
+                [currentTypeForQr]: false,
+              },
+            }));
+            setSelectedPaymentMethods((prev) => ({
+              ...prev,
+              [currentPatientIdForQr]: {
+                ...prev[currentPatientIdForQr],
+                [currentTypeForQr]: null,
+              },
+            }));
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.qrText}>Scan QR Code to Pay</Text>
+
+            {qrLoading ? (
+              <ActivityIndicator size="large" color="#3B82F6" />
+            ) : qrCodeImage ? (
+              <Image
+                source={{ uri: qrCodeImage }}
+                style={styles.qrImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.errorText}>QR code not available</Text>
+            )}
+
+            {currentPatientIdForQr && currentTypeForQr && (
+              (() => {
+                const patient = transformedPatients.find((p) => p.patientId === currentPatientIdForQr);
+                if (patient) {
+                  const totals = sectionTotals(patient);
+                  const total = currentTypeForQr === "labs" ? totals.testTotal : totals.medicineTotal;
+                  return <Text style={styles.upiId}>Total Amount: ₹ {currency(total)}</Text>;
+                }
+                return null;
+              })()
+            )}
+
+            <TouchableOpacity
+              style={[styles.confirmButton, currentPatientIdForQr && currentTypeForQr && isPaymentInProgress[`${viewModePatientId}-${currentTypeForQr}`] && styles.btnDisabled]}
+              disabled={!!(currentPatientIdForQr && currentTypeForQr && isPaymentInProgress[`${viewModePatientId}-${currentTypeForQr}`])}
+              onPress={() => {
+                if (currentPatientIdForQr && currentTypeForQr) {
+                  handleUpiPaymentConfirm(currentPatientIdForQr, currentTypeForQr);
+                }
+              }}
+            >
+              <Text style={styles.confirmButtonText}>
+                {currentPatientIdForQr && currentTypeForQr && isPaymentInProgress[`${viewModePatientId}-${currentTypeForQr}`] ? "Processing..." : "Confirm UPI Payment"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setQrModalVisible(false);
+                if (currentPatientIdForQr && currentTypeForQr) {
+                  setShowUpiQrs((prev) => ({
+                    ...prev,
+                    [currentPatientIdForQr]: {
+                      ...prev[currentPatientIdForQr],
+                      [currentTypeForQr]: false,
+                    },
+                  }));
+                  setSelectedPaymentMethods((prev) => ({
+                    ...prev,
+                    [currentPatientIdForQr]: {
+                      ...prev[currentPatientIdForQr],
+                      [currentTypeForQr]: null,
+                    },
+                  }));
+                }
+              }}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1722,4 +2045,101 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalTitle: { fontWeight: "800", fontSize: 16, marginBottom: 8, color: "#111827" },
+
+  // Payment method styles
+  paymentMethodContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  paymentMethodTitle: {
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#334155',
+  },
+  paymentOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  radioButtonSelected: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#3B82F6',
+  },
+  paymentOptionText: {
+    color: '#334155',
+  },
+  confirmButton: {
+    backgroundColor: '#3B82F6',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+
+  // Modal styles for QR
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '80%',
+  },
+  qrText: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  qrImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 10,
+  },
+  upiId: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+  },
+  closeButtonText: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
 });

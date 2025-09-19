@@ -9,6 +9,8 @@ import {
   TextInput,
   Platform,
   PermissionsAndroid,
+  Image,
+  Modal,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
@@ -39,6 +41,7 @@ type PatientRow = {
   mobile?: string;
   tests: TestItem[];
   labData?: Record<string, any>;
+  addressId?: string; // Add this field to match web version
 };
 
 type Props = {
@@ -62,6 +65,12 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
   const [page, setPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
+  const [currentPatientForQr, setCurrentPatientForQr] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<Record<string, "cash" | "upi" | null>>({});
+  const [showUpiQr, setShowUpiQr] = useState<Record<string, boolean>>({});
+  const [qrLoading, setQrLoading] = useState(false);
 
   const mounted = useRef(false);
 
@@ -98,6 +107,11 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
             payState[p.patientId] = !p.tests.some((t) => t.status === "pending");
           });
           setIsPaymentDone((prev) => ({ ...prev, ...payState }));
+          const paymentMethods: Record<string, "cash" | "upi" | null> = {};
+          data.forEach((p) => {
+            paymentMethods[p.patientId] = null;
+          });
+          setSelectedPaymentMethod((prev) => ({ ...prev, ...paymentMethods }));
         }
       } catch (e: any) {
         Toast.show({
@@ -137,9 +151,9 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       prev.map((p) =>
         p.patientId === patientId
           ? {
-              ...p,
-              tests: p.tests.map((t) => (t._id === testId ? { ...t, price: isNaN(num) ? 0 : num } : t)),
-            }
+            ...p,
+            tests: p.tests.map((t) => (t._id === testId ? { ...t, price: isNaN(num) ? 0 : num } : t)),
+          }
           : p
       )
     );
@@ -183,7 +197,89 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     }
   };
 
-  const handlePayment = async (patientId: string) => {
+  const handlePaymentMethodSelect = async (patientId: string, method: "cash" | "upi") => {
+    setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: method }));
+
+    if (method === "upi") {
+      setCurrentPatientForQr(patientId);
+
+      // Get the patient to find the addressId
+      const patient = patients.find(p => p.patientId === patientId);
+      const addressId = patient?.addressId || clinicAddressId;
+      console.log("addressId for patient:", addressId);
+
+      console.log("Fetching QR for Address ID:", addressId);
+
+      if (!addressId) {
+        Toast.show({
+          type: "error",
+          text1: "No clinic address found for QR code",
+        });
+        setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: null }));
+        return;
+      }
+
+      const success = await fetchLabQRCode(addressId);
+      if (success) {
+        setShowUpiQr((prev) => ({ ...prev, [patientId]: true }));
+        setQrModalVisible(true);
+      } else {
+        setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: null }));
+      }
+    } else {
+      setShowUpiQr((prev) => ({ ...prev, [patientId]: false }));
+    }
+  };
+
+  const fetchLabQRCode = async (addressId: string) => {
+    console.log("Starting QR code fetch for address ID:", addressId);
+    try {
+      setQrLoading(true);
+      const token = await AsyncStorage.getItem("authToken");
+      const userId = await AsyncStorage.getItem("userId");
+      console.log("Fetching QR for Address ID:", addressId);
+
+      const response = await AuthFetch(
+        `users/getClinicsQRCode/${addressId}?userId=${userId}`,
+        token
+      );
+
+      if (response?.data?.status === "success" && response?.data?.data) {
+        const qrCodeUrl = response.data.data.labQrCode || response.data.data.qrCodeUrl;
+        if (qrCodeUrl) {
+          setQrCodeImage(qrCodeUrl);
+          return true;
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "QR code not available",
+          });
+          return false;
+        }
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to fetch QR code",
+        });
+        return false;
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: error?.response?.data?.message || "Failed to fetch QR code",
+      });
+      return false;
+    } finally {
+      setQrLoading(false);
+    }
+  };
+  const handleUpiPaymentConfirm = (patientId: string) => {
+    setQrModalVisible(false);
+    setShowUpiQr((prev) => ({ ...prev, [patientId]: false }));
+    handlePayment(patientId, "upi");
+  };
+
+  const handlePayment = async (patientId: string, method: "cash" | "upi") => {
     try {
       setPaying((p) => ({ ...p, [patientId]: true }));
       const patient = patients.find((x) => x.patientId === patientId);
@@ -205,13 +301,18 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
         patientId,
         doctorId,
         amount: totalAmount,
+        paymentMethod: method, // NEW: Include payment method
         tests: patient.tests.map((t) => ({ testId: t._id, price: t.price, labTestID: t.labTestID })),
       };
+      console.log("Payment request body:", body);
       const resp = await AuthPost(`lab/processPayment`, body, token);
+      console.log("Payment response:", resp);
 
       if (resp?.data?.status === "success") {
-        Toast.show({ type: "success", text1: "Payment processed" });
+        Toast.show({ type: "success", text1: `Payment processed via ${method.toUpperCase()}` });
         setIsPaymentDone((prev) => ({ ...prev, [patientId]: true }));
+        setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: null }));
+        setShowUpiQr((prev) => ({ ...prev, [patientId]: false }));
         updateCount();
         fetchPatients(1, pageSize);
       }
@@ -244,29 +345,29 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       tests.length === 1
         ? tests[0].updatedAt
           ? new Date(tests[0].updatedAt).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            })
-          : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            })
-        : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",
             hour: "numeric",
             minute: "2-digit",
             hour12: true,
-          });
+          })
+          : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
 
     const contactInfoHTML = `
       <div class="provider-name">${lab.labName || "Diagnostic Lab"}</div>
@@ -450,22 +551,22 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       norm === "completed"
         ? "#16a34a"
         : norm === "pending"
-        ? "#d97706"
-        : norm === "cancelled"
-        ? "#dc2626"
-        : norm === "in_progress"
-        ? "#2563eb"
-        : "#6b7280";
+          ? "#d97706"
+          : norm === "cancelled"
+            ? "#dc2626"
+            : norm === "in_progress"
+              ? "#2563eb"
+              : "#6b7280";
     const label =
       norm === "completed"
         ? "Completed"
         : norm === "pending"
-        ? "Pending"
-        : norm === "cancelled"
-        ? "Cancelled"
-        : norm === "in_progress"
-        ? "In Progress"
-        : "Unknown";
+          ? "Pending"
+          : norm === "cancelled"
+            ? "Cancelled"
+            : norm === "in_progress"
+              ? "In Progress"
+              : "Unknown";
     return (
       <View style={[styles.tag, { backgroundColor: color + "22", borderColor: color }]}>
         <Text style={{ color, fontWeight: "600" }}>{label}</Text>
@@ -485,7 +586,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
           <TextInput
             keyboardType="numeric"
             placeholder="Enter price"
-            placeholderTextColor="#94a3b8" 
+            placeholderTextColor="#94a3b8"
             value={t.price != null ? String(t.price) : ""}
             onFocus={() => {
               if (!isEditable) enableEdit(t._id);
@@ -503,7 +604,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
             style={[
               styles.saveBtn,
               (t.price == null || saving[t._id] || !(t.status === "pending" && (isEditable || initiallyNull))) &&
-                styles.btnDisabled,
+              styles.btnDisabled,
             ]}
           >
             <Text style={styles.saveBtnText}>{saving[t._id] ? "Saving..." : "Save"}</Text>
@@ -539,6 +640,8 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     const sts = patientStatus(item);
     const hasPending = item.tests.some((t) => t.status === "pending");
     const paid = isPaymentDone[item.patientId];
+    const paymentMethod = selectedPaymentMethod[item.patientId];
+    const showUpi = showUpiQr[item.patientId];
 
     // Filter tests based on status
     const filteredTests =
@@ -566,6 +669,98 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
             <Text style={{ color: "black" }}>{status === "pending" ? "No Pending Tests" : "No Completed Tests"}</Text>
           )}
         </View>
+        {!paid && hasPending && paymentMethod !== null && (
+          <View style={styles.paymentMethodContainer}>
+            <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
+
+            <View style={styles.paymentOptions}>
+              <TouchableOpacity
+                style={styles.paymentOption}
+                onPress={() => handlePaymentMethodSelect(item.patientId, 'cash')}
+              >
+                <View style={styles.radioButton}>
+                  {paymentMethod === 'cash' && <View style={styles.radioButtonSelected} />}
+                </View>
+                <Text style={styles.paymentOptionText}>Cash</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.paymentOption}
+                onPress={() => handlePaymentMethodSelect(item.patientId, 'upi')}
+              >
+                <View style={styles.radioButton}>
+                  {paymentMethod === 'upi' && <View style={styles.radioButtonSelected} />}
+                </View>
+                <Text style={styles.paymentOptionText}>UPI</Text>
+              </TouchableOpacity>
+            </View>
+
+            {paymentMethod === 'cash' && (
+              <TouchableOpacity
+                style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]}
+                disabled={paying[item.patientId]}
+                onPress={() => handlePayment(item.patientId, 'cash')}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {paying[item.patientId] ? "Processing..." : "Confirm Cash Payment"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* UPI QR Modal */}
+        <Modal
+          visible={paymentMethod === 'upi' && showUpi && qrModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => {
+            setQrModalVisible(false);
+            setShowUpiQr((prev) => ({ ...prev, [item.patientId]: false }));
+            setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: null }));
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.qrText}>Scan QR Code to Pay</Text>
+
+              {qrLoading ? (
+                <ActivityIndicator size="large" color="#1A3C6A" />
+              ) : qrCodeImage ? (
+                <Image
+                  source={{ uri: qrCodeImage }}
+                  style={styles.qrImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.errorText}>QR code not available</Text>
+              )}
+
+              <Text style={styles.upiId}>Total Amount: ₹ {total.toFixed(2)}</Text>
+
+              <TouchableOpacity
+                style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]}
+                disabled={paying[item.patientId]}
+                onPress={() => handleUpiPaymentConfirm(item.patientId)}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {paying[item.patientId] ? "Processing..." : "Confirm UPI Payment"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setQrModalVisible(false);
+                  setShowUpiQr((prev) => ({ ...prev, [item.patientId]: false }));
+                  setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: null }));
+                }}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <View style={styles.footerBar}>
           <Text style={styles.totalText}>Total: ₹ {total.toFixed(2)}</Text>
@@ -581,7 +776,14 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
                 (total <= 0 || !hasPending || paid || paying[item.patientId]) && styles.btnDisabled,
               ]}
               disabled={total <= 0 || !hasPending || paid || paying[item.patientId]}
-              onPress={() => handlePayment(item.patientId)}
+              onPress={() => {
+                if (paymentMethod === null) {
+                  setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: 'cash' }));
+                  handlePaymentMethodSelect(item.patientId, 'cash');
+                } else {
+                  handlePayment(item.patientId, paymentMethod);
+                }
+              }}
             >
               <Text style={styles.primaryBtnText}>
                 {paid ? "Paid" : paying[item.patientId] ? "Processing..." : "Process Payment"}
@@ -597,15 +799,15 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     <View style={{ flex: 1 }}>
       {loading ? (
         <View style={styles.spinningContainer}>
-                <ActivityIndicator size="large" color="#007bff" />
-                <Text style={{color:'black'}}>Loading List...</Text>
-                </View>
+          <ActivityIndicator size="large" color="#007bff" />
+          <Text style={{ color: 'black' }}>Loading List...</Text>
+        </View>
       ) : (
         patients?.length === 0 ? (
           <View style={styles.spinningContainer}>
-  <Text style={{color:'black'}}>No Data Found</Text>
+            <Text style={{ color: 'black' }}>No Data Found</Text>
           </View>
-        
+
         ) : (
           <FlatList
             data={patients}
@@ -650,7 +852,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 1,
     backgroundColor: "#fff",
-    color: "#000000", 
+    color: "#000000",
   },
   priceInputDisabled: { backgroundColor: "#f3f4f6", color: "#94a3b8" },
   saveBtn: { backgroundColor: "#1f2937", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
@@ -660,10 +862,109 @@ const styles = StyleSheet.create({
   primaryBtn: { backgroundColor: "#1A3C6A", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 },
   primaryBtnText: { color: "#fff", fontWeight: "700" },
   btnDisabled: { opacity: 0.5 },
-   spinningContainer : {
- flex: 1,
+  spinningContainer : {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
- padding: 10,
+    padding: 10,
+  },
+
+  // NEW: Payment method styles
+  paymentMethodContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  paymentMethodTitle: {
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#334155',
+  },
+  paymentOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#1A3C6A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  radioButtonSelected: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#1A3C6A',
+  },
+  paymentOptionText: {
+    color: '#334155',
+  },
+  confirmButton: {
+    backgroundColor: '#1A3C6A',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+
+  // UPI styles
+  upiContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  qrText: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  qrImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 10,
+  },
+  upiId: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+
+  // NEW: Modal styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '80%',
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+  },
+  closeButtonText: {
+    color: '#1A3C6A',
+    fontWeight: '600',
   },
 });

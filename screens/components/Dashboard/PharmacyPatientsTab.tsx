@@ -10,6 +10,8 @@ import {
   Platform,
   PermissionsAndroid,
   Alert,
+  Modal,
+  Image,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
@@ -18,10 +20,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import RNFS from 'react-native-fs';
-// import { captureRef } from 'react-native-view-shot';
 import FileViewer from 'react-native-file-viewer';
-import XLSX from 'xlsx';
-import RNHTMLtoPDF from 'react-native-html-to-pdf'; // Add this import
+import RNHTMLtoPDF from 'react-native-html-to-pdf';
 
 interface PatientsTabProps {
   status: "pending" | "completed";
@@ -84,6 +84,14 @@ export default function PatientsTab({
   const [totalPatients, setTotalPatients] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
+  
+  // NEW: QR code states
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
+  const [currentPatientForQr, setCurrentPatientForQr] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<Record<string, "cash" | "upi" | null>>({});
+  const [showUpiQr, setShowUpiQr] = useState<Record<string, boolean>>({});
+  const [qrLoading, setQrLoading] = useState(false);
 
   async function filterPatientsData(data: any[]) {
     const isPending = status === "pending";
@@ -158,6 +166,13 @@ export default function PatientsTab({
           payState[p.patientId] = !p.medicines.some((med) => med.status === "pending");
         });
         setIsPaymentDone((prev) => ({ ...prev, ...payState }));
+        
+        // Reset payment method selection for new patients
+        const paymentMethods: Record<string, "cash" | "upi" | null> = {};
+        formattedData.forEach((p) => {
+          paymentMethods[p.patientId] = null;
+        });
+        setSelectedPaymentMethod((prev) => ({ ...prev, ...paymentMethods }));
       } else {
         setPatients([]);
         setTotalPatients(0);
@@ -257,7 +272,91 @@ export default function PatientsTab({
     }
   };
 
-  const handlePayment = async (patientId: string) => {
+  // NEW: Handle payment method selection
+  const handlePaymentMethodSelect = async (patientId: string, method: "cash" | "upi") => {
+    setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: method }));
+
+    if (method === "upi") {
+      setCurrentPatientForQr(patientId);
+      
+      // Get the patient to find the addressId
+      const patient = patients.find(p => p.patientId === patientId);
+      const addressId = patient?.addressId;
+      
+      console.log("Fetching QR for Address ID:", addressId);
+      
+      if (!addressId) {
+        Toast.show({
+          type: "error",
+          text1: "No clinic address found for QR code",
+        });
+        setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: null }));
+        return;
+      }
+      
+      const success = await fetchPharmacyQRCode(addressId);
+      if (success) {
+        setShowUpiQr((prev) => ({ ...prev, [patientId]: true }));
+        setQrModalVisible(true);
+      } else {
+        setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: null }));
+      }
+    } else {
+      setShowUpiQr((prev) => ({ ...prev, [patientId]: false }));
+    }
+  };
+
+  const fetchPharmacyQRCode = async (addressId: string) => {
+    try {
+      setQrLoading(true);
+      const token = await AsyncStorage.getItem("authToken");
+      const userId = await AsyncStorage.getItem("userId");
+      console.log("Fetching QR for Address ID:", addressId);
+
+      const response = await AuthFetch(
+        `users/getClinicsQRCode/${addressId}?userId=${userId}`,
+        token
+      );
+      console.log("QR fetch response:", response);
+
+      if (response?.data?.status === "success" && response?.data?.data) {
+        const qrCodeUrl = response.data.data.pharmacyQrCode || response.data.data.qrCodeUrl;
+        if (qrCodeUrl) {
+          setQrCodeImage(qrCodeUrl);
+          return true;
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "QR code not available",
+          });
+          return false;
+        }
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to fetch QR code",
+        });
+        return false;
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: error?.response?.data?.message || "Failed to fetch QR code",
+      });
+      return false;
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  // NEW: Handle UPI payment confirmation
+  const handleUpiPaymentConfirm = (patientId: string) => {
+    setQrModalVisible(false);
+    setShowUpiQr((prev) => ({ ...prev, [patientId]: false }));
+    handlePayment(patientId, "upi");
+  };
+
+  const handlePayment = async (patientId: string, method: "cash" | "upi" = "cash") => {
     try {
       setPaying(prev => ({ ...prev, [patientId]: true }));
       const patient = patients.find(p => p.patientId === patientId);
@@ -292,6 +391,7 @@ export default function PatientsTab({
         patientId,
         doctorId,
         amount: totalAmount,
+        paymentMethod: method,
         medicines: patient?.medicines.map((med) => ({
           medicineId: med._id,
           price: med.price,
@@ -299,14 +399,28 @@ export default function PatientsTab({
           pharmacyMedID: med.pharmacyMedID || null,
         })),
       }, token);
+      console.log("Payment request body:", {
+        patientId,
+        doctorId,
+        amount: totalAmount,
+        paymentMethod: method,
+        medicines: patient?.medicines.map((med) => ({
+          medicineId: med._id,
+          price: med.price,
+          quantity: med.quantity,
+          pharmacyMedID: med.pharmacyMedID || null,
+        })),
+      });
 
       if (response.status === "success") {
         setIsPaymentDone(prev => ({ ...prev, [patientId]: true }));
         updateCount();
         Toast.show({
           type: "success",
-          text1: "Payment processed successfully",
+          text1: `Payment processed via ${method.toUpperCase()}`,
         });
+        setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: null }));
+        setShowUpiQr((prev) => ({ ...prev, [patientId]: false }));
         if (onTabChange) onTabChange("2");
         await fetchPatients();
       }
@@ -397,12 +511,10 @@ export default function PatientsTab({
         try {
           await FileViewer.open(destinationPath);
         } catch (error) {
-
           Toast.show({
             type: "error",
             text1: error?.message || "Failed to open invoice",
           });
-          
         }
       } else if (file.filePath) {
         // For iOS, just show success and try to open
@@ -414,12 +526,10 @@ export default function PatientsTab({
         try {
           await FileViewer.open(file.filePath);
         } catch (error) {
-          
           Toast.show({
             type: "error",
             text1: error?.message || "Failed to open invoice",
           });
-
         }
       }
     } catch (error: any) {
@@ -682,6 +792,8 @@ export default function PatientsTab({
     const sts = patientStatus(item);
     const hasPending = item.medicines.some((med) => med.status === "pending");
     const paid = isPaymentDone[item.patientId];
+    const paymentMethod = selectedPaymentMethod[item.patientId];
+    const showUpi = showUpiQr[item.patientId];
 
     // Filter medicines based on status
     const filteredMedicines =
@@ -696,9 +808,6 @@ export default function PatientsTab({
             <Text style={styles.pid}>Patient ID: {item.patientId}</Text>
             <Text style={styles.pname}>{item.name}</Text>
           </View>
-          {/* <View style={[styles.tag, { backgroundColor: sts.color + "22", borderColor: sts.color }]}>
-            <Text style={{ color: sts.color, fontWeight: "700" }}>{sts.label}</Text>
-          </View> */}
         </View>
 
         {/* Medicines */}
@@ -711,6 +820,100 @@ export default function PatientsTab({
             </Text>
           )}
         </View>
+
+        {/* NEW: Payment method selection */}
+        {!paid && hasPending && paymentMethod !== null && (
+          <View style={styles.paymentMethodContainer}>
+            <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
+
+            <View style={styles.paymentOptions}>
+              <TouchableOpacity
+                style={styles.paymentOption}
+                onPress={() => handlePaymentMethodSelect(item.patientId, 'cash')}
+              >
+                <View style={styles.radioButton}>
+                  {paymentMethod === 'cash' && <View style={styles.radioButtonSelected} />}
+                </View>
+                <Text style={styles.paymentOptionText}>Cash</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.paymentOption}
+                onPress={() => handlePaymentMethodSelect(item.patientId, 'upi')}
+              >
+                <View style={styles.radioButton}>
+                  {paymentMethod === 'upi' && <View style={styles.radioButtonSelected} />}
+                </View>
+                <Text style={styles.paymentOptionText}>UPI</Text>
+              </TouchableOpacity>
+            </View>
+
+            {paymentMethod === 'cash' && (
+              <TouchableOpacity
+                style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]}
+                disabled={paying[item.patientId]}
+                onPress={() => handlePayment(item.patientId, 'cash')}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {paying[item.patientId] ? "Processing..." : "Confirm Cash Payment"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* UPI QR Modal */}
+        <Modal
+          visible={paymentMethod === 'upi' && showUpi && qrModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => {
+            setQrModalVisible(false);
+            setShowUpiQr((prev) => ({ ...prev, [item.patientId]: false }));
+            setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: null }));
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.qrText}>Scan QR Code to Pay</Text>
+
+              {qrLoading ? (
+                <ActivityIndicator size="large" color="#1A3C6A" />
+              ) : qrCodeImage ? (
+                <Image
+                  source={{ uri: qrCodeImage }}
+                  style={styles.qrImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.errorText}>QR code not available</Text>
+              )}
+
+              <Text style={styles.upiId}>Total Amount: ₹ {total.toFixed(2)}</Text>
+
+              <TouchableOpacity
+                style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]}
+                disabled={paying[item.patientId]}
+                onPress={() => handleUpiPaymentConfirm(item.patientId)}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {paying[item.patientId] ? "Processing..." : "Confirm UPI Payment"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setQrModalVisible(false);
+                  setShowUpiQr((prev) => ({ ...prev, [item.patientId]: false }));
+                  setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: null }));
+                }}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <View style={styles.footerBar}>
           <Text style={styles.totalText}>Total: ₹ {total.toFixed(2)}</Text>
@@ -727,9 +930,21 @@ export default function PatientsTab({
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.primaryBtn, (total <= 0 || !hasPending || paid || paying[item.patientId]) && styles.btnDisabled]}
+              style={[
+                styles.primaryBtn, 
+                (total <= 0 || !hasPending || paid || paying[item.patientId]) && styles.btnDisabled
+              ]}
               disabled={total <= 0 || !hasPending || paid || paying[item.patientId]}
-              onPress={() => handlePayment(item.patientId)}
+              onPress={() => {
+                if (paymentMethod === null) {
+                  // Show payment options if not already selected
+                  setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: 'cash' }));
+                  handlePaymentMethodSelect(item.patientId, 'cash');
+                } else {
+                  // If payment method already selected, process payment
+                  handlePayment(item.patientId, paymentMethod);
+                }
+              }}
             >
               <Text style={styles.primaryBtnText}>
                 {paid ? "Paid" : paying[item.patientId] ? "Processing..." : "Process Payment"}
@@ -756,31 +971,29 @@ export default function PatientsTab({
     <View style={{ flex: 1 }}>
       {loading  ? (
          <View style={styles.spinningContainer}>
-                        <ActivityIndicator size="large" color="#007bff" />
-                        <Text style={{color:'black'}}>Loading List...</Text>
-                        </View>
+           <ActivityIndicator size="large" color="#007bff" />
+           <Text style={{color:'black'}}>Loading List...</Text>
+         </View>
       ) : (
          patients?.length === 0 ? (
-                  <View style={styles.spinningContainer}>
-          <Text style={{color:'black'}}>No Data Found</Text>
-                  </View>
-                
-                ) : (
-                  <FlatList
-          data={patients}
-          keyExtractor={(x) => x.patientId}
-          renderItem={renderPatient}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.3}
-          refreshing={loading}
-          onRefresh={() => {
-            setPage(1);
-            fetchPatients();
-          }}
-        />
-                )
-        
+           <View style={styles.spinningContainer}>
+             <Text style={{color:'black'}}>No Data Found</Text>
+           </View>
+         ) : (
+           <FlatList
+             data={patients}
+             keyExtractor={(x) => x.patientId}
+             renderItem={renderPatient}
+             contentContainerStyle={{ paddingBottom: 24 }}
+             onEndReached={loadMore}
+             onEndReachedThreshold={0.3}
+             refreshing={loading}
+             onRefresh={() => {
+               setPage(1);
+               fetchPatients();
+             }}
+           />
+         )
       )}
     </View>
   );
@@ -919,10 +1132,107 @@ const styles = StyleSheet.create({
   btnDisabled: { 
     opacity: 0.5 
   },
-   spinningContainer : {
- flex: 1,
+  spinningContainer : {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
- padding: 10,
+    padding: 10,
+  },
+  
+  // NEW: Payment method styles
+  paymentMethodContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  paymentMethodTitle: {
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#334155',
+  },
+  paymentOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#1A3C6A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  radioButtonSelected: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#1A3C6A',
+  },
+  paymentOptionText: {
+    color: '#334155',
+  },
+  confirmButton: {
+    backgroundColor: '#1A3C6A',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '80%',
+  },
+  qrText: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  qrImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 10,
+  },
+  upiId: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+  },
+  closeButtonText: {
+    color: '#1A3C6A',
+    fontWeight: '600',
   },
 });
