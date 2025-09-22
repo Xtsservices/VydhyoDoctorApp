@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+// AddClinicForm.tsx
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,21 +15,39 @@ import {
   Dimensions,
   PermissionsAndroid,
   Linking,
+  Modal,
 } from 'react-native';
-import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
-import Geolocation from '@react-native-community/geolocation';
+import MapView, { Region, PROVIDER_GOOGLE } from 'react-native-maps';
+import Geolocation from 'react-native-geolocation-service';
 import Geocoder from 'react-native-geocoding';
 import { UploadFiles } from '../../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { launchCamera, launchImageLibrary, CameraOptions, ImageLibraryOptions } from 'react-native-image-picker';
+import ImageEditor from '@react-native-community/image-editor';
+import { Camera, useCameraDevice, CameraPermissionStatus } from 'react-native-vision-camera';
 
 // Initialize Geocoder with your Google Maps API key
 Geocoder.init('AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo');
 
 const { width, height } = Dimensions.get('window');
+
+// Try to require marker image, but guard if missing
+let markerImage: number | null = null;
+try {
+  markerImage = require('../../assets/marker.png');
+} catch (e) {
+  markerImage = null;
+}
+
+// Desired header dimensions (pixels) for preview & cropping
+const HEADER_TARGET_WIDTH = 1200;
+const HEADER_TARGET_HEIGHT = 500;
+const PREVIEW_ASPECT_RATIO = HEADER_TARGET_WIDTH / HEADER_TARGET_HEIGHT;
+const PREVIEW_WIDTH = width - 32;
+const PREVIEW_HEIGHT = Math.round(PREVIEW_WIDTH / PREVIEW_ASPECT_RATIO);
 
 const AddClinicForm = () => {
   const navigation = useNavigation<any>();
@@ -44,8 +63,8 @@ const AddClinicForm = () => {
     pincode: '',
     type: 'Clinic',
     country: 'India',
-    latitude: '20.5937',
-    longitude: '78.9629',
+    latitude: '20.593700',
+    longitude: '78.962900',
     pharmacyName: '',
     pharmacyRegNum: '',
     pharmacyGST: '',
@@ -60,38 +79,157 @@ const AddClinicForm = () => {
 
   // Map related states
   const [region, setRegion] = useState<Region>({
-    latitude: 20.5937, // Default to India center
+    latitude: 20.5937,
     longitude: 78.9629,
-    latitudeDelta: 0.1,
-    longitudeDelta: 0.1,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
   });
+
+  const [pointerCoords, setPointerCoords] = useState<{ latitude: number; longitude: number } | null>({
+    latitude: 20.5937,
+    longitude: 78.9629,
+  });
+
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapView | null>(null);
   const [locationRetryCount, setLocationRetryCount] = useState(0);
-  const locationRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const locationRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Files + previews
   const [headerFile, setHeaderFile] = useState<any>(null);
-  const [headerPreview, setHeaderPreview] = useState<string | null>(null);
+  const [headerPreview, setHeaderPreview] = useState<string | number | null>(null);
   const [signatureFile, setSignatureFile] = useState<any>(null);
-  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string | number | null>(null);
   const [pharmacyHeaderFile, setPharmacyHeaderFile] = useState<any>(null);
-  const [pharmacyHeaderPreview, setPharmacyHeaderPreview] = useState<string | null>(null);
+  const [pharmacyHeaderPreview, setPharmacyHeaderPreview] = useState<string | number | null>(null);
   const [labHeaderFile, setLabHeaderFile] = useState<any>(null);
-  const [labHeaderPreview, setLabHeaderPreview] = useState<string | null>(null);
+  const [labHeaderPreview, setLabHeaderPreview] = useState<string | number | null>(null);
+  const [clinicQRFile, setClinicQRFile] = useState<any>(null);
+  const [clinicQRPreview, setClinicQRPreview] = useState<string | number | null>(null);
+  const [pharmacyQRFile, setPharmacyQRFile] = useState<any>(null);
+  const [pharmacyQRPreview, setPharmacyQRPreview] = useState<string | number | null>(null);
+  const [labQRFile, setLabQRFile] = useState<any>(null);
+  const [labQRPreview, setLabQRPreview] = useState<string | number | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [clinicQRFile, setClinicQRFile] = useState<any>(null);
-  const [clinicQRPreview, setClinicQRPreview] = useState<string | null>(null);
-  const [pharmacyQRFile, setPharmacyQRFile] = useState<any>(null);
-  const [pharmacyQRPreview, setPharmacyQRPreview] = useState<string | null>(null);
-  const [labQRFile, setLabQRFile] = useState<any>(null);
-  const [labQRPreview, setLabQRPreview] = useState<string | null>(null);
+  // Camera modal state
+  const [cameraModalVisible, setCameraModalVisible] = useState(false);
+  const [activeFileTypeForCamera, setActiveFileTypeForCamera] = useState<
+    'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR' | null
+  >(null);
+
+  // vision-camera refs and device
+  const cameraRef = useRef<Camera | null>(null);
+  const device = useCameraDevice('back');
+  const [cameraPermission, setCameraPermission] = useState<CameraPermissionStatus | 'unknown'>('unknown');
 
   const GOOGLE_MAPS_API_KEY = 'AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo';
+
+  // Throttle ref for live updates during pan
+  const lastPanUpdateRef = useRef<number>(0);
+
+  // For automatic reverse-geocoding
+  const reverseGeoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAutoSelectedRef = useRef<string>('');
+
+  // helpers for image normalization ------------------------------------------------
+  const toUriString = (maybe: any): string | number | null => {
+    if (maybe === null || maybe === undefined) return null;
+    if (typeof maybe === 'number') return maybe; // require(...) returns number
+    if (typeof maybe === 'string') {
+      const s = maybe.trim();
+      if (!s) return null;
+      // if absolute path like "/data/..." add file://
+      if (s.startsWith('/') && !s.startsWith('file://')) return `file://${s}`;
+      // if content URI, return as-is (Android content://)
+      if (s.startsWith('content://') || s.startsWith('file://') || s.startsWith('http://') || s.startsWith('https://')) {
+        return s;
+      }
+      return s;
+    }
+    // object from image-picker / camera
+    if (typeof maybe === 'object') {
+      // prefer uri, then path, then fileCopyUri
+      const candidate = maybe.uri || maybe.path || maybe.fileCopyUri || maybe.filePath || maybe.contentUri;
+      if (candidate) {
+        const s = String(candidate);
+        if (!s) return null;
+        if (s.startsWith('/') && !s.startsWith('file://')) return `file://${s}`;
+        return s;
+      }
+    }
+    return null;
+  };
+
+  const normalizeImageSource = (src?: string | number | null) => {
+    const val = toUriString(src);
+    if (val === null) return null;
+    if (typeof val === 'number') return val; // require(...)
+    return { uri: val };
+  };
+  // end helpers --------------------------------------------------------------------
+
+  // Set target crop dimensions
+  const getTargetCrop = (type: string) => {
+    if (type === 'header' || type === 'pharmacyHeader' || type === 'labHeader') {
+      return { targetWidth: HEADER_TARGET_WIDTH, targetHeight: HEADER_TARGET_HEIGHT };
+    }
+    return { targetWidth: 1000, targetHeight: 1000 }; // Square-ish for QR codes / signature
+  };
+
+  // Crop image to center with target dimensions
+  const cropImageToCenter = async (uri: string, targetWidth: number, targetHeight: number) => {
+    try {
+      const getSize = (imgUri: string) =>
+        new Promise<{ w: number; h: number }>((resolve, reject) => {
+          Image.getSize(
+            imgUri,
+            (w, h) => resolve({ w, h }),
+            (err) => reject(err)
+          );
+        });
+
+      const { w, h } = await getSize(uri);
+      const targetRatio = targetWidth / targetHeight;
+      const srcRatio = w / h;
+
+      let cropW = w;
+      let cropH = h;
+
+      if (srcRatio > targetRatio) {
+        cropH = h;
+        cropW = Math.round(h * targetRatio);
+      } else {
+        cropW = w;
+        cropH = Math.round(w / targetRatio);
+      }
+
+      if (cropW > w) cropW = w;
+      if (cropH > h) cropH = h;
+
+      const offsetX = Math.round((w - cropW) / 2);
+      const offsetY = Math.round((h - cropH) / 2);
+
+      const cropData = {
+        offset: { x: offsetX, y: offsetY },
+        size: { width: cropW, height: cropH },
+        displaySize: { width: targetWidth, height: targetHeight },
+        resizeMode: 'cover' as const,
+      };
+
+      const croppedUri = await ImageEditor.cropImage(uri, cropData);
+      const normalized = toUriString(croppedUri) as string | null;
+      return normalized || uri;
+    } catch (err) {
+      console.warn('Crop error:', err);
+      return uri;
+    }
+  };
 
   // Request location permission
   const requestLocationPermission = async () => {
@@ -108,7 +246,7 @@ const AddClinicForm = () => {
           }
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
+      } catch (err: any) {
         Alert.alert(
           'Location Permission Error',
           err?.message
@@ -118,22 +256,79 @@ const AddClinicForm = () => {
         );
         return false;
       }
+    } else {
+      try {
+        const auth = await Geolocation.requestAuthorization('whenInUse');
+        return auth === 'granted' || auth === 'authorized' || auth === 'whenInUse';
+      } catch (e) {
+        return false;
+      }
     }
-    return true;
+  };
+
+  // Request camera permission (and set local state)
+  const requestCameraPermission = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
+          title: 'Camera Permission',
+          message: 'This app needs access to your camera to take photos.',
+          buttonPositive: 'OK',
+          buttonNegative: 'Cancel',
+        });
+
+        if (result === PermissionsAndroid.RESULTS.GRANTED) {
+          setCameraPermission('authorized');
+          return true;
+        }
+
+        if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+          setCameraPermission('denied');
+          Alert.alert(
+            'Camera Permission Required',
+            'Camera permission was permanently denied. Please open settings and enable Camera permission for this app.',
+            [
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              { text: 'Cancel', style: 'cancel' },
+            ]
+          );
+        } else {
+          setCameraPermission('denied');
+          Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+        }
+
+        return false;
+      } else {
+        const permission = await Camera.requestCameraPermission();
+        setCameraPermission(permission);
+        if (permission === 'authorized') return true;
+
+        if (permission === 'denied') {
+          Alert.alert('Permission Denied', 'Camera permission is required to take photos. Please enable it in Settings if you want to use the camera.', [
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            { text: 'Cancel', style: 'cancel' },
+          ]);
+        }
+        return false;
+      }
+    } catch (err: any) {
+      Alert.alert('Camera Permission Error', err?.message || 'Unable to request camera permission.');
+      setCameraPermission('denied');
+      return false;
+    }
   };
 
   // Check if coordinates are within India
-  const isInIndia = (latitude: number, longitude: number) => {
-    return (
-      latitude >= 6.554607 &&
-      latitude <= 35.674545 &&
-      longitude >= 68.111378 &&
-      longitude <= 97.395561
-    );
-  };
+  const isInIndia = (latitude: number, longitude: number) =>
+    latitude >= 6.554607 && latitude <= 35.674545 && longitude >= 68.111378 && longitude <= 97.395561;
 
   // Fetch address from coordinates
-  const fetchAddress = async (latitude: number, longitude: number) => {
+  const fetchAddress = async (
+    latitude: number,
+    longitude: number,
+    setAsSelected = true,
+    force = false
+  ) => {
     setIsFetchingLocation(true);
     try {
       const response = await Geocoder.from(latitude, longitude);
@@ -150,10 +345,12 @@ const AddClinicForm = () => {
 
         for (const component of addressComponents) {
           const types = component.types;
-          if (types.includes('route') || types.includes('street_number')) {
+          if (types.includes('street_number')) {
             street = street ? `${street} ${component.long_name}` : component.long_name;
-          } else if (types.includes('locality')) {
-            city = component.long_name;
+          } else if (types.includes('route')) {
+            street = street ? `${street} ${component.long_name}` : component.long_name;
+          } else if (types.includes('sublocality') || types.includes('locality') || types.includes('administrative_area_level_2')) {
+            if (!city) city = component.long_name;
           } else if (types.includes('administrative_area_level_1')) {
             state = component.long_name;
           } else if (types.includes('country')) {
@@ -163,33 +360,50 @@ const AddClinicForm = () => {
           }
         }
 
-        const address = street || result.formatted_address;
+        const address = street || result.formatted_address || '';
 
-        setForm(prev => ({
-          ...prev,
-          address,
-          city: city || prev.city,
-          state: state || prev.state,
-          country,
-          pincode: pincode || prev.pincode,
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-        }));
+        const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        if (lastAutoSelectedRef.current === key && setAsSelected && !force) {
+          // already selected
+        } else {
+          if (setAsSelected) {
+            setForm(prev => ({
+              ...prev,
+              address,
+              city: city || prev.city,
+              state: state || prev.state,
+              country,
+              pincode: pincode || prev.pincode,
+              latitude: String(Number(latitude.toFixed(6))),
+              longitude: String(Number(longitude.toFixed(6))),
+            }));
 
-        setSearchQuery(address);
-        setLocationRetryCount(0); // Reset retry count on success
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Failed to fetch address details',
-          position: 'top',
-          visibilityTime: 4000,
-        });
+            const newRegion = {
+              latitude,
+              longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            };
+            try {
+              mapRef.current?.animateToRegion(newRegion, 500);
+            } catch (e) {}
+          } else {
+            setForm(prev => ({
+              ...prev,
+              address,
+              latitude: String(Number(latitude.toFixed(6))),
+              longitude: String(Number(longitude.toFixed(6))),
+            }));
+            setPointerCoords({ latitude, longitude });
+          }
+
+          setSearchQuery(address);
+          lastAutoSelectedRef.current = key;
+          setLocationRetryCount(0);
+        }
       }
-    } catch (error) {
-      Alert?.alert('Error', error?.message || 'Failed to fetch address details. Please try again.');
-
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: 'Reverse Geocoding Error', text2: error?.message || 'Failed to fetch address details.' });
     } finally {
       setIsFetchingLocation(false);
     }
@@ -216,7 +430,9 @@ const AddClinicForm = () => {
       enableHighAccuracy: true,
       timeout: 15000,
       maximumAge: 10000,
-    };
+      distanceFilter: 0,
+      forceRequestLocation: true,
+    } as any;
 
     Geolocation.getCurrentPosition(
       (position) => {
@@ -225,7 +441,7 @@ const AddClinicForm = () => {
         if (!isInIndia(latitude, longitude)) {
           Alert.alert(
             'Invalid Location',
-            'Failed to fetch location. Please ensure location services are enabled or try to search.',
+            'Location appears outside India. Please select a location manually or ensure location services are correct.',
             [{ text: 'OK', style: 'cancel' }]
           );
           setIsFetchingLocation(false);
@@ -239,17 +455,27 @@ const AddClinicForm = () => {
           longitudeDelta: 0.01,
         };
         setRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion, 1000);
-        fetchAddress(latitude, longitude);
+        setPointerCoords({ latitude, longitude });
+        setTimeout(() => {
+          try {
+            mapRef.current?.animateToRegion(newRegion, 800);
+          } catch (e) {}
+        }, 300);
+        setIsFetchingLocation(false);
+
+        const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        if (lastAutoSelectedRef.current !== key) {
+          lastAutoSelectedRef.current = key;
+          fetchAddress(latitude, longitude, true);
+        }
       },
       (error) => {
-
         let errorMessage = 'Unable to fetch current location.';
-        if (error.code === error.PERMISSION_DENIED) {
+        if ((error as any).code === 1) {
           errorMessage = 'Location permission denied. Please enable location permissions in settings.';
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
+        } else if ((error as any).code === 2) {
           errorMessage = 'Location information is unavailable. This might be due to being indoors or poor signal.';
-        } else if (error.code === error.TIMEOUT) {
+        } else if ((error as any).code === 3) {
           errorMessage = 'Location request timed out. Please try again.';
         }
 
@@ -263,9 +489,10 @@ const AddClinicForm = () => {
             visibilityTime: 2000,
           });
 
-          locationRetryTimeoutRef.current = setTimeout(() => {
+          const t = setTimeout(() => {
             initLocationWithRetry();
           }, 2000);
+          locationRetryTimeoutRef.current = t;
         } else {
           Alert.alert(
             'Location Error',
@@ -289,15 +516,15 @@ const AddClinicForm = () => {
     );
   };
 
-  // Retry location fetching with different settings
   const initLocationWithRetry = async () => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) return;
 
-    const retryOptions = {
+    const retryOptions: any = {
       enableHighAccuracy: locationRetryCount > 1,
       timeout: 20000,
       maximumAge: 30000,
+      forceRequestLocation: true,
     };
 
     Geolocation.getCurrentPosition(
@@ -307,7 +534,7 @@ const AddClinicForm = () => {
         if (!isInIndia(latitude, longitude)) {
           Alert.alert(
             'Invalid Location',
-            'Failed to fetch location. Please ensure location services are enabled or try to search.',
+            'Location appears outside India. Please select a location manually or ensure location services are correct.',
             [{ text: 'OK', style: 'cancel' }]
           );
           setIsFetchingLocation(false);
@@ -321,12 +548,22 @@ const AddClinicForm = () => {
           longitudeDelta: 0.01,
         };
         setRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion, 1000);
-        fetchAddress(latitude, longitude);
+        setPointerCoords({ latitude, longitude });
+        setTimeout(() => {
+          try {
+            mapRef.current?.animateToRegion(newRegion, 800);
+          } catch (e) {}
+        }, 300);
+        setIsFetchingLocation(false);
+
+        const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        if (lastAutoSelectedRef.current !== key) {
+          lastAutoSelectedRef.current = key;
+          fetchAddress(latitude, longitude, true);
+        }
       },
       (error) => {
         setIsFetchingLocation(false);
-
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
           setTimeout(() => initLocation(), 2000);
@@ -338,12 +575,15 @@ const AddClinicForm = () => {
 
   useEffect(() => {
     initLocation();
-
     return () => {
       if (locationRetryTimeoutRef.current) {
         clearTimeout(locationRetryTimeoutRef.current);
       }
+      if (reverseGeoDebounceRef.current) {
+        clearTimeout(reverseGeoDebounceRef.current);
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle search input
@@ -370,7 +610,7 @@ const AddClinicForm = () => {
       } else {
         setSearchResults([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Error', error?.message || 'Unable to fetch search results. Please try again.');
       setSearchResults([]);
     }
@@ -394,14 +634,14 @@ const AddClinicForm = () => {
         const latitude = location.lat;
         const longitude = location.lng;
 
-        const countryComponent = place.address_components.find(component =>
-          component.types.includes('country')
+        const countryComponent = (place.address_components || []).find((component: any) =>
+          (component.types || []).includes('country')
         );
 
         if (!countryComponent || countryComponent.short_name !== 'IN') {
           Alert.alert(
             'Invalid Location',
-            'Failed to fetch location. Please select a location within India.',
+            'Please select a location within India.',
             [{ text: 'OK', style: 'cancel' }]
           );
           setIsFetchingLocation(false);
@@ -414,34 +654,93 @@ const AddClinicForm = () => {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
+        try {
+          mapRef.current?.animateToRegion(newRegion, 500);
+        } catch (e) {}
         setRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion, 500);
-        fetchAddress(latitude, longitude);
+        setPointerCoords({ latitude, longitude });
+
+        const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        if (lastAutoSelectedRef.current !== key) {
+          lastAutoSelectedRef.current = key;
+          await fetchAddress(latitude, longitude, true);
+        }
       } else {
         Alert.alert('Error', 'Failed to fetch location details.');
       }
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Error', error?.message || 'Unable to fetch place details. Please try again.');
     } finally {
       setIsFetchingLocation(false);
     }
   };
 
-  // Handle map press to select a location
-  const handleMapPress = (e: any) => {
-    const { coordinate } = e.nativeEvent;
-    const { latitude, longitude } = coordinate;
-    const newRegion = {
-      ...region,
-      latitude,
-      longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    };
-    setRegion(newRegion);
-    mapRef.current?.animateToRegion(newRegion, 500);
-    fetchAddress(latitude, longitude);
+  // Debounce durations
+  const LIVE_REVERSE_DEBOUNCE_MS = 600;
+  const FINAL_REVERSE_DEBOUNCE_MS = 700;
+
+  // Handle region change during pan
+  const handleRegionChange = (r: Region) => {
+    const now = Date.now();
+    if (now - lastPanUpdateRef.current < 120) return;
+    lastPanUpdateRef.current = now;
+
+    setPointerCoords({ latitude: r.latitude, longitude: r.longitude });
+
+    setForm(prev => ({
+      ...prev,
+      latitude: String(Number(r.latitude.toFixed(6))),
+      longitude: String(Number(r.longitude.toFixed(6))),
+    }));
+
+    setErrors(prev => {
+      const next = { ...prev };
+      delete next.latitude;
+      delete next.longitude;
+      return next;
+    });
+
+    if (reverseGeoDebounceRef.current) {
+      clearTimeout(reverseGeoDebounceRef.current);
+    }
+    reverseGeoDebounceRef.current = setTimeout(() => {
+      const key = `${r.latitude.toFixed(6)},${r.longitude.toFixed(6)}`;
+      if (lastAutoSelectedRef.current !== key) {
+        fetchAddress(r.latitude, r.longitude, true);
+      }
+    }, LIVE_REVERSE_DEBOUNCE_MS);
+  };
+
+  // Handle region change complete
+  const handleRegionChangeComplete = (r: Region) => {
+    setRegion(r);
+    setPointerCoords({ latitude: r.latitude, longitude: r.longitude });
+
+    setForm(prev => ({
+      ...prev,
+      latitude: String(Number(r.latitude.toFixed(6))),
+      longitude: String(Number(r.longitude.toFixed(6))),
+    }));
+
     setShowSearchResults(false);
+
+    setErrors(prev => {
+      const next = { ...prev };
+      delete next.latitude;
+      delete next.longitude;
+      return next;
+    });
+
+    if (reverseGeoDebounceRef.current) {
+      clearTimeout(reverseGeoDebounceRef.current);
+    }
+    reverseGeoDebounceRef.current = setTimeout(() => {
+      const key = `${r.latitude.toFixed(6)},${r.longitude.toFixed(6)}`;
+      if (lastAutoSelectedRef.current !== key) {
+        lastAutoSelectedRef.current = key;
+        fetchAddress(r.latitude, r.longitude, true);
+      }
+    }, FINAL_REVERSE_DEBOUNCE_MS);
   };
 
   // Move to current location
@@ -464,9 +763,212 @@ const AddClinicForm = () => {
     }
   };
 
+  // Use pointer location (read map center)
+  const usePointerLocation = async () => {
+    try {
+      let center: { latitude: number; longitude: number } | null = null;
+      const mapAny: any = mapRef.current as any;
+
+      if (mapAny && typeof mapAny.getCamera === 'function') {
+        try {
+          const cam = await mapAny.getCamera();
+          if (cam && cam.center && typeof cam.center.latitude === 'number' && typeof cam.center.longitude === 'number') {
+            center = { latitude: cam.center.latitude, longitude: cam.center.longitude };
+          }
+        } catch (e) {
+          // getCamera sometimes throws; fall back to pointerCoords/region
+        }
+      }
+
+      if (!center && pointerCoords) {
+        center = { latitude: pointerCoords.latitude, longitude: pointerCoords.longitude };
+      }
+      if (!center && region) {
+        center = { latitude: region.latitude, longitude: region.longitude };
+      }
+
+      if (!center) {
+        Alert.alert('Location Error', 'Unable to determine map center. Please pan the map or try again.');
+        return;
+      }
+
+      if (!isInIndia(center.latitude, center.longitude)) {
+        Alert.alert('Invalid Location', 'Please select a location within India.');
+        return;
+      }
+
+      await fetchAddress(center.latitude, center.longitude, true, true);
+    } catch (err: any) {
+      const center = pointerCoords ?? region;
+      if (center) {
+        if (!isInIndia(center.latitude, center.longitude)) {
+          Alert.alert('Invalid Location', 'Please select a location within India.');
+          return;
+        }
+        await fetchAddress(center.latitude, center.longitude, true, true);
+        Toast.show({ type: 'success', text1: 'Location set', text2: `${center.latitude.toFixed(6)}, ${center.longitude.toFixed(6)}`, position: 'top', visibilityTime: 2000 });
+      } else {
+        Alert.alert('Error', 'Could not read map center. Please pan the map and try again.');
+      }
+    }
+  };
+
+  // Camera options for non-header images
+  const OTHER_TARGET_MAX = 1000;
+  const getOtherCameraOptions = (): CameraOptions => ({
+    mediaType: 'photo',
+    includeBase64: false,
+    saveToPhotos: false,
+    maxWidth: OTHER_TARGET_MAX,
+    maxHeight: OTHER_TARGET_MAX,
+    quality: 0.85,
+    presentationStyle: 'fullScreen',
+  });
+
+  const getOtherLibraryOptions = (): ImageLibraryOptions => ({
+    mediaType: 'photo',
+    includeBase64: false,
+    maxWidth: OTHER_TARGET_MAX,
+    maxHeight: OTHER_TARGET_MAX,
+    quality: 0.85,
+  });
+
+  // Assign file and preview by type
+  // Note: file objects intentionally minimal: { uri, name, type } to match gallery payload
+  const assignFileByType = (type: string, file: any, previewUri: any) => {
+    const uri = toUriString(previewUri);
+    if (!uri) {
+      console.warn('assignFileByType: invalid previewUri', { type, previewUri, file });
+    }
+
+    // normalize file to minimal shape
+    const minimalFile = {
+      uri: toUriString(file?.uri || file?.path || file) || uri,
+      name: file?.name || `${type}.jpg`,
+      type: file?.type || 'image/jpeg',
+    };
+
+    if (type === 'header') {
+      setHeaderFile(minimalFile);
+      if (uri) setHeaderPreview(uri);
+    } else if (type === 'signature') {
+      setSignatureFile(minimalFile);
+      if (uri) setSignaturePreview(uri);
+    } else if (type === 'pharmacyHeader') {
+      setPharmacyHeaderFile(minimalFile);
+      if (uri) setPharmacyHeaderPreview(uri);
+    } else if (type === 'labHeader') {
+      setLabHeaderFile(minimalFile);
+      if (uri) setLabHeaderPreview(uri);
+    } else if (type === 'clinicQR') {
+      setClinicQRFile(minimalFile);
+      if (uri) setClinicQRPreview(uri);
+    } else if (type === 'pharmacyQR') {
+      setPharmacyQRFile(minimalFile);
+      if (uri) setPharmacyQRPreview(uri);
+    } else if (type === 'labQR') {
+      setLabQRFile(minimalFile);
+      if (uri) setLabQRPreview(uri);
+    }
+  };
+
+  // Handle gallery selection with cropping for headers
+  const pickFromGalleryAndCrop = async (type: string) => {
+    try {
+      const { targetWidth, targetHeight } = getTargetCrop(type);
+      const options: ImageLibraryOptions = {
+        mediaType: 'photo',
+        includeBase64: false,
+        quality: 0.85,
+      };
+
+      const result = await launchImageLibrary(options);
+
+      if ((result as any).didCancel) return;
+      if ((result as any).errorCode) {
+        Alert.alert('Gallery Error', (result as any).errorMessage || 'Gallery access failed.');
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const rawUri = asset.uri || asset.path || asset.fileCopyUri || asset.fileName;
+        let uri = toUriString(rawUri) as string | null;
+        if (!uri) {
+          Alert.alert('Gallery Error', 'Could not read selected image.');
+          return;
+        }
+
+        if (type === 'header' || type === 'pharmacyHeader' || type === 'labHeader') {
+          try {
+            uri = (await cropImageToCenter(uri, targetWidth, targetHeight)) || uri;
+          } catch (e) {
+            console.warn('Gallery crop failed, using original', e);
+          }
+        }
+
+        // minimal file shape
+        const file = {
+          uri,
+          name: asset.fileName || `${type}_gallery.jpg`,
+          type: asset.type || 'image/jpeg',
+        };
+
+        assignFileByType(type, file, uri);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Gallery access failed.');
+    }
+  };
+
+  // Robust camera-capture handler for vision-camera
+  const onVisionCameraCapture = async (photoPathOrObj: any) => {
+    try {
+      if (!photoPathOrObj || !activeFileTypeForCamera) return;
+
+      // Determine raw path from variety of possible shapes
+      const rawPath =
+        (typeof photoPathOrObj === 'string' ? photoPathOrObj : null) ||
+        photoPathOrObj.path ||
+        photoPathOrObj.uri ||
+        photoPathOrObj.filePath ||
+        photoPathOrObj?.photo?.path ||
+        photoPathOrObj?.fileUri ||
+        null;
+
+      if (!rawPath) {
+        Alert.alert('Capture Error', 'No photo path returned from camera.');
+        return;
+      }
+
+      const imgUri = String(rawPath).startsWith('file://') ? String(rawPath) : `file://${String(rawPath)}`;
+
+      // We attempt to crop for headers, but even if cropping fails we still send minimal file
+      const { targetWidth, targetHeight } = getTargetCrop(activeFileTypeForCamera);
+      let finalUri = imgUri;
+      try {
+        // try to crop; if crop fails, fall back to original
+        finalUri = (await cropImageToCenter(imgUri, targetWidth, targetHeight)) || imgUri;
+      } catch (e) {
+        finalUri = imgUri;
+      }
+
+      // minimal file shape (only uri, name, type)
+      const file = {
+        uri: finalUri,
+        name: `${activeFileTypeForCamera}_camera.jpg`,
+        type: 'image/jpeg',
+      };
+
+      assignFileByType(activeFileTypeForCamera, file, finalUri);
+    } catch (err) {
+      Alert.alert('Capture Error', String(err));
+    }
+  };
+
+  // Handle file change
   const handleFileChange = async (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR') => {
     try {
-      // Update the alert title based on type
       let title = '';
       if (type === 'header') title = 'Header';
       else if (type === 'signature') title = 'Signature';
@@ -476,113 +978,106 @@ const AddClinicForm = () => {
       else if (type === 'pharmacyQR') title = 'Pharmacy QR Code';
       else if (type === 'labQR') title = 'Lab QR Code';
 
-      Alert.alert(
-        `Upload ${title}`,
-        'Choose an option',
-        [
-          {
-            text: 'Camera',
-            onPress: async () => {
-              try {
-                const result = await launchCamera({
-                  mediaType: 'photo',
-                  includeBase64: false,
-                });
+      const onCameraPressed = async () => {
+        // For header-type images we prefer vision-camera modal (because we crop to banner dimension)
+        if (type === 'header' || type === 'pharmacyHeader' || type === 'labHeader') {
+          const hasPermission = await requestCameraPermission();
+          if (!hasPermission) return;
 
-                if (result.assets && result.assets.length > 0) {
-                  const asset = result.assets[0];
-                  const file = {
-                    uri: asset.uri!,
-                    name: asset.fileName || `${type}_camera.jpg`,
-                    type: asset.type || 'image/jpeg',
-                  };
-
-                  // Handle different file types
-                  if (type === 'header') {
-                    setHeaderFile(file);
-                    setHeaderPreview(asset.uri!);
-                  } else if (type === 'signature') {
-                    setSignatureFile(file);
-                    setSignaturePreview(asset.uri!);
-                  } else if (type === 'pharmacyHeader') {
-                    setPharmacyHeaderFile(file);
-                    setPharmacyHeaderPreview(asset.uri!);
-                  } else if (type === 'labHeader') {
-                    setLabHeaderFile(file);
-                    setLabHeaderPreview(asset.uri!);
-                  } else if (type === 'clinicQR') {
-                    setClinicQRFile(file);
-                    setClinicQRPreview(asset.uri!);
-                  } else if (type === 'pharmacyQR') {
-                    setPharmacyQRFile(file);
-                    setPharmacyQRPreview(asset.uri!);
-                  } else if (type === 'labQR') {
-                    setLabQRFile(file);
-                    setLabQRPreview(asset.uri!);
-                  }
-                }
-              } catch (error) {
-                Alert.alert('Error', error?.message || 'Camera access failed.');
+          // If vision-camera device isn't ready, fallback to react-native-image-picker camera
+          if (!device) {
+            const fallback = await new Promise<boolean>((resolve) => {
+              Alert.alert('Camera Unavailable', 'Camera device not ready. Would you like to use the normal camera as a fallback?', [
+                { text: 'Yes', onPress: () => resolve(true) },
+                { text: 'No', onPress: () => resolve(false), style: 'cancel' },
+              ]);
+            });
+            if (fallback) {
+              // use react-native-image-picker camera
+              const options: CameraOptions = {
+                mediaType: 'photo',
+                includeBase64: false,
+                saveToPhotos: false,
+                maxWidth: HEADER_TARGET_WIDTH,
+                maxHeight: HEADER_TARGET_HEIGHT,
+                quality: 0.9,
+              };
+              const result = await launchCamera(options);
+              if ((result as any).didCancel) return;
+              if ((result as any).errorCode) {
+                Alert.alert('Camera Error', (result as any).errorMessage || 'Camera failed.');
+                return;
               }
-            },
-          },
-          {
-            text: 'Gallery',
-            onPress: async () => {
-              try {
-                const result = await launchImageLibrary({
-                  mediaType: 'photo',
-                  includeBase64: false,
-                });
-
-                if (result.assets && result.assets.length > 0) {
-                  const asset = result.assets[0];
-                  const file = {
-                    uri: asset.uri!,
-                    name: asset.fileName || `${type}_gallery.jpg`,
-                    type: asset.type || 'image/jpeg',
-                  };
-
-                  // Handle different file types
-                  if (type === 'header') {
-                    setHeaderFile(file);
-                    setHeaderPreview(asset.uri!);
-                  } else if (type === 'signature') {
-                    setSignatureFile(file);
-                    setSignaturePreview(asset.uri!);
-                  } else if (type === 'pharmacyHeader') {
-                    setPharmacyHeaderFile(file);
-                    setPharmacyHeaderPreview(asset.uri!);
-                  } else if (type === 'labHeader') {
-                    setLabHeaderFile(file);
-                    setLabHeaderPreview(asset.uri!);
-                  } else if (type === 'clinicQR') {
-                    setClinicQRFile(file);
-                    setClinicQRPreview(asset.uri!);
-                  } else if (type === 'pharmacyQR') {
-                    setPharmacyQRFile(file);
-                    setPharmacyQRPreview(asset.uri!);
-                  } else if (type === 'labQR') {
-                    setLabQRFile(file);
-                    setLabQRPreview(asset.uri!);
-                  }
+              if (result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                const rawUri = asset.uri || asset.path || asset.fileCopyUri || asset.fileName;
+                let uri = toUriString(rawUri) as string | null;
+                if (!uri) {
+                  Alert.alert('Camera Error', 'Could not read captured image.');
+                  return;
                 }
-              } catch (error) {
-                Alert.alert('Error', error?.message || 'Gallery access failed.');
+                try {
+                  uri = (await cropImageToCenter(uri, HEADER_TARGET_WIDTH, HEADER_TARGET_HEIGHT)) || uri;
+                } catch (e) {
+                  console.warn('Fallback camera crop failed, using original', e);
+                }
+                const file = {
+                  uri,
+                  name: asset.fileName || `${type}_camera.jpg`,
+                  type: asset.type || 'image/jpeg',
+                };
+                assignFileByType(type, file, uri);
               }
-            },
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ],
-        { cancelable: true }
-      );
-    } catch (error) {
+              return;
+            } else {
+              return;
+            }
+          }
+
+          // open the vision-camera modal
+          setActiveFileTypeForCamera(type);
+          setCameraModalVisible(true);
+        } else {
+          // non-header: use image-picker camera for simplicity
+          const options = getOtherCameraOptions();
+          const result = await launchCamera(options);
+
+          if ((result as any).didCancel) return;
+          if ((result as any).errorCode) {
+            Alert.alert('Camera Error', (result as any).errorMessage || 'Camera failed.');
+            return;
+          }
+
+          if (result.assets && result.assets.length > 0) {
+            const asset = result.assets[0];
+            const rawUri = asset.uri || asset.path || asset.fileCopyUri || asset.fileName;
+            const uri = toUriString(rawUri);
+            const file = {
+              uri,
+              name: asset.fileName || `${type}_camera.jpg`,
+              type: asset.type || 'image/jpeg',
+            };
+            assignFileByType(type, file, uri);
+          }
+        }
+      };
+
+      const onGalleryPressed = async () => {
+        await pickFromGalleryAndCrop(type);
+      };
+
+      // Show options
+      Alert.alert(`Upload ${title}`, 'Choose an option', [
+        { text: 'Camera', onPress: onCameraPressed },
+        { text: 'Gallery', onPress: onGalleryPressed },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to pick file. Please try again.');
     }
   };
+
+  // Validate form
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -611,28 +1106,17 @@ const AddClinicForm = () => {
       newErrors.pincode = 'Enter a valid 6-digit pincode';
     }
 
-    // Add validation for header and signature
-    if (headerFile && !signatureFile) {
-      newErrors.signature = 'Signature is required when uploading a header image';
-    }
-    if (signatureFile && !headerFile) {
-      newErrors.header = 'Header image is required when uploading a signature';
-    }
-
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return { valid: Object.keys(newErrors).length === 0, newErrors };
   };
 
+  // Handle form submission
+  // Note: when appending files we use the minimal shape { uri, name, type }.
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      const firstError = Object.values(errors)[0];
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: firstError,
-        position: 'top',
-        visibilityTime: 3000,
-      });
+    const { valid, newErrors } = validateForm();
+    if (!valid) {
+      const firstError = Object.values(newErrors)[0] || 'Please fix the form errors';
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: firstError, position: 'top', visibilityTime: 3000 });
       return;
     }
 
@@ -657,9 +1141,19 @@ const AddClinicForm = () => {
       formData.append('latitude', form.latitude);
       formData.append('longitude', form.longitude);
 
-      if (headerFile && signatureFile) {
-        formData.append('file', headerFile as any);
-        formData.append('signature', signatureFile as any);
+      if (headerFile) {
+        formData.append('file', {
+          uri: headerFile.uri,
+          type: headerFile.type || 'image/jpeg',
+          name: headerFile.name || 'header.jpg',
+        } as any);
+      }
+      if (signatureFile) {
+        formData.append('signature', {
+          uri: signatureFile.uri,
+          type: signatureFile.type || 'image/jpeg',
+          name: signatureFile.name || 'signature.jpg',
+        } as any);
       }
 
       if (form.pharmacyName) formData.append('pharmacyName', form.pharmacyName);
@@ -667,100 +1161,296 @@ const AddClinicForm = () => {
       if (form.pharmacyGST) formData.append('pharmacyGst', form.pharmacyGST);
       if (form.pharmacyPAN) formData.append('pharmacyPan', form.pharmacyPAN);
       if (form.pharmacyAddress) formData.append('pharmacyAddress', form.pharmacyAddress);
-      if (pharmacyHeaderFile) formData.append('pharmacyHeader', pharmacyHeaderFile as any);
+      if (pharmacyHeaderFile) {
+        formData.append('pharmacyHeader', {
+          uri: pharmacyHeaderFile.uri,
+          type: pharmacyHeaderFile.type || 'image/jpeg',
+          name: pharmacyHeaderFile.name || 'pharmacy_header.jpg',
+        } as any);
+      }
 
       if (form.labName) formData.append('labName', form.labName);
       if (form.labRegNum) formData.append('labRegistrationNo', form.labRegNum);
       if (form.labGST) formData.append('labGst', form.labGST);
       if (form.labPAN) formData.append('labPan', form.labPAN);
       if (form.labAddress) formData.append('labAddress', form.labAddress);
-      if (labHeaderFile) formData.append('labHeader', labHeaderFile as any);
+      if (labHeaderFile) {
+        formData.append('labHeader', {
+          uri: labHeaderFile.uri,
+          type: labHeaderFile.type || 'image/jpeg',
+          name: labHeaderFile.name || 'lab_header.jpg',
+        } as any);
+      }
 
-      if (clinicQRFile) formData.append('clinicQR', clinicQRFile as any);
-      if (pharmacyQRFile) formData.append('pharmacyQR', pharmacyQRFile as any);
-      if (labQRFile) formData.append('labQR', labQRFile as any);
-console.log("Submitting form data:", formData);
+      if (clinicQRFile) {
+        formData.append('clinicQR', {
+          uri: clinicQRFile.uri,
+          type: clinicQRFile.type || 'image/jpeg',
+          name: clinicQRFile.name || 'clinic_qr.jpg',
+        } as any);
+      }
+      if (pharmacyQRFile) {
+        formData.append('pharmacyQR', {
+          uri: pharmacyQRFile.uri,
+          type: pharmacyQRFile.type || 'image/jpeg',
+          name: pharmacyQRFile.name || 'pharmacy_qr.jpg',
+        } as any);
+      }
+      if (labQRFile) {
+        formData.append('labQR', {
+          uri: labQRFile.uri,
+          type: labQRFile.type || 'image/jpeg',
+          name: labQRFile.name || 'lab_qr.jpg',
+        } as any);
+      }
+
+      // upload
       const response = await UploadFiles('users/addAddressFromWeb', formData, token);
-      console.log('Add Clinic Response:', response);
-
-      if (response.status === 'success') {
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'Clinic added successfully',
-          position: 'top',
-          visibilityTime: 3000,
-        });
+      if (response.status === 'success' || response.status === 200 || response.status === 201) {
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Clinic added successfully', position: 'top', visibilityTime: 3000 });
         navigation.navigate('Clinic' as never);
       } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: response.message || 'Failed to add clinic.',
-          position: 'top',
-          visibilityTime: 3000,
-        });
+        Toast.show({ type: 'error', text1: 'Error', text2: response.message || 'Failed to add clinic.', position: 'top', visibilityTime: 3000 });
       }
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to add clinic.');
     } finally {
       setLoading(false);
     }
   };
-  const renderFileUpload = (
-    type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR',
-    label: string,
-    preview: string | null
-  ) => (
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity
-        style={styles.uploadBox}
-        onPress={() => handleFileChange(type)}
-      >
-        {preview ? (
-          <Image source={{ uri: preview }} style={styles.previewImage} />
-        ) : (
-          <View style={styles.uploadPlaceholder}>
-            <Icon name="upload" size={24} color="#6B7280" />
-            <Text style={styles.uploadText}>Select File</Text>
+
+  // Camera modal component (camera sized to overlay so captured area == visible overlay)
+  const CameraModal = ({ visible, onClose, device }: { visible: boolean; onClose: () => void; device: any }) => {
+    if (!visible) return null;
+
+    const activeType = activeFileTypeForCamera || 'header';
+    const { targetWidth, targetHeight } = getTargetCrop(activeType);
+
+    // compute overlay size so it fits screen and keeps ratio
+    const screenPadding = 32;
+    const maxOverlayWidth = width - screenPadding * 2;
+    const overlayRatio = targetWidth / targetHeight;
+    let overlayWidth = maxOverlayWidth;
+    let overlayHeight = Math.round(overlayWidth / overlayRatio);
+    if (overlayHeight > height * 0.6) {
+      overlayHeight = Math.round(height * 0.6);
+      overlayWidth = Math.round(overlayHeight * overlayRatio);
+    }
+
+    const overlayStyle = {
+      width: overlayWidth,
+      height: overlayHeight,
+    };
+
+    useEffect(() => {
+      (async () => {
+        // ensure permission is up-to-date
+        try {
+          if (Platform.OS === 'android') {
+            const has = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+            if (!has) {
+              Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+              onClose();
+            } else {
+              setCameraPermission('authorized');
+            }
+          } else {
+            const permission = await Camera.getCameraPermissionStatus();
+            setCameraPermission(permission);
+            if (permission !== 'authorized') {
+              const asked = await Camera.requestCameraPermission();
+              setCameraPermission(asked);
+              if (asked !== 'authorized') {
+                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+                onClose();
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('CameraModal permission check error', err);
+        }
+      })();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    return (
+      <Modal visible={visible} animationType="slide" transparent>
+        <View style={styles.cameraModalContainer}>
+          {/* overlay masks: top flexible, center overlay, bottom flexible */}
+          <View style={styles.overlayMaskContainer} pointerEvents="none">
+            <View style={styles.maskFlex} />
+            <View style={[styles.overlayCenterRow, { height: overlayHeight }]}>
+              <View style={styles.sideMask} />
+
+              <View style={[styles.overlayBox, overlayStyle]}>
+                <View style={styles.overlayBorderTop}>
+                  <Text style={styles.overlayText}>{`${targetWidth} × ${targetHeight}`}</Text>
+                </View>
+
+                <View style={{ width: overlayWidth, height: overlayHeight, overflow: 'hidden', borderRadius: 6 }}>
+                  {device && cameraPermission === 'authorized' ? (
+                    <Camera
+                      style={{ width: overlayWidth, height: overlayHeight }}
+                      device={device}
+                      isActive={visible}
+                      photo
+                      ref={cameraRef as any}
+                    />
+                  ) : (
+                    <View style={{ width: overlayWidth, height: overlayHeight, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+                      <Text style={{ color: '#fff' }}>Camera not ready</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.sideMask} />
+            </View>
+            <View style={styles.maskFlex} />
           </View>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
+
+          {/* controls */}
+          <View style={styles.cameraControls}>
+            <TouchableOpacity style={styles.cameraCancel} onPress={() => { onClose(); }}>
+              <Text style={{ color: '#fff' }}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cameraCapture}
+              onPress={async () => {
+                try {
+                  if (!cameraRef.current) {
+                    Alert.alert('Camera Error', 'Camera not ready.');
+                    return;
+                  }
+
+                  // takePhoto may or may not exist depending on vision-camera version; handle gracefully
+                  // prefer takePhoto if available
+                  let photo: any;
+                  try {
+                    if (typeof cameraRef.current.takePhoto === 'function') {
+                      photo = await cameraRef.current.takePhoto({ flash: 'off' } as any);
+                    } else if (typeof cameraRef.current.takeSnapshot === 'function') {
+                      // older / different API
+                      photo = await cameraRef.current.takeSnapshot();
+                    } else if (typeof cameraRef.current.capture === 'function') {
+                      photo = await cameraRef.current.capture();
+                    } else {
+                      Alert.alert('Capture Error', 'Camera capture method not available on this device.');
+                      return;
+                    }
+                  } catch (err) {
+                    // If capture fails, try to fallback to launching image-picker camera
+                    console.warn('Vision capture failed, falling back to image-picker camera', err);
+                    const { targetWidth, targetHeight } = getTargetCrop(activeFileTypeForCamera || 'header');
+                    const options: CameraOptions = {
+                      mediaType: 'photo',
+                      includeBase64: false,
+                      saveToPhotos: false,
+                      maxWidth: targetWidth,
+                      maxHeight: targetHeight,
+                      quality: 0.9,
+                    };
+                    const result = await launchCamera(options);
+                    if ((result as any).didCancel) {
+                      return;
+                    }
+                    if ((result as any).errorCode) {
+                      Alert.alert('Camera Error', (result as any).errorMessage || 'Camera failed.');
+                      return;
+                    }
+                    if (result.assets && result.assets.length > 0) {
+                      const asset = result.assets[0];
+                      const rawUri = asset.uri || asset.path || asset.fileCopyUri || asset.fileName;
+                      const uri = toUriString(rawUri);
+                      const finalUri = (await cropImageToCenter(uri as string, targetWidth, targetHeight)) || uri;
+                      const file = {
+                        uri: finalUri,
+                        name: asset.fileName || `fallback_${activeFileTypeForCamera}_camera.jpg`,
+                        type: asset.type || 'image/jpeg',
+                      };
+                      assignFileByType(activeFileTypeForCamera as string, file, finalUri);
+                      onClose();
+                      setActiveFileTypeForCamera(null);
+                      return;
+                    }
+                  }
+
+                  const path = (photo as any)?.path || (photo as any)?.uri || photo;
+                  await onVisionCameraCapture(photo || path);
+                  onClose();
+                } catch (err: any) {
+                  Alert.alert('Capture Error', err?.message || String(err));
+                } finally {
+                  setActiveFileTypeForCamera(null);
+                }
+              }}
+            >
+              <View style={styles.captureCircle} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cameraGallery} onPress={async () => {
+              if (activeFileTypeForCamera) await pickFromGalleryAndCrop(activeFileTypeForCamera);
+              onClose();
+              setActiveFileTypeForCamera(null);
+            }}>
+              <Text style={{ color: '#fff' }}>Gallery</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  // Render file upload element
+  const renderFileUpload = (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR', label: string, preview: string | number | null) => {
+    const { targetWidth, targetHeight } = getTargetCrop(type);
+    const source = normalizeImageSource(preview);
+    return (
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>
+          {label} {type === 'header' || type === 'pharmacyHeader' || type === 'labHeader' ? `(${targetWidth}×${targetHeight})` : ''}
+        </Text>
+        <TouchableOpacity style={[styles.uploadBox, (type === 'header' || type === 'pharmacyHeader' || type === 'labHeader') ? styles.headerUploadBox : null]} onPress={() => handleFileChange(type)}>
+          {source ? (
+            (type === 'header' || type === 'pharmacyHeader' || type === 'labHeader') ? (
+              <Image source={source as any} style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT, borderRadius: 4, resizeMode: 'cover' }} />
+            ) : (
+              <Image source={source as any} style={styles.previewImage} />
+            )
+          ) : (
+            <View style={styles.uploadPlaceholder}>
+              <Icon name="upload" size={24} color="#6B7280" />
+              <Text style={styles.uploadText}>Select File</Text>
+              {(type === 'header' || type === 'pharmacyHeader' || type === 'labHeader') && (
+                <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>Banner target: {targetWidth}×{targetHeight}px</Text>
+              )}
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderSearchItem = (result: any) => (
-    <TouchableOpacity
-      style={styles.searchItem}
-      onPress={() => handleSelectSearchResult(result)}
-    >
-      <Text style={styles.searchItemMainText}>
-        {result.structured_formatting.main_text}
-      </Text>
-      <Text style={styles.searchItemSecondaryText}>
-        {result.structured_formatting.secondary_text}
-      </Text>
+    <TouchableOpacity key={result.place_id} style={styles.searchItem} onPress={() => handleSelectSearchResult(result)}>
+      <Text style={styles.searchItemMainText}>{result.structured_formatting?.main_text}</Text>
+      <Text style={styles.searchItemSecondaryText}>{result.structured_formatting?.secondary_text}</Text>
     </TouchableOpacity>
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardAvoidingContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+    <KeyboardAvoidingView style={styles.keyboardAvoidingContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
       {loading && (
         <View style={styles.loaderOverlay}>
           <ActivityIndicator size="large" color="#00203F" />
           <Text style={styles.loaderText}>Processing...</Text>
         </View>
       )}
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
         <View style={styles.mapSection}>
-          <Text style={styles.label}>Location (Tap on map to select)</Text>
+          <Text style={styles.label}>Location (Move map to position pointer — map auto-selects when you stop)</Text>
 
-          {/* Search Input */}
           <View style={styles.searchContainer}>
             <View style={styles.searchInputContainer}>
               <Icon name="magnify" size={20} color="#6B7280" style={styles.searchIcon} />
@@ -769,196 +1459,120 @@ console.log("Submitting form data:", formData);
                 placeholder="Search for an address or location"
                 placeholderTextColor="#A0AEC0"
                 value={searchQuery}
-                onChangeText={(text) => {
-                  setSearchQuery(text);
-                  handleSearch(text);
-                }}
+                onChangeText={(text) => { setSearchQuery(text); handleSearch(text); }}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); setShowSearchResults(false); }}>
                   <Icon name="close" size={20} color="#6B7280" />
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* Search Results */}
             {showSearchResults && searchResults.length > 0 && (
               <View style={styles.searchResultsContainer}>
                 <ScrollView style={styles.searchResultsList}>
-                  {searchResults.map((result) => (
-                    <View key={result.place_id}>
-                      {renderSearchItem(result)}
-                    </View>
-                  ))}
+                  {searchResults.map((result) => renderSearchItem(result))}
                 </ScrollView>
               </View>
             )}
           </View>
 
-          {/* Location status indicator */}
           {isFetchingLocation && (
             <View style={styles.locationStatus}>
               <ActivityIndicator size="small" color="#3182CE" />
-              <Text style={styles.locationStatusText}>
-                {locationRetryCount > 0
-                  ? `Getting location (attempt ${locationRetryCount + 1})...`
-                  : 'Getting your location...'}
-              </Text>
+              <Text style={styles.locationStatusText}>{locationRetryCount > 0 ? `Getting location (attempt ${locationRetryCount + 1})...` : 'Getting your location...'}</Text>
             </View>
           )}
 
-          {/* Map */}
           <View style={styles.mapContainer}>
             <MapView
-              ref={mapRef}
+              ref={(r) => (mapRef.current = r)}
               style={styles.map}
-              region={region}
-              onPress={handleMapPress}
+              initialRegion={region}
+              onRegionChange={handleRegionChange}
+              onRegionChangeComplete={handleRegionChangeComplete}
               showsUserLocation={true}
               showsMyLocationButton={false}
               provider={PROVIDER_GOOGLE}
-            >
-              <Marker
-                coordinate={{
-                  latitude: parseFloat(form.latitude) || 20.5937,
-                  longitude: parseFloat(form.longitude) || 78.9629,
-                }}
-              />
-            </MapView>
+              toolbarEnabled={false}
+            />
 
-            {/* Custom marker in center of map */}
-            <View style={styles.markerFixed}>
-              <View style={styles.marker}>
-                <View style={styles.markerInner} />
-              </View>
+            <View style={styles.markerFixed} pointerEvents="none">
+              {markerImage ? (
+                <Image source={markerImage as any} style={styles.markerImage} />
+              ) : (
+                <View style={styles.marker}>
+                  <View style={styles.markerInner} />
+                </View>
+              )}
             </View>
 
-            {/* My Location Button */}
+            {pointerCoords && (
+              <View style={styles.pointerPreview}>
+                <Text style={{ fontSize: 12 }}>Lat: {pointerCoords.latitude.toFixed(6)}</Text>
+                <Text style={{ fontSize: 12 }}>Lng: {pointerCoords.longitude.toFixed(6)}</Text>
+              </View>
+            )}
+
             <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocation}>
-              <Icon name="crosshairs-gps" size={24} color="#3182CE" />
+              <Icon name="crosshairs-gps" size={22} color="#3182CE" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.usePointerButton} onPress={usePointerLocation}>
+              <Text style={styles.usePointerText}>Use pointer location</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <Text style={styles.label}>Clinic Name *</Text>
-        <TextInput
-          style={[styles.input, errors.clinicName && styles.inputError]}
-          placeholder="Enter clinic name"
-          value={form.clinicName}
-          onChangeText={(text) => handleChange('clinicName', text)}
-          placeholderTextColor="gray"
-        />
+        <Text style={styles.label}>Clinic Name*</Text>
+        <TextInput style={[styles.input, errors.clinicName && styles.inputError]} placeholder="Enter clinic name" value={form.clinicName} onChangeText={(text) => handleChange('clinicName', text)} placeholderTextColor="gray" />
         {errors.clinicName && <Text style={styles.errorText}>{errors.clinicName}</Text>}
 
         <Text style={styles.label}>Address *</Text>
-        <TextInput
-          style={[styles.input, styles.textarea, errors.address && styles.inputError]}
-          placeholder="Enter clinic address"
-          multiline
-          numberOfLines={3}
-          value={form.address}
-          onChangeText={(text) => handleChange('address', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={[styles.input, styles.textarea, errors.address && styles.inputError]} placeholder="Enter clinic address" multiline numberOfLines={3} value={form.address} onChangeText={(text) => handleChange('address', text)} placeholderTextColor="gray" />
         {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
 
         <View style={styles.row}>
           <View style={styles.column}>
             <Text style={styles.label}>City *</Text>
-            <TextInput
-              style={[styles.input, errors.city && styles.inputError]}
-              placeholder="Enter city"
-              value={form.city}
-              onChangeText={(text) => handleChange('city', text)}
-              placeholderTextColor="gray"
-            />
+            <TextInput style={[styles.input, errors.city && styles.inputError]} placeholder="Enter city" value={form.city} onChangeText={(text) => handleChange('city', text)} placeholderTextColor="gray" />
             {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
           </View>
           <View style={styles.column}>
             <Text style={styles.label}>State *</Text>
-            <TextInput
-              style={[styles.input, errors.state && styles.inputError]}
-              placeholder="Enter state"
-              value={form.state}
-              onChangeText={(text) => handleChange('state', text)}
-              placeholderTextColor="gray"
-            />
+            <TextInput style={[styles.input, errors.state && styles.inputError]} placeholder="Enter state" value={form.state} onChangeText={(text) => handleChange('state', text)} placeholderTextColor="gray" />
             {errors.state && <Text style={styles.errorText}>{errors.state}</Text>}
           </View>
         </View>
 
         <Text style={styles.label}>Mobile Number *</Text>
-        <TextInput
-          style={[styles.input, errors.mobile && styles.inputError]}
-          placeholder="Enter 10-digit mobile number"
-          keyboardType="phone-pad"
-          value={form.mobile}
-          onChangeText={(text) => {
-            const digitsOnly = text.replace(/\D/g, '');
-            if (digitsOnly.length === 1 && !/[6-9]/.test(digitsOnly[0])) {
-              Toast.show({
-                type: 'error',
-                text1: 'Invalid Mobile Number',
-                text2: 'Enter a valid mobile number',
-                position: 'top',
-                visibilityTime: 3000,
-              });
-              return;
-            }
-            handleChange('mobile', digitsOnly)
-          }} maxLength={10}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={[styles.input, errors.mobile && styles.inputError]} placeholder="Enter 10-digit mobile number" keyboardType="phone-pad" value={form.mobile} onChangeText={(text) => {
+          const digitsOnly = text.replace(/\D/g, '');
+          if (digitsOnly.length === 1 && !/[6-9]/.test(digitsOnly[0])) {
+            Toast.show({ type: 'error', text1: 'Invalid Mobile Number', text2: 'Enter a valid mobile number', position: 'top', visibilityTime: 3000 });
+            return;
+          }
+          handleChange('mobile', digitsOnly);
+        }} maxLength={10} placeholderTextColor="gray" />
         {errors.mobile && <Text style={styles.errorText}>{errors.mobile}</Text>}
 
         <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={[styles.input, errors.email && styles.inputError]}
-          placeholder="Enter email address"
-          keyboardType="email-address"
-          value={form.email}
-          onChangeText={(text) => handleChange('email', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={[styles.input, errors.email && styles.inputError]} placeholder="Enter email address" keyboardType="email-address" value={form.email} onChangeText={(text) => handleChange('email', text)} placeholderTextColor="gray" />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
         <Text style={styles.label}>Pin Code</Text>
-        <TextInput
-          style={[styles.input, errors.pincode && styles.inputError]}
-          placeholder="Enter pincode"
-          keyboardType="numeric"
-          value={form.pincode}
-          onChangeText={(text) => handleChange('pincode', text)}
-          maxLength={6}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={[styles.input, errors.pincode && styles.inputError]} placeholder="Enter pincode" keyboardType="numeric" value={form.pincode} onChangeText={(text) => handleChange('pincode', text)} maxLength={6} placeholderTextColor="gray" />
         {errors.pincode && <Text style={styles.errorText}>{errors.pincode}</Text>}
 
         <View style={styles.row}>
           <View style={styles.column}>
             <Text style={styles.label}>Latitude *</Text>
-            <TextInput
-              style={[styles.input, errors.latitude && styles.inputError]}
-              placeholder="Latitude"
-              keyboardType="decimal-pad"
-              value={form.latitude}
-              onChangeText={(text) => handleChange('latitude', text)}
-              editable={false}
-              placeholderTextColor="gray"
-            />
+            <TextInput style={[styles.input, errors.latitude && styles.inputError]} placeholder="Latitude" keyboardType="decimal-pad" value={form.latitude} editable={false} placeholderTextColor="gray" />
             {errors.latitude && <Text style={styles.errorText}>{errors.latitude}</Text>}
           </View>
           <View style={styles.column}>
             <Text style={styles.label}>Longitude *</Text>
-            <TextInput
-              style={[styles.input, errors.longitude && styles.inputError]}
-              placeholder="Longitude"
-              keyboardType="decimal-pad"
-              value={form.longitude}
-              onChangeText={(text) => handleChange('longitude', text)}
-              editable={false}
-              placeholderTextColor="gray"
-            />
+            <TextInput style={[styles.input, errors.longitude && styles.inputError]} placeholder="Longitude" keyboardType="decimal-pad" value={form.longitude} editable={false} placeholderTextColor="gray" />
             {errors.longitude && <Text style={styles.errorText}>{errors.longitude}</Text>}
           </View>
         </View>
@@ -970,51 +1584,19 @@ console.log("Submitting form data:", formData);
         <Text style={styles.sectionTitle}>Pharmacy Details (Optional)</Text>
 
         <Text style={styles.label}>Pharmacy Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter pharmacy name"
-          value={form.pharmacyName}
-          onChangeText={(text) => handleChange('pharmacyName', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={styles.input} placeholder="Enter pharmacy name" value={form.pharmacyName} onChangeText={(text) => handleChange('pharmacyName', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Pharmacy Registration Number</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter registration number"
-          value={form.pharmacyRegNum}
-          onChangeText={(text) => handleChange('pharmacyRegNum', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={styles.input} placeholder="Enter registration number" value={form.pharmacyRegNum} onChangeText={(text) => handleChange('pharmacyRegNum', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Pharmacy GST Number</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter GST number"
-          value={form.pharmacyGST}
-          onChangeText={(text) => handleChange('pharmacyGST', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={styles.input} placeholder="Enter GST number" value={form.pharmacyGST} onChangeText={(text) => handleChange('pharmacyGST', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Pharmacy PAN</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter PAN number"
-          value={form.pharmacyPAN}
-          onChangeText={(text) => handleChange('pharmacyPAN', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={styles.input} placeholder="Enter PAN number" value={form.pharmacyPAN} onChangeText={(text) => handleChange('pharmacyPAN', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Pharmacy Address</Text>
-        <TextInput
-          style={[styles.input, styles.textarea]}
-          placeholder="Enter pharmacy address"
-          multiline
-          numberOfLines={3}
-          value={form.pharmacyAddress}
-          onChangeText={(text) => handleChange('pharmacyAddress', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={[styles.input, styles.textarea]} placeholder="Enter pharmacy address" multiline numberOfLines={3} value={form.pharmacyAddress} onChangeText={(text) => handleChange('pharmacyAddress', text)} placeholderTextColor="gray" />
 
         {renderFileUpload('pharmacyHeader', 'Pharmacy Header Image (Optional)', pharmacyHeaderPreview)}
         {renderFileUpload('pharmacyQR', 'Pharmacy QR Code (Optional)', pharmacyQRPreview)}
@@ -1022,51 +1604,19 @@ console.log("Submitting form data:", formData);
         <Text style={styles.sectionTitle}>Lab Details (Optional)</Text>
 
         <Text style={styles.label}>Lab Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter lab name"
-          value={form.labName}
-          onChangeText={(text) => handleChange('labName', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={styles.input} placeholder="Enter lab name" value={form.labName} onChangeText={(text) => handleChange('labName', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Lab Registration Number</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter registration number"
-          value={form.labRegNum}
-          onChangeText={(text) => handleChange('labRegNum', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={styles.input} placeholder="Enter registration number" value={form.labRegNum} onChangeText={(text) => handleChange('labRegNum', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Lab GST Number</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter GST number"
-          value={form.labGST}
-          onChangeText={(text) => handleChange('labGST', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={styles.input} placeholder="Enter GST number" value={form.labGST} onChangeText={(text) => handleChange('labGST', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Lab PAN</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter PAN number"
-          value={form.labPAN}
-          onChangeText={(text) => handleChange('labPAN', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={styles.input} placeholder="Enter PAN number" value={form.labPAN} onChangeText={(text) => handleChange('labPAN', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Lab Address</Text>
-        <TextInput
-          style={[styles.input, styles.textarea]}
-          placeholder="Enter lab address"
-          multiline
-          numberOfLines={3}
-          value={form.labAddress}
-          onChangeText={(text) => handleChange('labAddress', text)}
-          placeholderTextColor="gray"
-        />
+        <TextInput style={[styles.input, styles.textarea]} placeholder="Enter lab address" multiline numberOfLines={3} value={form.labAddress} onChangeText={(text) => handleChange('labAddress', text)} placeholderTextColor="gray" />
 
         {renderFileUpload('labHeader', 'Lab Header Image (Optional)', labHeaderPreview)}
         {renderFileUpload('labQR', 'Lab QR Code (Optional)', labQRPreview)}
@@ -1084,6 +1634,11 @@ console.log("Submitting form data:", formData);
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <CameraModal visible={cameraModalVisible} onClose={() => {
+        setCameraModalVisible(false);
+        setActiveFileTypeForCamera(null);
+      }} device={device} />
     </KeyboardAvoidingView>
   );
 };
@@ -1091,198 +1646,41 @@ console.log("Submitting form data:", formData);
 export default AddClinicForm;
 
 const styles = StyleSheet.create({
-  keyboardAvoidingContainer: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#F0FDF4',
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 20,
-    marginBottom: 12,
-    color: 'black',
-  },
-  label: {
-    fontSize: 14,
-    color: '#161b20ff',
-    marginTop: 8,
-    marginBottom: 4,
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    color: 'black',
-  },
-  inputError: {
-    borderColor: '#ef4444',
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 12,
-    marginTop: -8,
-    marginBottom: 12,
-  },
-  textarea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 12,
-  },
-  column: {
-    flex: 1,
-  },
-  inputGroup: {
-    marginBottom: 12,
-  },
-  uploadBox: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 100,
-  },
-  uploadPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  uploadText: {
-    marginTop: 8,
-    color: '#6B7280',
-    fontSize: 12,
-  },
-  previewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 4,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginTop: 20,
-    marginBottom: 50,
-  },
-  cancelBtn: {
-    flex: 1,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: '#111827',
-    fontWeight: '600',
-  },
-  confirmBtn: {
-    flex: 1,
-    backgroundColor: '#3B82F6',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  // Map related styles
-  mapSection: {
-    marginBottom: 20,
-  },
-  searchContainer: {
-    position: 'relative',
-    zIndex: 10,
-    marginBottom: 10,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7FAFC',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#2D3748',
-  },
-  searchResultsContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginTop: 4,
-    maxHeight: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    zIndex: 20,
-  },
-  searchResultsList: {
-    flex: 1,
-  },
-  searchItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  searchItemMainText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#2D3748',
-  },
-  searchItemSecondaryText: {
-    fontSize: 12,
-    color: '#718096',
-    marginTop: 2,
-  },
-  mapContainer: {
-    height: 200,
-    borderRadius: 8,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  markerFixed: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    marginLeft: -12,
-    marginTop: -24,
-    zIndex: 15,
-    pointerEvents: 'none',
-  },
+  keyboardAvoidingContainer: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#F0FDF4', padding: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginTop: 20, marginBottom: 12, color: 'black' },
+  label: { fontSize: 14, color: '#161b20ff', marginTop: 8, marginBottom: 4, fontWeight: '600' },
+  input: { backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, fontSize: 14, borderWidth: 1, borderColor: '#D1D5DB', color: 'black' },
+  inputError: { borderColor: '#ef4444' },
+  errorText: { color: '#ef4444', fontSize: 12, marginTop: -8, marginBottom: 12 },
+  textarea: { height: 80, textAlignVertical: 'top' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 12 },
+  column: { flex: 1 },
+  inputGroup: { marginBottom: 12 },
+  uploadBox: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 10, alignItems: 'center', justifyContent: 'center', height: 100 },
+  headerUploadBox: { height: PREVIEW_HEIGHT + 16, padding: 8, justifyContent: 'center' },
+  uploadPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  uploadText: { marginTop: 8, color: '#6B7280', fontSize: 12 },
+  previewImage: { width: 80, height: 80, borderRadius: 4 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 20, marginBottom: 50 },
+  cancelBtn: { flex: 1, backgroundColor: '#D1D5DB', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
+  cancelText: { color: '#111827', fontWeight: '600' },
+  confirmBtn: { flex: 1, backgroundColor: '#3B82F6', borderRadius: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  confirmText: { color: '#fff', fontWeight: '600' },
+  mapSection: { marginBottom: 20 },
+  searchContainer: { position: 'relative', zIndex: 50, marginBottom: 10 },
+  searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7FAFC', borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: '#2D3748' },
+  searchResultsContainer: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginTop: 4, maxHeight: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 6, zIndex: 100 },
+  searchResultsList: { flex: 1 },
+  searchItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  searchItemMainText: { fontSize: 14, fontWeight: '500', color: '#2D3748' },
+  searchItemSecondaryText: { fontSize: 12, color: '#718096', marginTop: 2 },
+  mapContainer: { height: 300, borderRadius: 8, overflow: 'hidden', position: 'relative', backgroundColor: '#E6EEF8' },
+  map: { ...StyleSheet.absoluteFillObject },
+  markerFixed: { position: 'absolute', left: '50%', top: '50%', marginLeft: -24, marginTop: -48, zIndex: 15, pointerEvents: 'none', width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  markerImage: { width: 60, height: 60, resizeMode: 'contain' },
   marker: {
     height: 48,
     width: 48,
@@ -1302,46 +1700,28 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 4,
   },
-  myLocationButton: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    width: 40,
-    height: 40,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    zIndex: 20,
-  },
-  locationStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    backgroundColor: '#EBF8FF',
-    padding: 8,
-    borderRadius: 4,
-  },
-  locationStatusText: {
-    marginLeft: 8,
-    fontSize: 12,
-    color: '#3182CE',
-  },
-  loaderOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  loaderText: {
-    color: '#fff',
-    fontSize: width * 0.04,
-    marginTop: height * 0.02,
-  },
+  myLocationButton: { position: 'absolute', bottom: 10, right: 10, width: 44, height: 44, backgroundColor: '#FFFFFF', borderRadius: 22, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, zIndex: 20 },
+  usePointerButton: { position: 'absolute', bottom: 10, left: 10, backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', zIndex: 20 },
+  usePointerText: { color: '#1E40AF', fontWeight: '600' },
+  locationStatus: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, backgroundColor: '#EBF8FF', padding: 8, borderRadius: 4 },
+  locationStatusText: { marginLeft: 8, fontSize: 12, color: '#3182CE' },
+  loaderOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  loaderText: { color: '#fff', fontSize: width * 0.04, marginTop: height * 0.02 },
+  pointerPreview: { position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(255,255,255,0.95)', padding: 8, borderRadius: 6, zIndex: 21 },
+
+  /* camera modal & overlay */
+  cameraModalContainer: { flex: 1, backgroundColor: '#000' },
+  overlayMaskContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 30, pointerEvents: 'none' },
+  maskFlex: { flex: 1, width: '100%' },
+  overlayCenterRow: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  sideMask: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  overlayBox: { borderColor: '#fff', borderWidth: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' },
+  overlayBorderTop: { position: 'absolute', top: -26, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  overlayText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+
+  cameraControls: { position: 'absolute', bottom: 30, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: 24, zIndex: 40 },
+  cameraCancel: { padding: 10 },
+  cameraGallery: { padding: 10 },
+  cameraCapture: { padding: 10 },
+  captureCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff', opacity: 0.9 },
 });

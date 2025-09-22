@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Platform,
   PermissionsAndroid,
-  Alert,
   Modal,
   Image,
 } from "react-native";
@@ -17,11 +16,9 @@ import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
 import { AuthFetch, AuthPost } from "../../auth/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Icon from 'react-native-vector-icons/AntDesign';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import RNFS from 'react-native-fs';
-import FileViewer from 'react-native-file-viewer';
-import RNHTMLtoPDF from 'react-native-html-to-pdf';
+import RNFS from "react-native-fs";
+import FileViewer from "react-native-file-viewer";
+import RNHTMLtoPDF from "react-native-html-to-pdf";
 
 interface PatientsTabProps {
   status: "pending" | "completed";
@@ -59,20 +56,18 @@ interface Patient {
   mobile?: string;
 }
 
-export default function PatientsTab({ 
-  status, 
-  searchQuery, 
-  updateCount, 
-  onTabChange, 
-  refreshTrigger 
+export default function PatientsTab({
+  status,
+  searchQuery,
+  updateCount,
+  onTabChange,
+  refreshTrigger,
 }: PatientsTabProps) {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const doctorId =
     currentuserDetails?.role === "doctor"
       ? currentuserDetails?.userId
       : currentuserDetails?.createdBy;
-  const userId = currentuserDetails?.userId;
-  const token = currentuserDetails?.token;
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,22 +79,21 @@ export default function PatientsTab({
   const [totalPatients, setTotalPatients] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
-  
-  // NEW: QR code states
+
+  // QR code states
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
   const [currentPatientForQr, setCurrentPatientForQr] = useState<string | null>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<Record<string, "cash" | "upi" | null>>({});
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<Record<string, "cash" | "upi" | null>>(
+    {}
+  );
   const [showUpiQr, setShowUpiQr] = useState<Record<string, boolean>>({});
   const [qrLoading, setQrLoading] = useState(false);
 
   async function filterPatientsData(data: any[]) {
-    const isPending = status === "pending";
     return data
       .map((patient) => {
-        const filteredMeds = patient.medicines.filter(
-          (med: any) => med.status === status
-        );
+        const filteredMeds = patient.medicines.filter((med: any) => med.status === status);
         return filteredMeds.length > 0 ? { ...patient, medicines: filteredMeds } : null;
       })
       .filter(Boolean);
@@ -108,13 +102,13 @@ export default function PatientsTab({
   async function fetchPatients() {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('authToken'); 
-      
+      const token = await AsyncStorage.getItem("authToken");
+
       const response = await AuthFetch(
         `pharmacy/getAllPharmacyPatientsByDoctorID?doctorId=${doctorId}&status=${status}&searchText=${searchQuery}&page=${page}&limit=${pageSize}`,
         token
       );
-      
+
       let dataArray: any[] = [];
       if (response.status === "success" && response?.data?.data) {
         dataArray = await filterPatientsData(response.data.data.patients);
@@ -144,10 +138,11 @@ export default function PatientsTab({
             patientId: patient.patientId || `PAT-${index}`,
             doctorId: patient.doctorId || "N/A",
             name: patient.patientName || "Unknown Patient",
-            medicines: patient.medicines.map((med: any) => ({
-              ...med,
-              patientId: patient.patientId
-            })) || [],
+            medicines:
+              patient.medicines.map((med: any) => ({
+                ...med,
+                patientId: patient.patientId,
+              })) || [],
             totalMedicines: patient.medicines?.length || 0,
             totalAmount: totalAmount,
             status: status,
@@ -160,14 +155,13 @@ export default function PatientsTab({
 
         setPatients(formattedData);
         setTotalPatients(response.data.data.pagination.totalPatients);
-        
+
         const payState: Record<string, boolean> = {};
         formattedData.forEach((p) => {
           payState[p.patientId] = !p.medicines.some((med) => med.status === "pending");
         });
         setIsPaymentDone((prev) => ({ ...prev, ...payState }));
-        
-        // Reset payment method selection for new patients
+
         const paymentMethods: Record<string, "cash" | "upi" | null> = {};
         formattedData.forEach((p) => {
           paymentMethods[p.patientId] = null;
@@ -191,14 +185,11 @@ export default function PatientsTab({
 
   async function handleUpdateStatus(patientId: string) {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthPost(
-        `/pharmacy/updateStatus`,
-        { patientId, status: "completed" },
-        token,
-        { headers: { "Content-Type": "application/json" } }
-      );
-      
+      const token = await AsyncStorage.getItem("authToken");
+      const response = await AuthPost(`/pharmacy/updateStatus`, { patientId, status: "completed" }, token, {
+        headers: { "Content-Type": "application/json" },
+      });
+
       if (response.status === "success") {
         Toast.show({ type: "success", text1: "Status updated successfully" });
         fetchPatients();
@@ -216,14 +207,12 @@ export default function PatientsTab({
   }
 
   const handlePriceChange = (patientId: string, medicineId: string, value: number | null) => {
-    setPatients(prev =>
-      prev.map(patient =>
+    setPatients((prev) =>
+      prev.map((patient) =>
         patient.patientId === patientId
           ? {
               ...patient,
-              medicines: patient.medicines.map(med =>
-                med._id === medicineId ? { ...med, price: value } : med
-              ),
+              medicines: patient.medicines.map((med) => (med._id === medicineId ? { ...med, price: value } : med)),
             }
           : patient
       )
@@ -231,14 +220,14 @@ export default function PatientsTab({
   };
 
   const enableEdit = (medicineId: string) => {
-    setEditablePrices(prev => [...prev, medicineId]);
+    setEditablePrices((prev) => [...prev, medicineId]);
   };
 
   const handlePriceSave = async (patientId: string, medicineId: string) => {
     try {
-      setSaving(prev => ({ ...prev, [medicineId]: true }));
-      const patient = patients.find(p => p.patientId === patientId);
-      const medicine = patient?.medicines.find(m => m._id === medicineId);
+      setSaving((prev) => ({ ...prev, [medicineId]: true }));
+      const patient = patients.find((p) => p.patientId === patientId);
+      const medicine = patient?.medicines.find((m) => m._id === medicineId);
       const price = medicine?.price;
 
       if (price === null || price === undefined) {
@@ -249,42 +238,43 @@ export default function PatientsTab({
         return;
       }
 
-      const token = await AsyncStorage.getItem('authToken');
-      await AuthPost(`pharmacy/updatePatientMedicinePrice`, {
-        medicineId,
-        patientId,
-        price,
-        doctorId,
-      }, token);
+      const token = await AsyncStorage.getItem("authToken");
+      await AuthPost(
+        `pharmacy/updatePatientMedicinePrice`,
+        {
+          medicineId,
+          patientId,
+          price,
+          doctorId,
+        },
+        token
+      );
 
       Toast.show({
         type: "success",
         text1: "Price updated successfully",
       });
-      setEditablePrices(prev => prev.filter(id => id !== medicineId));
+      setEditablePrices((prev) => prev.filter((id) => id !== medicineId));
     } catch (error: any) {
       Toast.show({
         type: "error",
         text1: error?.message || "Failed to update price",
       });
     } finally {
-      setSaving(prev => ({ ...prev, [medicineId]: false }));
+      setSaving((prev) => ({ ...prev, [medicineId]: false }));
     }
   };
 
-  // NEW: Handle payment method selection
+  // Handle payment method selection
   const handlePaymentMethodSelect = async (patientId: string, method: "cash" | "upi") => {
     setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: method }));
 
     if (method === "upi") {
       setCurrentPatientForQr(patientId);
-      
-      // Get the patient to find the addressId
-      const patient = patients.find(p => p.patientId === patientId);
+
+      const patient = patients.find((p) => p.patientId === patientId);
       const addressId = patient?.addressId;
-      
-      console.log("Fetching QR for Address ID:", addressId);
-      
+
       if (!addressId) {
         Toast.show({
           type: "error",
@@ -293,7 +283,7 @@ export default function PatientsTab({
         setSelectedPaymentMethod((prev) => ({ ...prev, [patientId]: null }));
         return;
       }
-      
+
       const success = await fetchPharmacyQRCode(addressId);
       if (success) {
         setShowUpiQr((prev) => ({ ...prev, [patientId]: true }));
@@ -310,14 +300,8 @@ export default function PatientsTab({
     try {
       setQrLoading(true);
       const token = await AsyncStorage.getItem("authToken");
-      const userId = await AsyncStorage.getItem("userId");
-      console.log("Fetching QR for Address ID:", addressId);
 
-      const response = await AuthFetch(
-        `users/getClinicsQRCode/${addressId}?userId=${userId}`,
-        token
-      );
-      console.log("QR fetch response:", response);
+      const response = await AuthFetch(`users/getClinicsQRCode/${addressId}?userId=${doctorId}`, token);
 
       if (response?.data?.status === "success" && response?.data?.data) {
         const qrCodeUrl = response.data.data.pharmacyQrCode || response.data.data.qrCodeUrl;
@@ -349,7 +333,7 @@ export default function PatientsTab({
     }
   };
 
-  // NEW: Handle UPI payment confirmation
+  // Handle UPI payment confirmation
   const handleUpiPaymentConfirm = (patientId: string) => {
     setQrModalVisible(false);
     setShowUpiQr((prev) => ({ ...prev, [patientId]: false }));
@@ -358,12 +342,10 @@ export default function PatientsTab({
 
   const handlePayment = async (patientId: string, method: "cash" | "upi" = "cash") => {
     try {
-      setPaying(prev => ({ ...prev, [patientId]: true }));
-      const patient = patients.find(p => p.patientId === patientId);
-      const totalAmount = patient?.medicines.reduce(
-        (sum, med) => sum + (med.price || 0) * (med.quantity || 1),
-        0
-      ) || 0;
+      setPaying((prev) => ({ ...prev, [patientId]: true }));
+      const patient = patients.find((p) => p.patientId === patientId);
+      const totalAmount =
+        patient?.medicines.reduce((sum, med) => sum + (med.price || 0) * (med.quantity || 1), 0) || 0;
 
       if (totalAmount <= 0) {
         Toast.show({
@@ -373,9 +355,8 @@ export default function PatientsTab({
         return;
       }
 
-      const hasUnconfirmedPrices = patient?.medicines.some(med => 
-        editablePrices.includes(med._id) && 
-        (med.price !== null && med.price !== undefined)
+      const hasUnconfirmedPrices = patient?.medicines.some(
+        (med) => editablePrices.includes(med._id) && med.price !== null && med.price !== undefined
       );
 
       if (hasUnconfirmedPrices) {
@@ -386,34 +367,26 @@ export default function PatientsTab({
         return;
       }
 
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await AuthPost(`pharmacy/pharmacyPayment`, {
-        patientId,
-        doctorId,
-        amount: totalAmount,
-        paymentMethod: method,
-        medicines: patient?.medicines.map((med) => ({
-          medicineId: med._id,
-          price: med.price,
-          quantity: med.quantity,
-          pharmacyMedID: med.pharmacyMedID || null,
-        })),
-      }, token);
-      console.log("Payment request body:", {
-        patientId,
-        doctorId,
-        amount: totalAmount,
-        paymentMethod: method,
-        medicines: patient?.medicines.map((med) => ({
-          medicineId: med._id,
-          price: med.price,
-          quantity: med.quantity,
-          pharmacyMedID: med.pharmacyMedID || null,
-        })),
-      });
+      const token = await AsyncStorage.getItem("authToken");
+      const response = await AuthPost(
+        `pharmacy/pharmacyPayment`,
+        {
+          patientId,
+          doctorId,
+          amount: totalAmount,
+          paymentMethod: method,
+          medicines: patient?.medicines.map((med) => ({
+            medicineId: med._id,
+            price: med.price,
+            quantity: med.quantity,
+            pharmacyMedID: med.pharmacyMedID || null,
+          })),
+        },
+        token
+      );
 
       if (response.status === "success") {
-        setIsPaymentDone(prev => ({ ...prev, [patientId]: true }));
+        setIsPaymentDone((prev) => ({ ...prev, [patientId]: true }));
         updateCount();
         Toast.show({
           type: "success",
@@ -425,13 +398,13 @@ export default function PatientsTab({
         await fetchPatients();
       }
     } catch (error: any) {
-      setIsPaymentDone(prev => ({ ...prev, [patientId]: false }));
+      setIsPaymentDone((prev) => ({ ...prev, [patientId]: false }));
       Toast.show({
         type: "error",
         text1: error?.message || "Failed to process payment",
       });
     } finally {
-      setPaying(prev => ({ ...prev, [patientId]: false }));
+      setPaying((prev) => ({ ...prev, [patientId]: false }));
     }
   };
 
@@ -439,19 +412,13 @@ export default function PatientsTab({
   const ensureAndroidWritePermission = async () => {
     if (Platform.OS !== "android") return true;
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: "Storage permission",
-          message: "Allow saving invoices to your Downloads folder.",
-          buttonPositive: "Allow",
-        }
-      );
-      return (
-        granted === PermissionsAndroid.RESULTS.GRANTED ||
-        granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
-      );
-    } catch(err) {
+      const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE, {
+        title: "Storage permission",
+        message: "Allow saving invoices to your Downloads folder.",
+        buttonPositive: "Allow",
+      });
+      return granted === PermissionsAndroid.RESULTS.GRANTED || granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN;
+    } catch (err: any) {
       Toast.show({
         type: "error",
         text1: err?.message || "Failed to request storage permission",
@@ -462,9 +429,8 @@ export default function PatientsTab({
 
   const downloadInvoice = async (patient: Patient) => {
     try {
-      setDownloading(prev => ({ ...prev, [patient.patientId]: true }));
-      
-      // Check for Android permissions
+      setDownloading((prev) => ({ ...prev, [patient.patientId]: true }));
+
       if (Platform.OS === "android") {
         const hasPermission = await ensureAndroidWritePermission();
         if (!hasPermission) {
@@ -472,60 +438,50 @@ export default function PatientsTab({
         }
       }
 
-      // Generate invoice HTML
       const invoiceHTML = generateInvoiceHTML(patient);
-      
-      // Create PDF file name
       const fileName = `Invoice_${patient.patientId}_${Date.now()}.pdf`;
-      
-      // Options for PDF generation
+
       const options = {
         html: invoiceHTML,
         fileName: fileName,
-        directory: 'Documents',
+        directory: "Documents",
       };
-      
-      // Generate PDF
+
       const file = await RNHTMLtoPDF.convert(options);
-      
-      // Move to downloads folder on Android
-      if (Platform.OS === 'android' && file.filePath) {
+
+      if (Platform.OS === "android" && file.filePath) {
         const downloadsPath = RNFS.DownloadDirectoryPath;
         const destinationPath = `${downloadsPath}/${fileName}`;
-        
-        // Check if file exists and delete it
+
         const fileExists = await RNFS.exists(destinationPath);
         if (fileExists) {
           await RNFS.unlink(destinationPath);
         }
-        
-        // Move the file to downloads
+
         await RNFS.moveFile(file.filePath, destinationPath);
-        
+
         Toast.show({
           type: "success",
           text1: "Invoice saved to Downloads",
         });
-        
-        // Try to open the file
+
         try {
           await FileViewer.open(destinationPath);
-        } catch (error) {
+        } catch (error: any) {
           Toast.show({
             type: "error",
             text1: error?.message || "Failed to open invoice",
           });
         }
       } else if (file.filePath) {
-        // For iOS, just show success and try to open
         Toast.show({
           type: "success",
           text1: "Invoice generated successfully",
         });
-        
+
         try {
           await FileViewer.open(file.filePath);
-        } catch (error) {
+        } catch (error: any) {
           Toast.show({
             type: "error",
             text1: error?.message || "Failed to open invoice",
@@ -538,25 +494,25 @@ export default function PatientsTab({
         text1: error?.message || "Failed to download invoice",
       });
     } finally {
-      setDownloading(prev => ({ ...prev, [patient.patientId]: false }));
+      setDownloading((prev) => ({ ...prev, [patient.patientId]: false }));
     }
   };
 
   const generateInvoiceHTML = (patient: Patient) => {
-    const completedMedicines = patient.medicines.filter(med => med.status === "completed");
+    const completedMedicines = patient.medicines.filter((med) => med.status === "completed");
     const total = completedMedicines.reduce(
       (sum, med) => sum + (med.price || 0) * (med.quantity || 1),
       0
     );
-    
-    const firstName = patient.name.split(' ')[0] || "Unknown";
-    const lastName = patient.name.split(' ').slice(1).join(' ') || "Patient";
+
+    const firstName = patient.name.split(" ")[0] || "Unknown";
+    const lastName = patient.name.split(" ").slice(1).join(" ") || "Patient";
     const itemDate = new Date().toLocaleDateString();
     const invoiceNumber = `INV-${patient.patientId}-${Date.now()}`;
-    
+
     const pharmacyData = patient.pharmacyData || {};
     const providerName = pharmacyData.pharmacyName || "Pharmacy";
-    
+
     return `
       <!DOCTYPE html>
       <html>
@@ -566,51 +522,20 @@ export default function PatientsTab({
           <style>
             html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; font-size: 14px; }
             @page { margin: 0; size: A4; }
-            @media print {
-              @page { margin: 0; size: A4; }
-              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            }
-            .invoice-container {
-              padding: 15px;
-              max-width: 210mm;
-              margin: 0 auto;
-              min-height: calc(100vh - 30px);
-              display: flex;
-              flex-direction: column;
-            }
-            .invoice-content {
-              flex: 1;
-            }
+            .invoice-container { padding: 15px; max-width: 210mm; margin: 0 auto; min-height: calc(100vh - 30px); display: flex; flex-direction: column; }
+            .invoice-content { flex: 1; }
             .invoice-header-image-only { width: 100%; margin-bottom: 12px; page-break-inside: avoid; }
             .invoice-header-image-only img { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; background: #fff; }
-            .invoice-header-section { display: flex; justify-content: space-between; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee; }
-            .provider-info { text-align: left; }
             .provider-name { font-size: 20px; font-weight: bold; color: #333; margin-bottom: 6px; }
-            .contact-info p { margin: 3px 0; color: #444; }
-            .invoice-details { text-align: right; }
-            .invoice-detail-item { font-size: 14px; }
             .section { margin-bottom: 20px; }
-            .section-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #ddd; }
             .patient-info { display: flex; justify-content: space-between; background-color: #f8f9fa; padding: 12px; border-radius: 5px; }
-            .patient-info p { margin: 3px 0; }
             .data-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
             .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
             .data-table th { background-color: #f8f9fa; font-weight: bold; }
             .price-column { text-align: right; }
-            .section-total { text-align: right; margin-top: 8px; }
-            .total-text { font-weight: bold; font-size: 14px; color: #333; }
             .grand-total-section { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; }
             .grand-total-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #333; border-top: 2px solid #333; padding-top: 8px; margin-top: 10px; }
             .footer { text-align: center; padding: 15px 0; border-top: 1px solid #ddd; color: #666; background: #fff; }
-            .powered-by { display: flex; align-items: center; justify-content: center; margin-top: 8px; gap: 6px; color: #666; font-size: 12px; }
-            .footer-logo { width: 18px; height: 18px; object-fit: contain; }
-            .compact-spacing { margin-bottom: 15px; }
-            .compact-spacing:last-child { margin-bottom: 0; }
-            @media print {
-              .footer { position: relative; margin-top: auto; }
-              .invoice-container { min-height: auto; height: auto; }
-              .footer { page-break-before: avoid; }
-            }
           </style>
         </head>
         <body>
@@ -623,8 +548,8 @@ export default function PatientsTab({
                 <p>PAN: ${pharmacyData?.pharmacyPan || "N/A"}</p>
                 <p>Registration No: ${pharmacyData?.pharmacyRegistrationNo || "N/A"}</p>
               </div>
-              <div class="section compact-spacing">
-                <h3 class="section-title">Patient Information</h3>
+              <div class="section">
+                <h3>Patient Information</h3>
                 <div class="patient-info">
                   <div>
                     <p><strong>Patient ID:</strong> ${patient.patientId}</p>
@@ -633,14 +558,16 @@ export default function PatientsTab({
                     <p><strong>Mobile:</strong> ${patient.mobile || "Not Provided"}</p>
                   </div>
                   <div>
-                    <p><strong>Referred by Dr.</strong> ${currentuserDetails?.firstname || "N/A"} ${currentuserDetails?.lastname || "N/A"}</p>
+                    <p><strong>Referred by Dr.</strong> ${currentuserDetails?.firstname || "N/A"} ${
+      currentuserDetails?.lastname || "N/A"
+    }</p>
                     <p><strong>Appointment Date&Time:</strong> ${itemDate}</p>
-                    <div class="invoice-detail-item"><strong>Invoice No:</strong> #${invoiceNumber}</div>
+                    <div><strong>Invoice No:</strong> #${invoiceNumber}</div>
                   </div>
                 </div>
               </div>
-              <div class="section compact-spacing">
-                <h3 class="section-title">Medicines</h3>
+              <div class="section">
+                <h3>Medicines</h3>
                 <table class="data-table">
                   <thead>
                     <tr>
@@ -674,9 +601,9 @@ export default function PatientsTab({
                       .join("")}
                   </tbody>
                 </table>
-                <div class="section-total">
-                  <p class="gst-text" style="margin: 0; font-size: 13px; color: #000000ff;">GST included</p>
-                  <p class="total-text">Medicines Total: ₹${total.toFixed(2)}</p>
+                <div>
+                  <p style="margin:0; font-size:13px; color:#000000ff;">GST included</p>
+                  <p style="font-weight:bold; font-size:14px;">Medicines Total: ₹${total.toFixed(2)}</p>
                 </div>
               </div>
               <div class="grand-total-section">
@@ -688,9 +615,7 @@ export default function PatientsTab({
             </div>
             <div class="footer">
               <p>Thank you for choosing Vydhyo</p>
-              <div class="powered-by">
-                <span>Powered by Vydhyo</span>
-              </div>
+              <div>Powered by Vydhyo</div>
             </div>
           </div>
         </body>
@@ -701,16 +626,10 @@ export default function PatientsTab({
   const statusTag = (status: string) => {
     const norm = (status || "").toLowerCase();
     const color =
-      norm === "completed" ? "#16a34a" :
-      norm === "pending" ? "#d97706" :
-      norm === "cancelled" ? "#dc2626" :
-      norm === "in_progress" ? "#2563eb" : "#6b7280";
+      norm === "completed" ? "#16a34a" : norm === "pending" ? "#d97706" : norm === "cancelled" ? "#dc2626" : norm === "in_progress" ? "#2563eb" : "#6b7280";
     const label =
-      norm === "completed" ? "Completed" :
-      norm === "pending" ? "Pending" :
-      norm === "cancelled" ? "Cancelled" :
-      norm === "in_progress" ? "In Progress" : "Unknown";
-    
+      norm === "completed" ? "Completed" : norm === "pending" ? "Pending" : norm === "cancelled" ? "Cancelled" : norm === "in_progress" ? "In Progress" : "Unknown";
+
     return (
       <View style={[styles.tag, { backgroundColor: color + "22", borderColor: color }]}>
         <Text style={{ color, fontWeight: "600", fontSize: 12 }}>{label}</Text>
@@ -721,25 +640,24 @@ export default function PatientsTab({
   const renderMedicineRow = (patient: Patient, medicine: Medicine) => {
     const isEditable = editablePrices.includes(medicine._id);
     const isPriceInitiallyNull = medicine.price === null || medicine.price === undefined;
-    
+
     return (
       <View key={medicine._id} style={styles.medicineRow}>
-        <Text style={styles.medicineName}>{medicine.medName} {medicine.dosage}</Text>
-        
+        <Text style={styles.medicineName}>
+          {medicine.medName} {medicine.dosage}
+        </Text>
+
         <View style={styles.medicineDetails}>
           <View style={styles.priceRow}>
             <TextInput
               keyboardType="numeric"
               placeholder="Enter price"
-              placeholderTextColor="#94a3b8" 
+              placeholderTextColor="#94a3b8"
               value={medicine.price?.toString() || ""}
               editable={medicine.status === "pending" && (isEditable || isPriceInitiallyNull)}
               onFocus={() => !isEditable && enableEdit(medicine._id)}
               onChangeText={(value) => handlePriceChange(patient.patientId, medicine._id, value ? parseFloat(value) : null)}
-              style={[
-                styles.priceInput,
-                !(medicine.status === "pending" && (isEditable || isPriceInitiallyNull)) && styles.priceInputDisabled
-              ]}
+              style={[styles.priceInput, !(medicine.status === "pending" && (isEditable || isPriceInitiallyNull)) && styles.priceInputDisabled]}
             />
             <TouchableOpacity
               onPress={() => handlePriceSave(patient.patientId, medicine._id)}
@@ -751,25 +669,21 @@ export default function PatientsTab({
               }
               style={[
                 styles.saveBtn,
-                (medicine.price == null || saving[medicine._id] || !(medicine.status === "pending" && (isEditable || isPriceInitiallyNull))) && styles.btnDisabled
+                (medicine.price == null || saving[medicine._id] || !(medicine.status === "pending" && (isEditable || isPriceInitiallyNull))) && styles.btnDisabled,
               ]}
             >
-              <Text style={styles.saveBtnText}>
-                {saving[medicine._id] ? "Saving..." : "Save"}
-              </Text>
+              <Text style={styles.saveBtnText}>{saving[medicine._id] ? "Saving..." : "Save"}</Text>
             </TouchableOpacity>
             {statusTag(medicine.status)}
           </View>
-          
+
           <View style={styles.medicineInfoRow}>
             <Text style={styles.medicineInfo}>Quantity: {medicine.quantity} units</Text>
             <Text style={styles.medicineInfo}>SGST: {medicine.gst}%</Text>
             <Text style={styles.medicineInfo}>CGST: {medicine.cgst}%</Text>
           </View>
-          
-          <Text style={styles.medicineTotal}>
-            Total: ₹{((medicine.price || 0) * medicine.quantity).toFixed(2)}
-          </Text>
+
+          <Text style={styles.medicineTotal}>Total: ₹{((medicine.price || 0) * medicine.quantity).toFixed(2)}</Text>
         </View>
       </View>
     );
@@ -782,24 +696,18 @@ export default function PatientsTab({
     const allCompleted = patient.medicines.every((med) => med.status === "completed");
     const anyPending = patient.medicines.some((med) => med.status === "pending");
     if (allCompleted) return { label: "Completed", color: "#16a34a" };
-    if (anyPending && !patient.medicines.some((med) => med.status === "completed"))
-      return { label: "Pending", color: "#d97706" };
+    if (anyPending && !patient.medicines.some((med) => med.status === "completed")) return { label: "Pending", color: "#d97706" };
     return { label: "Partial", color: "#f59e0b" };
   };
 
   const renderPatient = ({ item }: { item: Patient }) => {
     const total = calcTotal(item);
-    const sts = patientStatus(item);
     const hasPending = item.medicines.some((med) => med.status === "pending");
     const paid = isPaymentDone[item.patientId];
     const paymentMethod = selectedPaymentMethod[item.patientId];
     const showUpi = showUpiQr[item.patientId];
 
-    // Filter medicines based on status
-    const filteredMedicines =
-      status === "pending"
-        ? item.medicines.filter((med) => med.status === "pending")
-        : item.medicines.filter((med) => med.status === "completed");
+    const filteredMedicines = status === "pending" ? item.medicines.filter((med) => med.status === "pending") : item.medicines.filter((med) => med.status === "completed");
 
     return (
       <View style={styles.rowCard}>
@@ -810,61 +718,36 @@ export default function PatientsTab({
           </View>
         </View>
 
-        {/* Medicines */}
         <View style={styles.medicinesBox}>
-          {filteredMedicines.length > 0 ? (
-            filteredMedicines.map((med) => renderMedicineRow(item, med))
-          ) : (
-            <Text style={{color:"black"}}>
-              {status === "pending" ? "No Pending Medicines" : "No Completed Medicines"}
-            </Text>
-          )}
+          {filteredMedicines.length > 0 ? filteredMedicines.map((med) => renderMedicineRow(item, med)) : <Text style={{ color: "black" }}>{status === "pending" ? "No Pending Medicines" : "No Completed Medicines"}</Text>}
         </View>
 
-        {/* NEW: Payment method selection */}
         {!paid && hasPending && paymentMethod !== null && (
           <View style={styles.paymentMethodContainer}>
             <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
 
             <View style={styles.paymentOptions}>
-              <TouchableOpacity
-                style={styles.paymentOption}
-                onPress={() => handlePaymentMethodSelect(item.patientId, 'cash')}
-              >
-                <View style={styles.radioButton}>
-                  {paymentMethod === 'cash' && <View style={styles.radioButtonSelected} />}
-                </View>
+              <TouchableOpacity style={styles.paymentOption} onPress={() => handlePaymentMethodSelect(item.patientId, "cash")}>
+                <View style={styles.radioButton}>{paymentMethod === "cash" && <View style={styles.radioButtonSelected} />}</View>
                 <Text style={styles.paymentOptionText}>Cash</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.paymentOption}
-                onPress={() => handlePaymentMethodSelect(item.patientId, 'upi')}
-              >
-                <View style={styles.radioButton}>
-                  {paymentMethod === 'upi' && <View style={styles.radioButtonSelected} />}
-                </View>
+              <TouchableOpacity style={styles.paymentOption} onPress={() => handlePaymentMethodSelect(item.patientId, "upi")}>
+                <View style={styles.radioButton}>{paymentMethod === "upi" && <View style={styles.radioButtonSelected} />}</View>
                 <Text style={styles.paymentOptionText}>UPI</Text>
               </TouchableOpacity>
             </View>
 
-            {paymentMethod === 'cash' && (
-              <TouchableOpacity
-                style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]}
-                disabled={paying[item.patientId]}
-                onPress={() => handlePayment(item.patientId, 'cash')}
-              >
-                <Text style={styles.confirmButtonText}>
-                  {paying[item.patientId] ? "Processing..." : "Confirm Cash Payment"}
-                </Text>
+            {paymentMethod === "cash" && (
+              <TouchableOpacity style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]} disabled={paying[item.patientId]} onPress={() => handlePayment(item.patientId, "cash")}>
+                <Text style={styles.confirmButtonText}>{paying[item.patientId] ? "Processing..." : "Confirm Cash Payment"}</Text>
               </TouchableOpacity>
             )}
           </View>
         )}
 
-        {/* UPI QR Modal */}
         <Modal
-          visible={paymentMethod === 'upi' && showUpi && qrModalVisible}
+          visible={paymentMethod === "upi" && showUpi && qrModalVisible}
           animationType="slide"
           transparent={true}
           onRequestClose={() => {
@@ -878,27 +761,17 @@ export default function PatientsTab({
               <Text style={styles.qrText}>Scan QR Code to Pay</Text>
 
               {qrLoading ? (
-                <ActivityIndicator size="large" color="#1A3C6A" />
+                <ActivityIndicator size="large" color="#007bff" />
               ) : qrCodeImage ? (
-                <Image
-                  source={{ uri: qrCodeImage }}
-                  style={styles.qrImage}
-                  resizeMode="contain"
-                />
+                <Image source={{ uri: qrCodeImage }} style={styles.qrImage} resizeMode="contain" />
               ) : (
                 <Text style={styles.errorText}>QR code not available</Text>
               )}
 
               <Text style={styles.upiId}>Total Amount: ₹ {total.toFixed(2)}</Text>
 
-              <TouchableOpacity
-                style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]}
-                disabled={paying[item.patientId]}
-                onPress={() => handleUpiPaymentConfirm(item.patientId)}
-              >
-                <Text style={styles.confirmButtonText}>
-                  {paying[item.patientId] ? "Processing..." : "Confirm UPI Payment"}
-                </Text>
+              <TouchableOpacity style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]} disabled={paying[item.patientId]} onPress={() => handleUpiPaymentConfirm(item.patientId)}>
+                <Text style={styles.confirmButtonText}>{paying[item.patientId] ? "Processing..." : "Confirm UPI Payment"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -919,36 +792,23 @@ export default function PatientsTab({
           <Text style={styles.totalText}>Total: ₹ {total.toFixed(2)}</Text>
 
           {status === "completed" ? (
-            <TouchableOpacity 
-              style={[styles.primaryBtn, downloading[item.patientId] && styles.btnDisabled]}
-              onPress={() => downloadInvoice(item)}
-              disabled={downloading[item.patientId]}
-            >
-              <Text style={styles.primaryBtnText}>
-                {downloading[item.patientId] ? "Downloading..." : "Download Invoice"}
-              </Text>
+            <TouchableOpacity style={[styles.primaryBtn, downloading[item.patientId] && styles.btnDisabled]} onPress={() => downloadInvoice(item)} disabled={downloading[item.patientId]}>
+              <Text style={styles.primaryBtnText}>{downloading[item.patientId] ? "Downloading..." : "Download Invoice"}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[
-                styles.primaryBtn, 
-                (total <= 0 || !hasPending || paid || paying[item.patientId]) && styles.btnDisabled
-              ]}
+              style={[styles.primaryBtn, (total <= 0 || !hasPending || paid || paying[item.patientId]) && styles.btnDisabled]}
               disabled={total <= 0 || !hasPending || paid || paying[item.patientId]}
               onPress={() => {
                 if (paymentMethod === null) {
-                  // Show payment options if not already selected
-                  setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: 'cash' }));
-                  handlePaymentMethodSelect(item.patientId, 'cash');
+                  setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: "cash" }));
+                  handlePaymentMethodSelect(item.patientId, "cash");
                 } else {
-                  // If payment method already selected, process payment
                   handlePayment(item.patientId, paymentMethod);
                 }
               }}
             >
-              <Text style={styles.primaryBtnText}>
-                {paid ? "Paid" : paying[item.patientId] ? "Processing..." : "Process Payment"}
-              </Text>
+              <Text style={styles.primaryBtnText}>{paid ? "Paid" : paying[item.patientId] ? "Processing..." : "Process Payment"}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -958,281 +818,101 @@ export default function PatientsTab({
 
   useEffect(() => {
     if (doctorId) fetchPatients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctorId, status, searchQuery, refreshTrigger, page, pageSize]);
 
   const loadMore = () => {
     const maxPages = Math.ceil(totalPatients / pageSize);
     if (!loading && page < maxPages) {
-      setPage(page + 1);
+      setPage((p) => p + 1);
     }
   };
 
   return (
     <View style={{ flex: 1 }}>
-      {loading  ? (
-         <View style={styles.spinningContainer}>
-           <ActivityIndicator size="large" color="#007bff" />
-           <Text style={{color:'black'}}>Loading List...</Text>
-         </View>
+      {loading ? (
+        <View style={styles.spinningContainer}>
+          <ActivityIndicator size="large" color="#007bff" />
+          <Text style={{ color: "black" }}>Loading List...</Text>
+        </View>
+      ) : patients?.length === 0 ? (
+        <View style={styles.spinningContainer}>
+          <Text style={{ color: "black" }}>No Data Found</Text>
+        </View>
       ) : (
-         patients?.length === 0 ? (
-           <View style={styles.spinningContainer}>
-             <Text style={{color:'black'}}>No Data Found</Text>
-           </View>
-         ) : (
-           <FlatList
-             data={patients}
-             keyExtractor={(x) => x.patientId}
-             renderItem={renderPatient}
-             contentContainerStyle={{ paddingBottom: 24 }}
-             onEndReached={loadMore}
-             onEndReachedThreshold={0.3}
-             refreshing={loading}
-             onRefresh={() => {
-               setPage(1);
-               fetchPatients();
-             }}
-           />
-         )
+        <FlatList
+          data={patients}
+          keyExtractor={(x) => x.patientId}
+          renderItem={renderPatient}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          refreshing={loading}
+          onRefresh={() => {
+            setPage(1);
+            fetchPatients();
+          }}
+        />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  loader: { 
-    flex: 1, 
-    alignItems: "center", 
-    justifyContent: "center" 
+  loader: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   rowCard: {
     backgroundColor: "#fff",
     borderRadius: 10,
     padding: 12,
     marginBottom: 12,
-    borderWidth: 1, 
+    borderWidth: 1,
     borderColor: "#e5e7eb",
   },
-  rowHeader: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    justifyContent: "space-between", 
-    marginBottom: 8 
-  },
-  pid: { 
-    color: "#334155", 
-    fontWeight: "600" 
-  },
-  pname: { 
-    color: "#111827", 
-    fontWeight: "800", 
-    fontSize: 16, 
-    marginTop: 2 
-  },
-  tag: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 8, 
-    borderWidth: 1 
-  },
-  medicinesBox: { 
-    backgroundColor: "#f9fafb", 
-    borderRadius: 8, 
-    borderWidth: 1, 
-    borderColor: "#e5e7eb", 
-    padding: 8 
-  },
-  medicineRow: { 
-    backgroundColor: "#fff", 
-    borderRadius: 8, 
-    borderWidth: 1, 
-    borderColor: "#e5e7eb", 
-    padding: 10, 
-    marginBottom: 8 
-  },
-  medicineName: { 
-    fontWeight: "700", 
-    color: "#0f172a",
-    marginBottom: 6
-  },
-  medicineDetails: {
-    marginLeft: 4,
-  },
-  priceRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 8, 
-    marginTop: 6,
-    justifyContent: "space-between" 
-  },
-  priceInput: { 
-    flex: 0, 
-    width: 120, 
-    borderWidth: 1, 
-    borderColor: "#cbd5e1", 
-    borderRadius: 8, 
-    paddingHorizontal: 10, 
-    paddingVertical: 6, 
-    backgroundColor: "#fff" ,
-     color: "#000000", 
-  },
-  priceInputDisabled: { 
-    backgroundColor: "#f3f4f6", 
-    color: "#94a3b8" 
-  },
-  saveBtn: { 
-    backgroundColor: "#1f2937", 
-    paddingHorizontal: 14, 
-    paddingVertical: 6, 
-    borderRadius: 8 
-  },
-  saveBtnText: { 
-    color: "#fff", 
-    fontWeight: "700",
-    fontSize: 12
-  },
-  medicineInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 8,
-    flexWrap: 'wrap'
-  },
-  medicineInfo: {
-    fontSize: 12,
-    color: '#666',
-    marginRight: 12
-  },
-  medicineTotal: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4
-  },
-  footerBar: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    justifyContent: "space-between", 
-    marginTop: 10 
-  },
-  totalText: { 
-    fontWeight: "800", 
-    color: "#0f172a" 
-  },
-  primaryBtn: { 
-    backgroundColor: "#1A3C6A", 
-    paddingHorizontal: 14, 
-    paddingVertical: 10, 
-    borderRadius: 8 
-  },
-  primaryBtnText: { 
-    color: "#fff", 
-    fontWeight: "700" 
-  },
-  btnDisabled: { 
-    opacity: 0.5 
-  },
-  spinningContainer : {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-  },
-  
-  // NEW: Payment method styles
-  paymentMethodContainer: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  paymentMethodTitle: {
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#334155',
-  },
-  paymentOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 10,
-  },
-  paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#1A3C6A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  radioButtonSelected: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#1A3C6A',
-  },
-  paymentOptionText: {
-    color: '#334155',
-  },
-  confirmButton: {
-    backgroundColor: '#1A3C6A',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  confirmButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  
+  rowHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  pid: { color: "#334155", fontWeight: "600" },
+  pname: { color: "#111827", fontWeight: "800", fontSize: 16, marginTop: 2 },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  medicinesBox: { backgroundColor: "#f9fafb", borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", padding: 8 },
+  medicineRow: { backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", padding: 10, marginBottom: 8 },
+  medicineName: { fontWeight: "700", color: "#0f172a", marginBottom: 6 },
+  medicineDetails: { marginLeft: 4 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6, justifyContent: "space-between" },
+  priceInput: { flex: 0, width: 120, borderWidth: 1, borderColor: "#cbd5e1", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "#fff", color: "#000000" },
+  priceInputDisabled: { backgroundColor: "#f3f4f6", color: "#94a3b8" },
+  saveBtn: { backgroundColor: "#1f2937", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
+  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+  medicineInfoRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8, marginBottom: 8, flexWrap: "wrap" },
+  medicineInfo: { fontSize: 12, color: "#666", marginRight: 12 },
+  medicineTotal: { fontSize: 14, fontWeight: "600", color: "#333", marginBottom: 4 },
+  footerBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 },
+  totalText: { fontWeight: "800", color: "#0f172a" },
+  primaryBtn: { backgroundColor: "#1A3C6A", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 },
+  primaryBtnText: { color: "#fff", fontWeight: "700" },
+  btnDisabled: { opacity: 0.5 },
+  spinningContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 10 },
+
+  // Payment method styles
+  paymentMethodContainer: { marginTop: 10, padding: 10, backgroundColor: "#f8f9fa", borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb" },
+  paymentMethodTitle: { fontWeight: "600", marginBottom: 10, color: "#334155" },
+  paymentOptions: { flexDirection: "row", justifyContent: "space-around", marginBottom: 10 },
+  paymentOption: { flexDirection: "row", alignItems: "center" },
+  radioButton: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#1A3C6A", alignItems: "center", justifyContent: "center", marginRight: 8 },
+  radioButtonSelected: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#1A3C6A" },
+  paymentOptionText: { color: "#334155" },
+  confirmButton: { backgroundColor: "#1A3C6A", padding: 10, borderRadius: 8, alignItems: "center", marginTop: 10 },
+  confirmButtonText: { color: "white", fontWeight: "600" },
+
   // Modal styles
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    width: '80%',
-  },
-  qrText: {
-    fontSize: 16,
-    marginBottom: 10,
-    color: '#334155',
-    fontWeight: '600',
-  },
-  qrImage: {
-    width: 150,
-    height: 150,
-    marginBottom: 10,
-  },
-  upiId: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-  },
-  errorText: {
-    color: 'red',
-    marginBottom: 10,
-  },
-  closeButton: {
-    marginTop: 10,
-    padding: 10,
-  },
-  closeButtonText: {
-    color: '#1A3C6A',
-    fontWeight: '600',
-  },
+  modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.5)" },
+  modalContent: { backgroundColor: "#fff", padding: 20, borderRadius: 10, alignItems: "center", width: "80%" },
+  qrText: { fontSize: 16, marginBottom: 10, color: "#334155", fontWeight: "600" },
+  qrImage: { width: 150, height: 150, marginBottom: 10 },
+  upiId: { fontSize: 14, color: "#666", marginBottom: 10 },
+  errorText: { color: "red", marginBottom: 10 },
+  closeButton: { marginTop: 10, padding: 10 },
+  closeButtonText: { color: "#1A3C6A", fontWeight: "600" },
 });

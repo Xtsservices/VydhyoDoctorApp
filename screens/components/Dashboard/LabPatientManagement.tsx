@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -72,8 +72,6 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
   const [showUpiQr, setShowUpiQr] = useState<Record<string, boolean>>({});
   const [qrLoading, setQrLoading] = useState(false);
 
-  const mounted = useRef(false);
-
   const fetchPatients = useCallback(
     async (pg = 1, limit = pageSize) => {
       try {
@@ -127,11 +125,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
 
   useEffect(() => {
     if (!doctorId) return;
-    mounted.current = true;
     fetchPatients(1, PAGE_SIZE_DEFAULT);
-    return () => {
-      mounted.current = false;
-    };
   }, [doctorId, status, searchValue, fetchPatients]);
 
   const loadMore = () => {
@@ -151,9 +145,9 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       prev.map((p) =>
         p.patientId === patientId
           ? {
-            ...p,
-            tests: p.tests.map((t) => (t._id === testId ? { ...t, price: isNaN(num) ? 0 : num } : t)),
-          }
+              ...p,
+              tests: p.tests.map((t) => (t._id === testId ? { ...t, price: isNaN(num) ? 0 : num } : t)),
+            }
           : p
       )
     );
@@ -203,12 +197,8 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     if (method === "upi") {
       setCurrentPatientForQr(patientId);
 
-      // Get the patient to find the addressId
-      const patient = patients.find(p => p.patientId === patientId);
-      const addressId = patient?.addressId || clinicAddressId;
-      console.log("addressId for patient:", addressId);
-
-      console.log("Fetching QR for Address ID:", addressId);
+      const patient = patients.find((p) => p.patientId === patientId);
+      const addressId = patient?.addressId || (undefined as any); // keep same fallback behavior if clinicAddressId is not available
 
       if (!addressId) {
         Toast.show({
@@ -232,17 +222,11 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
   };
 
   const fetchLabQRCode = async (addressId: string) => {
-    console.log("Starting QR code fetch for address ID:", addressId);
     try {
       setQrLoading(true);
       const token = await AsyncStorage.getItem("authToken");
-      const userId = await AsyncStorage.getItem("userId");
-      console.log("Fetching QR for Address ID:", addressId);
 
-      const response = await AuthFetch(
-        `users/getClinicsQRCode/${addressId}?userId=${userId}`,
-        token
-      );
+      const response = await AuthFetch(`users/getClinicsQRCode/${addressId}?userId=${doctorId}`, token);
 
       if (response?.data?.status === "success" && response?.data?.data) {
         const qrCodeUrl = response.data.data.labQrCode || response.data.data.qrCodeUrl;
@@ -273,6 +257,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       setQrLoading(false);
     }
   };
+
   const handleUpiPaymentConfirm = (patientId: string) => {
     setQrModalVisible(false);
     setShowUpiQr((prev) => ({ ...prev, [patientId]: false }));
@@ -304,9 +289,8 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
         paymentMethod: method, // NEW: Include payment method
         tests: patient.tests.map((t) => ({ testId: t._id, price: t.price, labTestID: t.labTestID })),
       };
-      console.log("Payment request body:", body);
+
       const resp = await AuthPost(`lab/processPayment`, body, token);
-      console.log("Payment response:", resp);
 
       if (resp?.data?.status === "success") {
         Toast.show({ type: "success", text1: `Payment processed via ${method.toUpperCase()}` });
@@ -345,29 +329,29 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       tests.length === 1
         ? tests[0].updatedAt
           ? new Date(tests[0].updatedAt).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          })
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })
           : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })
+        : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",
             hour: "numeric",
             minute: "2-digit",
             hour12: true,
-          })
-        : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        });
+          });
 
     const contactInfoHTML = `
       <div class="provider-name">${lab.labName || "Diagnostic Lab"}</div>
@@ -455,14 +439,11 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
   const ensureAndroidWritePermission = async () => {
     if (Platform.OS !== "android") return true;
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: "Storage permission",
-          message: "Allow saving invoices to your Downloads folder.",
-          buttonPositive: "Allow",
-        }
-      );
+      const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE, {
+        title: "Storage permission",
+        message: "Allow saving invoices to your Downloads folder.",
+        buttonPositive: "Allow",
+      });
       return (
         granted === PermissionsAndroid.RESULTS.GRANTED ||
         granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
@@ -481,11 +462,6 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     if (!completed.length) {
       return Toast.show({ type: "error", text1: "No completed tests to download" });
     }
-
-    const isLabEmpty =
-      !p.labData ||
-      Object.keys(p.labData).length === 0 ||
-      Object.values(p.labData).every((v) => v == null);
 
     try {
       if (Platform.OS === "android") {
@@ -519,7 +495,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
           await RNFS.copyFile(filePath!, dest);
           finalPath = dest;
           Toast.show({ type: "success", text1: "Saved to Downloads", text2: finalPath });
-        } catch (e) {
+        } catch (e: any) {
           // fallback: keep original location but still inform path
           Toast.show({
             type: "info",
@@ -551,22 +527,22 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       norm === "completed"
         ? "#16a34a"
         : norm === "pending"
-          ? "#d97706"
-          : norm === "cancelled"
-            ? "#dc2626"
-            : norm === "in_progress"
-              ? "#2563eb"
-              : "#6b7280";
+        ? "#d97706"
+        : norm === "cancelled"
+        ? "#dc2626"
+        : norm === "in_progress"
+        ? "#2563eb"
+        : "#6b7280";
     const label =
       norm === "completed"
         ? "Completed"
         : norm === "pending"
-          ? "Pending"
-          : norm === "cancelled"
-            ? "Cancelled"
-            : norm === "in_progress"
-              ? "In Progress"
-              : "Unknown";
+        ? "Pending"
+        : norm === "cancelled"
+        ? "Cancelled"
+        : norm === "in_progress"
+        ? "In Progress"
+        : "Unknown";
     return (
       <View style={[styles.tag, { backgroundColor: color + "22", borderColor: color }]}>
         <Text style={{ color, fontWeight: "600" }}>{label}</Text>
@@ -604,7 +580,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
             style={[
               styles.saveBtn,
               (t.price == null || saving[t._id] || !(t.status === "pending" && (isEditable || initiallyNull))) &&
-              styles.btnDisabled,
+                styles.btnDisabled,
             ]}
           >
             <Text style={styles.saveBtnText}>{saving[t._id] ? "Saving..." : "Save"}</Text>
@@ -656,9 +632,6 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
             <Text style={styles.pid}>Patient ID: {item.patientId}</Text>
             <Text style={styles.pname}>{item.patientName}</Text>
           </View>
-          {/* <View style={[styles.tag, { backgroundColor: sts.color + "22", borderColor: sts.color }]}>
-            <Text style={{ color: sts.color, fontWeight: "700" }}>{sts.label}</Text>
-          </View> */}
         </View>
 
         {/* Tests */}
@@ -674,32 +647,22 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
             <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
 
             <View style={styles.paymentOptions}>
-              <TouchableOpacity
-                style={styles.paymentOption}
-                onPress={() => handlePaymentMethodSelect(item.patientId, 'cash')}
-              >
-                <View style={styles.radioButton}>
-                  {paymentMethod === 'cash' && <View style={styles.radioButtonSelected} />}
-                </View>
+              <TouchableOpacity style={styles.paymentOption} onPress={() => handlePaymentMethodSelect(item.patientId, "cash")}>
+                <View style={styles.radioButton}>{paymentMethod === "cash" && <View style={styles.radioButtonSelected} />}</View>
                 <Text style={styles.paymentOptionText}>Cash</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.paymentOption}
-                onPress={() => handlePaymentMethodSelect(item.patientId, 'upi')}
-              >
-                <View style={styles.radioButton}>
-                  {paymentMethod === 'upi' && <View style={styles.radioButtonSelected} />}
-                </View>
+              <TouchableOpacity style={styles.paymentOption} onPress={() => handlePaymentMethodSelect(item.patientId, "upi")}>
+                <View style={styles.radioButton}>{paymentMethod === "upi" && <View style={styles.radioButtonSelected} />}</View>
                 <Text style={styles.paymentOptionText}>UPI</Text>
               </TouchableOpacity>
             </View>
 
-            {paymentMethod === 'cash' && (
+            {paymentMethod === "cash" && (
               <TouchableOpacity
                 style={[styles.confirmButton, paying[item.patientId] && styles.btnDisabled]}
                 disabled={paying[item.patientId]}
-                onPress={() => handlePayment(item.patientId, 'cash')}
+                onPress={() => handlePayment(item.patientId, "cash")}
               >
                 <Text style={styles.confirmButtonText}>
                   {paying[item.patientId] ? "Processing..." : "Confirm Cash Payment"}
@@ -711,7 +674,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
 
         {/* UPI QR Modal */}
         <Modal
-          visible={paymentMethod === 'upi' && showUpi && qrModalVisible}
+          visible={paymentMethod === "upi" && showUpi && qrModalVisible}
           animationType="slide"
           transparent={true}
           onRequestClose={() => {
@@ -725,13 +688,10 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
               <Text style={styles.qrText}>Scan QR Code to Pay</Text>
 
               {qrLoading ? (
-                <ActivityIndicator size="large" color="#1A3C6A" />
+                // BLUE loader specifically for QR
+                <ActivityIndicator size="large" color="#007bff" />
               ) : qrCodeImage ? (
-                <Image
-                  source={{ uri: qrCodeImage }}
-                  style={styles.qrImage}
-                  resizeMode="contain"
-                />
+                <Image source={{ uri: qrCodeImage }} style={styles.qrImage} resizeMode="contain" />
               ) : (
                 <Text style={styles.errorText}>QR code not available</Text>
               )}
@@ -743,9 +703,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
                 disabled={paying[item.patientId]}
                 onPress={() => handleUpiPaymentConfirm(item.patientId)}
               >
-                <Text style={styles.confirmButtonText}>
-                  {paying[item.patientId] ? "Processing..." : "Confirm UPI Payment"}
-                </Text>
+                <Text style={styles.confirmButtonText}>{paying[item.patientId] ? "Processing..." : "Confirm UPI Payment"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -778,8 +736,8 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
               disabled={total <= 0 || !hasPending || paid || paying[item.patientId]}
               onPress={() => {
                 if (paymentMethod === null) {
-                  setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: 'cash' }));
-                  handlePaymentMethodSelect(item.patientId, 'cash');
+                  setSelectedPaymentMethod((prev) => ({ ...prev, [item.patientId]: "cash" }));
+                  handlePaymentMethodSelect(item.patientId, "cash");
                 } else {
                   handlePayment(item.patientId, paymentMethod);
                 }
@@ -800,26 +758,23 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       {loading ? (
         <View style={styles.spinningContainer}>
           <ActivityIndicator size="large" color="#007bff" />
-          <Text style={{ color: 'black' }}>Loading List...</Text>
+          <Text style={{ color: "black" }}>Loading List...</Text>
+        </View>
+      ) : patients?.length === 0 ? (
+        <View style={styles.spinningContainer}>
+          <Text style={{ color: "black" }}>No Data Found</Text>
         </View>
       ) : (
-        patients?.length === 0 ? (
-          <View style={styles.spinningContainer}>
-            <Text style={{ color: 'black' }}>No Data Found</Text>
-          </View>
-
-        ) : (
-          <FlatList
-            data={patients}
-            keyExtractor={(x) => x.patientId}
-            renderItem={renderPatient}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            onEndReached={loadMore}
-            onEndReachedThreshold={0.3}
-            refreshing={loading}
-            onRefresh={() => fetchPatients(1, pageSize)}
-          />
-        )
+        <FlatList
+          data={patients}
+          keyExtractor={(x) => x.patientId}
+          renderItem={renderPatient}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          refreshing={loading}
+          onRefresh={() => fetchPatients(1, pageSize)}
+        />
       )}
     </View>
   );
@@ -862,10 +817,10 @@ const styles = StyleSheet.create({
   primaryBtn: { backgroundColor: "#1A3C6A", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 },
   primaryBtnText: { color: "#fff", fontWeight: "700" },
   btnDisabled: { opacity: 0.5 },
-  spinningContainer : {
+  spinningContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 10,
   },
 
@@ -873,66 +828,66 @@ const styles = StyleSheet.create({
   paymentMethodContainer: {
     marginTop: 10,
     padding: 10,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   paymentMethodTitle: {
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 10,
-    color: '#334155',
+    color: "#334155",
   },
   paymentOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     marginBottom: 10,
   },
   paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   radioButton: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#1A3C6A',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#1A3C6A",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 8,
   },
   radioButtonSelected: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#1A3C6A',
+    backgroundColor: "#1A3C6A",
   },
   paymentOptionText: {
-    color: '#334155',
+    color: "#334155",
   },
   confirmButton: {
-    backgroundColor: '#1A3C6A',
+    backgroundColor: "#1A3C6A",
     padding: 10,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   confirmButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
 
   // UPI styles
   upiContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   qrText: {
     fontSize: 16,
     marginBottom: 10,
-    color: '#334155',
-    fontWeight: '600',
+    color: "#334155",
+    fontWeight: "600",
   },
   qrImage: {
     width: 150,
@@ -941,30 +896,30 @@ const styles = StyleSheet.create({
   },
   upiId: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 10,
   },
 
   // NEW: Modal styles
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10,
-    alignItems: 'center',
-    width: '80%',
+    alignItems: "center",
+    width: "80%",
   },
   closeButton: {
     marginTop: 10,
     padding: 10,
   },
   closeButtonText: {
-    color: '#1A3C6A',
-    fontWeight: '600',
+    color: "#1A3C6A",
+    fontWeight: "600",
   },
 });

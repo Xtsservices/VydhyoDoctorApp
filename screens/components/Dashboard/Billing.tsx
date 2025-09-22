@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -15,8 +15,7 @@ import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
 import { AuthFetch, AuthPost } from "../../auth/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import RNFS from "react-native-fs";
-import RNHTMLtoPDF from 'react-native-html-to-pdf';
+import RNHTMLtoPDF from "react-native-html-to-pdf";
 
 type RootState = any;
 
@@ -170,15 +169,16 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
     const formatTime12Hour = (time24: string) => {
       if (!time24) return "N/A";
       try {
-        const [hours, minutes] = time24.split(':');
+        const [hours, minutes] = time24.split(":");
         const hourNum = parseInt(hours, 10);
-        const period = hourNum >= 12 ? 'PM' : 'AM';
+        const period = hourNum >= 12 ? "PM" : "AM";
         const hour12 = hourNum % 12 || 12;
-        return `${hour12}:${minutes || '00'} ${period}`;
-      } catch (error) {
+        return `${hour12}:${minutes || "00"} ${period}`;
+      } catch {
         return time24;
       }
     };
+
     const appointmentDetails: TransformedAppointment[] = appointments.map((appointment, idx) => {
       const addr = appointment.addressId
         ? (user?.addresses || []).find((a: any) => a.addressId === appointment.addressId)
@@ -201,11 +201,9 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
           : "N/A",
         clinicName: addr?.clinicName || "N/A",
         appointmentDate: appointment.appointmentDate
-          ? new Date(appointment.appointmentDate).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            }).replace(/(\w+) (\d+), (\d+)/, "$2-$1-$3")
+          ? new Date(appointment.appointmentDate)
+              .toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+              .replace(/(\w+) (\d+), (\d+)/, "$2-$1-$3")
           : "N/A",
         appointmentTime: formatTime12Hour(appointment.appointmentTime) || "N/A",
         status: "Completed",
@@ -242,9 +240,9 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
             const year = date.getFullYear();
             const hours = date.getHours();
             const minutes = date.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const ampm = hours >= 12 ? "PM" : "AM";
             const formattedHours = hours % 12 || 12;
-            const formattedMinutes = minutes.toString().padStart(2, '0');
+            const formattedMinutes = minutes.toString().padStart(2, "0");
             return `${day}-${month}-${year} ${formattedHours}:${formattedMinutes} ${ampm}`;
           })()
         : "N/A",
@@ -333,7 +331,6 @@ const Billing: React.FC = () => {
   const [loadingPatients, setLoadingPatients] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
-  // ---- Pagination ----
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 5,
@@ -341,20 +338,16 @@ const Billing: React.FC = () => {
     totalItems: 0,
   });
 
-  // ---- View / Expand state ----
   const [viewModePatientId, setViewModePatientId] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
-  // ---- Payment flagging ----
   const [isPaymentInProgress, setIsPaymentInProgress] = useState<Record<string, boolean>>({});
 
-  // ---- Modal ----
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"pharmacy" | "lab" | "appointment" | "">("");
   const [modalMessage, setModalMessage] = useState("");
   const [modalPatientId, setModalPatientId] = useState<number | null>(null);
 
-  // ---- Search (debounced) ----
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
@@ -433,7 +426,9 @@ const Billing: React.FC = () => {
             totalItems: paginationInfo?.totalItems || 0,
           });
         }
-      } catch { }
+      } catch {
+        // silent
+      }
     },
     [doctorId, user, pagination.current, pagination.pageSize, debouncedSearch]
   );
@@ -451,7 +446,6 @@ const Billing: React.FC = () => {
     const isCurrentlyExpanded = viewModePatientId === patientKeyId;
     setViewModePatientId(isCurrentlyExpanded ? null : patientKeyId);
 
-    // Reset expanded sections when collapsing
     if (isCurrentlyExpanded) {
       setExpandedSections((prev) => {
         const newState = { ...prev };
@@ -463,7 +457,6 @@ const Billing: React.FC = () => {
       return;
     }
 
-    // Fetch data for the expanded view
     const patient = transformedPatients.find((p) => p.id === patientKeyId);
     if (!patient) {
       Toast.show({ type: "error", text1: "Patient not found." });
@@ -533,7 +526,6 @@ const Billing: React.FC = () => {
     return { medicineTotal, testTotal, appointmentTotal };
   };
 
-  // ---------- OPTIMISTIC PAYMENT UPDATE ----------
   const applyOptimisticPayment = (p: TransformedPatient, type: "pharmacy" | "labs" | "all") => {
     setPatientsRaw((prev) =>
       prev.map((raw) => {
@@ -764,7 +756,7 @@ const Billing: React.FC = () => {
     }
   };
 
-  const showMissingDetailsModal = (which: "pharmacy" | "lab" | "appointment", patientKeyId: number, clinicName: string) => {
+   const showMissingDetailsModal = (which: "pharmacy" | "lab" | "appointment", patientKeyId: number, clinicName: string) => {
     setModalType(which);
     setModalPatientId(patientKeyId);
     const subject = which === "pharmacy" ? "Pharmacy" : which === "lab" ? "Lab" : "Clinic";
@@ -889,7 +881,7 @@ const Billing: React.FC = () => {
         : "N/A";
 
       const labDetails = patient.labDetails || {};
-      const isLabEmpty =
+       const isLabEmpty =
         !labDetails ||
         Object.keys(labDetails).length === 0 ||
         Object.values(labDetails).every((v) => v == null);
@@ -951,7 +943,7 @@ const Billing: React.FC = () => {
       }
       const addr =
         (userObj?.addresses || []).find((a: any) => a.addressId === firstAppt.addressId) || {};
-      const isAddrEmpty =
+         const isAddrEmpty =
         !addr || Object.keys(addr).length === 0 || Object.values(addr).every((v: any) => v == null);
       if (isAddrEmpty) {
         const appt0 = (patient.appointments || [])[0];
@@ -960,7 +952,7 @@ const Billing: React.FC = () => {
             ? (userObj?.addresses || []).find((a: any) => a.addressId === appt0.addressId)?.clinicName
             : "this clinic";
       }
-
+      
       headerUrl = addr.headerImage || "";
       providerName = firstAppt.clinicName || addr.clinicName || "N/A";
       contactInfoHTML = `
@@ -1902,7 +1894,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    flexWrap: "wrap", // Allow buttons to wrap to next line
+    flexWrap: "wrap",
     gap: 8,
     marginTop: 12,
   },
@@ -1920,7 +1912,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    minWidth: 140, // Ensure minimum width
+    minWidth: 140,
   },
   secondaryText: { color: "#3b82f6", fontWeight: "700" },
 
@@ -1929,7 +1921,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    minWidth: 120, // Ensure minimum width
+    minWidth: 120,
   },
   successText: { color: "#fff", fontWeight: "700" },
 
@@ -1985,7 +1977,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontWeight: "800", fontSize: 16, marginBottom: 8, color: "#111827" },
 
-  // Payment method styles
   paymentMethodContainer: {
     marginTop: 10,
     padding: 10,
@@ -1997,6 +1988,7 @@ const styles = StyleSheet.create({
   paymentMethodTitle: {
     fontWeight: '600',
     marginBottom: 10,
+
     color: '#334155',
   },
   paymentOptions: {
@@ -2039,7 +2031,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Modal styles for QR
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -2080,5 +2071,8 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#3B82F6',
     fontWeight: '600',
+  },
+  btnDisabled: {
+    opacity: 0.6,
   },
 });

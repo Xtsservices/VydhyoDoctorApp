@@ -135,7 +135,6 @@ const AddAppointment = () => {
         `users/getClinicsQRCode/${clinicId}?userId=${doctorId}`,
         token
       );
-
       if (response?.status === "success") {
         const qrCodeUrl =
           response.data?.data?.clinicQrCode ||
@@ -144,14 +143,11 @@ const AddAppointment = () => {
           response.data?.qrCodeUrl ||
           response.data?.data;
 
-        console.log('Extracted QR Code URL:', qrCodeUrl);
         setQrCodeUrl(qrCodeUrl || '');
       } else {
-        console.error('Failed to fetch QR code - API returned non-success status');
         setQrCodeUrl('');
       }
     } catch (error) {
-      console.error('Error fetching QR code:', error);
       setQrCodeUrl('');
     }
   };
@@ -508,7 +504,6 @@ const AddAppointment = () => {
       };
 
       const response = await AuthPost('appointment/createAppointment', appointmentRequest, token);
-      console.log('Create Appointment Response:', response);
       if (response.status === 'success') {
         Alert.alert('Success', 'Appointment created successfully!');
         navigation.navigate('DoctorDashboard');
@@ -996,7 +991,6 @@ const AddAppointment = () => {
                       style={styles.qrImage}
                       resizeMode="contain"
                       onError={() => {
-                        console.log('Failed to load QR image');
                         setQrCodeUrl('');
                       }}
                     />
@@ -1327,8 +1321,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   disabledText: {
-  color: '#ccc',
-},
+    color: '#ccc',
+  },
   addButton: {
     backgroundColor: '#0a84ff',
     padding: 14,
