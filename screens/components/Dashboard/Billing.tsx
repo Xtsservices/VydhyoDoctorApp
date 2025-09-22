@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,15 +9,13 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  Image,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
-// import RNPrint from "react-native-print";
 import { AuthFetch, AuthPost } from "../../auth/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import RNFS from "react-native-fs";
-import RNHTMLtoPDF from 'react-native-html-to-pdf';
-
+import RNHTMLtoPDF from "react-native-html-to-pdf";
 
 type RootState = any;
 
@@ -87,7 +85,7 @@ type TransformedAppointment = {
   clinicName: string;
   appointmentDate: string;
   appointmentTime: string;
-  status: string; // Completed per web
+  status: string;
   clinicHeaderUrl: string;
   feeDetails?: { finalAmount?: number; paidAt?: string };
 };
@@ -170,18 +168,17 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
     const medicines = Array.isArray(patient.medicines) ? patient.medicines : [];
     const formatTime12Hour = (time24: string) => {
       if (!time24) return "N/A";
-
       try {
-        const [hours, minutes] = time24.split(':');
+        const [hours, minutes] = time24.split(":");
         const hourNum = parseInt(hours, 10);
-        const period = hourNum >= 12 ? 'PM' : 'AM';
+        const period = hourNum >= 12 ? "PM" : "AM";
         const hour12 = hourNum % 12 || 12;
-
-        return `${hour12}:${minutes || '00'} ${period}`;
-      } catch (error) {
+        return `${hour12}:${minutes || "00"} ${period}`;
+      } catch {
         return time24;
       }
     };
+
     const appointmentDetails: TransformedAppointment[] = appointments.map((appointment, idx) => {
       const addr = appointment.addressId
         ? (user?.addresses || []).find((a: any) => a.addressId === appointment.addressId)
@@ -195,20 +192,18 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
         feeDetails: appointment.feeDetails,
         updatedAt: appointment.createdAt
           ? new Date(appointment.createdAt).toLocaleString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
           : "N/A",
         clinicName: addr?.clinicName || "N/A",
         appointmentDate: appointment.appointmentDate
-          ? new Date(appointment.appointmentDate).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }).replace(/(\w+) (\d+), (\d+)/, "$2-$1-$3")
+          ? new Date(appointment.appointmentDate)
+              .toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+              .replace(/(\w+) (\d+), (\d+)/, "$2-$1-$3")
           : "N/A",
         appointmentTime: formatTime12Hour(appointment.appointmentTime) || "N/A",
         status: "Completed",
@@ -239,17 +234,17 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
       prescriptionId: patient.prescriptionId,
       prescriptionCreatedAt: patient.prescriptionCreatedAt
         ? (() => {
-          const date = new Date(patient.prescriptionCreatedAt);
-          const day = date.getDate();
-          const month = date.toLocaleString("en-US", { month: "short" });
-          const year = date.getFullYear();
-          const hours = date.getHours();
-          const minutes = date.getMinutes();
-          const ampm = hours >= 12 ? 'PM' : 'AM';
-          const formattedHours = hours % 12 || 12;
-          const formattedMinutes = minutes.toString().padStart(2, '0');
-          return `${day}-${month}-${year} ${formattedHours}:${formattedMinutes} ${ampm}`;
-        })()
+            const date = new Date(patient.prescriptionCreatedAt);
+            const day = date.getDate();
+            const month = date.toLocaleString("en-US", { month: "short" });
+            const year = date.getFullYear();
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const ampm = hours >= 12 ? "PM" : "AM";
+            const formattedHours = hours % 12 || 12;
+            const formattedMinutes = minutes.toString().padStart(2, "0");
+            return `${day}-${month}-${year} ${formattedHours}:${formattedMinutes} ${ampm}`;
+          })()
         : "N/A",
       appointmentDetails,
       tests: tests.map((test, idx) => ({
@@ -265,21 +260,21 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
         updatedAt: test.updatedAt,
         createdDate: test.createdAt
           ? new Date(test.createdAt).toLocaleString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
           : "N/A",
         updatedDate: test.updatedAt
           ? new Date(test.updatedAt).toLocaleString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
           : "N/A",
       })),
       medicines: medicines.map((med, idx) => ({
@@ -298,12 +293,12 @@ const transformPatientData = (result: RawPatient[], user: any): TransformedPatie
           : "Unknown",
         createdDate: med.createdAt
           ? new Date(med.createdAt).toLocaleString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
           : "N/A",
       })),
       totalTestAmount,
@@ -336,7 +331,6 @@ const Billing: React.FC = () => {
   const [loadingPatients, setLoadingPatients] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
-  // ---- Pagination ----
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 5,
@@ -344,20 +338,16 @@ const Billing: React.FC = () => {
     totalItems: 0,
   });
 
-  // ---- View / Expand state ----
   const [viewModePatientId, setViewModePatientId] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
-  // ---- Payment flagging ----
   const [isPaymentInProgress, setIsPaymentInProgress] = useState<Record<string, boolean>>({});
 
-  // ---- Modal ----
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"pharmacy" | "lab" | "appointment" | "">("");
   const [modalMessage, setModalMessage] = useState("");
   const [modalPatientId, setModalPatientId] = useState<number | null>(null);
 
-  // ---- Search (debounced) ----
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
@@ -436,20 +426,16 @@ const Billing: React.FC = () => {
             totalItems: paginationInfo?.totalItems || 0,
           });
         }
-      } catch { }
+      } catch {
+        // silent
+      }
     },
     [doctorId, user, pagination.current, pagination.pageSize, debouncedSearch]
   );
 
   useEffect(() => {
     if (user && doctorId) fetchPatients(1, pagination.pageSize, debouncedSearch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, doctorId]);
-
-  useEffect(() => {
-    if (user && doctorId) fetchPatients(1, pagination.pageSize, debouncedSearch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch]);
+  }, [user, doctorId, fetchPatients, debouncedSearch]);
 
   const handlePageChange = (page: number) => {
     setPagination((prev) => ({ ...prev, current: page }));
@@ -460,7 +446,6 @@ const Billing: React.FC = () => {
     const isCurrentlyExpanded = viewModePatientId === patientKeyId;
     setViewModePatientId(isCurrentlyExpanded ? null : patientKeyId);
 
-    // Reset expanded sections when collapsing
     if (isCurrentlyExpanded) {
       setExpandedSections((prev) => {
         const newState = { ...prev };
@@ -472,7 +457,6 @@ const Billing: React.FC = () => {
       return;
     }
 
-    // Fetch data for the expanded view
     const patient = transformedPatients.find((p) => p.id === patientKeyId);
     if (!patient) {
       Toast.show({ type: "error", text1: "Patient not found." });
@@ -493,14 +477,10 @@ const Billing: React.FC = () => {
       const arr = res?.data?.data || [];
       if (ok && Array.isArray(arr) && arr.length > 0) {
         const detailed = arr[0] as RawPatient;
-        // Log the fetched data for debugging
-
-        // Update patientsRaw with the fetched data
         setPatientsRaw((prev) =>
           prev.map((p) => (p.patientId === patient.patientId ? { ...p, ...detailed } : p))
         );
 
-        // Explicitly set expandedSections for all sections
         setExpandedSections((prev) => ({
           ...prev,
           [`${patientKeyId}-pharmacy`]: detailed.medicines && detailed.medicines.length > 0,
@@ -512,7 +492,6 @@ const Billing: React.FC = () => {
       }
     } catch (e: any) {
       Toast.show({ type: "error", text1: e?.message || "Failed to load details." });
-      // Set expanded sections even on error, based on existing data
       setExpandedSections((prev) => ({
         ...prev,
         [`${patientKeyId}-pharmacy`]: patient.medicines.length > 0,
@@ -547,7 +526,6 @@ const Billing: React.FC = () => {
     return { medicineTotal, testTotal, appointmentTotal };
   };
 
-  // ---------- OPTIMISTIC PAYMENT UPDATE (instant reflect) ----------
   const applyOptimisticPayment = (p: TransformedPatient, type: "pharmacy" | "labs" | "all") => {
     setPatientsRaw((prev) =>
       prev.map((raw) => {
@@ -573,7 +551,129 @@ const Billing: React.FC = () => {
     );
   };
 
-  const handleMarkAsPaid = async (patientKeyId: number, type: "pharmacy" | "labs" | "all") => {
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<Record<string, Record<"pharmacy" | "labs", "cash" | "upi" | null>>>({});
+  const [showUpiQrs, setShowUpiQrs] = useState<Record<string, Record<"pharmacy" | "labs", boolean>>>({});
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
+  const [currentPatientIdForQr, setCurrentPatientIdForQr] = useState<string | null>(null);
+  const [currentTypeForQr, setCurrentTypeForQr] = useState<"pharmacy" | "labs" | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+
+  const handlePaymentMethodSelect = async (patientId: string, type: "pharmacy" | "labs", method: "cash" | "upi") => {
+    setSelectedPaymentMethods((prev) => ({
+      ...prev,
+      [patientId]: {
+        ...prev[patientId],
+        [type]: method,
+      },
+    }));
+
+    if (method === "upi") {
+      setCurrentPatientIdForQr(patientId);
+      setCurrentTypeForQr(type);
+
+      const patient = transformedPatients.find((p) => p.patientId === patientId);
+      const appt0 = patient?.appointments?.[0];
+      const addressId = appt0?.addressId;
+
+      if (!addressId) {
+        Toast.show({
+          type: "error",
+          text1: "No clinic address found for QR code",
+        });
+        setSelectedPaymentMethods((prev) => ({
+          ...prev,
+          [patientId]: {
+            ...prev[patientId],
+            [type]: null,
+          },
+        }));
+        return;
+      }
+
+      const success = await fetchQRCode(addressId, type);
+      if (success) {
+        setShowUpiQrs((prev) => ({
+          ...prev,
+          [patientId]: {
+            ...prev[patientId],
+            [type]: true,
+          },
+        }));
+        setQrModalVisible(true);
+      } else {
+        setSelectedPaymentMethods((prev) => ({
+          ...prev,
+          [patientId]: {
+            ...prev[patientId],
+            [type]: null,
+          },
+        }));
+      }
+    } else {
+      setShowUpiQrs((prev) => ({
+        ...prev,
+        [patientId]: {
+          ...prev[patientId],
+          [type]: false,
+        },
+      }));
+    }
+  };
+
+  const fetchQRCode = async (addressId: string, type: "pharmacy" | "labs") => {
+    try {
+      setQrLoading(true);
+      const token = await AsyncStorage.getItem("authToken");
+      const res = await AuthFetch(`users/getClinicsQRCode/${addressId}?userId=${doctorId}`, token);
+
+      if (res?.data?.status === "success" && res?.data?.data) {
+        const qrCodeUrl = type === "labs" ? res.data.data.labQrCode : res.data.data.pharmacyQrCode || res.data.data.qrCodeUrl;
+        if (qrCodeUrl) {
+          setQrCodeImage(qrCodeUrl);
+          return true;
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "QR code not available",
+          });
+          return false;
+        }
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to fetch QR code",
+        });
+        return false;
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: error?.response?.data?.message || "Failed to fetch QR code",
+      });
+      return false;
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleUpiPaymentConfirm = (patientId: string, type: "pharmacy" | "labs") => {
+    setQrModalVisible(false);
+    setShowUpiQrs((prev) => ({
+      ...prev,
+      [patientId]: {
+        ...prev[patientId],
+        [type]: false,
+      },
+    }));
+    handlePayment(
+      transformedPatients.find((p) => p.patientId === patientId)?.id || 0,
+      type,
+      "upi"
+    );
+  };
+
+  const handlePayment = async (patientKeyId: number, type: "pharmacy" | "labs" | "all", method: "cash" | "upi") => {
     const key = `${patientKeyId}-${type}`;
     if (isPaymentInProgress[key]) return;
 
@@ -606,6 +706,7 @@ const Billing: React.FC = () => {
           status: "pending",
           price: m.price,
         })),
+      paymentMethod: method,
     };
 
     if (payload.tests.length === 0 && payload.medicines.length === 0) {
@@ -621,20 +722,41 @@ const Billing: React.FC = () => {
       const ok = res?.data?.status === "success" || res?.status === "success";
 
       if (ok) {
-        applyOptimisticPayment(p, type); // instant reflect
+        applyOptimisticPayment(p, type);
         Toast.show({ type: "success", text1: "Payment processed successfully." });
-        fetchPatientsWithoutLoading();   // background sync
+        fetchPatientsWithoutLoading();
+        setSelectedPaymentMethods((prev) => ({
+          ...prev,
+          [p.patientId]: {
+            ...prev[p.patientId],
+            [type]: null,
+          },
+        }));
+        setShowUpiQrs((prev) => ({
+          ...prev,
+          [p.patientId]: {
+            ...prev[p.patientId],
+            [type]: false,
+          },
+        }));
       } else {
         throw new Error("Failed to process payment");
       }
     } catch (e: any) {
       Toast.show({ type: "error", text1: e?.message || "Failed to process payment." });
+      setSelectedPaymentMethods((prev) => ({
+        ...prev,
+        [p.patientId]: {
+          ...prev[p.patientId],
+          [type]: null,
+        },
+      }));
     } finally {
       setIsPaymentInProgress((prev) => ({ ...prev, [key]: false }));
     }
   };
 
-  const showMissingDetailsModal = (which: "pharmacy" | "lab" | "appointment", patientKeyId: number, clinicName: string) => {
+   const showMissingDetailsModal = (which: "pharmacy" | "lab" | "appointment", patientKeyId: number, clinicName: string) => {
     setModalType(which);
     setModalPatientId(patientKeyId);
     const subject = which === "pharmacy" ? "Pharmacy" : which === "lab" ? "Lab" : "Clinic";
@@ -642,8 +764,6 @@ const Billing: React.FC = () => {
     setModalOpen(true);
   };
 
-  // -------------------- INVOICE (HTML, unchanged format) --------------------
-  // Uses your previous buildInvoiceHTML exactly as-is
   const isCompleted = (s?: string) => {
     const v = String(s || "").toLowerCase();
     return v === "completed" || v === "complete" || v === "paid";
@@ -673,13 +793,13 @@ const Billing: React.FC = () => {
       const firstMed = completedMeds[0];
       itemDate = firstMed.updatedAt
         ? new Date(firstMed.updatedAt).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
         : "N/A";
 
       const pharmacyDetails = patient.pharmacyDetails || {};
@@ -692,8 +812,6 @@ const Billing: React.FC = () => {
         const clinicName = appt0?.addressId
           ? (userObj?.addresses || []).find((a: any) => a.addressId === appt0.addressId)?.clinicName
           : "this clinic";
-        // showMissingDetailsModal("pharmacy", patient.id, clinicName || "this clinic");
-        // return null;
       }
 
       headerUrl = pharmacyDetails.pharmacyHeaderUrl || "";
@@ -726,8 +844,8 @@ const Billing: React.FC = () => {
             </thead>
             <tbody>
               ${completedMeds
-          .map(
-            (med, idx) => `
+                .map(
+                  (med, idx) => `
                 <tr>
                   <td>${idx + 1}.</td>
                   <td>${(med.name || "")}${med.dosage ? ` ${med.dosage}` : ""}</td>
@@ -735,8 +853,8 @@ const Billing: React.FC = () => {
                   <td>${Number(med.price || 0).toFixed(2)}</td>
                   <td>${((Number(med.price) || 0) * (Number(med.quantity) || 0)).toFixed(2)}</td>
                 </tr>`
-          )
-          .join("")}
+                )
+                .join("")}
             </tbody>
           </table>
           <div class="section-total" style="display:flex;justify-content:space-between;align-items:center;">
@@ -753,17 +871,17 @@ const Billing: React.FC = () => {
       const firstTest = completedTests[0];
       itemDate = firstTest.updatedAt
         ? new Date(firstTest.updatedAt).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
         : "N/A";
 
       const labDetails = patient.labDetails || {};
-      const isLabEmpty =
+       const isLabEmpty =
         !labDetails ||
         Object.keys(labDetails).length === 0 ||
         Object.values(labDetails).every((v) => v == null);
@@ -773,8 +891,6 @@ const Billing: React.FC = () => {
         const clinicName = appt0?.addressId
           ? (userObj?.addresses || []).find((a: any) => a.addressId === appt0.addressId)?.clinicName
           : "this clinic";
-        // showMissingDetailsModal("lab", patient.id, clinicName || "this clinic");
-        // return null;
       }
 
       headerUrl = labDetails.labHeaderUrl || "";
@@ -802,15 +918,15 @@ const Billing: React.FC = () => {
             </thead>
             <tbody>
               ${completedTests
-          .map(
-            (t, idx) => `
+                .map(
+                  (t, idx) => `
                 <tr>
                   <td>${idx + 1}.</td>
                   <td>${t.name || ""}</td>
                   <td class="price-column">${Number(t.price || 0).toFixed(2)}</td>
                 </tr>`
-          )
-          .join("")}
+                )
+                .join("")}
             </tbody>
           </table>
           <div class="section-total">
@@ -827,7 +943,7 @@ const Billing: React.FC = () => {
       }
       const addr =
         (userObj?.addresses || []).find((a: any) => a.addressId === firstAppt.addressId) || {};
-      const isAddrEmpty =
+         const isAddrEmpty =
         !addr || Object.keys(addr).length === 0 || Object.values(addr).every((v: any) => v == null);
       if (isAddrEmpty) {
         const appt0 = (patient.appointments || [])[0];
@@ -835,10 +951,8 @@ const Billing: React.FC = () => {
           appt0?.addressId
             ? (userObj?.addresses || []).find((a: any) => a.addressId === appt0.addressId)?.clinicName
             : "this clinic";
-        // showMissingDetailsModal("appointment", patient.id, clinicName || "this clinic");
-        // return null;
       }
-
+      
       headerUrl = addr.headerImage || "";
       providerName = firstAppt.clinicName || addr.clinicName || "N/A";
       contactInfoHTML = `
@@ -853,13 +967,13 @@ const Billing: React.FC = () => {
 
       itemDate = firstAppt?.feeDetails?.paidAt
         ? new Date(firstAppt.feeDetails.paidAt).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
         : "N/A";
 
       sectionHTML = `
@@ -876,17 +990,17 @@ const Billing: React.FC = () => {
             </thead>
             <tbody>
               ${((patient.appointments as any[]) || [])
-          .map((appt: any, idx: number) => {
-            const amt = totalFromFees;
-            return `
+                .map((appt: any, idx: number) => {
+                  const amt = totalFromFees;
+                  return `
                     <tr>
                       <td>${idx + 1}.</td>
                       <td>Consultation Bill</td>
                       <td class="price-column">${Number(amt || 0).toFixed(2)}</td>
                       <td>${appt?.appointmentType || ""}</td>
                     </tr>`;
-          })
-          .join("")}
+                })
+                .join("")}
             </tbody>
           </table>
           <div class="section-total">
@@ -966,45 +1080,15 @@ const Billing: React.FC = () => {
     return html;
   };
 
-  // ---------- SAVE HTML TO DEVICE ----------
-  //   const saveInvoiceHTML = async (filename: string, html: string) => {
-  //     try {
-  //       const dir =
-  //         Platform.OS === "android"
-  //           ? RNFS.DownloadDirectoryPath // /storage/emulated/0/Download
-  //           : RNFS.DocumentDirectoryPath; // iOS app's documents
-
-  //       const path = `${dir}/${filename}`;
-  //       await RNFS.writeFile(path, html, "utf8");
-  //       Toast.show({ type: "success", text1: "Invoice downloaded", text2: path });
-  //       return path;
-  //     } catch (e: any) {
-  //       Toast.show({ type: "error", text1: "Failed to save invoice", text2: e?.message || "" });
-  //       return null;
-  //     }
-  //   };
-
-
-
-  // ---------- GENERATE & SAVE PDF FROM HTML ----------
   const generateAndSavePDF = async (filenameBase: string, html: string) => {
     try {
-      // Choose a sensible filename (lib appends .pdf automatically)
       const fileName = filenameBase.replace(/[^a-zA-Z0-9_\-]/g, "_");
-
       const options = {
         html,
         fileName,
-        directory:
-          Platform.OS === "android"
-            ? "Download"     // /storage/emulated/0/Download
-            : "Documents",   // iOS Files app -> On My iPhone -> <YourApp>/Documents
+        directory: Platform.OS === "android" ? "Download" : "Documents",
         base64: false,
-        // (Optional) set page size & margins here if you want:
-        // width: 595, height: 842,  // A4 points
-        // padding: 8,
       };
-
       const result = await RNHTMLtoPDF.convert(options);
       if (result?.filePath) {
         Toast.show({ type: "success", text1: "Invoice saved (PDF)", text2: result.filePath });
@@ -1017,7 +1101,6 @@ const Billing: React.FC = () => {
       return null;
     }
   };
-
 
   const handleDownloadInvoice = async (
     type: "pharmacy" | "labs" | "appointments",
@@ -1038,9 +1121,6 @@ const Billing: React.FC = () => {
     await generateAndSavePDF(filenameBase, html);
   };
 
-
-  /* ---------- RENDER ---------- */
-
   if (loading && !error) {
     return (
       <View style={styles.centerFill}>
@@ -1053,7 +1133,6 @@ const Billing: React.FC = () => {
   if (!user || !doctorId) {
     return (
       <View style={styles.centerFill}>
-        {/* <Text style={styles.h1}>Billing</Text> */}
         <Text style={{ color: "#374151" }}>Waiting for user data to load...</Text>
       </View>
     );
@@ -1159,15 +1238,51 @@ const Billing: React.FC = () => {
                       );
                     })}
 
-                    {totals.medicineTotal !== 0 ? (
+                    {totals.medicineTotal !== 0 && (
                       <View style={styles.balanceRow}>
                         <Text style={styles.balanceLabel}>Balance Amount</Text>
                         <Text style={styles.balanceValue}>₹{currency(totals.medicineTotal)}</Text>
                       </View>
-                    ) : null}
+                    )}
+
+                    {totals.medicineTotal > 0 && (
+                      <View style={styles.paymentMethodContainer}>
+                        <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
+                        <View style={styles.paymentOptions}>
+                          <TouchableOpacity
+                            style={styles.paymentOption}
+                            onPress={() => handlePaymentMethodSelect(item.patientId, "pharmacy", 'cash')}
+                          >
+                            <View style={styles.radioButton}>
+                              {selectedPaymentMethods[item.patientId]?.pharmacy === 'cash' && <View style={styles.radioButtonSelected} />}
+                            </View>
+                            <Text style={styles.paymentOptionText}>Cash</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.paymentOption}
+                            onPress={() => handlePaymentMethodSelect(item.patientId, "pharmacy", 'upi')}
+                          >
+                            <View style={styles.radioButton}>
+                              {selectedPaymentMethods[item.patientId]?.pharmacy === 'upi' && <View style={styles.radioButtonSelected} />}
+                            </View>
+                            <Text style={styles.paymentOptionText}>UPI</Text>
+                          </TouchableOpacity>
+                        </View>
+                        {selectedPaymentMethods[item.patientId]?.pharmacy === 'cash' && (
+                          <TouchableOpacity
+                            style={[styles.confirmButton, isPaymentInProgress[`${item.id}-pharmacy`] && styles.btnDisabled]}
+                            disabled={isPaymentInProgress[`${item.id}-pharmacy`]}
+                            onPress={() => handlePayment(item.id, "pharmacy", 'cash')}
+                          >
+                            <Text style={styles.confirmButtonText}>
+                              {isPaymentInProgress[`${item.id}-pharmacy`] ? "Processing..." : "Confirm Cash Payment"}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
 
                     <View style={styles.actionsRow}>
-                      {/* DOWNLOAD instead of PRINT */}
                       <TouchableOpacity
                         style={[styles.secondary, { opacity: hasCompletedPharmacy ? 1 : 0.6 }]}
                         disabled={!hasCompletedPharmacy}
@@ -1184,7 +1299,20 @@ const Billing: React.FC = () => {
                           },
                         ]}
                         disabled={totals.medicineTotal === 0 || !!isPaymentInProgress[`${item.id}-pharmacy`]}
-                        onPress={() => handleMarkAsPaid(item.id, "pharmacy")}
+                        onPress={() => {
+                          const method = selectedPaymentMethods[item.patientId]?.pharmacy || "cash";
+                          if (!selectedPaymentMethods[item.patientId]?.pharmacy) {
+                            setSelectedPaymentMethods((prev) => ({
+                              ...prev,
+                              [item.patientId]: {
+                                ...prev[item.patientId],
+                                pharmacy: "cash",
+                              },
+                            }));
+                            handlePaymentMethodSelect(item.patientId, "pharmacy", "cash");
+                          }
+                          handlePayment(item.id, "pharmacy", method);
+                        }}
                       >
                         {isPaymentInProgress[`${item.id}-pharmacy`] ? (
                           <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1225,15 +1353,51 @@ const Billing: React.FC = () => {
                       );
                     })}
 
-                    {totals.testTotal !== 0 ? (
+                    {totals.testTotal !== 0 && (
                       <View style={styles.balanceRow}>
                         <Text style={styles.balanceLabel}>Balance Amount</Text>
                         <Text style={styles.balanceValue}>₹{currency(totals.testTotal)}</Text>
                       </View>
-                    ) : null}
+                    )}
+
+                    {totals.testTotal > 0 && (
+                      <View style={styles.paymentMethodContainer}>
+                        <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
+                        <View style={styles.paymentOptions}>
+                          <TouchableOpacity
+                            style={styles.paymentOption}
+                            onPress={() => handlePaymentMethodSelect(item.patientId, "labs", 'cash')}
+                          >
+                            <View style={styles.radioButton}>
+                              {selectedPaymentMethods[item.patientId]?.labs === 'cash' && <View style={styles.radioButtonSelected} />}
+                            </View>
+                            <Text style={styles.paymentOptionText}>Cash</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.paymentOption}
+                            onPress={() => handlePaymentMethodSelect(item.patientId, "labs", 'upi')}
+                          >
+                            <View style={styles.radioButton}>
+                              {selectedPaymentMethods[item.patientId]?.labs === 'upi' && <View style={styles.radioButtonSelected} />}
+                            </View>
+                            <Text style={styles.paymentOptionText}>UPI</Text>
+                          </TouchableOpacity>
+                        </View>
+                        {selectedPaymentMethods[item.patientId]?.labs === 'cash' && (
+                          <TouchableOpacity
+                            style={[styles.confirmButton, isPaymentInProgress[`${item.id}-labs`] && styles.btnDisabled]}
+                            disabled={isPaymentInProgress[`${item.id}-labs`]}
+                            onPress={() => handlePayment(item.id, "labs", 'cash')}
+                          >
+                            <Text style={styles.confirmButtonText}>
+                              {isPaymentInProgress[`${item.id}-labs`] ? "Processing..." : "Confirm Cash Payment"}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
 
                     <View style={styles.actionsRow}>
-                      {/* DOWNLOAD instead of PRINT */}
                       <TouchableOpacity
                         style={[styles.secondary, { opacity: hasCompletedLab ? 1 : 0.6 }]}
                         disabled={!hasCompletedLab}
@@ -1247,7 +1411,20 @@ const Billing: React.FC = () => {
                           { opacity: totals.testTotal === 0 || isPaymentInProgress[`${item.id}-labs`] ? 0.6 : 1 },
                         ]}
                         disabled={totals.testTotal === 0 || !!isPaymentInProgress[`${item.id}-labs`]}
-                        onPress={() => handleMarkAsPaid(item.id, "labs")}
+                        onPress={() => {
+                          const method = selectedPaymentMethods[item.patientId]?.labs || "cash";
+                          if (!selectedPaymentMethods[item.patientId]?.labs) {
+                            setSelectedPaymentMethods((prev) => ({
+                              ...prev,
+                              [item.patientId]: {
+                                ...prev[item.patientId],
+                                labs: "cash",
+                              },
+                            }));
+                            handlePaymentMethodSelect(item.patientId, "labs", "cash");
+                          }
+                          handlePayment(item.id, "labs", method);
+                        }}
                       >
                         {isPaymentInProgress[`${item.id}-labs`] ? (
                           <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1293,7 +1470,6 @@ const Billing: React.FC = () => {
                     ))}
 
                     <View style={styles.actionsRow}>
-                      {/* DOWNLOAD instead of PRINT */}
                       <TouchableOpacity
                         style={[styles.secondary, { opacity: !appointmentDownloadDisabled ? 1 : 0.6 }]}
                         disabled={appointmentDownloadDisabled}
@@ -1314,10 +1490,6 @@ const Billing: React.FC = () => {
 
   const footer = (
     <View style={styles.paginationBar}>
-      <Text style={styles.paginationText}>
-        {/* {transformedPatients.length > 0 ? 1 : 0}-{transformedPatients.length} of{" "}
-        {pagination.totalItems || pagination.total * pagination.pageSize} patients */}
-      </Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <TouchableOpacity
           style={[styles.pagBtn, pagination.current === 1 && styles.pagBtnDisabled]}
@@ -1376,9 +1548,6 @@ const Billing: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* <Text style={styles.h1}>Billing</Text> */}
-
-      {/* Search (debounced, no reload every letter) */}
       <View style={styles.searchWrap}>
         <View style={styles.searchInner}>
           <TextInput
@@ -1414,7 +1583,6 @@ const Billing: React.FC = () => {
         }
       />
 
-      {/* Missing details modal */}
       <Modal transparent visible={modalOpen} animationType="fade" onRequestClose={() => setModalOpen(false)}>
         <View style={styles.modalWrap}>
           <View style={styles.modalCard}>
@@ -1434,12 +1602,111 @@ const Billing: React.FC = () => {
                 style={styles.primary}
                 onPress={() => {
                   setModalOpen(false);
-                  // navigation.navigate("ClinicManagement");
                 }}
               >
                 <Text style={styles.primaryText}>Go to Clinic Management</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={qrModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setQrModalVisible(false);
+          if (currentPatientIdForQr && currentTypeForQr) {
+            setShowUpiQrs((prev) => ({
+              ...prev,
+              [currentPatientIdForQr]: {
+                ...prev[currentPatientIdForQr],
+                [currentTypeForQr]: false,
+              },
+            }));
+            setSelectedPaymentMethods((prev) => ({
+              ...prev,
+              [currentPatientIdForQr]: {
+                ...prev[currentPatientIdForQr],
+                [currentTypeForQr]: null,
+              },
+            }));
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.qrText}>Scan QR Code to Pay</Text>
+            {qrLoading ? (
+              <ActivityIndicator size="large" color="#3B82F6" />
+            ) : qrCodeImage ? (
+              <Image
+                source={{ uri: qrCodeImage }}
+                style={styles.qrImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.errorText}>QR code not available</Text>
+            )}
+            {currentPatientIdForQr && currentTypeForQr && (
+              (() => {
+                const patient = transformedPatients.find((p) => p.patientId === currentPatientIdForQr);
+                if (patient) {
+                  const totals = sectionTotals(patient);
+                  const total = currentTypeForQr === "labs" ? totals.testTotal : totals.medicineTotal;
+                  return <Text style={styles.upiId}>Total Amount: ₹ {currency(total)}</Text>;
+                }
+                return null;
+              })()
+            )}
+            <TouchableOpacity
+              style={[
+                styles.confirmButton,
+                currentPatientIdForQr &&
+                currentTypeForQr &&
+                isPaymentInProgress[`${viewModePatientId}-${currentTypeForQr}`] &&
+                styles.btnDisabled,
+              ]}
+              disabled={
+                !!(currentPatientIdForQr && currentTypeForQr && isPaymentInProgress[`${viewModePatientId}-${currentTypeForQr}`])
+              }
+              onPress={() => {
+                if (currentPatientIdForQr && currentTypeForQr && viewModePatientId) {
+                  handleUpiPaymentConfirm(currentPatientIdForQr, currentTypeForQr);
+                }
+              }}
+            >
+              <Text style={styles.confirmButtonText}>
+                {currentPatientIdForQr && currentTypeForQr && isPaymentInProgress[`${viewModePatientId}-${currentTypeForQr}`]
+                  ? "Processing..."
+                  : "Confirm UPI Payment"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setQrModalVisible(false);
+                if (currentPatientIdForQr && currentTypeForQr) {
+                  setShowUpiQrs((prev) => ({
+                    ...prev,
+                    [currentPatientIdForQr]: {
+                      ...prev[currentPatientIdForQr],
+                      [currentTypeForQr]: false,
+                    },
+                  }));
+                  setSelectedPaymentMethods((prev) => ({
+                    ...prev,
+                    [currentPatientIdForQr]: {
+                      ...prev[currentPatientIdForQr],
+                      [currentTypeForQr]: null,
+                    },
+                  }));
+                }
+              }}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1450,8 +1717,6 @@ const Billing: React.FC = () => {
 };
 
 export default Billing;
-
-/* ---------------- STYLES ---------------- */
 
 const styles = StyleSheet.create({
   container: {
@@ -1466,12 +1731,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
     backgroundColor: "#f8f9fa",
-  },
-  h1: {
-    color: "#1a1a1a",
-    fontSize: 24,
-    fontWeight: "600",
-    marginBottom: 16,
   },
   searchWrap: {
     marginBottom: 16,
@@ -1499,7 +1758,6 @@ const styles = StyleSheet.create({
     marginTop: -10,
     color: "#9ca3af",
   },
-
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -1548,7 +1806,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   smallButtonText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-
   sectionCard: {
     borderWidth: 1,
     borderColor: "#e5e7eb",
@@ -1576,7 +1833,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontWeight: "600", color: "#1f2937" },
   expandIcon: { color: "#6b7280", fontSize: 18 },
-
   rowCard: {
     borderWidth: 1,
     borderColor: "#eef2f7",
@@ -1600,7 +1856,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
   },
-
   chip: {
     flexDirection: "row",
     alignItems: "center",
@@ -1613,7 +1868,6 @@ const styles = StyleSheet.create({
   },
   chipLabel: { fontSize: 11, color: "#6b7280", marginRight: 4 },
   chipValue: { fontSize: 12, color: "#111827", fontWeight: "600" },
-
   statusPill: {
     paddingVertical: 2,
     paddingHorizontal: 8,
@@ -1640,7 +1894,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    flexWrap: "wrap", // Allow buttons to wrap to next line
+    flexWrap: "wrap",
     gap: 8,
     marginTop: 12,
   },
@@ -1658,7 +1912,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    minWidth: 140, // Ensure minimum width
+    minWidth: 140,
   },
   secondaryText: { color: "#3b82f6", fontWeight: "700" },
 
@@ -1667,7 +1921,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    minWidth: 120, // Ensure minimum width
+    minWidth: 120,
   },
   successText: { color: "#fff", fontWeight: "700" },
 
@@ -1722,4 +1976,103 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalTitle: { fontWeight: "800", fontSize: 16, marginBottom: 8, color: "#111827" },
+
+  paymentMethodContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  paymentMethodTitle: {
+    fontWeight: '600',
+    marginBottom: 10,
+
+    color: '#334155',
+  },
+  paymentOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  radioButtonSelected: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#3B82F6',
+  },
+  paymentOptionText: {
+    color: '#334155',
+  },
+  confirmButton: {
+    backgroundColor: '#3B82F6',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '80%',
+  },
+  qrText: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  qrImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 10,
+  },
+  upiId: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+  },
+  closeButtonText: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  btnDisabled: {
+    opacity: 0.6,
+  },
 });

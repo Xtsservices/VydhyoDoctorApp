@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // const BASE_URL = 'http://192.168.1.8:3000';
-// const BASE_URL = 'http://192.168.1.8:3000';
+// const BASE_URL = 'http://192.168.0.105:3000';
 
 
 const BASE_URL = 'https://server.vydhyo.com';
@@ -66,6 +66,16 @@ export async function AuthPost(url: string, body: any, token: string | null | un
 
 export async function AuthPut(url: string, body: any, token: string | null | undefined) {
   return apiRequest({ url, method: 'put', data: body, token });
+}
+
+export async function UpdateFiles(url: string, body: any, token: string | null | undefined) {
+  return apiRequest({
+    url,
+    method: 'put',
+    data: body,
+    token,
+    contentType: 'multipart/form-data'
+  });
 }
 
 export async function UploadFiles(url: string, body: any, token: string | null | undefined) {

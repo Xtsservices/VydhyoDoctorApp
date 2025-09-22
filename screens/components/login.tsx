@@ -185,11 +185,8 @@ const DoctorLoginScreen = () => {
         <Text style={styles.headerTitle}>Partner Login</Text>
       </View>
 
-      <ScrollView
-        style={styles.formContainer}
-        contentContainerStyle={styles.formContentContainer}
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={styles.formContainer}>
+
         <View style={styles.logoContainer1}>
           <Image source={require('../assets/doclogo.png')} style={styles.doclogo} />
         </View>
@@ -252,7 +249,7 @@ const DoctorLoginScreen = () => {
             </View>
           </>
         )}
-      </ScrollView>
+      </View>
 
       {!showOtp ? (
         <TouchableOpacity
@@ -315,10 +312,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#DCFCE7', // Match container background
     minHeight: height, // Ensure content fills screen height
   },
-  logoContainer1: {
-    marginTop: 80,
+ logoContainer1: {
     alignItems: 'center',
-    marginBottom: height * 0.0,
+    marginBottom: height * 0.03,
+    marginTop: height * 0.04, 
   },
   doclogo: {
     width: width * 0.5,
