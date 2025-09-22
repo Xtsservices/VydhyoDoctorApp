@@ -394,16 +394,20 @@ const PrescriptionScreen = () => {
                 ))}
               </ScrollView>
             )}
-            <Picker
-              selectedValue={med.type}
-              onValueChange={(value) => handleMedicineChange(index, 'type', value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select Type " value={null} />
-              {medicineTypeOptions.map((option) => (
-                <Picker.Item key={option} label={option} value={option} />
-              ))}
-            </Picker>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={med.type}
+                onValueChange={(value) => handleMedicineChange(index, 'type', value)}
+                style={styles.pickerInner}
+                mode="dropdown" // keeps consistent appearance on Android
+              >
+                <Picker.Item label="Select Type" value={null} color="#9CA3AF" />
+                {medicineTypeOptions.map((option) => (
+                  <Picker.Item key={option} label={option} value={option} />
+                ))}
+              </Picker>
+            </View>
+
             <TextInput
               placeholder="Dosage (e.g. 100mg, 5ml)"
               style={styles.input}
@@ -419,16 +423,19 @@ const PrescriptionScreen = () => {
               keyboardType="numeric"
               placeholderTextColor="#9CA3AF"
             />
-            <Picker
-              selectedValue={med.frequency}
-              onValueChange={(value) => updateMedicationFrequency(index, value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select Frequency" value={null} />
-              {frequencyOptions.map((option) => (
-                <Picker.Item key={option} label={option} value={option} />
-              ))}
-            </Picker>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={med.frequency}
+                onValueChange={(value) => updateMedicationFrequency(index, value)}
+                style={styles.pickerInner}
+                mode="dropdown"
+              >
+                <Picker.Item label="Select Frequency" value={null} color="#9CA3AF" />
+                {frequencyOptions.map((option) => (
+                  <Picker.Item key={option} label={option} value={option} />
+                ))}
+              </Picker>
+            </View>
 
             <View style={{ marginBottom: 10 }}>
               <Text style={{ fontWeight: '600', marginBottom: 4, color: 'black' }}>Timing:</Text>
@@ -573,8 +580,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
-    flexShrink: 0, // Prevents the button from shrinking
+    flexShrink: 0, 
   },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    marginBottom: 10,
+    height: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    overflow: 'hidden',
+  },
+
+  pickerInner: {
+    alignSelf: 'stretch',
+    height: 48,
+    color: 'gray', 
+    margin: 0,
+    padding: 0,
+  },
+
   deleteText: {
     color: 'white',
     fontWeight: 'bold',

@@ -20,9 +20,8 @@ import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import Toast from 'react-native-toast-message';
 
-
 interface FormData {
-  userId: String,
+  userId: string;
   addresses: any;
   name: string;
   email: string;
@@ -53,6 +52,7 @@ const ConfirmationScreen: React.FC = () => {
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [loading, setLoading] = useState(false);
+
   const validateForm = () => {
     let tempErrors: Partial<FormData> = {};
     if (!formData.name.trim()) tempErrors.name = 'Name is required';
@@ -65,55 +65,53 @@ const ConfirmationScreen: React.FC = () => {
       tempErrors.phone = 'Valid phone is required';
     if (!formData.specialization.trim())
       tempErrors.specialization = 'Specialization is required';
-    // if (!formData.practice.trim())
-    //   tempErrors.practice = 'Practice details are required';
     if (!formData.consultationPreferences.trim())
       tempErrors.consultationPreferences = 'Preferences are required';
-    // if (!formData.bank.trim()) tempErrors.bank = 'Bank is required';
-    // if (!formData.accountNumber.trim())
-    //   tempErrors.accountNumber = 'Account number is required';
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
     setLoading(true);
-  if (!validateForm()) {
-    Alert.alert(
-      'Error',
-      'Please correct the errors in the form before submitting.',
-    );
-    return;
-  }
 
-  try {
-    setLoading(true); // Prevent further submissions
+    // Because this screen is read-only, validation is still run to ensure server has required values
+    if (!validateForm()) {
+      setLoading(false);
+      Alert.alert(
+        'Error',
+        'Please correct the errors in the form before submitting.',
+      );
+      return;
+    }
 
-    const userdata = {
-      userId: userId,
-    };
+    try {
+      const userdata = {
+        userId: userId,
+      };
 
-    const token = await AsyncStorage.getItem('authToken');
-    await AsyncStorage.setItem('currentStep', 'ProfileReview');
-    const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
+      const token = await AsyncStorage.getItem('authToken');
+      await AsyncStorage.setItem('currentStep', 'ProfileReview');
+      const response = await AuthPost('users/sendOnboardingEmail', userdata, token);
 
-    Toast.show({
-      type: 'success',
-      text1: 'Success',
-      text2: 'Profile submitted successfully',
-      position: 'top',
-      visibilityTime: 3000,
-    });
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Profile submitted successfully',
+        position: 'top',
+        visibilityTime: 3000,
+      });
 
-    navigation.navigate('ProfileReview');
-  } catch (error) {
-    Alert.alert('Error', 'Failed to submit profile. Please try again.');
-  } finally {
-    setLoading(false); // Re-enable the button after processing
-  }
-};
+      navigation.navigate('ProfileReview');
+    } catch (error) {
+      console.warn('Submit profile error:', error);
+      Alert.alert('Error', 'Failed to submit profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-
+  // Since fields are read-only here, handleChange only updates internal state if ever needed.
   const handleChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
@@ -128,37 +126,32 @@ const ConfirmationScreen: React.FC = () => {
       setLoading(true);
 
       try {
-        // Retrieve token from AsyncStorage
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
           throw new Error('Authentication token not found');
         }
 
+        await AsyncStorage.setItem('stepNo', '7');
+        const response = await AuthFetch('users/getUser', token);
 
-        AsyncStorage.setItem('stepNo', '7');
-  const response = await AuthFetch('users/getUser', token);
-        
         if (response?.data?.status !== 'success') {
-          throw new Error(response.data.message || 'Failed to fetch user data');
+          throw new Error(response?.data?.message || 'Failed to fetch user data');
         }
 
-        const userData = response?.data?.data;
+        const userData = response?.data?.data || {};
+
         // Format phone number to match +XX XXX XXX XXXX
         const rawMobile = userData.mobile || '';
         const formattedPhone =
           rawMobile.length === 10
-            ? `+91 ${rawMobile.slice(0, 3)} ${rawMobile.slice(
-                3,
-                6,
-              )} ${rawMobile.slice(6, 10)}`
-            : '';
+            ? `+91 ${rawMobile.slice(0, 3)} ${rawMobile.slice(3, 6)} ${rawMobile.slice(6, 10)}`
+            : userData.mobile || '';
 
         // Helper function to mask account number
         const maskAccountNumber = (accountNumber: string) => {
           if (!accountNumber) return '';
-          // Show only last 4 characters, mask the rest with '*'
           const visible = accountNumber.slice(-4);
-          const masked = '*'.repeat(accountNumber.length - 4);
+          const masked = '*'.repeat(Math.max(0, accountNumber.length - 4));
           return `${masked}${visible}`;
         };
 
@@ -167,49 +160,41 @@ const ConfirmationScreen: React.FC = () => {
           name: `${userData.firstname || ''} ${userData.lastname || ''}`.trim(),
           email: userData.email || '',
           phone: formattedPhone,
-          specialization: userData.specialization.name || '',
-          practice: userData.addresses.length > 0 ? userData.addresses[0] : '',
-          // consultationPreferences:
-          //   userData.consultationModeFee.length > 0
-          //     ? userData.consultationModeFee
-          //         .map((mode: any) => mode.type)
-          //         .join(', ')
-          //     : '',
+          specialization: (userData.specialization && userData.specialization.name) || '',
+          practice: userData.addresses && userData.addresses.length > 0 ? userData.addresses[0] : '',
           consultationPreferences:
-  userData.consultationModeFee.length > 0
-    ? userData.consultationModeFee
-        .filter((mode: any) => mode.fee > 0)
-        .map((mode: any) => mode.type)
-        .join(', ')
-    : '',
-          bank: userData.bankDetails.bankName || '',
-          accountNumber: maskAccountNumber(
-            userData.bankDetails?.accountNumber || '',
-          ),
+            userData.consultationModeFee && userData.consultationModeFee.length > 0
+              ? userData.consultationModeFee
+                  .filter((mode: any) => mode.fee > 0)
+                  .map((mode: any) => mode.type)
+                  .join(', ')
+              : '',
+          bank: (userData.bankDetails && userData.bankDetails.bankName) || '',
+          accountNumber: maskAccountNumber(userData.bankDetails?.accountNumber || ''),
           addresses: userData.addresses || [],
         });
       } catch (error: any) {
-
-      }finally {
+        console.warn('Failed to fetch user data in ConfirmationScreen:', error);
+      } finally {
         setLoading(false);
       }
     };
-    fetchUserData();
-  }, []);
 
+    fetchUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View style={styles.container}>
-
-       {loading && (
-                    <View style={styles.loaderOverlay}>
-                      <ActivityIndicator size="large" color="#00203F" />
-                      <Text style={styles.loaderText}>Processing...</Text>
-                    </View>
-                  )}
+      {loading && (
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#00203F" />
+          <Text style={styles.loaderText}>Processing...</Text>
+        </View>
+      )}
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}  onPress={handleBack}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Icon name="arrow-left" size={width * 0.06} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirmation</Text>
@@ -226,9 +211,6 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="account" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Personal Info</Text>
-            {/* <TouchableOpacity onPress={() => navigation.navigate('PersonalInfo')}>
-              <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.name}
@@ -266,11 +248,6 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="briefcase" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Specialization</Text>
-            {/* <TouchableOpacity
-              onPress={() => navigation.navigate('Specialization')}
-            >
-              <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.specialization}
@@ -288,12 +265,9 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="office-building" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Clinic Name</Text>
-            {/* <TouchableOpacity onPress={() => handleChange('practice', '')}>
-              <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity> */}
           </View>
           <TextInput
-            value={formData?.addresses[0]?.clinicName || ''}
+            value={formData?.addresses && formData.addresses.length > 0 ? formData.addresses[0]?.clinicName || '' : ''}
             onChangeText={text => handleChange('practice', text)}
             style={[styles.input, errors.practice && styles.errorInput]}
             placeholder="Enter Practice"
@@ -308,11 +282,6 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="calendar" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Consultation Preferences</Text>
-            {/* <TouchableOpacity
-              onPress={() => handleChange('consultationPreferences', '')}
-            >
-              <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.consultationPreferences}
@@ -333,9 +302,6 @@ const ConfirmationScreen: React.FC = () => {
           <View style={styles.row}>
             <Icon name="bank" size={width * 0.05} color="#00203F" />
             <Text style={styles.label}>Financial Setup</Text>
-            {/* <TouchableOpacity onPress={() => handleChange('bank', '')}>
-              <Icon name="pencil" size={width * 0.05} color="#00203F" />
-            </TouchableOpacity> */}
           </View>
           <TextInput
             value={formData.bank}
@@ -350,9 +316,10 @@ const ConfirmationScreen: React.FC = () => {
             value={formData.accountNumber}
             onChangeText={text => handleChange('accountNumber', text)}
             style={[styles.input, errors.accountNumber && styles.errorInput]}
-            placeholder="Enter Account Number"
+            placeholder="Account Number"
             placeholderTextColor="#999"
             keyboardType="number-pad"
+            editable={false}
           />
           {errors.accountNumber && (
             <Text style={styles.error}>{errors.accountNumber}</Text>
@@ -364,8 +331,13 @@ const ConfirmationScreen: React.FC = () => {
       </ScrollView>
 
       {/* Next Button */}
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitText}>Next</Text>
+      <TouchableOpacity
+        style={[styles.submitButton, loading && { opacity: 0.7 }]}
+        onPress={handleSubmit}
+        activeOpacity={0.8}
+        disabled={loading}
+      >
+        <Text style={styles.submitText}>{loading ? 'Processing...' : 'Next'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -478,7 +450,7 @@ const styles = StyleSheet.create({
   spacer: {
     height: height * 0.1,
   },
-   loaderOverlay: {
+  loaderOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
     justifyContent: 'center',

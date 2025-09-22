@@ -70,7 +70,6 @@ const parseApptMoment = (rawDate?: string, rawTime?: string) => {
 
 const AppointmentsScreen = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
-  console.log("currentuserDetails",currentuserDetails)
   const doctorId =
     currentuserDetails?.role === 'doctor'
       ? currentuserDetails?.userId
