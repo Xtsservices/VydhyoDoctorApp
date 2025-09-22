@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AntIcon from 'react-native-vector-icons/AntDesign'; // for EyeOutlined equivalent
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
@@ -24,6 +25,10 @@ import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import RNFS from 'react-native-fs';
 import { useNavigation } from '@react-navigation/native';
 
+import { Dimensions } from 'react-native';
+const MODAL_MAX_BODY = Math.floor(Dimensions.get('window').height * 0.6);
+
+
 const AccountsScreen = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
   const doctorId = currentuserDetails.role === 'doctor' ? currentuserDetails.userId : currentuserDetails.createdBy;
@@ -32,6 +37,7 @@ const AccountsScreen = () => {
   const [searchText, setSearchText] = useState('');
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
+  const [dateRangeActive, setDateRangeActive] = useState(false);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [transactions, setTransactions] = useState([]);
@@ -47,11 +53,57 @@ const AccountsScreen = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [serviceModalVisible, setServiceModalVisible] = useState(false); // Replaced Menu with Modal
+ function getServiceName(paymentFrom) {
+   switch (paymentFrom) {
+     case 'appointments':
+     case 'appointment':
+       return 'Appointments';
+     case 'lab':
+       return 'Lab';
+     case 'pharmacy':
+       return 'Pharmacy';
+            default:
+       return paymentFrom
+         ? String(paymentFrom).charAt(0).toUpperCase() + String(paymentFrom).slice(1)
+         : '-';
+   }
+}
 
-  const handleViewTxn = (txn) => {
-    setSelectedTxn(txn);
+
+
+const toNum = (val: any) => {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : 0;
+};
+
+
+const getPlatformFee = (txn: any) => {
+  const candidates = [
+    txn?.platformFee,
+    txn?.platform_fee,
+    txn?.feeDetails?.platformFee,
+    txn?.feeDetails?.platform_fee,
+    txn?.charges?.platformFee,
+    txn?.charges?.platform_fee,
+  ];
+  for (const c of candidates) {
+    const n = toNum(c);
+    if (n !== 0) return n; 
+  }
+ 
+  return candidates.some((c) => toNum(c) === 0) ? 0 : 0;
+};
+
+
+const isAppointmentService = (paymentFrom?: string) => {
+  const v = (paymentFrom || '').toString().trim().toLowerCase();
+  return v === 'appointment' || v === 'appointments';
+};
+
+   const handleViewTxn = (record) => {
+  setSelectedTxn(record);
     setShowTxnModal(true);
-  };
+ };
   const capitalizeFirstLetter = (string) => {
     if (!string) return '-';
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -110,7 +162,10 @@ const AccountsScreen = () => {
       startDate: startDate ? dayjs(startDate).format('YYYY-MM-DD') : '',
       endDate: endDate ? dayjs(endDate).format('YYYY-MM-DD') : '',
     };
-
+if (dateRangeActive && startDate && endDate) {
+    payload.startDate = dayjs(startDate).format('YYYY-MM-DD');
+    payload.endDate   = dayjs(endDate).format('YYYY-MM-DD');
+  }
     try {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthPost('finance/getTransactionHistory', payload, token);
@@ -135,6 +190,7 @@ const AccountsScreen = () => {
     setShowStartPicker(Platform.OS === 'ios');
     if (selectedDate) {
       setStartDate(selectedDate);
+      setDateRangeActive(true);
     }
   };
 
@@ -142,6 +198,7 @@ const AccountsScreen = () => {
     setShowEndPicker(Platform.OS === 'ios');
     if (selectedDate) {
       setEndDate(selectedDate);
+      setDateRangeActive(true);
     }
   };
 
@@ -258,6 +315,135 @@ const AccountsScreen = () => {
     );
   };
 
+
+
+const detailRows = useMemo(() => {
+  if (!showTxnModal || !selectedTxn) return [];
+  const allTxns = selectedTxn?.allTransactions?.length
+    ? selectedTxn.allTransactions
+    : [selectedTxn];
+
+  const groupMap = new Map();
+  allTxns.forEach((t) => {
+    const service = getServiceName(t.paymentFrom);
+    const minuteKey = t?.paidAt ? dayjs(t.paidAt).format('YYYY-MM-DD HH:mm') : 'Unknown';
+    const key = `${service}__${minuteKey}`;
+
+    const prev = groupMap.get(key) || {
+      service,
+      minuteKey,
+      sortTime: t?.paidAt ? dayjs(t.paidAt).startOf('minute').valueOf() : Number.POSITIVE_INFINITY,
+      ids: [],
+      amount: 0,
+      platformFee: 0, 
+    };
+
+    // amounts
+    const baseAmount = toNum(t.finalAmount ?? t.actualAmount ?? 0);
+    prev.amount += baseAmount;
+
+    // platform fee only for appointments
+    if (isAppointmentService(t.paymentFrom)) {
+      prev.platformFee += toNum(getPlatformFee(t));
+    }
+
+    // ids
+    prev.ids.push(t.paymentId || t._id);
+
+    groupMap.set(key, prev);
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) => {
+    if (a.service !== b.service) return a.service.localeCompare(b.service);
+    return a.sortTime - b.sortTime;
+  });
+}, [showTxnModal, selectedTxn]);
+
+
+
+
+
+
+ 
+ const groupTransactionsByPatient = (txns = []) => {
+   const grouped = {};
+   txns.forEach((t) => {
+     const patientName = t?.userDetails
+       ? `${t.userDetails.firstname || ''} ${t.userDetails.lastname || ''}`.trim()
+       : t?.patientName || 'unknown';
+     if (!grouped[patientName]) {
+       grouped[patientName] = {
+         count: 0,
+         totalAmount: 0,
+         latestTxn: t,
+         allTxns: [],
+         patientName,
+         services: new Set(),
+         paymentMethods: new Set(),
+         statuses: new Set(),
+       };
+     }
+     grouped[patientName].count += 1;
+     grouped[patientName].totalAmount += (t.finalAmount !== undefined ? t.finalAmount : (t.actualAmount || 0));
+     grouped[patientName].allTxns.push(t);
+     if (t.paymentFrom) grouped[patientName].services.add(t.paymentFrom);
+     if (t.paymentMethod) grouped[patientName].paymentMethods.add(t.paymentMethod);
+     if (t.paymentStatus) grouped[patientName].statuses.add(t.paymentStatus);
+     const cur = t?.paidAt ? new Date(t.paidAt) : new Date(0);
+     const prev = grouped[patientName].latestTxn?.paidAt ? new Date(grouped[patientName].latestTxn.paidAt) : new Date(0);
+     if (cur > prev) grouped[patientName].latestTxn = t;
+   });
+
+   return Object.values(grouped).map((g) => ({
+     ...g.latestTxn,
+     groupedCount: g.count,
+     groupedAmount: g.totalAmount,
+     allTransactions: g.allTxns,
+     patientName: g.patientName,
+     services: Array.from(g.services).join(', '),
+     paymentMethods: Array.from(g.paymentMethods).join(', '),
+     statuses: Array.from(g.statuses).join(', '),
+   }));
+ };
+
+ 
+ const computeGroupedCount = (txns = []) => {
+   const map = new Map();
+   txns.forEach((t) => {
+     const service = getServiceName(t.paymentFrom);
+     const minuteKey = t?.paidAt ? dayjs(t.paidAt).format('YYYY-MM-DD HH:mm') : 'Unknown';
+     map.set(`${service}__${minuteKey}`, true);
+   });
+   return map.size || 1;
+ };
+
+
+ const mappedTransactions = useMemo(() => {
+   const grouped = groupTransactionsByPatient(transactions);
+   return grouped.map((txn) => {
+     const allTxns = txn.allTransactions?.length ? txn.allTransactions : [txn];
+     const groupedCountForView = computeGroupedCount(allTxns);
+     return {
+       id: txn.paymentId || txn._id,
+       patient: txn.patientName,
+       date: txn.paidAt ? dayjs(txn.paidAt).format('DD-MMM-YYYY') : '-',
+       service: txn.services || getServiceName(txn.paymentFrom),
+       amount: (txn.groupedCount > 1
+         ? txn.groupedAmount
+         : (txn.finalAmount !== undefined ? txn.finalAmount : (txn.actualAmount || 0))),
+       status: txn.paymentStatus !== 'refund_pending'
+         ? (txn.statuses || txn.paymentStatus || '-')
+         : 'Refunded',
+       paymentMethod: txn.paymentMethods
+        ? txn.paymentMethods
+        : (txn.paymentMethod ? txn.paymentMethod.charAt(0).toUpperCase() + txn.paymentMethod.slice(1) : '-'),
+       raw: txn,
+       count: groupedCountForView || 1,
+       allTransactions: allTxns,
+     };
+   });
+ }, [transactions]);
+
   return (
     <ScrollView style={styles.container}>
       {/* Summary Cards */}
@@ -371,6 +557,7 @@ const AccountsScreen = () => {
                 mode="date"
                 display="default"
                 onChange={onStartChange}
+                 maximumDate={new Date()}
               />
             )}
 
@@ -380,6 +567,7 @@ const AccountsScreen = () => {
                 mode="date"
                 display="default"
                 onChange={onEndChange}
+                maximumDate={new Date()}
               />
             )}
           </View>
@@ -471,23 +659,28 @@ const AccountsScreen = () => {
           </View>
         ) : transactions.length > 0 ? (
           <>
-            {transactions.map((item, index) => (
-              <View key={item.paymentId || index} style={styles.transactionCard}>
+            {mappedTransactions.map((item, index) => (
+              <View key={item.id  || index} style={styles.transactionCard}>
                 <View style={styles.txnHeader}>
-                  <Text style={styles.txnId}>{item?.paymentId}</Text>
+                   <View style={{flexDirection:'row', alignItems:'center'}}>
+        <Text style={styles.txnId}>{item?.id}</Text>
+        {item.count > 1 && (
+           <View style={styles.countBadge}>
+             <Text style={styles.countBadgeText}>{item.count} transactions</Text>
+           </View>
+        )}
+       </View>
                   <Text style={styles.txnDate}>
-                    {dayjs(item?.paidAt || item?.updatedAt).format('DD MMM, YYYY')}
+                    {item.date}
                   </Text>
                 </View>
                 <View style={styles.txnRow}>
-                  <Text style={styles.txnName}>{item.patientName}</Text>
-                  <Text style={styles.txnName}>
-                    {dayjs(item?.paidAt || item?.updatedAt).format('h:mm A')}
-                  </Text>
+                   <Text style={styles.txnName}>{item.patient}</Text>
+                   <Text style={styles.txnName}>{/* time not shown in list on web; keep clean */}</Text>
                 </View>
                 <View style={styles.txnRow}>
-                  <Text style={styles.txnLabel}>{capitalizeFirstLetter(item?.paymentFrom)}</Text>
-                  <Text style={styles.txnAmount}>₹{item.finalAmount}</Text>
+                 <Text style={styles.txnLabel}>{capitalizeFirstLetter(item.service)}</Text>
+       <Text style={styles.txnAmount}>₹{item.amount}</Text>
                 </View>
                 <View style={styles.txnRow}>
                   <Text style={styles.txnLabel}>{item?.paymentMethod}</Text>
@@ -495,18 +688,18 @@ const AccountsScreen = () => {
                     <Text
                       style={[
                         styles.paidStatus,
-                        item.paymentStatus === 'paid'
+                        (item.status.split(', ')[0] === 'paid')
                           ? styles.paidStatusSuccess
-                          : item.paymentStatus === 'pending'
+                           : (item.status.split(', ')[0] === 'pending')
                             ? styles.paidStatusPending
                             : styles.paidStatusRefunded,
                       ]}
                     >
-                      {item.paymentStatus === 'paid'
-                        ? 'Paid'
-                        : item.paymentStatus === 'pending'
-                          ? 'Pending'
-                          : 'Refunded'}
+                      {item.status.split(', ')[0] === 'paid'
+             ? 'Paid'
+             : item.status.split(', ')[0] === 'pending'
+               ? 'Pending'
+               : 'Refunded'}
                     </Text>
                     <TouchableOpacity
                       style={{
@@ -514,15 +707,11 @@ const AccountsScreen = () => {
                         alignItems: 'center',
                         paddingHorizontal: 8,
                         paddingVertical: 4,
-                        backgroundColor: '#3B82F6',
                         borderRadius: 6,
                       }}
                       onPress={() => handleViewTxn(item)}
                     >
-                      <Icon name="information-outline" size={16} color="#fff" style={{ marginRight: 4 }} />
-                      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 12 }}>
-                        View Details
-                      </Text>
+                      <AntIcon name="eyeo" size={16} color="#0d51e4ff" style={{ marginRight: 4 }} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -532,10 +721,15 @@ const AccountsScreen = () => {
             {renderPagination()}
           </>
         ) : (
+          <>
           <View style={styles.noDataContainer}>
             <Icon name="file-document-outline" size={40} color="#9CA3AF" />
             <Text style={styles.noDataText}>No transactions found</Text>
+            
           </View>
+          {renderPagination()}
+          </>
+          
         )}
       </View>
 
@@ -550,78 +744,42 @@ const AccountsScreen = () => {
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Transaction Details</Text>
-              <ScrollView>
-                <View style={styles.row}>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Patient Name:</Text>
-                    <Text style={styles.modalValue}>{selectedTxn.patientName}</Text>
-                  </View>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Transaction ID:</Text>
-                    <Text style={styles.modalValue}>{selectedTxn.paymentId}</Text>
-                  </View>
-                </View>
-                <View style={styles.row}>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>User ID:</Text>
-                    <Text style={styles.modalValue}>{selectedTxn.userId}</Text>
-                  </View>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Payment From:</Text>
-                    <Text style={styles.modalValue}>{selectedTxn.paymentFrom}</Text>
-                  </View>
-                </View>
-                <View style={styles.row}>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Payment Method:</Text>
-                    <Text style={styles.modalValue}>{selectedTxn.paymentMethod || "Cash"}</Text>
-                  </View>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Status:</Text>
-                    <Text style={styles.modalValue}>
-                      {selectedTxn.paymentStatus === 'refund_pending'
-                        ? 'Refunded'
-                        : selectedTxn.paymentStatus}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.row}>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Paid At:</Text>
-                    <Text style={styles.modalValue}>
-                      {dayjs(selectedTxn.paidAt).format('YY-MMM-YYYY h:mm A')}
-                    </Text>
-                  </View>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Created At:</Text>
-                    <Text style={styles.modalValue}>
-                      {dayjs(selectedTxn?.createdAt).format('YY-MMM-YYYY h:mm A')}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.row}>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Actual Amount:</Text>
-                    <Text style={styles.modalValue}>₹{selectedTxn?.actualAmount}</Text>
-                  </View>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Final Amount:</Text>
-                    <Text style={styles.modalValue}>₹{selectedTxn?.finalAmount}</Text>
-                  </View>
-                </View>
-                <View style={styles.row}>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Discount:</Text>
-                    <Text style={styles.modalValue}>
-                      {selectedTxn.discount} ({selectedTxn.discountType})
-                    </Text>
-                  </View>
-                  <View style={styles.column}>
-                    <Text style={styles.modalLabel}>Currency:</Text>
-                    <Text style={styles.modalValue}>{selectedTxn.currency}</Text>
-                  </View>
-                </View>
-              </ScrollView>
+<ScrollView 
+ style={styles.modalScroll}
+  contentContainerStyle={{ paddingBottom: 12 }}
+  keyboardShouldPersistTaps="handled"
+  showsVerticalScrollIndicator>
+  {detailRows.map((g, idx) => (
+    <View key={`${g.service}-${g.minuteKey}-${idx}`} style={styles.detailCard}>
+      <View style={styles.detailCardHeader}>
+        <Text style={styles.detailCardTitle}>{g.service}</Text>
+        <Text style={styles.detailCardSub}>
+          {g.minuteKey === 'Unknown'
+            ? '-'
+            : dayjs(g.minuteKey, 'YYYY-MM-DD HH:mm').format('DD-MMM-YYYY hh:mm A')}
+        </Text>
+      </View>
+
+      <View style={styles.detailLine}>
+        <Text style={styles.detailLabel}>Transaction ID</Text>
+        <Text style={styles.detailValue}>{g.ids?.[0] || '-'}</Text>
+      </View>
+
+      <View style={styles.detailLine}>
+        <Text style={styles.detailLabel}>Amount</Text>
+        <Text style={styles.detailValue}>₹{toNum(g.amount)}</Text>
+      </View>
+
+      {g.service === 'Appointments' && (
+        <View style={styles.detailLine}>
+          <Text style={styles.detailLabel}>Platform Fee</Text>
+          <Text style={styles.detailValue}>₹{toNum(g.platformFee)}</Text>
+        </View>
+      )}
+    </View>
+  ))}
+</ScrollView>
+
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setShowTxnModal(false)}
@@ -933,13 +1091,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    width: '100%',
-    maxHeight: '80%',
-  },
+  // modalContent: {
+  //   backgroundColor: '#fff',
+  //   borderRadius: 12,
+  //   padding: 20,
+  //   width: '100%',
+  //   maxHeight: '80%',
+  // },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1004,5 +1162,82 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
+   countBadge: {
+    marginLeft: 6,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  countBadgeText: {
+    color: '#3730A3',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+
+  // ⬇️ ADD these to your StyleSheet at the bottom
+detailCard: {
+  backgroundColor: '#F9FAFB',
+  borderRadius: 12,
+  padding: 12,
+  marginBottom: 12,
+  borderWidth: 1,
+  borderColor: '#E5E7EB',
+},
+detailCardHeader: {
+  marginBottom: 8,
+},
+detailCardTitle: {
+  fontSize: 16,
+  fontWeight: '700',
+  color: '#111827',
+},
+detailCardSub: {
+  fontSize: 12,
+  color: '#6B7280',
+  marginTop: 2,
+},
+detailLine: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingVertical: 8,
+  borderTopWidth: 1,
+  borderTopColor: '#E5E7EB',
+},
+
+// tweak this existing key (only this line):
+modalContent: {
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  padding: 20,
+  width: '100%',
+  maxHeight: '90%', // was '80%' ➜ gives more room while still allowing scroll
+},
+
+// add this new style:
+modalScroll: {
+  maxHeight: MODAL_MAX_BODY, // ~60% of screen height; ensures ScrollView can actually scroll
+},
+
+
 
 });
