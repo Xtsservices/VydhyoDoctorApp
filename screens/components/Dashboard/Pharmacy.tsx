@@ -379,7 +379,7 @@ export default function Pharmacy() {
               <Text style={styles.label}>Price (₹)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter price"
+                placeholder="Enter Price/Unit"
                 value={form.price}
                 keyboardType="numeric"
                 onChangeText={(val) => handleInputChange("price", val)}

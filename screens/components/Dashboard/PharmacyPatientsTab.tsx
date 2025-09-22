@@ -653,7 +653,7 @@ export default function PatientsTab({
           <View style={styles.priceRow}>
             <TextInput
               keyboardType="numeric"
-              placeholder="Enter price"
+              placeholder="Enter Price/Unit"
               placeholderTextColor="#94a3b8"
               value={medicine.price?.toString() || ""}
               editable={medicine.status === "pending" && (isEditable || isPriceInitiallyNull)}
