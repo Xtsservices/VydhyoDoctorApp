@@ -66,12 +66,15 @@ const AddAppointment = () => {
   const [showappointmentDatePicker, setShowappointmentDatePicker] = useState(false);
   const [activeclinicsData, setActiveclinicsData] = useState<any[]>([]);
   const [patientNames, setPatientNames] = useState<any[]>([]);
-  const [isPatientSelectModalVisible,] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [message, setMessage] = useState('');
   const [isPatientAdded, setIsPatientAdded] = useState(false);
   const [patientCreated, setPatientCreated] = useState(false);
   const [fieldsDisabled, setFieldsDisabled] = useState(false);
+const [patientSelectModalVisible, setPatientSelectModalVisible] = useState(false);
+const [existingPatientModalVisible, setExistingPatientModalVisible] = useState(false);
+const [existingPatientData, setExistingPatientData] = useState<any>(null);
+
   const validateAge = (age: string): boolean => {
     if (!age) return false;
     const trimmed = age.trim();
@@ -366,7 +369,6 @@ const AddAppointment = () => {
       handleInputChange("dob", formattedDate);
     }
   };
-
   // Handle patient search
   const handleSearch = async () => {
     try {
@@ -454,8 +456,12 @@ const AddAppointment = () => {
           mobile: data.data?.mobile || '',
         });
       } else {
-        Alert.alert("Error", response?.message?.message);
-        setpatientFormData({
+          if ( response?.message?.message === "Patient already exists with same details" ) {
+      setExistingPatientData(response?.message?.data);
+      setExistingPatientModalVisible(true);
+      return;
+    }else{
+ setpatientFormData({
           firstName: '',
           lastName: '',
           dob: '',
@@ -463,10 +469,12 @@ const AddAppointment = () => {
           gender: '',
           mobile: '',
         });
+    }
+       
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to add patient');
-    }
+    Alert.alert('Error', error?.message || 'Failed to add patient');
+  }
   };
 
   // Handle creating an appointment
@@ -508,7 +516,7 @@ const AddAppointment = () => {
         Alert.alert('Success', 'Appointment created successfully!');
         navigation.navigate('DoctorDashboard');
       } else {
-        Alert.alert(response?.message?.message || 'Error', 'Please fill all fields');
+        Alert.alert( 'Error', response?.message?.message ||'Please fill all fields');
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -598,7 +606,7 @@ const AddAppointment = () => {
 
       {/* Patient Selection Modal */}
       <Modal
-        visible={isPatientSelectModalVisible}
+        visible={patientSelectModalVisible}
         animationType="slide"
         transparent
         onRequestClose={() => setPatientSelectModalVisible(false)}
@@ -1029,6 +1037,61 @@ const AddAppointment = () => {
             </View>
           </View>
         </Modal>
+
+        {/* Existing patient confirm (same UX as web) */}
+<Modal
+  visible={existingPatientModalVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setExistingPatientModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContainer}>
+      <Text style={styles.modalTitle}>Existing patient found</Text>
+      <Text style={styles.modalMessage}>
+        A patient with the same details already exists. Do you want to use the existing record and prefill?
+      </Text>
+
+      {existingPatientData && (
+        <View style={{ width: '100%', marginBottom: 12 }}>
+          <Text style={{ color: '#374151' }}>
+            {existingPatientData.firstname} {existingPatientData.lastname} • {existingPatientData.mobile}
+          </Text>
+        </View>
+      )}
+
+      <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+        <TouchableOpacity
+          style={[styles.singleActionButton, { backgroundColor: '#2563EB', flex: 1 }]}
+          onPress={() => {
+            const p = existingPatientData;
+            prefillPatientDetails({
+              firstname: p?.firstname,
+              lastname: p?.lastname,
+              DOB: p?.DOB,
+              age: p?.age,
+              gender: p?.gender,
+              mobile: p?.mobile,
+              userId: p?.userId,
+            });
+            setFieldsDisabled(true);
+            setExistingPatientModalVisible(false);
+          }}
+        >
+          <Text style={styles.singleActionButtonText}>Yes, use existing</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.singleActionButton, { backgroundColor: '#6B7280', flex: 1, alignItems : 'center', justifyContent : 'center' }]}
+          onPress={() => setExistingPatientModalVisible(false)}
+        >
+          <Text style={styles.singleActionButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
         <TouchableOpacity
           style={[
             styles.payNowButton,
@@ -1304,6 +1367,7 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 15,
     fontWeight: '500',
+    color: '#374151',
   },
   summaryValue: {
     fontSize: 15,
