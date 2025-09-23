@@ -57,11 +57,12 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-// def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = false
 
-def enableSeperateBuildPerCPUArchitecture = true // Ensure APKs are split per architecture
-def enableProguardInReleaseBuilds = true
-def enableHermes = true // Enable Hermes if you haven't already
+//this is for reduce apk size it splits
+// def enableSeperateBuildPerCPUArchitecture = true // Ensure APKs are split per architecture
+// def enableProguardInReleaseBuilds = true
+// def enableHermes = true // Enable Hermes if you haven't already
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -86,8 +87,8 @@ android {
         applicationId "com.vydhyodoctor"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.5.1"
+        versionCode 6
+        versionName "1.6.1"
     }
     signingConfigs {
     release {
@@ -106,7 +107,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
