@@ -20,7 +20,7 @@ import moment from 'moment';
 const AddAppointment = () => {
   const userId = useSelector((state: any) => state.currentUserId);
   const currentuserDetails = useSelector((state: any) => state.currentUser);
-  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy;
+  const doctorId = currentuserDetails?.role === "doctor" ? currentuserDetails?.userId : currentuserDetails?.createdBy;
   const currentDoctor = useSelector((state: any) => state.currentDoctor);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [gender, setGender] = useState('Male');
@@ -139,14 +139,20 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
         token
       );
       if (response?.status === "success") {
-        const qrCodeUrl =
-          response.data?.data?.clinicQrCode ||
-          response.data?.data?.qrCodeUrl ||
-          response.data?.clinicQrCode ||
-          response.data?.qrCodeUrl ||
-          response.data?.data;
+        const raw =
+          response.data?.data?.clinicQrCode ??
+          response.data?.data?.qrCodeUrl ??
+          response.data?.clinicQrCode ??
+          response.data?.qrCodeUrl ??
+          response.data?.data ??
+          null;
 
-        setQrCodeUrl(qrCodeUrl || '');
+          const normalized =
+        typeof raw === 'string'
+          ? raw
+          : (raw?.Location || raw?.url || raw?.uri || '');
+
+        setQrCodeUrl(normalized || '');
       } else {
         setQrCodeUrl('');
       }
@@ -865,7 +871,7 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
 
       {/* Payment Section */}
       <View style={styles.patientsContainer}>
-        <Text style={styles.sectionTitle}>Payment Summary</Text>
+        <Text style={styles.sectionTitle}>₹ Payment Summary</Text>
         <Text style={styles.label}>Consultation Fee (₹) *</Text>
         <TextInput
           placeholder="Enter consultation fee"
@@ -881,7 +887,7 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
           }}
         />
         {fieldErrors.fee && <Text style={styles.errorText}>{fieldErrors.fee}</Text>}
-        <Text style={styles.label}>Discount</Text>
+        <Text style={styles.label}>Discount(%)</Text>
         <View style={styles.row}>
           <TextInput
             placeholder="Enter discount"
@@ -920,7 +926,7 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₹{formData.fee || "0.00"}</Text>
+            <Text style={[styles.summaryValue, { color: '#0d0d0dff' }]}>₹{formData.fee || "0.00"}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Discount</Text>
@@ -954,18 +960,18 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
               value="upi"
               status={paymentMethod === 'upi' ? 'checked' : 'unchecked'}
               onPress={() => {
-                if (!formData.clinicAddressId) {
+                if (!formData?.clinicAddressId) {
                   Alert.alert('Error', 'Please select a clinic first to use UPI payment');
                   return;
                 }
                 setPaymentMethod('upi');
-                fetchQRCode(formData.clinicAddressId);
+                fetchQRCode(formData?.clinicAddressId);
               }}
-              disabled={!formData.clinicAddressId}
+              disabled={!formData?.clinicAddressId}
             />
             <Text style={[
               styles.radioText,
-              !formData.clinicAddressId && { color: '#ccc' }
+              !formData?.clinicAddressId && { color: '#ccc' }
             ]}>
               UPI
             </Text>
@@ -1006,7 +1012,7 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
                 ) : (
                   <View>
                     <Text style={styles.errorText}>QR Code not available</Text>
-                    <Text style={{ marginTop: 10, textAlign: 'center' }}>
+                    <Text style={{ marginTop: 10, textAlign: 'center', color: '#6B7280' }}>
                       Please use cash payment or contact clinic administrator
                     </Text>
                   </View>
@@ -1081,12 +1087,29 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
           <Text style={styles.singleActionButtonText}>Yes, use existing</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.singleActionButton, { backgroundColor: '#6B7280', flex: 1, alignItems : 'center', justifyContent : 'center' }]}
-          onPress={() => setExistingPatientModalVisible(false)}
-        >
-          <Text style={styles.singleActionButtonText}>Cancel</Text>
-        </TouchableOpacity>
+ <TouchableOpacity
+  style={[styles.singleActionButton, { backgroundColor: '#6B7280', flex: 1, alignItems: 'center', justifyContent: 'center' }]}
+  onPress={() => {
+    setExistingPatientModalVisible(false);
+    // clear patient details
+    setpatientFormData({
+      firstName: '',
+      lastName: '',
+      gender: '',
+      dob: '',
+      age: '',
+      mobile: '',
+    });
+    setPatientId('');
+    setPatientCreated(false);
+    setIsPatientAdded(false);
+    setFieldsDisabled(false);
+    setExistingPatientData(null);
+  }}
+>
+  <Text style={styles.singleActionButtonText}>Cancel</Text>
+</TouchableOpacity>
+
       </View>
     </View>
   </View>
@@ -1405,6 +1428,7 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize: 12,
     marginTop: 4,
+    textAlign: 'center',
   },
   pickerContainer: {
     borderWidth: 1,
