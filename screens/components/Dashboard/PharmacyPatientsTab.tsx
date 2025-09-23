@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   PermissionsAndroid,
   Modal,
   Image,
+  Keyboard
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
@@ -79,7 +80,8 @@ export default function PatientsTab({
   const [totalPatients, setTotalPatients] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
-
+ const listRef = useRef<FlatList<any>>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   // QR code states
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
@@ -651,7 +653,7 @@ export default function PatientsTab({
           <View style={styles.priceRow}>
             <TextInput
               keyboardType="numeric"
-              placeholder="Enter price"
+              placeholder="Enter Price/Unit"
               placeholderTextColor="#94a3b8"
               value={medicine.price?.toString() || ""}
               editable={medicine.status === "pending" && (isEditable || isPriceInitiallyNull)}
@@ -700,7 +702,7 @@ export default function PatientsTab({
     return { label: "Partial", color: "#f59e0b" };
   };
 
-  const renderPatient = ({ item }: { item: Patient }) => {
+  const renderPatient = ({ item }: { item: Patient; index: number }) => {
     const total = calcTotal(item);
     const hasPending = item.medicines.some((med) => med.status === "pending");
     const paid = isPaymentDone[item.patientId];
@@ -719,7 +721,9 @@ export default function PatientsTab({
         </View>
 
         <View style={styles.medicinesBox}>
-          {filteredMedicines.length > 0 ? filteredMedicines.map((med) => renderMedicineRow(item, med)) : <Text style={{ color: "black" }}>{status === "pending" ? "No Pending Medicines" : "No Completed Medicines"}</Text>}
+         {filteredMedicines.length > 0
+            ? filteredMedicines.map((med) => renderMedicineRow(item, med))
+            : <Text style={{ color: "black" }}>{status === "pending" ? "No Pending Medicines" : "No Completed Medicines"}</Text>}
         </View>
 
         {!paid && hasPending && paymentMethod !== null && (
@@ -821,6 +825,20 @@ export default function PatientsTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctorId, status, searchQuery, refreshTrigger, page, pageSize]);
 
+
+ useEffect(() => {
+    const showEvt = Platform.OS === "android" ? "keyboardDidShow" : "keyboardWillShow";
+    const hideEvt = Platform.OS === "android" ? "keyboardDidHide" : "keyboardWillHide";
+    const sh = Keyboard.addListener(showEvt, (e) => {
+      setKeyboardHeight(e?.endCoordinates?.height ?? 0);
+    });
+    const hi = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      sh.remove();
+      hi.remove();
+    };
+  }, []);
+
   const loadMore = () => {
     const maxPages = Math.ceil(totalPatients / pageSize);
     if (!loading && page < maxPages) {
@@ -841,10 +859,14 @@ export default function PatientsTab({
         </View>
       ) : (
         <FlatList
+        ref={listRef}
           data={patients}
           keyExtractor={(x) => x.patientId}
           renderItem={renderPatient}
-          contentContainerStyle={{ paddingBottom: 24 }}
+           contentContainerStyle={{ paddingBottom: 24 + keyboardHeight }}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
+          automaticallyAdjustKeyboardInsets
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           refreshing={loading}

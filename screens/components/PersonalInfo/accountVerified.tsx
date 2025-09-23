@@ -15,9 +15,6 @@ type RootStackParamList = {
 const AccountVerified = () => {
     const navigation = useNavigation();
     const [loading, setLoading] = useState(false);
-
-    console.log("go to dashboard")
-
     const handleGoToDashboard = async () => {
         try {
             setLoading(true);
@@ -28,8 +25,6 @@ const AccountVerified = () => {
             }
 
             const response = await AuthPost('users/updateFirstLogin', {}, token);
-            console.log('updateFirstLogin response:', response);
-
             const statusVal = response?.status ?? response?.data?.statusCode ?? response?.data?.status;
             const isOk = statusVal === 200 || statusVal === 201 || statusVal === 'success';
 

@@ -739,7 +739,6 @@ const ClinicManagementScreen = () => {
 
       // Use AuthPut with regular JSON data
       const res = await AuthPut('users/updateAddress', requestData, token);
-      console.log("Update response:", res);
 
       if (res?.status === 'success') {
         Toast.show({
@@ -804,9 +803,7 @@ const ClinicManagementScreen = () => {
 
       // Use UploadFiles instead of AuthPut
       const response = await UpdateFiles('users/updateImagesAddress', formData, token);
-      
-      console.log('Upload response:', response); // Debug log
-      if (response.status === 'success') {
+        if (response.status === 'success') {
         Toast.show({
           type: 'success',
           text1: 'Success',
@@ -1912,23 +1909,6 @@ const ClinicManagementScreen = () => {
                             <Text style={styles.actionButtonText}>View Clinic QR</Text>
                           </TouchableOpacity>
                         )}
-
-                        {(!clinic.headerImage || !clinic.digitalSignature) && (
-                          <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={() => openHeaderModal(clinic)}
-                          >
-                            <Text style={styles.actionButtonText}>
-                              {!clinic.headerImage && !clinic.digitalSignature
-                                ? 'Add Header & Signature'
-                                : !clinic.headerImage
-                                  ? 'Add Header'
-                                  : 'Add Signature'
-                              }
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-
                         <TouchableOpacity
                           style={styles.actionButton}
                           onPress={() => openImageEditModal(clinic)}
