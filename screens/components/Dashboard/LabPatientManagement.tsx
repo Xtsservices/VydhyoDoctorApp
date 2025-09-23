@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   PermissionsAndroid,
   Image,
   Modal,
+  Keyboard
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
@@ -72,6 +73,9 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
   const [showUpiQr, setShowUpiQr] = useState<Record<string, boolean>>({});
   const [qrLoading, setQrLoading] = useState(false);
 
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const listRef = useRef<FlatList<any>>(null);
+
   const fetchPatients = useCallback(
     async (pg = 1, limit = pageSize) => {
       try {
@@ -127,6 +131,19 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     if (!doctorId) return;
     fetchPatients(1, PAGE_SIZE_DEFAULT);
   }, [doctorId, status, searchValue, fetchPatients]);
+
+    useEffect(() => {
+  const showEvt = Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow';
+  const hideEvt = Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide';
+  const sh = Keyboard.addListener(showEvt, (e) => {
+    setKeyboardHeight(e?.endCoordinates?.height ?? 0);
+  });
+  const hi = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+  return () => {
+    sh.remove();
+    hi.remove();
+  };
+}, [])
 
   const loadMore = () => {
     const maxPages = Math.ceil(totalPatients / pageSize);
@@ -550,7 +567,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     );
   };
 
-  const renderTestRow = (p: PatientRow, t: TestItem) => {
+  const renderTestRow = (p: PatientRow, t: TestItem, parentIndex: number) => {
     const isEditable = editable.includes(t._id);
     const initiallyNull = t.price == null;
 
@@ -611,7 +628,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     return { label: "Partial", color: "#f59e0b" };
   };
 
-  const renderPatient = ({ item }: { item: PatientRow }) => {
+  const renderPatient = ({ item, index }: { item: PatientRow; index: number }) => {
     const total = calcTotal(item);
     const sts = patientStatus(item);
     const hasPending = item.tests.some((t) => t.status === "pending");
@@ -637,7 +654,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
         {/* Tests */}
         <View style={styles.testsBox}>
           {filteredTests.length > 0 ? (
-            filteredTests.map((t) => renderTestRow(item, t))
+            filteredTests.map((t) => renderTestRow(item, t, index))
           ) : (
             <Text style={{ color: "black" }}>{status === "pending" ? "No Pending Tests" : "No Completed Tests"}</Text>
           )}
@@ -766,10 +783,15 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
         </View>
       ) : (
         <FlatList
+        ref={listRef}
           data={patients}
           keyExtractor={(x) => x.patientId}
           renderItem={renderPatient}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: 24 + keyboardHeight }}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
+          automaticallyAdjustKeyboardInsets
+          removeClippedSubviews={false}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           refreshing={loading}
