@@ -26,16 +26,14 @@ const Sidebar = () => {
     currentuserDetails?.role === 'doctor'
       ? currentuserDetails?.userId
       : currentuserDetails?.createdBy;
-
   const [department, setDepartment] = useState<string | undefined>(
     currentuserDetails?.specialization?.name
   );
   const [access, setAccess] = useState<string[]>(
     Array.isArray(currentuserDetails?.access) ? currentuserDetails.access : []
   );
-  const [profilePic, setProfilePic] = useState<string | null>(null);
 
-  // Unified getImageSrc function from DoctorProfileView
+  // Unified getImageSrc function
   const getImageSrc = (image: any): string | null => {
     if (!image) return null;
     if (typeof image === 'string') {
@@ -47,6 +45,9 @@ const Sidebar = () => {
     if (image?.uri) return image.uri;
     return null;
   };
+
+  // Get profile picture from currentuserDetails
+  const profilePic = currentuserDetails?.profilepic;
 
   const confirmLogout = () => {
     Alert.alert(
@@ -174,11 +175,7 @@ const Sidebar = () => {
         );
         if (profileResponse?.status === 'success' && profileResponse.data) {
           const userData = profileResponse.data.data;
-          if (userData?.profilepic) {
-            setProfilePic(userData.profilepic);
-          } else {
-            setProfilePic(null);
-          }
+
           if (userData?.role !== 'doctor') {
             setDepartment(userData?.specialization?.name || department);
           }
@@ -273,7 +270,6 @@ const Sidebar = () => {
             style={styles.profileImage}
             resizeMode="cover"
             onError={(e) => {
-              setProfilePic(null); // Fallback to placeholder if image fails to load
             }}
           />
         ) : (
@@ -306,8 +302,8 @@ const Sidebar = () => {
       {(currentuserDetails?.role === 'doctor'
         ? menuItems
         : menuItems?.filter(
-            (item) => access?.includes(item.key) || item.key === 'Logout'
-          )
+          (item) => access?.includes(item.key) || item.key === 'Logout'
+        )
       ).map((item, index) => (
         <MenuItem
           key={index}
@@ -398,10 +394,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  placeholderText: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    color: '#fff' 
+  placeholderText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff'
   },
   profileButton: {
     flexDirection: 'row',

@@ -385,6 +385,13 @@ const AppointmentsScreen = () => {
         return;
       }
 
+      if (status === 'View Previous Prescription') {
+         setActionModalVisible(false);
+         await fetchAndOpenPrevPrescriptions(patientId, patientName);
+         return;
+       }
+ 
+
       // Remaining: Cancel / Reschedule / Complete
       if (status === 'Cancel') {
         if (!reason.trim()) {
