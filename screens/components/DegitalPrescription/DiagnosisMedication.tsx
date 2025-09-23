@@ -365,7 +365,7 @@ const PrescriptionScreen = () => {
         {showMedicationForm && medications.map((med, index) => (
           <View key={med.id} style={styles.medBlock}>
             <View style={styles.rowSpaceBetween}>
-              <Text>Medicine #{index + 1}</Text>
+              <Text style={styles.medLabel}>Medicine #{index + 1}</Text>
               <TouchableOpacity onPress={() => handleRemoveMedicine(index)}>
                 <Text style={{ color: 'red' }}>🗑️</Text>
               </TouchableOpacity>
@@ -547,6 +547,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
     flex: 1,
+  },
+  medLabel: {
+    color: '#0A2342',
   },
   testItemContainer: {
     flexDirection: 'row',

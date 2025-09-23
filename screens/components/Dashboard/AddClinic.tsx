@@ -17,6 +17,7 @@ import {
   Linking,
   Modal,
 } from 'react-native';
+import { useSelector } from 'react-redux';
 import MapView, { Region, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import Geocoder from 'react-native-geocoding';
@@ -28,21 +29,17 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchCamera, launchImageLibrary, CameraOptions, ImageLibraryOptions } from 'react-native-image-picker';
 import ImageEditor from '@react-native-community/image-editor';
 import { Camera, useCameraDevice, CameraPermissionStatus } from 'react-native-vision-camera';
+import PhotoManipulator from 'react-native-photo-manipulator';
 
-// Initialize Geocoder with your Google Maps API key
 Geocoder.init('AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo');
 
 const { width, height } = Dimensions.get('window');
-
-// Try to require marker image, but guard if missing
 let markerImage: number | null = null;
 try {
   markerImage = require('../../assets/marker.png');
 } catch (e) {
   markerImage = null;
 }
-
-// Desired header dimensions (pixels) for preview & cropping
 const HEADER_TARGET_WIDTH = 1200;
 const HEADER_TARGET_HEIGHT = 500;
 const PREVIEW_ASPECT_RATIO = HEADER_TARGET_WIDTH / HEADER_TARGET_HEIGHT;
@@ -117,44 +114,80 @@ const AddClinicForm = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Camera modal state
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
   const [activeFileTypeForCamera, setActiveFileTypeForCamera] = useState<
     'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR' | null
   >(null);
+  const ensureFileUri = (p: string) => (String(p).startsWith('file://') ? String(p) : `file://${String(p)}`);
+  const cropImageUsingDims = async (srcUri: string, srcW: number | null, srcH: number | null, targetW: number, targetH: number) => {
+    try {
+      const normalized = ensureFileUri(srcUri);
+      let imgW = srcW || 0;
+      let imgH = srcH || 0;
 
-  // vision-camera refs and device
+      if (!imgW || !imgH) {
+        const size = await new Promise<{ w: number; h: number }>((resolve, reject) =>
+          Image.getSize(
+            normalized,
+            (w, h) => resolve({ w, h }),
+            (err) => reject(err)
+          )
+        );
+        imgW = size.w;
+        imgH = size.h;
+      }
+      if (!imgW || !imgH) return normalized;
+
+      const targetRatio = targetW / targetH;
+      const srcRatio = imgW / imgH;
+
+      let cropW = imgW;
+      let cropH = imgH;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (srcRatio > targetRatio) {
+        cropH = imgH;
+        cropW = Math.round(imgH * targetRatio);
+        offsetX = Math.round((imgW - cropW) / 2);
+      } else {
+        cropW = imgW;
+        cropH = Math.round(imgW / targetRatio);
+        offsetY = Math.round((imgH - cropH) / 2);
+      }
+
+      const cropRegion = { x: offsetX, y: offsetY, width: cropW, height: cropH };
+      const destSize = { width: targetW, height: targetH };
+
+      const result = await PhotoManipulator.crop(normalized, cropRegion, destSize);
+      return result || normalized;
+    } catch (err) {
+      console.warn('cropImageUsingDims error', err);
+      return srcUri;
+    }
+  };
   const cameraRef = useRef<Camera | null>(null);
   const device = useCameraDevice('back');
   const [cameraPermission, setCameraPermission] = useState<CameraPermissionStatus | 'unknown'>('unknown');
-
+  const currentuserDetails = useSelector((state: any) => state.currentUser);
+  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy;
   const GOOGLE_MAPS_API_KEY = 'AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo';
-
-  // Throttle ref for live updates during pan
   const lastPanUpdateRef = useRef<number>(0);
-
-  // For automatic reverse-geocoding
   const reverseGeoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAutoSelectedRef = useRef<string>('');
-
-  // helpers for image normalization ------------------------------------------------
   const toUriString = (maybe: any): string | number | null => {
     if (maybe === null || maybe === undefined) return null;
     if (typeof maybe === 'number') return maybe; // require(...) returns number
     if (typeof maybe === 'string') {
       const s = maybe.trim();
       if (!s) return null;
-      // if absolute path like "/data/..." add file://
       if (s.startsWith('/') && !s.startsWith('file://')) return `file://${s}`;
-      // if content URI, return as-is (Android content://)
       if (s.startsWith('content://') || s.startsWith('file://') || s.startsWith('http://') || s.startsWith('https://')) {
         return s;
       }
       return s;
     }
-    // object from image-picker / camera
     if (typeof maybe === 'object') {
-      // prefer uri, then path, then fileCopyUri
       const candidate = maybe.uri || maybe.path || maybe.fileCopyUri || maybe.filePath || maybe.contentUri;
       if (candidate) {
         const s = String(candidate);
@@ -169,12 +202,9 @@ const AddClinicForm = () => {
   const normalizeImageSource = (src?: string | number | null) => {
     const val = toUriString(src);
     if (val === null) return null;
-    if (typeof val === 'number') return val; // require(...)
+    if (typeof val === 'number') return val;
     return { uri: val };
   };
-  // end helpers --------------------------------------------------------------------
-
-  // Set target crop dimensions
   const getTargetCrop = (type: string) => {
     if (type === 'header' || type === 'pharmacyHeader' || type === 'labHeader') {
       return { targetWidth: HEADER_TARGET_WIDTH, targetHeight: HEADER_TARGET_HEIGHT };
@@ -182,51 +212,48 @@ const AddClinicForm = () => {
     return { targetWidth: 1000, targetHeight: 1000 }; // Square-ish for QR codes / signature
   };
 
-  // Crop image to center with target dimensions
   const cropImageToCenter = async (uri: string, targetWidth: number, targetHeight: number) => {
     try {
-      const getSize = (imgUri: string) =>
-        new Promise<{ w: number; h: number }>((resolve, reject) => {
-          Image.getSize(
-            imgUri,
-            (w, h) => resolve({ w, h }),
-            (err) => reject(err)
-          );
-        });
-
-      const { w, h } = await getSize(uri);
+      const normalized = String(uri).startsWith('file://') ? String(uri) : `file://${String(uri)}`;
+      const { w: imgW, h: imgH } = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+        Image.getSize(
+          normalized,
+          (w, h) => resolve({ w, h }),
+          (err) => reject(err)
+        );
+      });
       const targetRatio = targetWidth / targetHeight;
-      const srcRatio = w / h;
+      const srcRatio = imgW / imgH;
 
-      let cropW = w;
-      let cropH = h;
+      let cropW = imgW;
+      let cropH = imgH;
+      let offsetX = 0;
+      let offsetY = 0;
 
       if (srcRatio > targetRatio) {
-        cropH = h;
-        cropW = Math.round(h * targetRatio);
+        cropH = imgH;
+        cropW = Math.round(imgH * targetRatio);
+        offsetX = Math.round((imgW - cropW) / 2);
+        offsetY = 0;
       } else {
-        cropW = w;
-        cropH = Math.round(w / targetRatio);
+        // source is taller -> crop vertically
+        cropW = imgW;
+        cropH = Math.round(imgW / targetRatio);
+        offsetX = 0;
+        offsetY = Math.round((imgH - cropH) / 2);
       }
-
-      if (cropW > w) cropW = w;
-      if (cropH > h) cropH = h;
-
-      const offsetX = Math.round((w - cropW) / 2);
-      const offsetY = Math.round((h - cropH) / 2);
-
-      const cropData = {
-        offset: { x: offsetX, y: offsetY },
-        size: { width: cropW, height: cropH },
-        displaySize: { width: targetWidth, height: targetHeight },
-        resizeMode: 'cover' as const,
+      const cropRegion = {
+        x: offsetX,
+        y: offsetY,
+        width: cropW,
+        height: cropH,
       };
+      const destSize = { width: targetWidth, height: targetHeight };
+      const resultUri = await PhotoManipulator.crop(normalized, cropRegion, destSize);
 
-      const croppedUri = await ImageEditor.cropImage(uri, cropData);
-      const normalized = toUriString(croppedUri) as string | null;
-      return normalized || uri;
+      return resultUri || normalized;
     } catch (err) {
-      console.warn('Crop error:', err);
+      Alert.alert('Photo Crop Error', String(err));
       return uri;
     }
   };
@@ -386,7 +413,7 @@ const AddClinicForm = () => {
             };
             try {
               mapRef.current?.animateToRegion(newRegion, 500);
-            } catch (e) {}
+            } catch (e) { }
           } else {
             setForm(prev => ({
               ...prev,
@@ -459,7 +486,7 @@ const AddClinicForm = () => {
         setTimeout(() => {
           try {
             mapRef.current?.animateToRegion(newRegion, 800);
-          } catch (e) {}
+          } catch (e) { }
         }, 300);
         setIsFetchingLocation(false);
 
@@ -552,7 +579,7 @@ const AddClinicForm = () => {
         setTimeout(() => {
           try {
             mapRef.current?.animateToRegion(newRegion, 800);
-          } catch (e) {}
+          } catch (e) { }
         }, 300);
         setIsFetchingLocation(false);
 
@@ -656,7 +683,7 @@ const AddClinicForm = () => {
         };
         try {
           mapRef.current?.animateToRegion(newRegion, 500);
-        } catch (e) {}
+        } catch (e) { }
         setRegion(newRegion);
         setPointerCoords({ latitude, longitude });
 
@@ -776,7 +803,7 @@ const AddClinicForm = () => {
             center = { latitude: cam.center.latitude, longitude: cam.center.longitude };
           }
         } catch (e) {
-          // getCamera sometimes throws; fall back to pointerCoords/region
+            Alert.alert('Camera Error', `Unable to get camera center: ${e?.message || e}`);
         }
       }
 
@@ -832,47 +859,44 @@ const AddClinicForm = () => {
     maxHeight: OTHER_TARGET_MAX,
     quality: 0.85,
   });
-
-  // Assign file and preview by type
-  // Note: file objects intentionally minimal: { uri, name, type } to match gallery payload
   const assignFileByType = (type: string, file: any, previewUri: any) => {
-    const uri = toUriString(previewUri);
-    if (!uri) {
-      console.warn('assignFileByType: invalid previewUri', { type, previewUri, file });
-    }
+    const previewRaw = toUriString(previewUri);
+    const originalUri = toUriString(file?.uri || file?.path || file) || previewRaw || null;
+    const makeDisplayUri = (u: string | null) => {
+      if (!u || typeof u !== 'string') return u;
+      return `${u}${u.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    };
 
-    // normalize file to minimal shape
+    const displayUri = makeDisplayUri(previewRaw || originalUri);
     const minimalFile = {
-      uri: toUriString(file?.uri || file?.path || file) || uri,
+      uri: originalUri,
       name: file?.name || `${type}.jpg`,
       type: file?.type || 'image/jpeg',
     };
-
     if (type === 'header') {
       setHeaderFile(minimalFile);
-      if (uri) setHeaderPreview(uri);
+      if (displayUri) setHeaderPreview(displayUri);
     } else if (type === 'signature') {
       setSignatureFile(minimalFile);
-      if (uri) setSignaturePreview(uri);
+      if (displayUri) setSignaturePreview(displayUri);
     } else if (type === 'pharmacyHeader') {
       setPharmacyHeaderFile(minimalFile);
-      if (uri) setPharmacyHeaderPreview(uri);
+      if (displayUri) setPharmacyHeaderPreview(displayUri);
     } else if (type === 'labHeader') {
       setLabHeaderFile(minimalFile);
-      if (uri) setLabHeaderPreview(uri);
+      if (displayUri) setLabHeaderPreview(displayUri);
     } else if (type === 'clinicQR') {
       setClinicQRFile(minimalFile);
-      if (uri) setClinicQRPreview(uri);
+      if (displayUri) setClinicQRPreview(displayUri);
     } else if (type === 'pharmacyQR') {
       setPharmacyQRFile(minimalFile);
-      if (uri) setPharmacyQRPreview(uri);
+      if (displayUri) setPharmacyQRPreview(displayUri);
     } else if (type === 'labQR') {
       setLabQRFile(minimalFile);
-      if (uri) setLabQRPreview(uri);
+      if (displayUri) setLabQRPreview(displayUri);
     }
   };
 
-  // Handle gallery selection with cropping for headers
   const pickFromGalleryAndCrop = async (type: string) => {
     try {
       const { targetWidth, targetHeight } = getTargetCrop(type);
@@ -906,8 +930,6 @@ const AddClinicForm = () => {
             console.warn('Gallery crop failed, using original', e);
           }
         }
-
-        // minimal file shape
         const file = {
           uri,
           name: asset.fileName || `${type}_gallery.jpg`,
@@ -920,13 +942,9 @@ const AddClinicForm = () => {
       Alert.alert('Error', error?.message || 'Gallery access failed.');
     }
   };
-
-  // Robust camera-capture handler for vision-camera
   const onVisionCameraCapture = async (photoPathOrObj: any) => {
     try {
       if (!photoPathOrObj || !activeFileTypeForCamera) return;
-
-      // Determine raw path from variety of possible shapes
       const rawPath =
         (typeof photoPathOrObj === 'string' ? photoPathOrObj : null) ||
         photoPathOrObj.path ||
@@ -940,31 +958,50 @@ const AddClinicForm = () => {
         Alert.alert('Capture Error', 'No photo path returned from camera.');
         return;
       }
+      const providedWidth = Number(photoPathOrObj?.width) || Number(photoPathOrObj?.imageWidth) || null;
+      const providedHeight = Number(photoPathOrObj?.height) || Number(photoPathOrObj?.imageHeight) || null;
 
-      const imgUri = String(rawPath).startsWith('file://') ? String(rawPath) : `file://${String(rawPath)}`;
+      const imgUri = ensureFileUri(rawPath);
+      await new Promise((r) => setTimeout(r, 120));
 
-      // We attempt to crop for headers, but even if cropping fails we still send minimal file
       const { targetWidth, targetHeight } = getTargetCrop(activeFileTypeForCamera);
       let finalUri = imgUri;
       try {
-        // try to crop; if crop fails, fall back to original
-        finalUri = (await cropImageToCenter(imgUri, targetWidth, targetHeight)) || imgUri;
+        finalUri = await cropImageUsingDims(imgUri, providedWidth, providedHeight, targetWidth, targetHeight);
       } catch (e) {
+        console.warn('cropImageUsingDims failed, falling back to cropImageToCenter', e);
+        try {
+          finalUri = await cropImageToCenter(imgUri, targetWidth, targetHeight);
+        } catch (e2) {
+          console.warn('fallback cropImageToCenter failed', e2);
+          finalUri = imgUri;
+        }
+      }
+      try {
+        await new Promise((resolve, reject) => {
+          Image.getSize(
+            finalUri,
+            (w, h) => resolve({ w, h }),
+            (err) => reject(err)
+          );
+        });
+      } catch (err) {
+        console.warn('finalUri not readable after crop, using original uri', err);
         finalUri = imgUri;
       }
-
-      // minimal file shape (only uri, name, type)
       const file = {
         uri: finalUri,
         name: `${activeFileTypeForCamera}_camera.jpg`,
         type: 'image/jpeg',
       };
-
       assignFileByType(activeFileTypeForCamera, file, finalUri);
+      setCameraModalVisible(false);
+      setActiveFileTypeForCamera(null);
     } catch (err) {
       Alert.alert('Capture Error', String(err));
     }
   };
+
 
   // Handle file change
   const handleFileChange = async (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR') => {
@@ -979,12 +1016,9 @@ const AddClinicForm = () => {
       else if (type === 'labQR') title = 'Lab QR Code';
 
       const onCameraPressed = async () => {
-        // For header-type images we prefer vision-camera modal (because we crop to banner dimension)
         if (type === 'header' || type === 'pharmacyHeader' || type === 'labHeader') {
           const hasPermission = await requestCameraPermission();
           if (!hasPermission) return;
-
-          // If vision-camera device isn't ready, fallback to react-native-image-picker camera
           if (!device) {
             const fallback = await new Promise<boolean>((resolve) => {
               Alert.alert('Camera Unavailable', 'Camera device not ready. Would you like to use the normal camera as a fallback?', [
@@ -993,7 +1027,6 @@ const AddClinicForm = () => {
               ]);
             });
             if (fallback) {
-              // use react-native-image-picker camera
               const options: CameraOptions = {
                 mediaType: 'photo',
                 includeBase64: false,
@@ -1033,12 +1066,9 @@ const AddClinicForm = () => {
               return;
             }
           }
-
-          // open the vision-camera modal
           setActiveFileTypeForCamera(type);
           setCameraModalVisible(true);
         } else {
-          // non-header: use image-picker camera for simplicity
           const options = getOtherCameraOptions();
           const result = await launchCamera(options);
 
@@ -1111,7 +1141,6 @@ const AddClinicForm = () => {
   };
 
   // Handle form submission
-  // Note: when appending files we use the minimal shape { uri, name, type }.
   const handleSubmit = async () => {
     const { valid, newErrors } = validateForm();
     if (!valid) {
@@ -1127,7 +1156,7 @@ const AddClinicForm = () => {
 
       const formData = new FormData();
 
-      formData.append('userId', userId || '');
+      formData.append('userId', doctorId || '');
       formData.append('type', form.type);
       formData.append('clinicName', form.clinicName);
       formData.append('address', form.address);
@@ -1219,14 +1248,11 @@ const AddClinicForm = () => {
     }
   };
 
-  // Camera modal component (camera sized to overlay so captured area == visible overlay)
   const CameraModal = ({ visible, onClose, device }: { visible: boolean; onClose: () => void; device: any }) => {
     if (!visible) return null;
 
     const activeType = activeFileTypeForCamera || 'header';
     const { targetWidth, targetHeight } = getTargetCrop(activeType);
-
-    // compute overlay size so it fits screen and keeps ratio
     const screenPadding = 32;
     const maxOverlayWidth = width - screenPadding * 2;
     const overlayRatio = targetWidth / targetHeight;
@@ -1244,7 +1270,6 @@ const AddClinicForm = () => {
 
     useEffect(() => {
       (async () => {
-        // ensure permission is up-to-date
         try {
           if (Platform.OS === 'android') {
             const has = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
@@ -1323,32 +1348,26 @@ const AddClinicForm = () => {
                     Alert.alert('Camera Error', 'Camera not ready.');
                     return;
                   }
-
-                  // takePhoto may or may not exist depending on vision-camera version; handle gracefully
-                  // prefer takePhoto if available
                   let photo: any;
                   try {
-                    if (typeof cameraRef.current.takePhoto === 'function') {
-                      photo = await cameraRef.current.takePhoto({ flash: 'off' } as any);
-                    } else if (typeof cameraRef.current.takeSnapshot === 'function') {
-                      // older / different API
-                      photo = await cameraRef.current.takeSnapshot();
-                    } else if (typeof cameraRef.current.capture === 'function') {
-                      photo = await cameraRef.current.capture();
+                    if (typeof (cameraRef.current as any).takePhoto === 'function') {
+                      photo = await (cameraRef.current as any).takePhoto({ flash: 'off' });
+                    } else if (typeof (cameraRef.current as any).takeSnapshot === 'function') {
+                      photo = await (cameraRef.current as any).takeSnapshot();
+                    } else if (typeof (cameraRef.current as any).capture === 'function') {
+                      photo = await (cameraRef.current as any).capture();
                     } else {
-                      Alert.alert('Capture Error', 'Camera capture method not available on this device.');
-                      return;
+                      throw new Error('No capture method available on cameraRef.');
                     }
                   } catch (err) {
-                    // If capture fails, try to fallback to launching image-picker camera
                     console.warn('Vision capture failed, falling back to image-picker camera', err);
-                    const { targetWidth, targetHeight } = getTargetCrop(activeFileTypeForCamera || 'header');
+                    const { targetWidth: fbW, targetHeight: fbH } = getTargetCrop(activeFileTypeForCamera || 'header');
                     const options: CameraOptions = {
                       mediaType: 'photo',
                       includeBase64: false,
                       saveToPhotos: false,
-                      maxWidth: targetWidth,
-                      maxHeight: targetHeight,
+                      maxWidth: fbW,
+                      maxHeight: fbH,
                       quality: 0.9,
                     };
                     const result = await launchCamera(options);
@@ -1363,7 +1382,7 @@ const AddClinicForm = () => {
                       const asset = result.assets[0];
                       const rawUri = asset.uri || asset.path || asset.fileCopyUri || asset.fileName;
                       const uri = toUriString(rawUri);
-                      const finalUri = (await cropImageToCenter(uri as string, targetWidth, targetHeight)) || uri;
+                      const finalUri = (await cropImageToCenter(uri as string, fbW, fbH)) || uri;
                       const file = {
                         uri: finalUri,
                         name: asset.fileName || `fallback_${activeFileTypeForCamera}_camera.jpg`,
