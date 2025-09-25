@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,18 +12,19 @@ import {
   TouchableWithoutFeedback,
   Platform,
   Keyboard,
+  LayoutChangeEvent,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Picker } from '@react-native-picker/picker';
-import { useNavigation , useFocusEffect} from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { AuthFetch, AuthPost } from '../../auth/auth';
- 
+
 const { width, height } = Dimensions.get('window');
- 
+
 const FinancialSetupScreen = () => {
   const [bank, setBank] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -32,11 +33,13 @@ const FinancialSetupScreen = () => {
   const [accountHolderName, setAccountHolderName] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
- 
+  const [prefill, setPrefill] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(false);
+
   const navigation = useNavigation<any>();
-  const scrollViewRef = useRef<ScrollView>(null); // Ref for ScrollView to scroll to focused input
-  const inputRefs = useRef<{ [key: string]: TextInput | null }>({}); // Refs for input fields
- 
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const positionsRef = useRef<{ [key: string]: number }>({});
+
   // Popular Indian banks with account number length requirements
   const banks = [
     { name: 'State Bank of India (SBI)', accountLength: 7 },
@@ -55,14 +58,14 @@ const FinancialSetupScreen = () => {
     { name: 'IndusInd Bank', accountLength: 13 },
     { name: 'Bank of India (BOI)', accountLength: 15 },
   ];
- 
+
   const validateForm = () => {
     let tempErrors: { [key: string]: string } = {};
- 
+
     if (!bank) {
       tempErrors.bank = 'Please select a bank';
     }
- 
+
     if (!accountNumber) {
       tempErrors.accountNumber = 'Account number is required';
     } else {
@@ -72,27 +75,25 @@ const FinancialSetupScreen = () => {
         tempErrors.accountNumber = 'Account number must be between 7 to 18 digits';
       }
     }
- 
+
     if (accountNumber !== reenterAccountNumber) {
       tempErrors.reenterAccountNumber = 'Account numbers do not match';
     }
- 
+
     if (!ifscCode || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
       tempErrors.ifscCode = 'Invalid IFSC code';
     }
- 
+
     if (!accountHolderName.trim()) {
       tempErrors.accountHolderName = 'Account holder name is required';
     } else if (!/^[a-zA-Z\s]+$/.test(accountHolderName)) {
       tempErrors.accountHolderName = 'Account holder name must contain only letters and spaces';
     }
- 
+
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
-const [prefill, setPrefill] = useState(false);
-const [loadingUser, setLoadingUser] = useState(false);
-   const fetchUserData = async () => {
+  const fetchUserData = async () => {
     setLoadingUser(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
@@ -100,14 +101,13 @@ const [loadingUser, setLoadingUser] = useState(false);
       if (response?.data?.status === 'success') {
         const userData = response.data.data;
         if (userData?.bankDetails) {
-          setPrefill(true)
+          setPrefill(true);
           setBank(userData?.bankDetails?.bankName);
-        setAccountNumber(userData?.bankDetails?.accountNumber || '');
-        setReenterAccountNumber(userData?.bankDetails?.accountNumber || '');
-        setIfscCode(userData?.bankDetails?.ifscCode || '');
-        setAccountHolderName(userData?.bankDetails?.accountHolderName || '');
+          setAccountNumber(userData?.bankDetails?.accountNumber || '');
+          setReenterAccountNumber(userData?.bankDetails?.accountNumber || '');
+          setIfscCode(userData?.bankDetails?.ifscCode || '');
+          setAccountHolderName(userData?.bankDetails?.accountHolderName || '');
         }
-       
       }
     } catch (error) {
       Toast.show({
@@ -121,11 +121,11 @@ const [loadingUser, setLoadingUser] = useState(false);
       setLoadingUser(false);
     }
   };
- 
+
   useEffect(() => {
     fetchUserData();
   }, []);
- 
+
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
@@ -142,7 +142,7 @@ const [loadingUser, setLoadingUser] = useState(false);
           });
           return;
         }
- 
+
         const body = {
           bankDetails: {
             accountNumber,
@@ -151,12 +151,12 @@ const [loadingUser, setLoadingUser] = useState(false);
             accountHolderName,
           },
         };
- 
+
         const response = await AuthPost('users/updateBankDetails', body, token);
         const status = (response as any).data?.status ?? response.status;
         const message =
           (response as any).data?.message ?? (response as any).message ?? 'Failed to update bank details';
- 
+
         if (status === 'success') {
           Toast.show({
             type: 'success',
@@ -165,7 +165,7 @@ const [loadingUser, setLoadingUser] = useState(false);
             position: 'top',
             visibilityTime: 3000,
           });
-      await AsyncStorage.setItem('currentStep', 'KYCDetailsScreen');
+          await AsyncStorage.setItem('currentStep', 'KYCDetailsScreen');
           navigation.navigate('KYCDetailsScreen');
         } else {
           Toast.show({
@@ -189,13 +189,11 @@ const [loadingUser, setLoadingUser] = useState(false);
       }
     }
   };
- 
- 
- 
+
   const handleBack = () => {
     navigation.navigate('ConsultationPreferences');
   };
- 
+
   const handleSkip = async () => {
     try {
       setLoading(true);
@@ -220,32 +218,32 @@ const [loadingUser, setLoadingUser] = useState(false);
       setLoading(false);
     }
   };
- 
-  // Scroll to the focused input field
-  const scrollToInput = (inputKey: string) => {
-    if (inputRefs.current[inputKey]) {
-      inputRefs.current[inputKey]!.measureLayout(
-        scrollViewRef.current as any,
-        (x, y) => {
-          scrollViewRef.current?.scrollTo({ y, animated: true });
-        },
-        () => console.log('Failed to measure layout'),
-      );
-    }
+
+  const onInputLayout = (key: string) => (e: LayoutChangeEvent) => {
+    const { y } = e.nativeEvent.layout;
+    positionsRef.current[key] = y;
   };
- 
+
+const scrollToInput = (inputKey: string) => {
+  const y = positionsRef.current[inputKey];
+  if (typeof y === 'number' && scrollViewRef.current) {
+    const target = Math.max(0, y - Math.round(height * 0.33));
+    scrollViewRef.current.scrollTo({ y: target, animated: true });
+  } else {
+    scrollViewRef.current?.scrollTo({ y: 50, animated: true });
+  }
+};
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
         {(loading || loadingUser) && (
           <View style={styles.loaderOverlay}>
             <ActivityIndicator size="large" color="#00203F" />
-            <Text style={styles.loaderText}>
-              {loadingUser ? 'Loading user data...' : 'Processing...'}
-            </Text>
+            <Text style={styles.loaderText}>{loadingUser ? 'Loading user data...' : 'Processing...'}</Text>
           </View>
         )}
- 
+
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -253,13 +251,13 @@ const [loadingUser, setLoadingUser] = useState(false);
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Financial Setup</Text>
         </View>
- 
+
         <ProgressBar currentStep={getCurrentStepIndex('FinancialSetupScreen')} totalSteps={TOTAL_STEPS} />
- 
+
         {/* Form Content */}
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? height * 0.1 : height * 0.02}
         >
           <ScrollView
@@ -273,9 +271,9 @@ const [loadingUser, setLoadingUser] = useState(false);
               <Icon name="bank" size={width * 0.08} color="#00203F" style={styles.icon} />
               <Text style={styles.title}>Add Bank Details</Text>
               <Text style={styles.subtitle}>Please enter your bank account details to proceed.</Text>
- 
+
               <Text style={styles.label}>Select Bank</Text>
-              <View style={[styles.input, errors.bank && styles.errorInput]}>
+              <View style={[styles.input, errors.bank && styles.errorInput]} onLayout={onInputLayout('bank')}>
                 <Picker
                   selectedValue={bank}
                   onValueChange={(itemValue) => {
@@ -293,87 +291,89 @@ const [loadingUser, setLoadingUser] = useState(false);
                 </Picker>
               </View>
               {errors.bank && <Text style={styles.errorText}>{errors.bank}</Text>}
- 
+
               <Text style={styles.label}>Account Number</Text>
-              <TextInput
-                ref={(ref) => (inputRefs.current['accountNumber'] = ref)}
-                style={[styles.input, errors.accountNumber && styles.errorInput]}
-                value={accountNumber}
-                onChangeText={(text) => {
-                  const onlyDigits = text.replace(/[^\d]/g, '');
-                  setAccountNumber(onlyDigits);
-                  setErrors((prev) => ({ ...prev, accountNumber: '' }));
-                }}
-                placeholder="Enter account number"
-                keyboardType="number-pad"
-                placeholderTextColor="#999"
-                maxLength={18}
-                
-                onFocus={() => scrollToInput('accountNumber')}
-              />
+              <View style={{ width: '100%' }} onLayout={onInputLayout('accountNumber')}>
+                <TextInput
+                  style={[styles.input, errors.accountNumber && styles.errorInput]}
+                  value={accountNumber}
+                  onChangeText={(text) => {
+                    const onlyDigits = text.replace(/[^\d]/g, '');
+                    setAccountNumber(onlyDigits);
+                    setErrors((prev) => ({ ...prev, accountNumber: '' }));
+                  }}
+                  placeholder="Enter account number"
+                  keyboardType="number-pad"
+                  placeholderTextColor="#999"
+                  maxLength={18}
+                  onFocus={() => scrollToInput('accountNumber')}
+                />
+              </View>
               {errors.accountNumber && <Text style={styles.errorText}>{errors.accountNumber}</Text>}
- 
+
               <Text style={styles.label}>Re-enter Account Number</Text>
-              <TextInput
-                ref={(ref) => (inputRefs.current['reenterAccountNumber'] = ref)}
-                style={[styles.input, errors.reenterAccountNumber && styles.errorInput]}
-                value={reenterAccountNumber}
-                onChangeText={(text) => {
-                   const onlyDigits = text.replace(/[^\d]/g, '');
-                   setReenterAccountNumber(onlyDigits);
-                   setErrors((prev) => ({ ...prev, reenterAccountNumber: '' }));
-                }}
-                placeholder="Re-enter account number"
-                keyboardType="number-pad"
-                placeholderTextColor="#999"
-                maxLength={18}
-                onFocus={() => scrollToInput('reenterAccountNumber')}
-              />
+              <View style={{ width: '100%' }} onLayout={onInputLayout('reenterAccountNumber')}>
+                <TextInput
+                  style={[styles.input, errors.reenterAccountNumber && styles.errorInput]}
+                  value={reenterAccountNumber}
+                  onChangeText={(text) => {
+                    const onlyDigits = text.replace(/[^\d]/g, '');
+                    setReenterAccountNumber(onlyDigits);
+                    setErrors((prev) => ({ ...prev, reenterAccountNumber: '' }));
+                  }}
+                  placeholder="Re-enter account number"
+                  keyboardType="number-pad"
+                  placeholderTextColor="#999"
+                  maxLength={18}
+                  onFocus={() => scrollToInput('reenterAccountNumber')}
+                />
+              </View>
               {errors.reenterAccountNumber && <Text style={styles.errorText}>{errors.reenterAccountNumber}</Text>}
- 
+
               <Text style={styles.label}>IFSC Code</Text>
-              <TextInput
-                ref={(ref) => (inputRefs.current['ifscCode'] = ref)}
-                style={[styles.input, errors.ifscCode && styles.errorInput]}
-                value={ifscCode}
-                onChangeText={(text) => {
-                  setIfscCode(text.toUpperCase());
-                  setErrors((prev) => ({ ...prev, ifscCode: '' }));
-                }}
-                placeholder="Enter IFSC code"
-                placeholderTextColor="#999"
-                autoCapitalize="characters"
-                maxLength={11}
-                onFocus={() => scrollToInput('ifscCode')}
-              />
+              <View style={{ width: '100%' }} onLayout={onInputLayout('ifscCode')}>
+                <TextInput
+                  style={[styles.input, errors.ifscCode && styles.errorInput]}
+                  value={ifscCode}
+                  onChangeText={(text) => {
+                    setIfscCode(text.toUpperCase());
+                    setErrors((prev) => ({ ...prev, ifscCode: '' }));
+                  }}
+                  placeholder="Enter IFSC code"
+                  placeholderTextColor="#999"
+                  autoCapitalize="characters"
+                  maxLength={11}
+                  onFocus={() => scrollToInput('ifscCode')}
+                />
+              </View>
               {errors.ifscCode && <Text style={styles.errorText}>{errors.ifscCode}</Text>}
- 
+
               <Text style={styles.label}>Account Holder Name</Text>
-              <TextInput
-                ref={(ref) => (inputRefs.current['accountHolderName'] = ref)}
-                style={[styles.input, errors.accountHolderName && styles.errorInput]}
-                value={accountHolderName}
-                onChangeText={(text) => {
-                  setAccountHolderName(text);
-                  setErrors((prev) => ({ ...prev, accountHolderName: '' }));
-                }}
-                placeholder="Enter account holder name"
-                placeholderTextColor="#999"
-                onFocus={() => scrollToInput('accountHolderName')}
-              />
+              <View style={{ width: '100%' }} onLayout={onInputLayout('accountHolderName')}>
+                <TextInput
+                  style={[styles.input, errors.accountHolderName && styles.errorInput]}
+                  value={accountHolderName}
+                  onChangeText={(text) => {
+                    setAccountHolderName(text);
+                    setErrors((prev) => ({ ...prev, accountHolderName: '' }));
+                  }}
+                  placeholder="Enter account holder name"
+                  placeholderTextColor="#999"
+                  onFocus={() => scrollToInput('accountHolderName')}
+                />
+              </View>
               {errors.accountHolderName && <Text style={styles.errorText}>{errors.accountHolderName}</Text>}
             </View>
- 
+
             <View style={styles.buttonsContainer}>
               <TouchableOpacity style={[styles.button, styles.skipButton]} onPress={handleSkip}>
                 <Text style={[styles.buttonText, styles.skipButtonText]}>Skip</Text>
               </TouchableOpacity>
               {prefill && (
-<TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                <Text style={styles.buttonText}>Next</Text>
-              </TouchableOpacity>
+                <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+                  <Text style={styles.buttonText}>Next</Text>
+                </TouchableOpacity>
               )}
-             
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -381,7 +381,7 @@ const [loadingUser, setLoadingUser] = useState(false);
     </TouchableWithoutFeedback>
   );
 };
- 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: height * 0.03,
-    paddingBottom: height * 0.15, // Ensure space for buttons and keyboard
+    paddingBottom: height * 0.15,
   },
   card: {
     backgroundColor: '#fff',
@@ -533,6 +533,5 @@ const styles = StyleSheet.create({
     marginTop: height * 0.02,
   },
 });
- 
+
 export default FinancialSetupScreen;
- 

@@ -13,6 +13,7 @@ import {
   Platform,
   Dimensions,
   SafeAreaView,
+  FlatList,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/AntDesign';
 import { Picker } from '@react-native-picker/picker';
@@ -24,7 +25,7 @@ import moment from 'moment';
 import { Dispatch } from 'redux';
 
 // API functions (keep your implementations)
-import { AuthFetch, AuthPut, UploadFiles, AuthPost } from '../../auth/auth';
+import { AuthFetch, AuthPut, UploadFiles, AuthPost, UpdateFiles } from '../../auth/auth';
 import { useDispatch, useSelector } from 'react-redux';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -125,6 +126,7 @@ const getImageSrc = (image: any): string | null => {
     return `https://your-api-base-url/${image}`;
   }
   if (image?.data && image?.mimeType) return `data:${image.mimeType};base64,${image.data}`;
+  if (image?.uri) return image.uri;
   return null;
 };
 
@@ -163,6 +165,10 @@ const DoctorProfileView: React.FC = () => {
     experience: '',
     about: '',
   });
+
+  // NEW: degree selection modal state & search
+  const [degreeModalVisible, setDegreeModalVisible] = useState(false);
+  const [degreeSearchText, setDegreeSearchText] = useState('');
 
   // KYC form state
   const [panNumber, setPanNumber] = useState('');
@@ -246,6 +252,13 @@ const DoctorProfileView: React.FC = () => {
       }));
 
       const bankDetails = userData.bankDetails || {};
+      const resolvedProfilePic =
+        userData.profilepic ||
+        userData.profilePicture ||
+        userData.profilepicture ||
+        userData.profile_image ||
+        userData.profile_image_url ||
+        null;
 
       const dd: DoctorData = {
         _id: userData._id,
@@ -272,7 +285,7 @@ const DoctorProfileView: React.FC = () => {
           panImage: userData.kycDetails?.pan?.attachmentUrl || null,
         },
         certifications,
-        profilepic: userData.profilePicture || null,
+        profilepic: resolvedProfilePic,
       };
 
       setDoctorData(dd);
@@ -395,42 +408,94 @@ const DoctorProfileView: React.FC = () => {
   };
 
   const saveProfessional = async () => {
-    if (!token || !doctorData) return;
+  // retrieve token inside function (like handleNext)
+  const token = await AsyncStorage.getItem('authToken');
+  if (!token || !doctorData) return;
 
-    // Validate at least one degree is selected
-    if (formProfessional.selectedDegrees.length === 0) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select at least one degree' });
-      return;
+  // Validate at least one degree is selected
+  if (!formProfessional.selectedDegrees || formProfessional.selectedDegrees.length === 0) {
+    Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select at least one degree' });
+    return;
+  }
+
+  try {
+
+    const firstSpec = doctorData?.specialization?.[0];
+    const formData = new FormData();
+    formData.append('id', String(doctorData?.userId || ''));
+    formData.append('name', String(firstSpec?.name || ''));
+    formData.append('experience', String(formProfessional?.experience || ''));
+    formData.append('degree', formProfessional?.selectedDegrees?.join(','));
+    formData.append('bio', String(formProfessional?.about || ''));
+
+    // Helper to normalize uri for iOS (remove file://)
+    const normalizeFileUri = (uri?: string) => {
+      if (!uri) return undefined;
+      if (Platform.OS === 'ios') {
+        return uri.startsWith('file://') ? uri.replace('file://', '') : uri;
+      }
+      return uri;
+    };
+
+    // If your backend expects the same key names as handleNext, use them.
+    // Change the property names below if your API expects different names.
+    const degreeUri = doctorData.specialization?.[0]?.degreeCertificate
+;
+    if (degreeUri) {
+      const normalized = normalizeFileUri(degreeUri);
+      // If it's an http/https URL we can't directly upload — prefer local file objects (uploadedFiles).
+      if (!/^https?:\/\//i.test(degreeUri)) {
+        formData.append('degreeCertificate', {
+          uri: Platform.OS === 'android' ? degreeUri : normalized,
+          type: 'application/pdf',
+          name: 'degree.pdf',
+        } as any);
+      } else {
+        // optional: if it's remote and you want to pass the URL instead of file
+        // formData.append('degreeCertificateUrl', degreeUri);
+        // or download the file to local first before uploading
+        console.warn('degreeCertificateUrl is a remote URL — backend likely expects a file. Consider using uploadedFiles or downloading the file first.');
+      }
     }
 
-    try {
-      const firstSpec = doctorData?.specialization?.[0];
-      const formData = new FormData();
-      formData.append('id', String(doctorData?.userId || ''));
-      formData.append('name', String(firstSpec?.name || ''));
-      formData.append('experience', String(formProfessional?.experience || ''));
-      formData.append('degree', formProfessional?.selectedDegrees?.join(','));
-      formData.append('bio', String(formProfessional?.about || ''));
+    const specCertUri = doctorData.specialization?.[0]?.specializationCertificate;
+;
+    if (specCertUri) {
+      const normalized = normalizeFileUri(specCertUri);
+      if (!/^https?:\/\//i.test(specCertUri)) {
+        formData.append('specializationCertificate', {
+          uri: Platform.OS === 'android' ? specCertUri : normalized,
+          type: 'application/pdf',
+          name: 'certification.pdf',
+        } as any);
+      } else {
+        console.warn('specializationCertificateUrl is a remote URL — backend likely expects a file. Consider using uploadedFiles or downloading the file first.');
+      }
+    }
 
-      const response = await UploadFiles('users/updateSpecialization', formData, token);
+    // debug: cannot reliably console.log FormData contents directly
+    // To inspect, iterate through keys (only for debugging)
+    // for (const pair of (formData as any)._parts || []) console.log(pair);
+console.log('Submitting professional form data:', formData);
+    const response = await UpdateFiles('users/updateSpecialization', formData, token);
+    console.log('Response from server:', response);
 
-      if (response?.status === 'success') {
+    if (response?.status === 'success') {
       const userData = response?.data?.data;
-
-dispatch({ type: 'currentUser', payload: userData });
+      dispatch({ type: 'currentUser', payload: userData });
 
       Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
-      handleEditClose();
-      fetchDoctorData();
-      }else{
-        Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'Please try again.' });
-      }
-
-      
-    } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Error', text2: e?.response?.data?.message?.message || e?.message || 'Failed to update profile' });
+      handleEditClose?.();
+      await fetchDoctorData?.();
+    } else {
+      Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'Please try again.' });
     }
-  };
+  } catch (e: any) {
+    Toast.show({ type: 'error', text1: 'Error', text2: e?.response?.data?.message?.message || e?.message || 'Failed to update profile' });
+  } finally {
+  }
+};
+
 
   const saveConsultation = async () => {
     if (!token) return;
@@ -652,7 +717,7 @@ dispatch({ type: 'currentUser', payload: userData });
   };
 
   // ---------- Render helpers ----------
-
+console.log('Rendering DoctorProfileView with doctorData:', doctorData);
   const degreesDisplay = useMemo(() => {
     const d = doctorData?.specialization?.[0]?.degree || '';
     const list = String(d).split(',').map((s) => s.trim()).filter(Boolean);
@@ -663,6 +728,12 @@ dispatch({ type: 'currentUser', payload: userData });
     const n = doctorData?.specialization?.[0]?.name || '';
     return String(n).split(',').map((s) => s.trim()).filter(Boolean);
   }, [doctorData]);
+
+  const filteredDegrees = useMemo(() => {
+    const q = degreeSearchText.trim().toLowerCase();
+    if (!q) return degrees;
+    return degrees.filter(d => d.toLowerCase().includes(q));
+  }, [degreeSearchText, degrees]);
 
   // ---------- UI ----------
 
@@ -685,6 +756,7 @@ dispatch({ type: 'currentUser', payload: userData });
 
   const showEditButtonKYC = !kycServer?.pan?.number;
   const showEditButtonBank = !doctorData.bankDetails?.accountNumber;
+  const avatarSrc = getImageSrc(doctorData.profilepic);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -705,21 +777,35 @@ dispatch({ type: 'currentUser', payload: userData });
             </View>
 
             <View style={styles.avatarContainer}>
-              <View
-                style={{
-                  width: SCREEN_WIDTH * 0.15,
-                  height: SCREEN_WIDTH * 0.15,
-                  borderRadius: SCREEN_WIDTH * 0.075,
-                  backgroundColor: '#1E88E5',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginBottom: 8,
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: SCREEN_WIDTH * 0.08, fontWeight: 'bold' }}>
-                  {(doctorData.firstname?.[0] ?? 'D').toUpperCase()}
-                </Text>
-              </View>
+              {avatarSrc ? (
+                <Image
+                  source={{ uri: avatarSrc }}
+                  style={{
+                    width: SCREEN_WIDTH * 0.15,
+                    height: SCREEN_WIDTH * 0.15,
+                    borderRadius: SCREEN_WIDTH * 0.075,
+                    backgroundColor: '#ccc',
+                    marginBottom: 8,
+                  }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={{
+                    width: SCREEN_WIDTH * 0.15,
+                    height: SCREEN_WIDTH * 0.15,
+                    borderRadius: SCREEN_WIDTH * 0.075,
+                    backgroundColor: '#1E88E5',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontSize: SCREEN_WIDTH * 0.08, fontWeight: 'bold' }}>
+                    {(doctorData.firstname?.[0] ?? 'D').toUpperCase()}
+                  </Text>
+                </View>
+              )}
               <Text style={styles.doctorName}>{currentuserDetails.role === 'doctor' && 'Dr. '}{doctorData.firstname} {doctorData.lastname}</Text>
             </View>
 
@@ -845,41 +931,6 @@ dispatch({ type: 'currentUser', payload: userData });
 
         {/* Row 2: Working Locations + KYC */}
         <View style={styles.row}>
-          {/* Working Locations */}
-          {/* <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardTitleContainer}>
-                <Icon name="enviromento" size={16} color="#3b82f6" />
-                <Text style={styles.cardTitle}>Working Locations</Text>
-              </View>
-            </View>
-
-            {(doctorData.addresses || []).map((each) => (
-              <View key={each._id} style={styles.locationCard}>
-                <View style={styles.locationInfo}>
-                  <View
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: 8,
-                      backgroundColor: getLocationColor(each.clinicName || `Clinic ${each._id}`),
-                      marginRight: SCREEN_WIDTH * 0.02,
-                    }}
-                  />
-                  <View style={styles.locationDetails}>
-                    <Text style={[styles.infoText, styles.bold]}>{each.clinicName || 'Clinic'}</Text>
-                    <Text style={styles.locationAddress}>
-                      {`${each.address || ''}, ${each.city || ''}, ${each.state || ''}, ${each.country || ''} - ${each.pincode || ''}`}
-                    </Text>
-                    <Text style={styles.locationTimings}>
-                      <Text style={styles.bold}>Timings:</Text> {each.startTime || 'N/A'} - {each.endTime || 'N/A'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View> */}
-
           {/* KYC Details */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -1118,30 +1169,18 @@ dispatch({ type: 'currentUser', payload: userData });
               <ScrollView style={styles.formContainer}>
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Select Degree</Text>
-                  <View style={styles.dropdownContainer}>
-                    <Picker
-                      selectedValue={""}
-                      onValueChange={(value) => {
-                        if (value && !formProfessional.selectedDegrees.includes(value)) {
-                          setFormProfessional((s) => ({
-                            ...s,
-                            selectedDegrees: [...s.selectedDegrees, value],
-                          }));
-                        }
-                      }}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Select a degree" value="" />
-                      {degrees.map((deg) => (
-                        <Picker.Item
-                          key={deg}
-                          label={deg}
-                          value={deg}
-                          enabled={!formProfessional.selectedDegrees.includes(deg)}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.dropdownContainer, { padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    onPress={() => {
+                      setDegreeSearchText('');
+                      setDegreeModalVisible(true);
+                    }}
+                  >
+                    <Text style={{ color: formProfessional.selectedDegrees.length ? '#111' : '#888' }}>
+                      {formProfessional.selectedDegrees.length > 0 ? `${formProfessional.selectedDegrees.length} selected` : 'Tap to choose degrees'}
+                    </Text>
+                    <Icon name="down" size={16} color="#333" />
+                  </TouchableOpacity>
 
                   {formProfessional.selectedDegrees.length > 0 && (
                     <>
@@ -1212,6 +1251,80 @@ dispatch({ type: 'currentUser', payload: userData });
             </View>
           </View>
         </Modal>
+        <Modal visible={degreeModalVisible} transparent animationType="slide" onRequestClose={() => setDegreeModalVisible(false)}>
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+              <Text style={styles.modalTitle}>Choose Degrees</Text>
+
+              <View style={{ marginBottom: 12 }}>
+                <TextInput
+                  style={[styles.input, { marginBottom: 8 }]}
+                  placeholder="Search degrees..."
+                  value={degreeSearchText}
+                  onChangeText={setDegreeSearchText}
+                  placeholderTextColor="#888"
+                />
+              </View>
+
+              <FlatList
+                data={filteredDegrees}
+                keyExtractor={(item) => item}
+                style={{ marginBottom: 12 }}
+                ListEmptyComponent={<Text style={styles.noDataText}>No degrees found</Text>}
+                renderItem={({ item }) => {
+                  const selected = formProfessional.selectedDegrees.includes(item);
+                  return (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setFormProfessional((s) => {
+                          const exists = s.selectedDegrees.includes(item);
+                          let next = [...s.selectedDegrees];
+                          if (exists) {
+                            next = next.filter(d => d !== item);
+                          } else {
+                            next = [...next, item];
+                          }
+                          return { ...s, selectedDegrees: next };
+                        });
+                      }}
+                      style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 8,
+                        borderBottomWidth: 1,
+                        borderBottomColor: '#eee',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Text style={{ fontSize: 14 }}>{item}</Text>
+                      {selected ? <Icon name="check" size={18} color="#16a34a" /> : null}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+
+              <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton, { flex: 1, marginRight: 8 }]}
+                  onPress={() => setDegreeModalVisible(false)}
+                >
+                  <Text style={styles.modalButtonText}>Done</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton, { flex: 1 }]}
+                  onPress={() => {
+                    // Close
+                    setDegreeModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Apply</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         <Modal visible={editModalType === 'kyc'} transparent animationType="slide" onRequestClose={handleEditClose}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>

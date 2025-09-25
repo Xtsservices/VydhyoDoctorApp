@@ -70,7 +70,6 @@ const parseApptMoment = (rawDate?: string, rawTime?: string) => {
 
 const AppointmentsScreen = () => {
   const currentuserDetails = useSelector((state: any) => state.currentUser);
-  console.log("currentuserDetails",currentuserDetails)
   const doctorId =
     currentuserDetails?.role === 'doctor'
       ? currentuserDetails?.userId
@@ -385,6 +384,13 @@ const AppointmentsScreen = () => {
         navigation.navigate('PatientDetails', { patientDetails: formattedPatientDetails });
         return;
       }
+
+      if (status === 'View Previous Prescription') {
+         setActionModalVisible(false);
+         await fetchAndOpenPrevPrescriptions(patientId, patientName);
+         return;
+       }
+ 
 
       // Remaining: Cancel / Reschedule / Complete
       if (status === 'Cancel') {

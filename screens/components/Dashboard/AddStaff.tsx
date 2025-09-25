@@ -8,6 +8,9 @@ import {
   Platform,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { ActivityIndicator } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -199,176 +202,195 @@ const AddStaffScreen = () => {
       setIsLoading(false);
     }
   };
+  const keyboardVerticalOffset = Platform.select({ ios: 100, android: 80 }) as number;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <Text style={styles.title}>Add New Staff Member</Text>
-      <Text style={styles.subtitle}>Fill in the details below to add a new staff member</Text>
-
-      <Text style={styles.label}>First Name*</Text>
-      <TextInput
-        style={[styles.input, errors.firstName && styles.inputError]}
-        placeholder="Enter first name"
-        value={form.firstName}
-        onChangeText={(text) => {
-          const filteredText = text.replace(/[^a-zA-Z\s]/g, '');
-          setForm({ ...form, firstName: filteredText });
-          setErrors({ ...errors, firstName: '' });
-        }}
-        placeholderTextColor={'gray'}
-      />
-      {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
-
-      <Text style={styles.label}>Last Name*</Text>
-      <TextInput
-        style={[styles.input, errors.lastName && styles.inputError]}
-        placeholder="Enter last name"
-        value={form.lastName}
-        placeholderTextColor={'gray'}
-        onChangeText={(text) => {
-          const filteredText = text.replace(/[^a-zA-Z\s]/g, '');
-          setForm({ ...form, lastName: filteredText });
-          setErrors({ ...errors, lastName: '' });
-        }}
-      />
-      {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
-
-      <Text style={styles.label}>Date of Birth*</Text>
-      <TouchableOpacity
-        style={[styles.input, errors.DOB && styles.inputError]}
-        onPress={() => setShowDatePicker(true)}
-      >
-        <Text style={{ color: form.DOB ? '#000' : '#9CA3AF' }}>
-          {form.DOB || 'DD/MM/YYYY'}
-        </Text>
-      </TouchableOpacity>
-      {errors.DOB ? <Text style={styles.errorText}>{errors.DOB}</Text> : null}
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={onDateChange}
-          maximumDate={new Date()}
-        />
-      )}
-
-      <Text style={styles.label}>Gender*</Text>
-      <View style={styles.genderGroup}>
-        {['Male', 'Female', 'Other'].map((g) => (
-          <TouchableOpacity
-            key={g}
-            style={styles.radioButton}
-            onPress={() => setForm({ ...form, gender: g })}
-          >
-            <View style={[styles.radioCircle, form.gender === g && styles.selectedRadio]} />
-            <Text style={styles.radioText}>{g}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.label}>Mobile Number*</Text>
-      <TextInput
-        style={[styles.input, errors.mobile && styles.inputError]}
-        placeholder="+91 9876543210"
-        keyboardType="phone-pad"
-        value={form.mobile}
-        maxLength={10}
-        onChangeText={(text) => {
-          const digitsOnly = text.replace(/\D/g, '');
-          setForm({ ...form, mobile: digitsOnly });
-          setErrors({ ...errors, mobile: '' });
-        }}
-        placeholderTextColor={'gray'}
-      />
-      {errors.mobile ? <Text style={styles.errorText}>{errors.mobile}</Text> : null}
-
-      <Text style={styles.label}>Email*</Text>
-      <TextInput
-        style={[styles.input, errors.email && styles.inputError]}
-        placeholder="Enter email address"
-        keyboardType="email-address"
-        value={form.email}
-        onChangeText={(text) => {
-          setForm({ ...form, email: text });
-          setErrors({ ...errors, email: '' });
-        }}
-        placeholderTextColor={'gray'}
-      />
-      {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
-
-      <Text style={styles.label}>Role*</Text>
-      <DropDownPicker
-        open={openRoleDropdown}
-        value={form.role}
-        items={roleItems}
-        setOpen={setOpenRoleDropdown}
-        setValue={(callback) => {
-          setForm((prev) => ({ ...prev, role: callback(prev.role) }));
-          setErrors({ ...errors, role: '' });
-        }}
-        setItems={setRoleItems}
-        placeholder="Select Role"
-        style={[styles.dropdown, errors.role && styles.inputError]}
-        dropDownContainerStyle={styles.dropdownList}
-        textStyle={{ color: '#000' }}
-        zIndex={3000}
-        zIndexInverse={1000}
-      />
-      {errors.role ? <Text style={styles.errorText}>{errors.role}</Text> : null}
-
-      <Text style={styles.label}>Access*</Text>
-      {[
-        { value: "my-patients", label: "My Patients" },
-        { value: "appointments", label: "Appointments" },
-        { value: "labs", label: "Labs" },
-        { value: "dashboard", label: "Dashboard" },
-        { value: "pharmacy", label: "Pharmacy" },
-        { value: "availability", label: "Availability" },
-        { value: "staff-management", label: "Staff Management" },
-        { value: "clinic-management", label: "Clinic Management" },
-        { value: "billing", label: "Billing" },
-        { value: "reviews", label: "Reviews" },
-      ].map((item) => (
-        <TouchableOpacity
-          key={item.value}
-          style={styles.checkboxRow}
-          onPress={() => {
-            setForm((prev) => {
-              const exists = prev.access.includes(item.value);
-              return {
-                ...prev,
-                access: exists
-                  ? prev.access.filter((val) => val !== item.value)
-                  : [...prev.access, item.value],
-              };
-            });
-            setErrors({ ...errors, access: '' });
-          }}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
         >
-          <Ionicons
-            name={form.access.includes(item.value) ? 'checkbox' : 'square-outline'}
-            size={22}
-            color={form.access.includes(item.value) ? '#10B981' : '#6B7280'}
-          />
-          <Text style={styles.checkboxLabel}>{item.label}</Text>
-        </TouchableOpacity>
-      ))}
-      {errors.access ? <Text style={styles.errorText}>{errors.access}</Text> : null}
+          <View>
+            <Text style={styles.title}>Add New Staff Member</Text>
+            <Text style={styles.subtitle}>Fill in the details below to add a new staff member</Text>
 
-      <TouchableOpacity
-        style={[styles.addButton, isLoading && styles.disabledButton]}
-        onPress={handleSubmit}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.addButtonText}>Add Staff</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+            <Text style={styles.label}>First Name*</Text>
+            <TextInput
+              style={[styles.input, errors.firstName && styles.inputError]}
+              placeholder="Enter first name"
+              value={form.firstName}
+              onChangeText={(text) => {
+                const filteredText = text.replace(/[^a-zA-Z\s]/g, '');
+                setForm({ ...form, firstName: filteredText });
+                setErrors({ ...errors, firstName: '' });
+              }}
+              placeholderTextColor={'gray'}
+            />
+            {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
+
+            <Text style={styles.label}>Last Name*</Text>
+            <TextInput
+              style={[styles.input, errors.lastName && styles.inputError]}
+              placeholder="Enter last name"
+              value={form.lastName}
+              placeholderTextColor={'gray'}
+              onChangeText={(text) => {
+                const filteredText = text.replace(/[^a-zA-Z\s]/g, '');
+                setForm({ ...form, lastName: filteredText });
+                setErrors({ ...errors, lastName: '' });
+              }}
+            />
+            {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
+
+            <Text style={styles.label}>Date of Birth*</Text>
+            <TouchableOpacity
+              style={[styles.input, errors.DOB && styles.inputError]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ color: form.DOB ? '#000' : '#9CA3AF' }}>
+                {form.DOB || 'DD/MM/YYYY'}
+              </Text>
+            </TouchableOpacity>
+            {errors.DOB ? <Text style={styles.errorText}>{errors.DOB}</Text> : null}
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+                maximumDate={new Date()}
+              />
+            )}
+
+            <Text style={styles.label}>Gender*</Text>
+            <View style={styles.genderGroup}>
+              {['Male', 'Female', 'Other'].map((g) => (
+                <TouchableOpacity
+                  key={g}
+                  style={styles.radioButton}
+                  onPress={() => setForm({ ...form, gender: g })}
+                >
+                  <View style={[styles.radioCircle, form.gender === g && styles.selectedRadio]} />
+                  <Text style={styles.radioText}>{g}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Mobile Number*</Text>
+            <TextInput
+              style={[styles.input, errors.mobile && styles.inputError]}
+              placeholder="+91 9876543210"
+              keyboardType="phone-pad"
+              value={form.mobile}
+              maxLength={10}
+              onChangeText={(text) => {
+                const digitsOnly = text.replace(/\D/g, '');
+                setForm({ ...form, mobile: digitsOnly });
+                setErrors({ ...errors, mobile: '' });
+              }}
+              placeholderTextColor={'gray'}
+            />
+            {errors.mobile ? <Text style={styles.errorText}>{errors.mobile}</Text> : null}
+
+            <Text style={styles.label}>Email*</Text>
+            <TextInput
+              style={[styles.input, errors.email && styles.inputError]}
+              placeholder="Enter email address"
+              keyboardType="email-address"
+              value={form.email}
+              onChangeText={(text) => {
+                setForm({ ...form, email: text });
+                setErrors({ ...errors, email: '' });
+              }}
+              placeholderTextColor={'gray'}
+            />
+            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+
+            <Text style={styles.label}>Role*</Text>
+            {/* zIndex styling for dropdown stacking */}
+            <View style={{ zIndex: 3000 }}>
+              <DropDownPicker
+                open={openRoleDropdown}
+                value={form.role}
+                items={roleItems}
+                setOpen={setOpenRoleDropdown}
+                setValue={(callback) => {
+                  setForm((prev) => ({ ...prev, role: callback(prev.role) }));
+                  setErrors({ ...errors, role: '' });
+                }}
+                setItems={setRoleItems}
+                placeholder="Select Role"
+                style={[styles.dropdown, errors.role && styles.inputError]}
+                dropDownContainerStyle={styles.dropdownList}
+                textStyle={{ color: '#000' }}
+                zIndex={3000}
+                zIndexInverse={1000}
+              />
+            </View>
+            {errors.role ? <Text style={styles.errorText}>{errors.role}</Text> : null}
+
+            <Text style={styles.label}>Access*</Text>
+            {[
+              { value: "my-patients", label: "My Patients" },
+              { value: "appointments", label: "Appointments" },
+              { value: "labs", label: "Labs" },
+              { value: "dashboard", label: "Dashboard" },
+              { value: "pharmacy", label: "Pharmacy" },
+              { value: "availability", label: "Availability" },
+              { value: "staff-management", label: "Staff Management" },
+              { value: "clinic-management", label: "Clinic Management" },
+              { value: "billing", label: "Billing" },
+              { value: "reviews", label: "Reviews" },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={styles.checkboxRow}
+                onPress={() => {
+                  setForm((prev) => {
+                    const exists = prev.access.includes(item.value);
+                    return {
+                      ...prev,
+                      access: exists
+                        ? prev.access.filter((val) => val !== item.value)
+                        : [...prev.access, item.value],
+                    };
+                  });
+                  setErrors({ ...errors, access: '' });
+                }}
+              >
+                <Ionicons
+                  name={form.access.includes(item.value) ? 'checkbox' : 'square-outline'}
+                  size={22}
+                  color={form.access.includes(item.value) ? '#10B981' : '#6B7280'}
+                />
+                <Text style={styles.checkboxLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+            {errors.access ? <Text style={styles.errorText}>{errors.access}</Text> : null}
+          </View>
+          <View style={{ flex: 1 }} />
+
+          <TouchableOpacity
+            style={[styles.addButton, isLoading && styles.disabledButton]}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.addButtonText}>Add Staff</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 

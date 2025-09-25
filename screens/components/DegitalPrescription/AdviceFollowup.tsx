@@ -6,7 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -17,12 +20,11 @@ const AdviceScreen = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const route = useRoute<any>();
   const { patientDetails, formData: initialFormData } = route.params;
-  const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState(initialFormData || { advice: {} });
 
   const handleChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-
       advice: {
         ...prev.advice,
         [name]: value,
@@ -30,7 +32,7 @@ const AdviceScreen = () => {
     }));
   };
 
-  const onChange = (event, selectedDate) => {
+  const onChange = (event: any, selectedDate: Date | undefined) => {
     setShowDatePicker(false);
     if (selectedDate) {
       // Store in YYYY-MM-DD format for consistency
@@ -39,92 +41,124 @@ const AdviceScreen = () => {
     }
   };
 
+  // Adjust offset if you have a custom header; bump for larger headers
+  const keyboardVerticalOffset = Platform.select({ ios: 80, android: 80 }) as number;
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View>
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Advice & Follow-Up</Text>
-          <Text style={styles.stepText}>Step 5 of 5</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.flex}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <ScrollView
+            contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 140 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View>
+              <View style={styles.header}>
+                <Text style={styles.headerText}>Advice & Follow-Up</Text>
+                <Text style={styles.stepText}>Step 5 of 5</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>ℹ️ General Notes</Text>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Enter general notes..."
+                  placeholderTextColor={'#9CA3AF'}
+                  multiline
+                  value={formData.advice?.medicationNotes || ''}
+                  onChangeText={text => handleChange('medicationNotes', text)}
+                />
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>💡 Advice</Text>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Enter findings from clinical examination..."
+                  multiline
+                  value={formData.advice?.advice || ''}
+                  onChangeText={text => handleChange('advice', text)}
+                  placeholderTextColor={'#9CA3AF'}
+                />
+              </View>
+
+              <Text style={styles.cardTitle}>Follow-Ups</Text>
+
+              <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="dd-mmm-yyyy"
+                  value={
+                    formData.advice?.followUpDate
+                      ? moment(formData.advice.followUpDate).format('DD-MMM-YYYY')
+                      : ''
+                  }
+                  editable={false}
+                  pointerEvents="none"
+                  placeholderTextColor={'#9CA3AF'}
+                />
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  minimumDate={new Date()} // disable past dates
+                  onChange={onChange}
+                />
+              )}
+            </View>
+
+            {/* spacer so content can push up above the fixed buttons */}
+            <View style={{ flex: 1 }} />
+          </ScrollView>
+
+          {/* Fixed buttons at bottom */}
+          <View style={[styles.buttonRow, { paddingBottom: Platform.OS === 'ios' ? 20 : 12 }]}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                Keyboard.dismiss();
+                navigation.goBack();
+              }}
+            >
+              <Text style={[styles.buttonText, { color: '#000' }]}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.nextButton}
+              onPress={() =>
+                navigation.navigate('PrescriptionPreview', {
+                  patientDetails,
+                  formData,
+                })
+              }
+            >
+              <Text style={styles.buttonText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>ℹ️ General Notes</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="Enter general notes..."
-             placeholderTextColor={'#9CA3AF'}
-            multiline
-            value={formData.advice.medicationNotes || ''}
-            onChangeText={text => handleChange('medicationNotes', text)}
-          />
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>💡 Advice</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="Enter findings from clinical examination..."
-            multiline
-            value={formData.advice.advice || ''}
-            onChangeText={text => handleChange('advice', text)}
-            placeholderTextColor={'#9CA3AF'}
-          />
-        </View>
-
-        <Text style={styles.cardTitle}>Follow-Ups</Text>
-
-        <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-          <TextInput
-            style={styles.input}
-            placeholder="dd-mmm-yyyy"
-            value={
-              formData.advice.followUpDate
-                ? moment(formData.advice.followUpDate).format('DD-MMM-YYYY')
-                : ''
-            }
-            editable={false}
-            pointerEvents="none"
-            placeholderTextColor={'#9CA3AF'}
-          />
-        </TouchableOpacity>
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={new Date()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            minimumDate={new Date()} // disable past dates
-            onChange={onChange}
-          />
-        )}
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.cancelButton}>
-          <Text style={styles.buttonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.nextButton}
-          onPress={() =>
-            navigation.navigate('PrescriptionPreview', {
-              patientDetails,
-              formData,
-            })
-          }
-        >
-          <Text style={styles.buttonText}>Confirm</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 export default AdviceScreen;
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: {
-    padding: 16,
+    flex: 1,
     backgroundColor: '#F0FDF4',
+  },
+  scrollContent: {
+    padding: 16,
   },
   header: {
     flexDirection: 'row',
@@ -181,7 +215,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
     backgroundColor: '#fff',
-    color:'black'
+    color: 'black',
   },
   input: {
     borderWidth: 1,
@@ -192,23 +226,35 @@ const styles = StyleSheet.create({
     color: 'black',
   },
   buttonRow: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#F0FDF4',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 24,
-    marginTop: 20,
+    paddingVertical: 12,
   },
   cancelButton: {
     backgroundColor: '#ccc',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+    alignItems: 'center',
   },
   nextButton: {
     backgroundColor: '#007bff',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',

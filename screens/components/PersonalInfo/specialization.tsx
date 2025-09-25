@@ -13,7 +13,6 @@ import {
   ScrollView,
   SafeAreaView,
   Modal,
-  FlatList,
   Pressable,
 } from 'react-native';
 import CheckBox from '@react-native-community/checkbox';
@@ -24,10 +23,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
 import ProgressBar from '../progressBar/progressBar';
-import { AuthFetch, UploadFiles } from '../../auth/auth';
+import { AuthFetch, UpdateFiles, UploadFiles } from '../../auth/auth';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import { Picker } from '@react-native-picker/picker';
 
 // Specialization options
 const specializationOptions = [
@@ -140,28 +138,32 @@ const SpecializationDetails = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [specializationModalVisible, setSpecializationModalVisible] = useState(false);
   const [tempDegrees, setTempDegrees] = useState<string[]>(
     formData.degree ? formData.degree.split(',').map(deg => deg.trim()).filter(deg => deg) : []
   );
   const [uploadedFiles, setUploadedFiles] = useState({
     degrees: { name: '', file: null as { uri: string; type: string; name: string } | null },
-    certifications: { name: '', file: null as { uri: string; type: string; name: string } | null }
+    certifications: { name: '', file: null as { uri: string; type: string; name: string } | null },
   });
   const [errors, setErrors] = useState({
     degree: '',
     specialization: '',
     yearsExperience: '',
   });
+  const [degreeSearch, setDegreeSearch] = useState('');
+  const [specializationSearch, setSpecializationSearch] = useState('');
   const navigation = useNavigation<NavigationProp>();
+  const [loadingUser, setLoadingUser] = useState(false);
 
   const handleRemoveFile = (field: 'degrees' | 'certifications') => {
     setFormData({
       ...formData,
-      [field]: null
+      [field]: null,
     });
     setUploadedFiles(prev => ({
       ...prev,
-      [field]: { name: '', file: null }
+      [field]: { name: '', file: null },
     }));
   };
 
@@ -193,11 +195,13 @@ const SpecializationDetails = () => {
       customDegree: tempDegrees.includes('Others') ? formData.customDegree : '',
     });
     setModalVisible(false);
+    setDegreeSearch('');
   };
 
   const handleCancel = () => {
     setTempDegrees(formData.degree ? formData.degree.split(',').map(deg => deg.trim()).filter(deg => deg) : []);
     setModalVisible(false);
+    setDegreeSearch('');
   };
 
   const renderDegreeItem = ({ item }: { item: { id: string; degreeName: string } }) => (
@@ -276,8 +280,8 @@ const SpecializationDetails = () => {
                       uri: asset.uri,
                       type: asset.type || 'image/jpeg',
                       name: asset.fileName || 'file.jpg',
-                    }
-                  }
+                    },
+                  },
                 }));
               } else {
                 Toast.show({
@@ -320,8 +324,8 @@ const SpecializationDetails = () => {
                       uri: asset.uri,
                       type: asset.type || 'image/jpeg',
                       name: asset.fileName || 'file.jpg',
-                    }
-                  }
+                    },
+                  },
                 }));
               } else {
                 Toast.show({
@@ -332,7 +336,6 @@ const SpecializationDetails = () => {
                   visibilityTime: 4000,
                 });
               }
-
             } catch (error) {
               Alert.alert('Error', 'Gallery access failed.');
             }
@@ -363,8 +366,8 @@ const SpecializationDetails = () => {
                       uri: result.uri,
                       type: result.type || 'application/pdf',
                       name: result.name || 'file.pdf',
-                    }
-                  }
+                    },
+                  },
                 }));
               } else {
                 Toast.show({
@@ -418,7 +421,7 @@ const SpecializationDetails = () => {
         } as any);
       }
 
-      const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
+      const response = await UpdateFiles('users/updateSpecialization', formDataObj, token);
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -477,7 +480,7 @@ const SpecializationDetails = () => {
       });
     }
   };
-const [loadingUser, setLoadingUser] = useState(false);
+
   const fetchUserData = async () => {
     setLoadingUser(true);
     try {
@@ -531,8 +534,8 @@ const [loadingUser, setLoadingUser] = useState(false);
         }
       }
     } catch (error) {
-      Alert.alert('Error', error?.message ||'Failed to load user data.');
-    }finally{
+      Alert.alert('Error', error?.message || 'Failed to load user data.');
+    } finally {
       setLoadingUser(false);
     }
   };
@@ -541,6 +544,27 @@ const [loadingUser, setLoadingUser] = useState(false);
     fetchUserData();
     fetchDegrees();
   }, []);
+
+  // Filter degrees based on search term (case-insensitive). Ensure 'Others' is included.
+  const filteredDegreeList = (() => {
+    const search = degreeSearch.trim().toLowerCase();
+    const base = degreeList;
+    if (!search) return base;
+    const filtered = base.filter(d => d.degreeName.toLowerCase().includes(search));
+    // ensure 'Others' is present (so user can always pick custom)
+    if (!filtered.some(d => d.degreeName === 'Others')) {
+      const others = base.find(d => d.degreeName === 'Others');
+      if (others) filtered.push(others);
+    }
+    return filtered;
+  })();
+
+  // Filter specializations based on search (case-insensitive)
+  const filteredSpecializations = (() => {
+    const s = specializationSearch.trim().toLowerCase();
+    if (!s) return specializationOptions;
+    return specializationOptions.filter(spec => spec.toLowerCase().includes(s));
+  })();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -583,16 +607,27 @@ const [loadingUser, setLoadingUser] = useState(false);
                   <View style={styles.modalContent}>
                     <Text style={styles.modalTitle}>Select Degrees</Text>
 
-                    {/* Replace FlatList with ScrollView for better control */}
+                    {/* Search input */}
+                    <View style={{ marginBottom: 10 }}>
+                      <TextInput
+                        placeholder="Search degrees..."
+                        placeholderTextColor="#999"
+                        value={degreeSearch}
+                        onChangeText={setDegreeSearch}
+                        style={[styles.input, styles.searchInput]}
+                        editable={!isLoading}
+                      />
+                    </View>
+
                     <ScrollView
                       style={styles.listContainer}
                       keyboardShouldPersistTaps="handled"
                       bounces={false}
                     >
-                      {degreeList.map((item) => (
+                      {filteredDegreeList.map((item) => (
                         <Pressable
                           key={item.id}
-                          style={styles.checkboxContainer}
+                          style={styles.checkboxRow}
                           onPress={() => handleDegreeChange(item.degreeName)}
                         >
                           <CheckBox
@@ -636,22 +671,71 @@ const [loadingUser, setLoadingUser] = useState(false);
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Specialization(s)*</Text>
-              <View style={[styles.input, styles.pickerContainer, errors.specialization ? styles.inputError : null]}>
-                <Picker
-                  selectedValue={formData.specialization}
-                  onValueChange={(itemValue) => {
-                    setFormData({ ...formData, specialization: itemValue });
-                    setErrors(prev => ({ ...prev, specialization: '' }));
-                  }}
-                  style={styles.picker}
-                  enabled={!isLoading}
-                >
-                  <Picker.Item label="Select specialization" value="" />
-                  {specializationOptions.map((spec, index) => (
-                    <Picker.Item key={index} label={spec} value={spec} />
-                  ))}
-                </Picker>
-              </View>
+
+              <TouchableOpacity
+                style={[styles.input, styles.dropdownButton, errors.specialization ? styles.inputError : null]}
+                onPress={() => !isLoading && setSpecializationModalVisible(true)}
+                disabled={isLoading}
+              >
+                <Text style={styles.dropdownText}>
+                  {formData.specialization || 'Select specialization'}
+                </Text>
+              </TouchableOpacity>
+
+              <Modal
+                visible={specializationModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setSpecializationModalVisible(false)}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select Specialization</Text>
+
+                    <View style={{ marginBottom: 10 }}>
+                      <TextInput
+                        placeholder="Search specializations..."
+                        placeholderTextColor="#999"
+                        value={specializationSearch}
+                        onChangeText={setSpecializationSearch}
+                        style={[styles.input, styles.searchInput]}
+                        editable={!isLoading}
+                      />
+                    </View>
+
+                    <ScrollView style={styles.listContainer} keyboardShouldPersistTaps="handled" bounces={false}>
+                      {filteredSpecializations.length === 0 ? (
+                        <Text style={{ textAlign: 'center', color: '#666', marginTop: 20 }}>No specializations found.</Text>
+                      ) : (
+                        filteredSpecializations.map((spec, idx) => (
+                          <Pressable
+                            key={idx}
+                            style={styles.checkboxRow}
+                            onPress={() => {
+                              setFormData({ ...formData, specialization: spec });
+                              setErrors(prev => ({ ...prev, specialization: '' }));
+                              setSpecializationSearch('');
+                              setSpecializationModalVisible(false);
+                            }}
+                          >
+                            <Text style={styles.checkboxLabel}>{spec}</Text>
+                          </Pressable>
+                        ))
+                      )}
+                    </ScrollView>
+
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity style={styles.modalButton} onPress={() => { setSpecializationModalVisible(false); setSpecializationSearch(''); }} disabled={isLoading}>
+                        <Text style={styles.modalButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.modalButton} onPress={() => { setSpecializationModalVisible(false); }} disabled={isLoading}>
+                        <Text style={styles.modalButtonText}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+
               {errors.specialization ? (
                 <Text style={styles.errorText}>{errors.specialization}</Text>
               ) : null}
@@ -1008,10 +1092,12 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 10,
   },
-  flatList: {
-    maxHeight: 300,
-  },
   checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
@@ -1038,11 +1124,8 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     fontWeight: '600',
   },
-  fileNameText: {
-    fontSize: width * 0.035,
-    color: '#00203F',
-    marginTop: height * 0.005,
-    fontStyle: 'italic',
+  searchInput: {
+    height: 44,
   },
   errorText: {
     color: '#D32F2F',

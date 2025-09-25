@@ -1,3 +1,4 @@
+// PracticeScreen.tsx
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
@@ -7,7 +8,6 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
-  FlatList,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -15,9 +15,10 @@ import {
   Linking,
   Alert,
   Image,
+  Keyboard,
+  KeyboardEvent,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation,useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -28,14 +29,12 @@ import {
   getCurrentStepIndex,
   TOTAL_STEPS,
 } from '../../utility/registrationSteps';
-import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthFetch, AuthPost } from '../../auth/auth';
-import { typesAreEqual } from '@react-native-documents/picker/lib/typescript/types';
- 
-// Initialize Geocoder with your Google Maps API key
+
+// Initialize Geocoder (keep your key)
 Geocoder.init('AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo');
- 
+
 interface Address {
   address: string;
   pincode: string;
@@ -50,16 +49,7 @@ interface Address {
   latitude: string;
   longitude: string;
 }
- 
-interface Suggestion {
-  description: string;
-  place_id: string;
-  structured_formatting?: {
-    main_text: string;
-    secondary_text: string;
-  };
-}
- 
+
 interface Errors {
   clinicName?: string;
   mobile?: string;
@@ -68,13 +58,21 @@ interface Errors {
   city?: string;
   state?: string;
   country?: string;
+  latitude?: string;
+  longitude?: string;
 }
- 
+
 const { width, height } = Dimensions.get('window');
- 
+
+let markerImage: number | null = null;
+try {
+  markerImage = require('../../assets/marker.png');
+} catch (e) {
+  markerImage = null;
+}
+
 const PracticeScreen = () => {
   const navigation = useNavigation<any>();
-  const [affiliation, setAffiliation] = useState<string | null>(null);
   const [opdAddresses, setOpdAddresses] = useState<Address[]>([
     {
       address: '',
@@ -92,60 +90,92 @@ const PracticeScreen = () => {
     },
   ]);
 
+  // composite key used for internal dedupe if needed
   const buildClinicKey = (a: { clinicName?: string; city?: string; pincode?: string }) =>
     `${(a.clinicName || '').trim().toLowerCase()}|${(a.city || '').trim().toLowerCase()}|${(a.pincode || '').trim()}`;
 
-  const [existingAddressKeys, setExistingAddressKeys] = useState<Set<string>>(new Set());
-  const [prefilledKeys, setPrefilledKeys] = useState<Set<string>>(new Set());
+  // normalized name key (server enforces uniqueness on clinicName)
+  const buildClinicNameKey = (a: { clinicName?: string }) =>
+    (a.clinicName || '').trim().toLowerCase();
+
+  const [existingAddressKeys, setExistingAddressKeys] = useState<Set<string>>(new Set()); // composite keys
+  const [prefilledKeys, setPrefilledKeys] = useState<Set<string>>(new Set()); // composite keys from server
+  const [existingClinicNameSet, setExistingClinicNameSet] = useState<Set<string>>(new Set()); // clinicName normalized
   const isPrefilledAddr = (addr: Address) => prefilledKeys.has(buildClinicKey(addr));
   const [errors, setErrors] = useState<{ [key: number]: Errors }>({});
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentOpdIndex, setCurrentOpdIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [searchResultsPerAddress, setSearchResultsPerAddress] = useState<{ [key: number]: any[] }>({});
-  const [showSearchResults, setShowSearchResults] = useState(false);
   const mapRefs = useRef<MapView[]>([]);
   const [searchQueryPerAddress, setSearchQueryPerAddress] = useState<{ [key: number]: string }>({});
   const [showSearchResultsPerAddress, setShowSearchResultsPerAddress] = useState<{ [key: number]: boolean }>({});
   const [locationRetryCount, setLocationRetryCount] = useState(0);
   const locationRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
- 
+  const [pointerCoordsPerAddress, setPointerCoordsPerAddress] = useState<{ [key: number]: { latitude: number; longitude: number } | null }>({});
+  const reverseGeoDebounceRefs = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
+  const lastPanUpdateRefs = useRef<{ [key: number]: number }>({});
+  const lastAutoSelectedRefs = useRef<{ [key: number]: string }>({});
+
+  // ---------- NEW: keyboard state ----------
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // -----------------------------------------
+
   const isValidMobile = (mobile: string): boolean => {
     return mobile.length === 10 && /^[6-9]\d{9}$/.test(mobile);
   };
 
+  const isInIndia = (latitude: number, longitude: number) =>
+    latitude >= 6.554607 && latitude <= 35.674545 && longitude >= 68.111378 && longitude <= 97.395561;
 
-  
- 
   useEffect(() => {
-    setCurrentOpdIndex(opdAddresses.length - 1);
+    setCurrentOpdIndex(0);
   }, [opdAddresses.length]);
- 
-  // Initialize location for all addresses when component mounts
+
   useEffect(() => {
     const initializeAllLocations = async () => {
       for (let i = 0; i < opdAddresses.length; i++) {
         await initLocation(i);
       }
     };
- 
+
     initializeAllLocations();
- 
-    // Clean up any pending timeouts when component unmounts
+
     return () => {
-      if (locationRetryTimeoutRef.current) {
-        clearTimeout(locationRetryTimeoutRef.current);
+      if (locationRetryTimeoutRef.current) clearTimeout(locationRetryTimeoutRef.current);
+      Object.values(reverseGeoDebounceRefs.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---------- NEW: keyboard listeners ----------
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e: KeyboardEvent) => {
+        const h = e.endCoordinates ? e.endCoordinates.height : 0;
+        setKeyboardHeight(h);
+        setKeyboardVisible(true);
       }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
     };
   }, []);
- 
-  // Request location permission
+  // --------------------------------------------
+
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
       try {
@@ -166,23 +196,22 @@ const PracticeScreen = () => {
     }
     return true;
   };
- 
-  // Fetch address from coordinates
-  const fetchAddressDetails = async (latitude: number, longitude: number, index: number) => {
+
+  const fetchAddressDetails = async (latitude: number, longitude: number, index: number, setAsSelected = true, force = false) => {
     setIsFetchingLocation(true);
     try {
       const response = await Geocoder.from(latitude, longitude);
- 
+
       if (response.results && response.results.length > 0) {
         const result = response.results[0];
         const addressComponents = result.address_components;
- 
+
         let address = '';
         let city = '';
         let state = '';
         let pincode = '';
         let country = 'India';
- 
+
         addressComponents.forEach((component: any) => {
           if (component.types.includes('street_number') || component.types.includes('route')) {
             address += component.long_name + ' ';
@@ -200,32 +229,37 @@ const PracticeScreen = () => {
             country = component.long_name;
           }
         });
- 
+
         address = address.trim() || result.formatted_address;
- 
-        setOpdAddresses(prev => {
-            const updated = [...prev];
-   updated[index] = {
-     ...updated[index],
-     address,
-     pincode,
-     city,
-     state,
-     country,
-     latitude: latitude.toString(),
-     longitude: longitude.toString(),
-   };
-   return updated;
- });
- 
-        // Update search query for this address
-        setSearchQueryPerAddress(prev => ({
-          ...prev,
-          [index]: address
-        }));
- 
-        // Reset retry count on success
-        setLocationRetryCount(0);
+
+        const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        if (lastAutoSelectedRefs.current[index] === key && setAsSelected && !force) {
+          // already selected, skip
+        } else {
+          if (setAsSelected) {
+            setOpdAddresses(prev => {
+              const updated = [...prev];
+              updated[index] = {
+                ...updated[index],
+                address,
+                pincode,
+                city,
+                state,
+                country,
+                latitude: latitude.toString(),
+                longitude: longitude.toString(),
+              };
+              return updated;
+            });
+
+            setSearchQueryPerAddress(prev => ({
+              ...prev,
+              [index]: address
+            }));
+
+            setLocationRetryCount(0);
+          }
+        }
       } else {
         Toast.show({
           type: 'error',
@@ -247,8 +281,7 @@ const PracticeScreen = () => {
       setIsFetchingLocation(false);
     }
   };
- 
-  // Initialize map with current location
+
   const initLocation = async (index: number) => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
@@ -262,47 +295,61 @@ const PracticeScreen = () => {
       );
       return;
     }
- 
+
     setIsFetchingLocation(true);
- 
-    // Configure high accuracy for better indoor positioning
+
     const locationOptions = {
       enableHighAccuracy: true,
-      timeout: 15000, // 15 seconds timeout
-      maximumAge: 10000, // Accept cached location up to 10 seconds old
+      timeout: 15000,
+      maximumAge: 10000,
     };
- 
+
     Geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+
+        if (!isInIndia(latitude, longitude)) {
+          Alert.alert(
+            'Invalid Location',
+            'Location appears outside India. Please select a location manually or ensure location services are correct.',
+            [{ text: 'OK', style: 'cancel' }]
+          );
+          setIsFetchingLocation(false);
+          return;
+        }
+
         const newRegion = {
           latitude,
           longitude,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
- 
+
         setOpdAddresses(prev => {
-   const updated = [...prev];
-   if (!updated[index]) return prev;
-   updated[index] = {
-     ...updated[index],
-     latitude: latitude.toString(),
-     longitude: longitude.toString(),
-   };
-   return updated;
- });
- 
+          const updated = [...prev];
+          if (!updated[index]) return prev;
+          updated[index] = {
+            ...updated[index],
+            latitude: latitude.toString(),
+            longitude: longitude.toString(),
+          };
+          return updated;
+        });
+
+        setPointerCoordsPerAddress(prev => ({
+          ...prev,
+          [index]: { latitude, longitude }
+        }));
+
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 1000);
         }
- 
+
         fetchAddressDetails(latitude, longitude, index);
       },
       (error) => {
-        // Handle different error codes
         let errorMessage = 'Unable to fetch current location.';
- 
+
         if (error.code === error.PERMISSION_DENIED) {
           errorMessage = 'Location permission denied. Please enable location permissions in settings.';
         } else if (error.code === error.POSITION_UNAVAILABLE) {
@@ -310,20 +357,10 @@ const PracticeScreen = () => {
         } else if (error.code === error.TIMEOUT) {
           errorMessage = 'Location request timed out. Please try again.';
         }
- 
-        // If we're indoors or have poor GPS, try again with a different approach
+
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
- 
-          Toast.show({
-            type: 'info',
-            text1: 'Getting Location',
-            text2: `Trying again... Attempt ${locationRetryCount + 1} of 3`,
-            position: 'top',
-            visibilityTime: 2000,
-          });
- 
-          // Retry after a delay with different settings
+
           locationRetryTimeoutRef.current = setTimeout(() => {
             initLocationWithRetry(index);
           }, 2000);
@@ -343,28 +380,37 @@ const PracticeScreen = () => {
             ]
           );
         }
- 
+
         setIsFetchingLocation(false);
       },
       locationOptions
     );
   };
- 
-  // Alternative method for getting location with different settings
+
   const initLocationWithRetry = async (index: number) => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) return;
- 
-    // Use different settings for retry
+
     const retryOptions = {
-      enableHighAccuracy: locationRetryCount > 1, // Try high accuracy on second retry
-      timeout: 20000, // Longer timeout
-      maximumAge: 30000, // Accept older locations
+      enableHighAccuracy: locationRetryCount > 1,
+      timeout: 20000,
+      maximumAge: 30000,
     };
- 
+
     Geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+
+        if (!isInIndia(latitude, longitude)) {
+          Alert.alert(
+            'Invalid Location',
+            'Location appears outside India. Please select a location manually or ensure location services are correct.',
+            [{ text: 'OK', style: 'cancel' }]
+          );
+          setIsFetchingLocation(false);
+          return;
+        }
+
         const newRegion = {
           latitude,
           longitude,
@@ -379,20 +425,23 @@ const PracticeScreen = () => {
             ...updated[index],
             latitude: latitude.toString(),
             longitude: longitude.toString(),
-   };
-   return updated;
- });
- 
+          };
+          return updated;
+        });
+
+        setPointerCoordsPerAddress(prev => ({
+          ...prev,
+          [index]: { latitude, longitude }
+        }));
+
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 1000);
         }
- 
+
         fetchAddressDetails(latitude, longitude, index);
       },
       (error) => {
         setIsFetchingLocation(false);
- 
-        // If this retry also failed, try the original method again
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
           setTimeout(() => initLocation(index), 2000);
@@ -401,14 +450,13 @@ const PracticeScreen = () => {
       retryOptions
     );
   };
- 
-  // Update handleSearch function
+
   const handleSearch = async (query: string, index: number) => {
     setSearchQueryPerAddress(prev => ({
       ...prev,
       [index]: query
     }));
- 
+
     if (query.length < 3) {
       setSearchResultsPerAddress(prev => ({
         ...prev,
@@ -420,14 +468,14 @@ const PracticeScreen = () => {
       }));
       return;
     }
- 
+
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
           query
         )}&key=AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo&components=country:in`
       );
- 
+
       const data = await response.json();
       if (data.status === 'OK') {
         setSearchResultsPerAddress(prev => ({
@@ -451,8 +499,7 @@ const PracticeScreen = () => {
       }));
     }
   };
- 
-  // Handle selecting a search result
+
   const handleSelectSearchResult = async (result: any, index: number) => {
     setSearchQueryPerAddress(prev => ({
       ...prev,
@@ -463,19 +510,33 @@ const PracticeScreen = () => {
       [index]: false
     }));
     setIsFetchingLocation(true);
- 
+
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/details/json?place_id=${result.place_id}&key=AIzaSyCrmF3351j82RVuTZbVBJ-X3ufndylJsvo`
       );
- 
+
       const data = await response.json();
       if (data.status === 'OK') {
         const place = data.result;
         const location = place.geometry.location;
         const latitude = location.lat;
         const longitude = location.lng;
- 
+
+        const countryComponent = (place.address_components || []).find((component: any) =>
+          (component.types || []).includes('country')
+        );
+
+        if (!countryComponent || countryComponent.short_name !== 'IN') {
+          Alert.alert(
+            'Invalid Location',
+            'Please select a location within India.',
+            [{ text: 'OK', style: 'cancel' }]
+          );
+          setIsFetchingLocation(false);
+          return;
+        }
+
         const newRegion = {
           latitude,
           longitude,
@@ -484,19 +545,24 @@ const PracticeScreen = () => {
         };
 
         setOpdAddresses(prev => {
-   const updated = [...prev];
-   updated[index] = {
-     ...updated[index],
-     latitude: latitude.toString(),
-     longitude: longitude.toString(),
-   };
-   return updated;
- });
- 
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            latitude: latitude.toString(),
+            longitude: longitude.toString(),
+          };
+          return updated;
+        });
+
+        setPointerCoordsPerAddress(prev => ({
+          ...prev,
+          [index]: { latitude, longitude }
+        }));
+
         if (mapRefs.current[index]) {
           mapRefs.current[index].animateToRegion(newRegion, 500);
         }
- 
+
         fetchAddressDetails(latitude, longitude, index);
       }
     } catch (error) {
@@ -505,41 +571,194 @@ const PracticeScreen = () => {
       setIsFetchingLocation(false);
     }
   };
- 
-  // Handle map press to select a location
+
+  const LIVE_REVERSE_DEBOUNCE_MS = 600;
+  const FINAL_REVERSE_DEBOUNCE_MS = 700;
+
+  const handleRegionChange = (index: number, r: Region) => {
+    const now = Date.now();
+    if (now - (lastPanUpdateRefs.current[index] || 0) < 120) return;
+    lastPanUpdateRefs.current[index] = now;
+
+    setPointerCoordsPerAddress(prev => ({
+      ...prev,
+      [index]: { latitude: r.latitude, longitude: r.longitude }
+    }));
+
+    setOpdAddresses(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        latitude: String(Number(r.latitude.toFixed(6))),
+        longitude: String(Number(r.longitude.toFixed(6))),
+      };
+      return updated;
+    });
+
+    setErrors(prev => {
+      const next = { ...prev };
+      if (next[index]) {
+        delete next[index].latitude;
+        delete next[index].longitude;
+      }
+      return next;
+    });
+
+    if (reverseGeoDebounceRefs.current[index]) {
+      clearTimeout(reverseGeoDebounceRefs.current[index] as NodeJS.Timeout);
+    }
+    reverseGeoDebounceRefs.current[index] = setTimeout(() => {
+      const key = `${r.latitude.toFixed(6)},${r.longitude.toFixed(6)}`;
+      if (lastAutoSelectedRefs.current[index] !== key) {
+        fetchAddressDetails(r.latitude, r.longitude, index, false);
+      }
+    }, LIVE_REVERSE_DEBOUNCE_MS);
+  };
+
+  const handleRegionChangeComplete = (index: number, r: Region) => {
+    setPointerCoordsPerAddress(prev => ({
+      ...prev,
+      [index]: { latitude: r.latitude, longitude: r.longitude }
+    }));
+
+    setOpdAddresses(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        latitude: String(Number(r.latitude.toFixed(6))),
+        longitude: String(Number(r.longitude.toFixed(6))),
+      };
+      return updated;
+    });
+
+    setShowSearchResultsPerAddress(prev => ({
+      ...prev,
+      [index]: false
+    }));
+
+    setErrors(prev => {
+      const next = { ...prev };
+      if (next[index]) {
+        delete next[index].latitude;
+        delete next[index].longitude;
+      }
+      return next;
+    });
+
+    if (reverseGeoDebounceRefs.current[index]) {
+      clearTimeout(reverseGeoDebounceRefs.current[index] as NodeJS.Timeout);
+    }
+    reverseGeoDebounceRefs.current[index] = setTimeout(() => {
+      const key = `${r.latitude.toFixed(6)},${r.longitude.toFixed(6)}`;
+      if (lastAutoSelectedRefs.current[index] !== key) {
+        lastAutoSelectedRefs.current[index] = key;
+        fetchAddressDetails(r.latitude, r.longitude, index, true);
+      }
+    }, FINAL_REVERSE_DEBOUNCE_MS);
+  };
+
   const handleMapPress = (index: number, event: any) => {
     const { coordinate } = event.nativeEvent;
     const { latitude, longitude } = coordinate;
- 
-    const updatedAddresses = [...opdAddresses];
-    updatedAddresses[index] = {
-      ...updatedAddresses[index],
-      latitude: latitude.toString(),
-      longitude: longitude.toString(),
-    };
-    setOpdAddresses(updatedAddresses);
- 
-    // Center map on selected location
+
+    if (!isInIndia(latitude, longitude)) {
+      Alert.alert(
+        'Invalid Location',
+        'Please select a location within India.',
+        [{ text: 'OK', style: 'cancel' }]
+      );
+      return;
+    }
+
+    setOpdAddresses(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+      };
+      return updated;
+    });
+
+    setPointerCoordsPerAddress(prev => ({
+      ...prev,
+      [index]: { latitude, longitude }
+    }));
+
     const newRegion = {
       latitude,
       longitude,
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
     };
- 
+
     if (mapRefs.current[index]) {
       mapRefs.current[index].animateToRegion(newRegion, 500);
     }
- 
+
     fetchAddressDetails(latitude, longitude, index);
   };
- 
-  // Move to current location
+
   const handleMyLocation = async (index: number) => {
     setLocationRetryCount(0);
     await initLocation(index);
   };
- 
+
+  const usePointerLocation = async (index: number) => {
+    try {
+      let center: { latitude: number; longitude: number } | null = null;
+      const mapAny: any = mapRefs.current[index] as any;
+
+      if (mapAny && typeof mapAny.getCamera === 'function') {
+        try {
+          const cam = await mapAny.getCamera();
+          if (cam && cam.center && typeof cam.center.latitude === 'number' && typeof cam.center.longitude === 'number') {
+            center = { latitude: cam.center.latitude, longitude: cam.center.longitude };
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (!center && pointerCoordsPerAddress[index]) {
+        center = {
+          latitude: pointerCoordsPerAddress[index]!.latitude,
+          longitude: pointerCoordsPerAddress[index]!.longitude
+        };
+      }
+
+      if (!center) {
+        Alert.alert('Location Error', 'Unable to determine map center. Please pan the map or try again.');
+        return;
+      }
+
+      if (!isInIndia(center.latitude, center.longitude)) {
+        Alert.alert('Invalid Location', 'Please select a location within India.');
+        return;
+      }
+
+      await fetchAddressDetails(center.latitude, center.longitude, index, true, true);
+    } catch (err: any) {
+      const center = pointerCoordsPerAddress[index];
+      if (center) {
+        if (!isInIndia(center.latitude, center.longitude)) {
+          Alert.alert('Invalid Location', 'Please select a location within India.');
+          return;
+        }
+        await fetchAddressDetails(center.latitude, center.longitude, index, true, true);
+        Toast.show({
+          type: 'success',
+          text1: 'Location set',
+          text2: `${center.latitude.toFixed(6)}, ${center.longitude.toFixed(6)}`,
+          position: 'top',
+          visibilityTime: 2000
+        });
+      } else {
+        Alert.alert('Error', 'Could not read map center. Please pan the map and try again.');
+      }
+    }
+  };
+
   const handleAddAddress = () => {
     const newAddress: Address = {
       address: '',
@@ -555,64 +774,58 @@ const PracticeScreen = () => {
       latitude: '20.5937',
       longitude: '78.9629',
     };
-    setOpdAddresses(prev => [...prev, newAddress]);
 
- 
-    // Initialize location for the new address
+    setOpdAddresses(prev => [newAddress, ...prev]);
+    mapRefs.current = [];
+    setCurrentOpdIndex(0);
     setTimeout(() => {
-      initLocation(opdAddresses.length);
+      initLocation(0);
     }, 100);
   };
- 
+
   const handleRemoveAddress = (index: number) => {
+    // Prevent removing prefilled (server-provided) addresses
+    const addr = opdAddresses[index];
+    if (isPrefilledAddr(addr)) {
+      Toast.show({
+        type: 'info',
+        text1: 'Cannot remove',
+        text2: 'This location was prefilled from your account and cannot be removed here.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
+    }
+
     setOpdAddresses(prev => prev.filter((_, i) => i !== index));
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[index];
-      return newErrors;
+      const shifted: { [key: number]: Errors } = {};
+      Object.keys(newErrors).forEach(k => {
+        const ki = Number(k);
+        if (ki > index) shifted[ki - 1] = newErrors[ki];
+        else if (ki < index) shifted[ki] = newErrors[ki];
+      });
+      return shifted;
     });
+    mapRefs.current = mapRefs.current.filter((_, i) => i !== index);
   };
- 
-  const handleTimeChange = (
-    event: any,
-    selectedTime: Date | undefined,
-    type: 'startTime' | 'endTime',
-    index: number,
-  ) => {
-    const currentTime = selectedTime || new Date();
-    setShowStartTimePicker(false);
-    setShowEndTimePicker(false);
-    const updatedAddresses = [...opdAddresses];
-    updatedAddresses[index][type] = currentTime
-      .toLocaleTimeString([], { hour: 'numeric', hour12: true })
-      .replace(':00', '');
-    setOpdAddresses(updatedAddresses);
-  };
- 
-  const parseTimeToMinutes = (timeStr: string): number => {
-    if (!timeStr) return -1;
-    const [hourStr, period] = timeStr.split(' ');
-    let hours = parseInt(hourStr, 10);
-    if (period?.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-    if (period?.toLowerCase() === 'am' && hours === 12) hours = 0;
-    return hours * 60;
-  };
- 
+
   const handleInputChange = (index: number, field: keyof Address, value: string) => {
- setOpdAddresses(prev => {
-   const updated = [...prev];
-   updated[index] = { ...updated[index], [field]: value } as Address;
-   return updated;
- });
- 
+    setOpdAddresses(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value } as Address;
+      return updated;
+    });
+
     if (field === 'address') {
       setSearchQueryPerAddress(prev => ({
         ...prev,
         [index]: value
       }));
     }
- 
-    // Clear error for the field when user starts typing
+
     setErrors(prev => ({
       ...prev,
       [index]: {
@@ -621,54 +834,51 @@ const PracticeScreen = () => {
       },
     }));
   };
- 
-  const validateFields = (address: Address, index: number) => {
+
+  const validateFields = (address: Address) => {
     const newErrors: Errors = {};
-    if (!address.clinicName.trim()) {
-      newErrors.clinicName = 'Clinic Name is required';
-    }
-    if (!address.mobile.trim()) {
-      newErrors.mobile = 'Mobile Number is required';
-    } else if (!isValidMobile(address.mobile)) {
-      newErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9';
-    }
-    if (!address.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-    if (!address.pincode.trim()) {
-      newErrors.pincode = 'Pincode is required';
-    } else if (!/^\d{6}$/.test(address.pincode)) {
-      newErrors.pincode = 'Enter a valid 6-digit pincode';
-    }
-    if (!address.city.trim()) {
-      newErrors.city = 'City is required';
-    }
-    if (!address.state.trim()) {
-      newErrors.state = 'State is required';
-    }
-    if (!address.country.trim()) {
-      newErrors.country = 'Country is required';
-    }
+    if (!address.clinicName.trim()) newErrors.clinicName = 'Clinic Name is required';
+    if (!address.mobile.trim()) newErrors.mobile = 'Mobile Number is required';
+    else if (!isValidMobile(address.mobile)) newErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9';
+    if (!address.address.trim()) newErrors.address = 'Address is required';
+    if (!address.pincode.trim()) newErrors.pincode = 'Pincode is required';
+    else if (!/^\d{6}$/.test(address.pincode)) newErrors.pincode = 'Enter a valid 6-digit pincode';
+    if (!address.city.trim()) newErrors.city = 'City is required';
+    if (!address.state.trim()) newErrors.state = 'State is required';
+    if (!address.country.trim()) newErrors.country = 'Country is required';
     return newErrors;
   };
- 
+
+  // convert time strings like "6 AM" or "6:30 PM" to "HH:MM"
+  function convertTo24HourFormat(timeStr: string): string {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    const parts = timeStr.trim().toLowerCase().split(/\s+/);
+    if (parts.length !== 2) return '';
+    const [time, marker] = parts;
+    let [hours, minutes] = time.split(':');
+    minutes = minutes || '00';
+    let hrs = parseInt(hours, 10);
+    if (isNaN(hrs)) return '';
+    if (marker === 'pm' && hrs !== 12) hrs += 12;
+    if (marker === 'am' && hrs === 12) hrs = 0;
+    return `${hrs.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+  }
+
   const handleNext = async () => {
     setLoading(true);
     const token = await AsyncStorage.getItem('authToken');
+
+    // validate
     let hasErrors = false;
     const newErrors: { [key: number]: Errors } = {};
- 
-    // Validate all addresses
     opdAddresses.forEach((addr, index) => {
-      const addressErrors = validateFields(addr, index);
-      if (Object.keys(addressErrors).length > 0) {
-        newErrors[index] = addressErrors;
+      const e = validateFields(addr);
+      if (Object.keys(e).length > 0) {
+        newErrors[index] = e;
         hasErrors = true;
       }
     });
- 
     setErrors(newErrors);
- 
     if (hasErrors) {
       Toast.show({
         type: 'error',
@@ -680,116 +890,146 @@ const PracticeScreen = () => {
       setLoading(false);
       return;
     }
- 
-    function convertTo24HourFormat(timeStr: string): string {
-      if (!timeStr || typeof timeStr !== 'string') return '';
- 
-      const parts = timeStr.trim().toLowerCase().split(/\s+/);
-      if (parts.length !== 2) return '';
- 
-      const [time, marker] = parts;
-      let [hours, minutes] = time.split(':');
-      minutes = minutes || '00';
- 
-      let hrs = parseInt(hours, 10);
-      if (isNaN(hrs)) return '';
- 
-      if (marker === 'pm' && hrs !== 12) hrs += 12;
-      if (marker === 'am' && hrs === 12) hrs = 0;
- 
-      return `${hrs.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
-    }
- 
+
+    // prepare payload with times converted
     const payload = opdAddresses.map(addr => ({
       ...addr,
       startTime: convertTo24HourFormat(addr?.startTime) || '06:00',
       endTime: convertTo24HourFormat(addr?.endTime) || '21:00',
     }));
- 
-    // Keep only NEW clinics (not already on server) and de-dup within current payload
-const uniqueToAddMap = new Map<string, typeof payload[0]>();
-for (const c of payload) {
-  const key = buildClinicKey(c);
-  if (!existingAddressKeys.has(key)) {
-    // last one wins if user added same clinic twice in this screen
-    uniqueToAddMap.set(key, c);
-  }
-}
-const toAdd = Array.from(uniqueToAddMap.values());
 
-if (toAdd.length === 0) {
-  Toast.show({
-    type: 'info',
-    text1: 'No new clinics',
-    text2: 'All listed clinics are already saved.',
-    position: 'top',
-    visibilityTime: 3000,
-  });
-  setLoading(false);
-  await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
-  navigation.navigate('ConsultationPreferences');
-  return;
-}
+    // Build a set of existing clinic names (normalized). Includes server prefilled names and any existingAddressKeys transformed.
+    const combinedExistingNameSet = new Set<string>();
+    // take names from prefilledKeys (we stored composite keys earlier) -> but we also have existingClinicNameSet
+    existingClinicNameSet.forEach(n => combinedExistingNameSet.add(n));
+    // and ensure existingAddressKeys also contribute names (split composite)
+    existingAddressKeys.forEach(k => {
+      const namePart = k.split('|')[0];
+      if (namePart) combinedExistingNameSet.add(namePart);
+    });
 
-// Post only the new clinics, navigate once at the end
-let allOk = true;
-for (const clinic of toAdd) {
-  const res = await AuthPost('users/addAddress', clinic, token);
-  console.log('Add clinic response:', res);
-  if (res?.status !== 'success') {
-    allOk = false;
-    if (response?.message?.message?.includes('E11000 duplicate key error collection: User.addresses index:')) {
-           Toast.show({
-          type: 'error',
-          text1: 'Failed to update practice details',
-          text2: 'Clinic name already exists. Please use a different name. or Skip to next step',
-          position: 'top',
-          visibilityTime: 4000,
-        });
-        }else{
-Toast.show({
-          type: 'error',
-          text1: 'Failed to update practice details',
-          text2: response?.message?.message || 'An unexpected error occurred. Please try again.',
-          position: 'top',
-          visibilityTime: 4000,
-        });
+    // Deduplicate / filter payload by clinic name (server constraint).
+    // last one wins: loop through payload and keep latest occurrence for each clinic name (normalized)
+    const uniqueByNameMap = new Map<string, typeof payload[0]>();
+    for (const p of payload) {
+      const nameKey = buildClinicNameKey(p);
+      uniqueByNameMap.set(nameKey, p);
+    }
+
+    // Now filter out any clinics whose name already exists on server (combinedExistingNameSet)
+    const toAddAll = Array.from(uniqueByNameMap.entries()).map(([nameKey, clinic]) => ({ nameKey, clinic }));
+
+    const skippedNames: string[] = [];
+    const toAdd: typeof payload = [];
+    for (const item of toAddAll) {
+      if (combinedExistingNameSet.has(item.nameKey)) {
+        skippedNames.push(item.clinic.clinicName);
+      } else {
+        toAdd.push(item.clinic);
+      }
+    }
+
+    if (skippedNames.length > 0 && toAdd.length === 0) {
+      // nothing to add - everything was already present by name
+      Toast.show({
+        type: 'info',
+        text1: 'No new clinics',
+        text2: `These clinic names already exist: ${skippedNames.join(', ')}`,
+        position: 'top',
+        visibilityTime: 4000,
+      });
+      setLoading(false);
+      await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
+      navigation.navigate('ConsultationPreferences');
+      return;
+    }
+
+    if (skippedNames.length > 0) {
+      Toast.show({
+        type: 'info',
+        text1: 'Success',
+        text2: `${skippedNames.join(', ')}`,
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    }
+
+    // Final server posting loop
+    let allOk = true;
+    try {
+      for (const clinic of toAdd) {
+        try {
+          const res = await AuthPost('users/addAddress', clinic, token);
+          if (res?.status !== 'success') {
+            allOk = false;
+            // Show server message if provided (handle duplicate key message defensively)
+            const serverMsg = res?.message?.message || res?.message || JSON.stringify(res);
+            if (typeof serverMsg === 'string' && serverMsg.includes('E11000 duplicate')) {
+              Toast.show({
+                type: 'error',
+                text1: 'Failed to update practice details',
+                text2: `Clinic name already exists: ${clinic.clinicName}.`,
+                position: 'top',
+                visibilityTime: 4000,
+              });
+            } else {
+              Toast.show({
+                type: 'error',
+                text1: 'Failed to update practice details',
+                text2: serverMsg || 'An unexpected error occurred. Please try again.',
+                position: 'top',
+                visibilityTime: 4000,
+              });
+            }
+            break;
+          } else {
+            const nameKey = buildClinicNameKey(clinic);
+            setExistingClinicNameSet(prev => new Set([...Array.from(prev), nameKey]));
+            const compKey = buildClinicKey(clinic);
+            setExistingAddressKeys(prev => new Set([...Array.from(prev), compKey]));
+          }
+        } catch (postErr) {
+          allOk = false;
+          Toast.show({
+            type: 'error',
+            text1: 'Network Error',
+            text2: 'Unable to add clinic. Please check your connection and try again.',
+            position: 'top',
+            visibilityTime: 4000,
+          });
+          break;
         }
-    break;
-  } else {
-    // optionally remember newly-added keys in this session
-    const k = buildClinicKey(clinic);
-    setExistingAddressKeys(prev => new Set([...Array.from(prev), k]));
-  }
-}
+      }
+    } finally {
+      setLoading(false);
+    }
 
-setLoading(false);
-if (allOk) {
-  Toast.show({
-    type: 'success',
-    text1: 'Success',
-    text2: 'Practice details updated successfully!',
-    position: 'top',
-    visibilityTime: 3000,
-  });
-  await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
-  navigation.navigate('ConsultationPreferences');
-}
-
-    setLoading(false);
+    if (allOk) {
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Practice details updated successfully!',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
+      navigation.navigate('ConsultationPreferences');
+    }
   };
- 
+
   const handleSkip = async () => {
     await AsyncStorage.setItem('currentStep', 'ConsultationPreferences');
-        navigation.navigate('ConsultationPreferences');
+    navigation.navigate('ConsultationPreferences');
   };
+
   const handleBack = () => {
     navigation.navigate('Specialization');
   };
- 
+
   const [specialization, setSpecialization] = useState('');
   const [skipButton, setSkipButton] = useState(false);
- const [loadingUser, setLoadingUser] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(false);
+
   const fetchUserData = async () => {
     setLoadingUser(true);
     try {
@@ -797,34 +1037,41 @@ if (allOk) {
       const response = await AuthFetch('users/getUser', token);
       if (response?.data?.status === 'success') {
         const userData = response.data.data;
-        setSpecialization(userData?.specialization[0]?.name);
- 
-        if (userData?.addresses && userData?.addresses?.length > 0) {
-          setSkipButton(true)
-          setOpdAddresses(
-         userData.addresses.map((a) => ({
-           address: a.address ?? '',
-           pincode: a.pincode ?? '',
-           city: a.city ?? '',
-           state: a.state ?? '',
-           startTime: a.startTime ?? '',
-           endTime: a.endTime ?? '',
-           clinicName: a.clinicName ?? '',
-           mobile: a.mobile ?? '',
-           type: a.type ?? 'Clinic',
-           country: a.country ?? 'India',
-           latitude: String(a.latitude ?? '20.5937'),
-           longitude: String(a.longitude ?? '78.9629'),
-         }))
-       );
-       setPrefilledKeys(
-         new Set((userData.addresses || []).map((a: any) => buildClinicKey(a)))
-       );
+        setSpecialization(userData?.specialization?.[0]?.name ?? '');
+
+        if (userData?.addresses && userData.addresses.length > 0) {
+          setSkipButton(true);
+          const mapped = userData.addresses.map((a: any) => ({
+            address: a.address ?? '',
+            pincode: a.pincode ?? '',
+            city: a.city ?? '',
+            state: a.state ?? '',
+            startTime: a.startTime ?? '',
+            endTime: a.endTime ?? '',
+            clinicName: a.clinicName ?? '',
+            mobile: a.mobile ?? '',
+            type: a.type ?? 'Clinic',
+            country: a.country ?? 'India',
+            latitude: String(a.latitude ?? '20.5937'),
+            longitude: String(a.longitude ?? '78.9629'),
+          }));
+          setOpdAddresses(mapped);
+
+          // build composite keys and normalized clinic-name set from server addresses
+          const serverCompKeys = new Set((userData.addresses || []).map((a: any) => buildClinicKey(a)));
+          setPrefilledKeys(serverCompKeys);
+          setExistingAddressKeys(prev => new Set([...Array.from(prev), ...Array.from(serverCompKeys)]));
+
+          const serverNameKeys = new Set((userData.addresses || []).map((a: any) => buildClinicNameKey(a)));
+          setExistingClinicNameSet(prev => new Set([...Array.from(prev), ...Array.from(serverNameKeys)]));
+
           setTimeout(() => {
-            userData.addresses.forEach((_, index) => {
+            userData.addresses.forEach((_: any, index: number) => {
               initLocation(index);
             });
           }, 500);
+        } else {
+          setSkipButton(false);
         }
       }
     } catch (error) {
@@ -835,38 +1082,38 @@ if (allOk) {
         position: 'top',
         visibilityTime: 4000,
       });
-    }finally{
+    } finally {
       setLoadingUser(false);
     }
   };
- 
- useFocusEffect(
-   useCallback(() => {
-     fetchUserData();
-   }, [])
- );
- 
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserData();
+    }, [])
+  );
+
   const isPhysio =
     Array.isArray(specialization)
       ? specialization.some(s => s?.trim().toLowerCase() === 'physiotherapist')
       : String(specialization ?? '').trim().toLowerCase() === 'physiotherapist';
- 
+
   const renderSearchItem = (result: any, index: number) => (
     <TouchableOpacity
       style={styles.searchItem}
       onPress={() => handleSelectSearchResult(result, index)}
     >
       <Text style={styles.searchItemMainText}>
-        {result.structured_formatting.main_text}
+        {result.structured_formatting?.main_text ?? result.description}
       </Text>
       <Text style={styles.searchItemSecondaryText}>
-        {result.structured_formatting.secondary_text}
+        {result.structured_formatting?.secondary_text ?? ''}
       </Text>
     </TouchableOpacity>
   );
+
   return (
     <KeyboardAvoidingView
-      // behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
     >
@@ -884,12 +1131,12 @@ if (allOk) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Practice</Text>
       </View>
- 
+
       <ProgressBar
         currentStep={getCurrentStepIndex('Practice')}
         totalSteps={TOTAL_STEPS}
       />
- 
+
       <ScrollView
         style={styles.formContainer}
         keyboardShouldPersistTaps="handled"
@@ -908,13 +1155,12 @@ if (allOk) {
               <Text style={styles.addButtonText}>+ Add Location</Text>
             </TouchableOpacity>
           </View>
- 
+
           {opdAddresses.map((addr, index) => (
             <View key={index} style={styles.addressContainer}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Location on Map</Text>
- 
-                {/* Location status indicator */}
+
                 {isFetchingLocation && (
                   <View style={styles.locationStatus}>
                     <ActivityIndicator size="small" color="#3182CE" />
@@ -926,8 +1172,7 @@ if (allOk) {
                     </Text>
                   </View>
                 )}
- 
-                {/* Search Input */}
+
                 <View style={styles.searchContainer} pointerEvents={isPrefilledAddr(addr) ? 'none' : 'auto'}>
                   <View style={styles.searchInputContainer}>
                     <Icon name="magnify" size={20} color="#6B7280" style={styles.searchIcon} />
@@ -954,12 +1199,11 @@ if (allOk) {
                       </TouchableOpacity>
                     )}
                   </View>
- 
-                  {/* Search Results */}
+
                   {showSearchResultsPerAddress[index] && searchResultsPerAddress[index] && searchResultsPerAddress[index].length > 0 && (
                     <View style={styles.searchResultsContainer}>
                       <ScrollView style={styles.searchResultsList}>
-                        {searchResultsPerAddress[index].map((result) => (
+                        {searchResultsPerAddress[index].map((result: any) => (
                           <View key={result.place_id}>
                             {renderSearchItem(result, index)}
                           </View>
@@ -968,7 +1212,7 @@ if (allOk) {
                     </View>
                   )}
                 </View>
- 
+
                 <View style={styles.mapContainer} pointerEvents={isPrefilledAddr(addr) ? 'none' : 'auto'}>
                   <MapView
                     ref={(ref) => {
@@ -984,6 +1228,8 @@ if (allOk) {
                       latitudeDelta: 0.01,
                       longitudeDelta: 0.01,
                     }}
+                    onRegionChange={(r) => handleRegionChange(index, r)}
+                    onRegionChangeComplete={(r) => handleRegionChangeComplete(index, r)}
                     onPress={(e) => handleMapPress(index, e)}
                     scrollEnabled={true}
                     zoomEnabled={true}
@@ -1000,14 +1246,24 @@ if (allOk) {
                       }}
                     />
                   </MapView>
- 
-                  {/* Custom center marker - placed outside MapView */}
+
                   <View style={styles.markerFixed}>
-                    <View style={styles.marker}>
-                      <View style={styles.markerInner} />
-                    </View>
+                    {markerImage ? (
+                      <Image source={markerImage as any} style={styles.markerImage} />
+                    ) : (
+                      <View style={styles.marker}>
+                        <View style={styles.markerInner} />
+                      </View>
+                    )}
                   </View>
- 
+
+                  {pointerCoordsPerAddress[index] && (
+                    <View style={styles.pointerPreview}>
+                      <Text style={{ fontSize: 10 }}>Lat: {pointerCoordsPerAddress[index]?.latitude.toFixed(6)}</Text>
+                      <Text style={{ fontSize: 10 }}>Lng: {pointerCoordsPerAddress[index]?.longitude.toFixed(6)}</Text>
+                    </View>
+                  )}
+
                   <TouchableOpacity
                     style={[styles.myLocationButton, isPrefilledAddr(addr) && { opacity: 0.5 }]}
                     onPress={() => handleMyLocation(index)}
@@ -1015,9 +1271,17 @@ if (allOk) {
                   >
                     <Icon name="crosshairs-gps" size={24} color="#3182CE" />
                   </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.usePointerButton, isPrefilledAddr(addr) && { opacity: 0.5 }]}
+                    onPress={() => usePointerLocation(index)}
+                    disabled={isPrefilledAddr(addr)}
+                  >
+                    <Text style={styles.usePointerText}>Use pointer location</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Clinic Name *</Text>
                 <TextInput
@@ -1036,7 +1300,7 @@ if (allOk) {
                   <Text style={styles.errorText}>{errors[index].clinicName}</Text>
                 )}
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Mobile *</Text>
                 <TextInput
@@ -1066,15 +1330,15 @@ if (allOk) {
                   <Text style={styles.errorText}>{errors[index].mobile}</Text>
                 )}
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Address *</Text>
                 <TextInput
                   style={[
-    styles.input,
-    errors[index]?.address && styles.inputError,
-    isPrefilledAddr(addr) && styles.inputDisabled,
-  ]}
+                    styles.input,
+                    errors[index]?.address && styles.inputError,
+                    isPrefilledAddr(addr) && styles.inputDisabled,
+                  ]}
                   placeholder="Address"
                   placeholderTextColor="#999"
                   value={addr.address}
@@ -1085,15 +1349,15 @@ if (allOk) {
                   <Text style={styles.errorText}>{errors[index].address}</Text>
                 )}
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Pincode *</Text>
                 <TextInput
-                   style={[
-    styles.input,
-    errors[index]?.pincode && styles.inputError,
-    isPrefilledAddr(addr) && styles.inputDisabled,
-  ]}
+                  style={[
+                    styles.input,
+                    errors[index]?.pincode && styles.inputError,
+                    isPrefilledAddr(addr) && styles.inputDisabled,
+                  ]}
                   placeholder="Pincode"
                   placeholderTextColor="#999"
                   value={addr.pincode}
@@ -1106,7 +1370,7 @@ if (allOk) {
                   <Text style={styles.errorText}>{errors[index].pincode}</Text>
                 )}
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>City *</Text>
                 <TextInput
@@ -1125,7 +1389,7 @@ if (allOk) {
                   <Text style={styles.errorText}>{errors[index].city}</Text>
                 )}
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>State *</Text>
                 <TextInput
@@ -1144,7 +1408,7 @@ if (allOk) {
                   <Text style={styles.errorText}>{errors[index].state}</Text>
                 )}
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Country *</Text>
                 <TextInput
@@ -1159,7 +1423,7 @@ if (allOk) {
                   <Text style={styles.errorText}>{errors[index].country}</Text>
                 )}
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Latitude</Text>
                 <TextInput
@@ -1171,7 +1435,7 @@ if (allOk) {
                   editable={false}
                 />
               </View>
- 
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Longitude</Text>
                 <TextInput
@@ -1183,35 +1447,61 @@ if (allOk) {
                   editable={false}
                 />
               </View>
- 
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => handleRemoveAddress(index)}
-                disabled={opdAddresses.length === 1}
-              >
-                <Text style={styles.removeText}>×</Text>
-              </TouchableOpacity>
+
+              {/* Remove button: hidden/disabled for prefilled addresses */}
+              {!isPrefilledAddr(addr) && (
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => handleRemoveAddress(index)}
+                  disabled={opdAddresses.length === 1}
+                >
+                  <Text style={styles.removeText}>×</Text>
+                </TouchableOpacity>
+              )}
+
+              {isPrefilledAddr(addr) && (
+                <View style={[styles.removeButton, { opacity: 0.5 }]}>
+                  {/* intentionally empty so layout stays consistent; no press */}
+                </View>
+              )}
             </View>
           ))}
         </View>
         <View style={styles.spacer} />
       </ScrollView>
-      <View style={styles.buttonsContainer}>
-       
-      </View>
-      {skipButton &&(
-<TouchableOpacity style={styles.nextButton} onPress={handleSkip}>
-        <Text style={styles.nextButtonText}>Skip</Text>
-      </TouchableOpacity>
-      )}
-     
-      <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+
+      {/* Skip button (floating) */}
+      {/* {skipButton && (
+        <TouchableOpacity
+          style={[
+            styles.skipButtonFloating,
+            {
+              bottom: keyboardVisible ? keyboardHeight + 12 : 16
+            }
+          ]}
+          onPress={handleSkip}
+        >
+          <Text style={styles.skipButtonText}>Skip</Text>
+        </TouchableOpacity>
+      )} */}
+
+      {/* Next button (floating) */}
+      <TouchableOpacity
+        style={[
+          styles.nextButtonFloating,
+          {
+            bottom: keyboardVisible ? keyboardHeight + (skipButton ? 100 : 42) : 42
+            // if skipButton is visible reserve space above it
+          }
+        ]}
+        onPress={handleNext}
+      >
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 };
- 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1246,7 +1536,7 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.03,
   },
   scrollContent: {
-    paddingBottom: height * 0.1,
+    paddingBottom: height * 0.28, // increased so floating buttons don't cover content
   },
   label: {
     fontSize: width * 0.04,
@@ -1322,24 +1612,53 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     fontWeight: '500',
   },
-  nextButton: {
+
+  // Floating Skip button (when keyboard open keep above keyboard)
+  skipButtonFloating: {
+    position: 'absolute',
+    left: width * 0.05,
+    right: width * 0.05,
     backgroundColor: '#00203F',
-    paddingVertical: height * 0.02,
+    paddingVertical: height * 0.015,
     borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: width * 0.05,
-    marginBottom: height * 0.03,
+    zIndex: 100,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
-    elevation: 5,
+    elevation: 8,
   },
+
+  skipButtonText: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+
+  // Floating Next button (always above skip button if skip present)
+  nextButtonFloating: {
+    position: 'absolute',
+    left: width * 0.05,
+    right: width * 0.05,
+    backgroundColor: '#00203F',
+    paddingVertical: height * 0.018,
+    borderRadius: 8,
+    alignItems: 'center',
+    zIndex: 110,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 10,
+  },
+
   nextButtonText: {
     color: '#fff',
     fontSize: width * 0.045,
     fontWeight: '600',
   },
+
   spacer: {
     height: height * 0.1,
   },
@@ -1355,7 +1674,6 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     marginTop: height * 0.02,
   },
-  // Map related styles
   mapContainer: {
     height: 200,
     borderRadius: 8,
@@ -1365,7 +1683,6 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  // Custom marker styles
   markerFixed: {
     position: 'absolute',
     left: '50%',
@@ -1374,6 +1691,11 @@ const styles = StyleSheet.create({
     marginTop: -24,
     zIndex: 15,
     pointerEvents: 'none',
+  },
+  markerImage: {
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
   },
   marker: {
     height: 48,
@@ -1411,17 +1733,50 @@ const styles = StyleSheet.create({
     elevation: 5,
     zIndex: 20,
   },
-  locationLoading: {
+  usePointerButton: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    zIndex: 20,
+  },
+  usePointerText: {
+    color: '#1E40AF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  pointerPreview: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    padding: 8,
+    borderRadius: 6,
+    zIndex: 21,
+  },
+  locationStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 10,
+    backgroundColor: '#EBF8FF',
+    padding: 8,
+    borderRadius: 4,
   },
-  locationLoadingText: {
+  locationStatusText: {
     marginLeft: 8,
     fontSize: 12,
-    color: '#718096',
+    color: '#3182CE',
   },
-  // Search related styles
+  inputDisabled: {
+    backgroundColor: '#F5F5F5',
+    color: '#999',
+  },
+  // search styles
   searchContainer: {
     position: 'relative',
     zIndex: 10,
@@ -1481,24 +1836,6 @@ const styles = StyleSheet.create({
     color: '#718096',
     marginTop: 2,
   },
-  // Location status indicator
-  locationStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    backgroundColor: '#EBF8FF',
-    padding: 8,
-    borderRadius: 4,
-  },
-  locationStatusText: {
-    marginLeft: 8,
-    fontSize: 12,
-    color: '#3182CE',
-  },
-  inputDisabled: {
-   backgroundColor: '#F5F5F5',
-   color: '#999',
- },
 });
- 
+
 export default PracticeScreen;

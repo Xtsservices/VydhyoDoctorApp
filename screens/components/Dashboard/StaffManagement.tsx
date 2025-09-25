@@ -126,45 +126,42 @@ const StaffManagement = () => {
     setAccessDropdownVisible(false);
   };
 
-  const handleEditSubmit = async () => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      const formatDOBToDDMMYYYY = (dobString: string): string => {
-        const date = new Date(dobString);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
+const handleEditSubmit = async () => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    const formatDOBToDDMMYYYY = (dobString: string): string => {
+      const date = new Date(dobString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    };
 
-      const { firstName, lastName, ...restForm } = form;
-      const payload = {
-        ...restForm,
-        stafftype: form.role,
-        userId: form.userId,
-        DOB: form.DOB,
-        firstname: form.firstName,
-        lastname: form.lastName
-      };
+    const { firstName, lastName, ...restForm } = form;
+    const payload = {
+      ...restForm,
+      stafftype: form.role,
+      userId: form.userId,
+      DOB: form.DOB,
+      firstname: form.firstName,
+      lastname: form.lastName
+    };
 
-      const res = await AuthPut('doctor/editReceptionist', payload, token);
-      if (res.status === 'success') {
-        fetchStaff();
-        Alert.alert('Success', 'Staff updated successfully');
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'Edited Successfully',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-        closeModal();
-        return;
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to update staff');
+    const res = await AuthPut('doctor/editReceptionist', payload, token);
+        if (res.status === 'success' || res.data?.status === 'success' || res.data?.status === 'Success') {
+      fetchStaff();
+      Alert.alert('Success', res.data?.message || res.message || 'Staff updated successfully');
+      closeModal();
+      return;
+    } else {
+      const errorMessage = res.message?.message || res.message || 'Failed to update staff';
+      Alert.alert('Error', errorMessage);
     }
-  };
+  } catch (err: any) {
+    const errorMessage = err.response?.data?.message || err.message || 'Failed to update staff';
+    Alert.alert('Error', errorMessage);
+  }
+};
 
   const handleDelete = async () => {
     try {
