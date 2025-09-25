@@ -657,7 +657,7 @@ const PersonalInfoScreen: React.FC = () => {
                   <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>Select Languages</Text>
                     <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
-                      <Icon name="times" size={20} color="#333" />
+                      {/* <Icon name="times" size={20} color="#333" /> */}
                     </TouchableOpacity>
                   </View>
 
