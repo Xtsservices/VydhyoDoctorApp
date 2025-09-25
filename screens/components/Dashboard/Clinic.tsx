@@ -906,7 +906,6 @@ n
       setInitialLoading(true);
       const token = await AsyncStorage.getItem('authToken');
       const res = await AuthFetch(`users/getClinicAddress?doctorId=${doctorId}`, token);
-
       let data: any[] | undefined;
       if ('data' in res && Array.isArray(res.data?.data)) {
         data = res.data?.data?.reverse();
@@ -1266,72 +1265,200 @@ n
     }
   };
 
-  const handlePharmacySubmit = async () => {
-    if (!selectedClinic) return;
+  // ✅ ADD just above handlePharmacySubmit / handleLabSubmit
+const validatePharmacyForm = (data: typeof form) => {
+  if (!data.pharmacyName?.trim()) return 'Pharmacy name is required';
+  if (!data.pharmacyAddress?.trim()) return 'Pharmacy address is required';
+  // Optional but helpful:
+  if (data.pharmacyRegNum && data.pharmacyRegNum.length < 3) return 'Enter a valid registration number';
+  return null;
+};
 
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('authToken');
-      const userIdLocal = await AsyncStorage.getItem('userId');
-      const formData = new FormData();
-      formData.append('userId', userIdLocal || '');
-      formData.append('addressId', selectedClinic.addressId || '');
-      formData.append('pharmacyName', form.pharmacyName);
-      formData.append('pharmacyRegistrationNo', form.pharmacyRegNum);
-      formData.append('pharmacyGst', form.pharmacyGST);
-      formData.append('pharmacyPan', form.pharmacyPAN);
-      formData.append('pharmacyAddress', form.pharmacyAddress);
+const validateLabForm = (data: typeof form) => {
+  if (!data.labName?.trim()) return 'Lab name is required';
+  if (!data.labAddress?.trim()) return 'Lab address is required';
+  if (data.labRegNum && data.labRegNum.length < 3) return 'Enter a valid registration number';
+  return null;
+};
 
-      if (pharmacyHeaderFile) formData.append('pharmacyHeader', pharmacyHeaderFile as any);
-      if (pharmacyQrFile) formData.append('pharmacyQR', pharmacyQrFile as any);
 
-      const response = await UploadFiles('users/addPharmacyToClinic', formData, token);
-      if (response.status === 'success') {
-        Toast.show({ type: 'success', text1: 'Success', text2: 'Pharmacy details added successfully', position: 'top', visibilityTime: 3000 });
-        setPharmacyModalVisible(false);
-        await fetchClinics();
-      } else {
-        Alert.alert('Warning', response?.message?.message || 'Failed to add pharmacy details');
+const handlePharmacySubmit = async () => {
+  if (!selectedClinic) return;
+
+  // ✅ validation
+  const err = validatePharmacyForm(form);
+  if (err) {
+     Alert.alert('Validation', err);
+    return;
+  }
+
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('authToken');
+    const userIdLocal = await AsyncStorage.getItem('userId');
+
+    // build payload once so we can reuse for bypass
+    const buildFD = () => {
+      const fd = new FormData();
+      fd.append('userId', userIdLocal || '');
+      fd.append('addressId', selectedClinic.addressId || '');
+      fd.append('pharmacyName', form.pharmacyName.trim());
+      fd.append('pharmacyRegistrationNo', form.pharmacyRegNum || '');
+      fd.append('pharmacyGst', form.pharmacyGST || '');
+      fd.append('pharmacyPan', form.pharmacyPAN || '');
+      fd.append('pharmacyAddress', form.pharmacyAddress.trim());
+      if (pharmacyHeaderFile) fd.append('pharmacyHeader', pharmacyHeaderFile as any);
+      if (pharmacyQrFile) fd.append('pharmacyQR', pharmacyQrFile as any);
+      return fd;
+    };
+
+    const fd = buildFD();
+    const res = await UploadFiles('users/addPharmacyToClinic', fd, token);
+
+
+    // warning (already registered) -> ask to bypass/link
+    const isWarning =
+      res?.data?.status === 'warning' ||
+      String(res?.message || res?.data?.message || '').toLowerCase().includes('already registered');
+
+    if (isWarning) {
+      const msg = res?.data?.message || res?.message || 'Pharmacy is already registered with another doctor.';
+      Alert.alert(
+        'Pharmacy already exists',
+        `${msg}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Link',
+            onPress: async () => {
+              try {
+                setLoading(true);
+                const bypassFd = buildFD();
+                const bypassRes = await UploadFiles('users/addPharmacyToClinic?bypassCheck=true', bypassFd, token);
+                if (bypassRes?.status === 'success') {
+                  Toast.show({ type: 'success', text1: 'Linked', text2: 'Pharmacy linked successfully', position: 'top' });
+                  setPharmacyModalVisible(false);
+                  await fetchClinics();
+                } else {
+                  Toast.show({ type: 'error', text1: 'Link failed', text2: bypassRes?.message || 'Could not link pharmacy', position: 'top' });
+                }
+              } catch (e: any) {
+                Toast.show({ type: 'error', text1: 'Link failed', text2: e?.message || 'Could not link pharmacy', position: 'top' });
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+      return;
+    }else{
+      if (res?.status === 'success') {
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Pharmacy details added successfully', position: 'top' });
+       setPharmacyModalVisible(false);
+     await fetchClinics();
+      return;
       }
-    } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to add pharmacy details. Please try again.');
-    } finally {
-      setLoading(false);
     }
-  };
+   if (res?.status !== 'success') {
+    Alert.alert('Error', res?.message?.message || 'Failed to add pharmacy details');
+   }
+  } catch (error: any) {
+    Alert.alert('Error', error?.message || 'Failed to add pharmacy details');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const handleLabSubmit = async () => {
-    if (!selectedClinic) return;
 
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('authToken');
-      const userIdLocal = await AsyncStorage.getItem('userId');
-      const formData = new FormData();
-      formData.append('userId', userIdLocal || '');
-      formData.append('addressId', selectedClinic.addressId || '');
-      formData.append('labName', form.labName);
-      formData.append('labRegistrationNo', form.labRegNum);
-      formData.append('labGst', form.labGST);
-      formData.append('labPan', form.labPAN);
-      formData.append('labAddress', form.labAddress);
-      if (labHeaderFile) formData.append('labHeader', labHeaderFile as any);
-      if (labQrFile) formData.append('labQR', labQrFile as any);
+const handleLabSubmit = async () => {
+  if (!selectedClinic) return;
 
-      const response = await UploadFiles('users/addLabToClinic', formData, token);
-      if (response.status === 'success') {
-        Toast.show({ type: 'success', text1: 'Success', text2: 'Lab details added successfully', position: 'top', visibilityTime: 3000 });
-        setLabModalVisible(false);
-        await fetchClinics();
-      } else {
-        Alert.alert('Warning', response?.message?.message || 'Failed to add lab details');
+  // ✅ validation
+  const err = validateLabForm(form);
+  if (err) {
+    Alert.alert('Validation', err);
+    return;
+  }
+
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('authToken');
+    const userIdLocal = await AsyncStorage.getItem('userId');
+
+    const buildFD = () => {
+      const fd = new FormData();
+      fd.append('userId', userIdLocal || '');
+      fd.append('addressId', selectedClinic.addressId);
+      fd.append('labName', form.labName);
+      fd.append('labRegistrationNo', form.labRegNum);
+      fd.append('labGst', form.labGST);
+      fd.append('labPan', form.labPAN);
+      fd.append('labAddress', form.labAddress);
+      if (labHeaderFile) fd.append('labHeader', labHeaderFile as any);
+      if (labQrFile) fd.append('labQR', labQrFile as any);
+      return fd;
+    };
+
+    const fd = buildFD();
+    const res = await UploadFiles('users/addLabToClinic', fd, token);
+    
+
+    const isWarning =
+      res?.data?.status === 'warning' ||
+      String(res?.message || res?.data?.message || '').toLowerCase().includes('already registered');
+
+    if (isWarning) {
+      const msg = res?.data?.message || res?.message || 'Lab is already registered with another doctor.';
+      Alert.alert(
+        'Lab already exists',
+        `${msg}\n\nDo you want to link this lab to this clinic?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Link',
+            onPress: async () => {
+              try {
+                setLoading(true);
+                const bypassFd = buildFD();
+                const bypassRes = await UploadFiles('users/addLabToClinic?bypassCheck=true', bypassFd, token);
+                if (bypassRes?.status === 'success') {
+                  Toast.show({ type: 'success', text1: 'Linked', text2: 'Lab linked successfully', position: 'top' });
+                  setLabModalVisible(false);
+                  await fetchClinics();
+                } else {
+                  Toast.show({ type: 'error', text1: 'Link failed', text2: bypassRes?.message || 'Could not link lab', position: 'top' });
+                }
+              } catch (e: any) {
+                Toast.show({ type: 'error', text1: 'Link failed', text2: e?.message || 'Could not link lab', position: 'top' });
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+      return;
+    }else{
+      if (res?.status === 'success') {
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Lab details added successfully', position: 'top' });
+       setLabModalVisible(false);
+     await fetchClinics();
+      return;
       }
-    } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to add lab details. Please try again.');
-    } finally {
-      setLoading(false);
     }
-  };
+if (res?.status !== 'success') {
+     Alert.alert('Error', res?.message?.message || 'Failed to add lab details');
+   }
+  } catch (error: any) {
+    Alert.alert('Error', error?.message || 'Failed to add lab details');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleDelete = async (addressId: any) => {
     try {

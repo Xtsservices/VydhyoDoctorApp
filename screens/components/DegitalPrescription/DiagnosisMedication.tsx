@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
-import { AuthPost, AuthFetch } from '../../auth/auth';
+import { AuthFetch } from '../../auth/auth';
 import { useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
@@ -26,31 +26,42 @@ const PrescriptionScreen = () => {
   const currentUser = useSelector((state: any) => state.currentUser);
   const doctorId = currentUser.role === 'doctor' ? currentUser.userId : currentUser.createdBy;
 
-  const [formData, setFormData] = useState(initialFormData || { diagnosis: { selectedTests: [], medications: [] } });
+  // master form data (tests + diagnosis + meds)
+  const [formData, setFormData] = useState(
+    initialFormData || { diagnosis: { selectedTests: [], medications: [] } }
+  );
+
+  // tests state
   const [testInput, setTestInput] = useState('');
   const [testList, setTestList] = useState<any[]>([]);
   const [testOptions, setTestOptions] = useState<any[]>([]);
   const [filteredTests, setFilteredTests] = useState<any[]>([]);
-  const [medications, setMedications] = useState<any[]>(formData?.diagnosis?.medications || []);
-  const [showMedicationForm, setShowMedicationForm] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<'test' | 'medicine' | null>(null);
+
+  // medicines/inventory state
   const [medInventory, setMedInventory] = useState<any[]>([]);
   const [medicineOptions, setMedicineOptions] = useState<any[]>([]);
   const [filteredMedicines, setFilteredMedicines] = useState<any[]>([]);
-  const [activeDropdown, setActiveDropdown] = useState<'test' | 'medicine' | null>(null);
+
+  // split medicines: saved cards vs draft form
+  const [savedMeds, setSavedMeds] = useState<any[]>(
+    formData?.diagnosis?.medications || []
+  );
+  const [draftMed, setDraftMed] = useState<any | null>(null);
+  const [showMedicationForm, setShowMedicationForm] = useState(false);
 
   const frequencyOptions = ['1-0-0', '1-0-1', '1-1-1', '0-0-1', '0-1-0', '1-1-0', '0-1-1', 'SOS'];
   const timingOptions = ['Before Breakfast', 'After Breakfast', 'Before Lunch', 'After Lunch', 'Before Dinner', 'After Dinner', 'Bedtime'];
   const medicineTypeOptions = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Drops'];
   const manualQuantityTypes = ['Syrup', 'Cream', 'Drops'];
 
+  // ---------- data fetchers ----------
   const fetchInventory = async () => {
     try {
       const storedToken = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch('pharmacy/getAllMedicinesByDoctorID', storedToken);
       const medicines = response?.data?.data || [];
-      const sortedMedicines = [...medicines].sort((a, b) =>
-        a.medName.localeCompare(b.medName)
-      );
+      const sortedMedicines = [...medicines].sort((a, b) => a.medName.localeCompare(b.medName));
       setMedInventory(sortedMedicines);
       setMedicineOptions(
         sortedMedicines.map((med) => ({
@@ -59,8 +70,8 @@ const PrescriptionScreen = () => {
           id: med._id,
         }))
       );
-    } catch (error) {
-      // keep original behavior (silent fail)
+    } catch {
+      // silent
     }
   };
 
@@ -72,7 +83,7 @@ const PrescriptionScreen = () => {
       const sorted = [...tests].sort((a, b) => a.testName.localeCompare(b.testName));
       setTestList(sorted);
       setTestOptions(sorted.map((test) => ({ value: test.testName, label: test.testName })));
-    } catch (error) {
+    } catch {
       // silent
     }
   };
@@ -82,6 +93,7 @@ const PrescriptionScreen = () => {
     fetchInventory();
   }, [doctorId]);
 
+  // keep tests suggestions filtered
   useEffect(() => {
     const matches = testOptions
       .filter((t) => t.label.toLowerCase().includes(testInput.toLowerCase()))
@@ -89,26 +101,52 @@ const PrescriptionScreen = () => {
     setFilteredTests(matches);
   }, [testInput, testOptions]);
 
+  // keep medicine suggestions filtered from draft name
   useEffect(() => {
-    if (medications.length > 0) {
-      const lastMed = medications[medications.length - 1];
-      const matches = medicineOptions
-        .filter((m) => m.label.toLowerCase().includes((lastMed.name || '').toLowerCase()))
-        .map((m) => m.label);
-      setFilteredMedicines(matches);
-    } else {
+    if (!draftMed?.name) {
       setFilteredMedicines([]);
+      return;
     }
-  }, [medications, medicineOptions]);
+    const matches = medicineOptions
+      .filter((m) => m.label.toLowerCase().includes(String(draftMed.name).toLowerCase()))
+      .map((m) => m.label);
+    setFilteredMedicines(matches);
+  }, [draftMed?.name, medicineOptions]);
 
+  // whenever savedMeds change, reflect back into formData (to keep downstream screens intact)
+  useEffect(() => {
+    setFormData((prev: any) => ({
+      ...prev,
+      diagnosis: { ...(prev?.diagnosis || {}), medications: savedMeds },
+    }));
+  }, [savedMeds]);
+
+  // ---------- helpers ----------
   const calculateQuantity = (frequency: string | null, duration: number | null, type: string | null) => {
-    if (manualQuantityTypes.includes(type || '')) {
-      return 0; // Will be entered manually
-    }
+    if (manualQuantityTypes.includes(type || '')) return 0; // manual entry
     const freqCount = frequency === 'SOS' ? 1 : (frequency?.split('-').filter((x) => x === '1').length || 0);
     return duration ? freqCount * duration : 0;
   };
 
+  const validateDosage = (dosage: string) =>
+    (/^\d+\s*(mg|ml|g|tablet|tab|capsule|cap|spoon|drop)s?$/i).test(dosage);
+
+  const validateMedication = (med: any) => {
+    if (!med?.name || !String(med.name).trim()) { Alert.alert('Error', 'Enter a valid medicine name'); return false; }
+    if (!med.type) { Alert.alert('Error', 'Select a medicine type'); return false; }
+    if (!med.dosage || !validateDosage(med.dosage)) { Alert.alert('Error', 'Enter valid dosage Ex: 100mg'); return false; }
+    if (med.duration === null || med.duration <= 0) { Alert.alert('Error', 'Duration must be > 0'); return false; }
+    if (!med.frequency) { Alert.alert('Error', 'Select a frequency'); return false; }
+    const required = med.frequency === 'SOS' ? 0 : med.frequency.split('-').filter((x: string) => x === '1').length;
+    if ((med.timing?.length || 0) !== required) { Alert.alert('Error', `Select ${required} timing(s)`); return false; }
+    if ((!med.manualQuantity && (!med.quantity || med.quantity <= 0)) ||
+        (med.manualQuantity && (!med.quantity || String(med.quantity).length === 0))) {
+      Alert.alert('Error', 'Quantity must be greater than 0'); return false;
+    }
+    return true;
+  };
+
+  // ---------- tests ----------
   const handleAddTest = (testName: string) => {
     if (!testName) return Toast.show({ type: 'error', text1: 'Please enter a valid test name' });
     const exists = (formData?.diagnosis?.selectedTests || []).some(
@@ -136,17 +174,20 @@ const PrescriptionScreen = () => {
     updatedTests.splice(index, 1);
     setFormData((prev: any) => ({
       ...prev,
-      diagnosis: {
-        ...prev.diagnosis,
-        selectedTests: updatedTests,
-      },
+      diagnosis: { ...prev.diagnosis, selectedTests: updatedTests },
     }));
     Toast.show({ type: 'success', text1: 'Test removed' });
   };
 
+  // ---------- medicines: add/open, edit draft, remove ----------
   const handleAddMedicine = () => {
-    if (medications.length > 0 && !validateMedication(medications[medications.length - 1])) return;
-    const newMedication = {
+    // if a draft is already open and incomplete, block creating a new one
+    if (draftMed && !validateMedication(draftMed)) {
+      Alert.alert('Incomplete medicine', 'Please complete the current medicine before adding another.');
+      return;
+    }
+    // open a clean draft (existing cards remain untouched)
+    setDraftMed({
       id: Date.now(),
       name: '',
       type: null,
@@ -157,105 +198,107 @@ const PrescriptionScreen = () => {
       quantity: 0,
       manualQuantity: false,
       notes: '',
-    };
-    const updated = [...medications, newMedication];
-    setMedications(updated);
-    setFormData((prev: any) => ({ ...prev, diagnosis: { ...prev.diagnosis, medications: updated } }));
+    });
     setShowMedicationForm(true);
+    setFilteredMedicines([]);
+    setActiveDropdown(null);
     Toast.show({ type: 'success', text1: 'Medicine form added' });
   };
 
-  const handleMedicineChange = (index: number, field: string, value: any) => {
-    const updated = [...medications];
-    updated[index] = { ...updated[index], [field]: value };
+  const handleDraftChange = (field: string, value: any) => {
+    if (!draftMed) return;
+    let updated = { ...draftMed, [field]: value };
 
     if (field === 'type') {
-      updated[index].manualQuantity = manualQuantityTypes.includes(value);
-      if (updated[index].manualQuantity) {
-        updated[index].quantity = 0;
-      } else {
-        const { frequency, duration } = updated[index];
-        updated[index].quantity = calculateQuantity(frequency, duration, value);
-      }
+      updated.manualQuantity = manualQuantityTypes.includes(value);
+      updated.quantity = updated.manualQuantity
+        ? 0
+        : calculateQuantity(updated.frequency, updated.duration, value);
     }
 
-    if ((field === 'frequency' || field === 'duration') && !updated[index].manualQuantity) {
-      const { frequency, duration, type } = updated[index];
-      updated[index].quantity = calculateQuantity(frequency, duration, type);
+    if ((field === 'frequency' || field === 'duration') && !updated.manualQuantity) {
+      updated.quantity = calculateQuantity(updated.frequency, updated.duration, updated.type);
     }
 
-    const transformed = updated.map((med) => ({
-      medInventoryId: medInventory.find(m => m.medName === med.name)?._id || null,
-      medName: med.name,
-      quantity: med.quantity,
-      medicineType: med.type,
-      dosage: med.dosage,
-      duration: med.duration,
-      frequency: med.frequency,
-      timings: med.timing || [],
-    }));
-
-    setMedications(updated);
-    setFormData((prev: any) => ({
-      ...prev,
-      diagnosis: {
-        ...prev.diagnosis,
-        medications: transformed,
-      },
-    }));
+    setDraftMed(updated);
 
     if (field === 'name') {
       const matches = medicineOptions
-        .filter((m) => m.label.toLowerCase().includes(value.toLowerCase()))
+        .filter((m) => m.label.toLowerCase().includes(String(value).toLowerCase()))
         .map((m) => m.label);
       setFilteredMedicines(matches);
     }
   };
 
-  const updateMedicationFrequency = (index: number, value: string) => {
-    const updatedMedications = [...medications];
-    const med = updatedMedications[index];
-    med.frequency = value;
-    med.timing = value === 'SOS' ? [] : med.timing.slice(0, value.split('-').filter((x) => x === '1').length);
-
-    if (!med.manualQuantity) {
-      med.quantity = calculateQuantity(med.frequency, med.duration, med.type);
-    }
-
-    setMedications(updatedMedications);
-    setFormData((prev: any) => ({ ...prev, diagnosis: { ...prev.diagnosis, medications: updatedMedications } }));
+  const updateDraftFrequency = (value: string) => {
+    if (!draftMed) return;
+    const maxSel = value === 'SOS' ? 0 : value.split('-').filter((x) => x === '1').length;
+    const newTiming = value === 'SOS' ? [] : (draftMed.timing || []).slice(0, maxSel);
+    const updated = {
+      ...draftMed,
+      frequency: value,
+      timing: newTiming,
+      quantity: draftMed.manualQuantity ? draftMed.quantity : calculateQuantity(value, draftMed.duration, draftMed.type),
+    };
+    setDraftMed(updated);
   };
 
-  const validateDosage = (dosage: string) => (/^\d+\s*(mg|ml|g|tablet|tab|capsule|cap|spoon|drop)s?$/i).test(dosage);
-
-  const validateMedication = (med: any) => {
-    if (!med.name || !med.name.trim()) { Alert.alert('Error', 'Enter a valid medicine name'); return false; }
-    if (!med.type) { Alert.alert('Error', 'Select a medicine type'); return false; }
-    if (!med.dosage || !validateDosage(med.dosage)) { Alert.alert("Error", 'Enter valid dosage Ex:100mg'); return false; }
-    if (med.duration === null || med.duration <= 0) { Alert.alert('Error', 'Duration must be > 0'); return false; }
-    if (!med.frequency) { Alert.alert('Error', 'Select a frequency'); return false; }
-    const required = med.frequency === 'SOS' ? 0 : med.frequency.split('-').filter((x) => x === '1').length;
-    if ((med.timing?.length || 0) !== required) { Alert.alert('Error', `Select ${required} timing(s)`); return false; }
-    if ((!med.manualQuantity && (!med.quantity || med.quantity <= 0)) || (med.manualQuantity && (!med.quantity || med.quantity.length === 0))) {
-      Alert.alert('Error', 'Quantity must be greater than 0'); return false;
-    }
-    return true;
+  const handleCancelDraft = () => {
+    setDraftMed(null);
+    setShowMedicationForm(false);
+    setFilteredMedicines([]);
+    setActiveDropdown(null);
   };
 
   const handleRemoveMedicine = (index: number) => {
-    const updated = medications.filter((_, i) => i !== index);
-    setMedications(updated);
-    setFormData((prev: any) => ({ ...prev, diagnosis: { ...prev.diagnosis, medications: updated } }));
-    if (updated.length === 0) setShowMedicationForm(false);
+    const updated = savedMeds.filter((_, i) => i !== index);
+    setSavedMeds(updated);
     Toast.show({ type: 'success', text1: 'Medicine removed' });
     setFilteredMedicines([]);
     setActiveDropdown(null);
   };
 
+  // helper to convert draft to card/backend shape
+  const draftToCard = (d: any) => ({
+    medInventoryId: medInventory.find(m => m.medName === d.name)?._id || null,
+    medName: d.name,
+    quantity: d.quantity,
+    medicineType: d.type,
+    dosage: d.dosage,
+    duration: d.duration,
+    frequency: d.frequency,
+    timings: d.timing || [],
+  });
+
+  // ---------- next ----------
   const handleNext = () => {
-    if (medications.length > 0 && !validateMedication(medications[medications.length - 1])) {
+    // If a draft is open, validate it first
+    if (draftMed) {
+      if (!validateMedication(draftMed)) return;
+
+      // merge draft into saved list (so it appears as a new card)
+      const mergedMeds = [...savedMeds, draftToCard(draftMed)];
+
+      // build the next formData synchronously and navigate with it
+      const nextFormData = {
+        ...formData,
+        diagnosis: {
+          ...(formData?.diagnosis || {}),
+          medications: mergedMeds,
+        },
+      };
+
+      setSavedMeds(mergedMeds);
+      setDraftMed(null);
+      setShowMedicationForm(false);
+      setFilteredMedicines([]);
+      setActiveDropdown(null);
+
+      navigation.navigate('AdviceFollowup', { patientDetails, formData: nextFormData });
       return;
     }
+
+    // No draft open — just navigate with current formData (already synced from savedMeds via effect)
     navigation.navigate('AdviceFollowup', { patientDetails, formData });
   };
 
@@ -276,6 +319,7 @@ const PrescriptionScreen = () => {
             nestedScrollEnabled
             showsVerticalScrollIndicator={false}
           >
+            {/* Tests */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🧪 Diagnostic Tests</Text>
               <TextInput
@@ -309,16 +353,14 @@ const PrescriptionScreen = () => {
               {(formData?.diagnosis?.selectedTests || []).map((test: any, index: number) => (
                 <View key={index} style={styles.testItemContainer}>
                   <Text style={styles.testTag}>{test.testName}</Text>
-                  <TouchableOpacity
-                    onPress={() => handleRemoveTest(index)}
-                    style={styles.deleteButton}
-                  >
+                  <TouchableOpacity onPress={() => handleRemoveTest(index)} style={styles.deleteButton}>
                     <Text style={styles.deleteText}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ))}
             </View>
 
+            {/* Diagnosis */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🩺 Diagnosis</Text>
               <TextInput
@@ -326,84 +368,62 @@ const PrescriptionScreen = () => {
                 placeholder="e.g. Hypertension, Diabetes"
                 multiline
                 value={formData?.diagnosis?.diagnosisList || ''}
-                onChangeText={(text) => setFormData((prev: any) => ({
-                  ...prev,
-                  diagnosis: { ...prev.diagnosis, diagnosisList: text.toUpperCase() },
-                }))}
+                onChangeText={(text) =>
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    diagnosis: { ...prev.diagnosis, diagnosisList: text.toUpperCase() },
+                  }))
+                }
                 placeholderTextColor="#9CA3AF"
               />
             </View>
 
+            {/* Medications */}
             <View style={styles.section}>
               <View style={styles.medHeader}>
                 <Text style={styles.sectionTitle}>💊 Prescribed Medications</Text>
               </View>
 
-              {(formData?.diagnosis?.medications || []).map((med: any, index: number) => (
-                <View key={index} style={styles.medicationItemContainer}>
+              {/* Saved cards */}
+              {savedMeds.map((med: any, index: number) => (
+                <View key={`card-${index}`} style={styles.medicationItemContainer}>
                   <View style={styles.medicationContent}>
                     <Text style={styles.medicationText}>Name: {med.medName}</Text>
                     <Text style={styles.medicationText}>Duration: {med.duration} days</Text>
                     <Text style={styles.medicationText}>Dosage: {med.dosage}</Text>
                     <Text style={styles.medicationText}>Frequency: {med.frequency}</Text>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => {
-                      const updatedMeds = [...medications];
-                      updatedMeds.splice(index, 1);
-                      setMedications(updatedMeds);
-
-                      const transformed = updatedMeds.map((m) => ({
-                        medInventoryId: medInventory.find(mi => mi.medName === m.name)?._id || null,
-                        medName: m.name,
-                        quantity: m.quantity,
-                        medicineType: m.type,
-                        dosage: m.dosage,
-                        duration: m.duration,
-                        frequency: m.frequency,
-                        timings: m.timing || [],
-                      }));
-
-                      setFormData((prev: any) => ({
-                        ...prev,
-                        diagnosis: {
-                          ...prev.diagnosis,
-                          medications: transformed,
-                        },
-                      }));
-
-                      Toast.show({ type: 'success', text1: 'Medicine removed' });
-                    }}
-                    style={styles.deleteButton}
-                  >
+                  <TouchableOpacity onPress={() => handleRemoveMedicine(index)} style={styles.deleteButton}>
                     <Text style={styles.deleteText}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ))}
 
-              {showMedicationForm && medications.map((med, index) => (
-                <View key={med.id} style={styles.medBlock}>
+              {/* Draft form (no Save button; saved on Next) */}
+              {showMedicationForm && draftMed && (
+                <View key={draftMed.id} style={styles.medBlock}>
                   <View style={styles.rowSpaceBetween}>
-                    <Text style={styles.medLabel}>Medicine #{index + 1}</Text>
-                    <TouchableOpacity onPress={() => handleRemoveMedicine(index)}>
+                    <Text style={styles.medLabel}>New Medicine</Text>
+                    <TouchableOpacity onPress={handleCancelDraft}>
                       <Text style={{ color: 'red' }}>🗑️</Text>
                     </TouchableOpacity>
                   </View>
+
                   <TextInput
                     placeholder="Medicine Name"
                     style={styles.input}
-                    value={med.name}
-                    onChangeText={(text) => handleMedicineChange(index, 'name', text)}
+                    value={draftMed.name}
+                    onChangeText={(text) => handleDraftChange('name', text)}
                     onFocus={() => setActiveDropdown('medicine')}
                     placeholderTextColor="#9CA3AF"
                   />
-                  {activeDropdown === 'medicine' && filteredMedicines.length > 0 && medications.length - 1 === index && (
+                  {activeDropdown === 'medicine' && filteredMedicines.length > 0 && (
                     <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
                       {filteredMedicines.map((medicine, idx) => (
                         <TouchableOpacity
                           key={idx}
                           onPress={() => {
-                            handleMedicineChange(index, 'name', medicine);
+                            handleDraftChange('name', medicine);
                             setActiveDropdown(null);
                           }}
                           style={styles.dropdownItem}
@@ -416,12 +436,12 @@ const PrescriptionScreen = () => {
 
                   <View style={styles.pickerWrapper}>
                     <Picker
-                      selectedValue={med.type}
-                      onValueChange={(value) => handleMedicineChange(index, 'type', value)}
-                      style={styles.pickerInner}
+                      selectedValue={draftMed.type}
+                      onValueChange={(value) => handleDraftChange('type', value)}
+                      style={[styles.pickerInner, { color: draftMed.type ? '#111' : '#928686' }]}
                       mode="dropdown"
                     >
-                      <Picker.Item label="Select Type" value={null} color="#9CA3AF" />
+                      <Picker.Item label="Select Type" value={null} color="#928686ff" />
                       {medicineTypeOptions.map((option) => (
                         <Picker.Item key={option} label={option} value={option} />
                       ))}
@@ -431,27 +451,27 @@ const PrescriptionScreen = () => {
                   <TextInput
                     placeholder="Dosage (e.g. 100mg, 5ml)"
                     style={styles.input}
-                    value={med.dosage}
-                    onChangeText={(text) => handleMedicineChange(index, 'dosage', text)}
+                    value={draftMed.dosage}
+                    onChangeText={(text) => handleDraftChange('dosage', text)}
                     placeholderTextColor="#9CA3AF"
                   />
                   <TextInput
                     placeholder="Duration (days)"
                     style={styles.input}
-                    value={med.duration?.toString() || ''}
-                    onChangeText={(text) => handleMedicineChange(index, 'duration', parseInt(text) || null)}
+                    value={draftMed.duration?.toString() || ''}
+                    onChangeText={(text) => handleDraftChange('duration', parseInt(text) || null)}
                     keyboardType="numeric"
                     placeholderTextColor="#9CA3AF"
                   />
 
                   <View style={styles.pickerWrapper}>
                     <Picker
-                      selectedValue={med.frequency}
-                      onValueChange={(value) => updateMedicationFrequency(index, value)}
-                      style={styles.pickerInner}
+                      selectedValue={draftMed.frequency}
+                      onValueChange={(value) => updateDraftFrequency(value)}
+                      style={[styles.pickerInner, { color: draftMed.type ? '#111' : '#928686' }]}
                       mode="dropdown"
                     >
-                      <Picker.Item label="Select Frequency" value={null} color="#9CA3AF" />
+                      <Picker.Item label="Select Frequency" value={null} color="#9a9aa5ff" />
                       {frequencyOptions.map((option) => (
                         <Picker.Item key={option} label={option} value={option} />
                       ))}
@@ -460,52 +480,57 @@ const PrescriptionScreen = () => {
 
                   <View style={{ marginBottom: 10 }}>
                     <Text style={{ fontWeight: '600', marginBottom: 4, color: 'black' }}>Timing:</Text>
-                    {timingOptions.map((option) => (
-                      <TouchableOpacity
-                        key={option}
-                        onPress={() => {
-                          if (med.frequency === 'SOS') return;
-                          const currentTimings = med.timing || [];
-                          const alreadySelected = currentTimings.includes(option);
-                          let updatedTimings = [];
-                          const maxTimings = med.frequency?.split('-').filter((x) => x === '1').length || 0;
-                          if (alreadySelected) {
-                            updatedTimings = currentTimings.filter((t) => t !== option);
-                          } else if (currentTimings.length < maxTimings) {
-                            updatedTimings = [...currentTimings, option];
-                          } else {
-                            Toast.show({ type: 'error', text1: `You can select max ${maxTimings} timing(s)` });
-                            return;
-                          }
-                          handleMedicineChange(index, 'timing', updatedTimings);
-                        }}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          marginBottom: 4,
-                          backgroundColor: med.timing?.includes(option) ? '#007bff' : '#f0f0f0',
-                          padding: 6,
-                          borderRadius: 6,
-                        }}
-                      >
-                        <Text style={{ color: med.timing?.includes(option) ? '#fff' : '#000' }}>{option}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {timingOptions.map((option) => {
+                      const selected = (draftMed.timing || []).includes(option);
+                      const maxTimings =
+                        draftMed.frequency === 'SOS'
+                          ? 0
+                          : (draftMed.frequency?.split('-').filter((x: string) => x === '1').length || 0);
+                      return (
+                        <TouchableOpacity
+                          key={option}
+                          onPress={() => {
+                            if (draftMed.frequency === 'SOS') return;
+                            const current = draftMed.timing || [];
+                            let updated = current;
+                            if (selected) {
+                              updated = current.filter((t: string) => t !== option);
+                            } else if (current.length < maxTimings) {
+                              updated = [...current, option];
+                            } else {
+                              Toast.show({ type: 'error', text1: `You can select max ${maxTimings} timing(s)` });
+                              return;
+                            }
+                            handleDraftChange('timing', updated);
+                          }}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            marginBottom: 4,
+                            backgroundColor: selected ? '#007bff' : '#f0f0f0',
+                            padding: 6,
+                            borderRadius: 6,
+                          }}
+                        >
+                          <Text style={{ color: selected ? '#fff' : '#000' }}>{option}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
 
-                  {med.manualQuantity ? (
+                  {draftMed.manualQuantity ? (
                     <TextInput
                       placeholder="Quantity (e.g. 1 bottle, 1 tube)"
                       style={styles.input}
-                      value={med.quantity?.toString() || ''}
-                      onChangeText={(text) => handleMedicineChange(index, 'quantity', text)}
+                      value={String(draftMed.quantity ?? '')}
+                      onChangeText={(text) => handleDraftChange('quantity', text)}
                       keyboardType="default"
                     />
                   ) : (
                     <TextInput
                       placeholder="Quantity"
                       style={[styles.input, { backgroundColor: '#eaeaea' }]}
-                      value={med.quantity?.toString() || ''}
+                      value={String(draftMed.quantity ?? '')}
                       editable={false}
                       placeholderTextColor="#9CA3AF"
                     />
@@ -515,13 +540,14 @@ const PrescriptionScreen = () => {
                     placeholder="Notes"
                     style={styles.textArea}
                     multiline
-                    value={med.notes || ''}
-                    onChangeText={(text) => handleMedicineChange(index, 'notes', text)}
+                    value={draftMed.notes || ''}
+                    onChangeText={(text) => handleDraftChange('notes', text)}
                     placeholderTextColor="#9CA3AF"
                   />
                 </View>
-              ))}
+              )}
 
+              {/* Add medicine button */}
               <TouchableOpacity onPress={handleAddMedicine} style={[styles.blueButton, { marginTop: 16 }]}>
                 <Text style={styles.blueButtonText}>+ Add Medicine</Text>
               </TouchableOpacity>

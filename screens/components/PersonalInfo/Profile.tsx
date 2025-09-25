@@ -177,7 +177,7 @@ const DoctorProfileView: React.FC = () => {
 
   // Consultation form (list)
   const [formConsultation, setFormConsultation] = useState<ConsultationModeFee[]>([]);
-
+let isFeeInvalid 
   // Bank form
   const [formBank, setFormBank] = useState<BankDetails>({
     bankName: '',
@@ -361,11 +361,79 @@ const DoctorProfileView: React.FC = () => {
     setSelectedDocument(null);
   };
 
+  // Reset form slices from the latest saved data before opening/closing modals
+const seedFormsFromSaved = (type: EditModalType) => {
+  if (!doctorData) return;
+
+  if (type === 'personal') {
+    setFormPersonal({
+      firstname: doctorData.firstname || '',
+      lastname: doctorData.lastname || '',
+      email: doctorData.email || '',
+      spokenLanguage: doctorData.spokenLanguage || [],
+    });
+    return;
+  }
+
+  if (type === 'professional') {
+    const firstSpec = doctorData.specialization?.[0] || {};
+    const selectedDegrees = (firstSpec?.degree ? String(firstSpec.degree).split(',') : [])
+      .map(s => s.trim())
+      .filter(Boolean);
+    setFormProfessional({
+      selectedDegrees,
+      experience: String(firstSpec?.experience ?? ''),
+      about: String(firstSpec?.bio ?? ''),
+    });
+    return;
+  }
+
+  if (type === 'consultation') {
+    setFormConsultation(
+      (doctorData.consultationModeFee || []).map(m => ({
+        type: m.type,
+        fee: String(m.fee ?? ''),
+        currency: m.currency || '₹',
+      }))
+    );
+    return;
+  }
+
+  if (type === 'bank') {
+    setFormBank({
+      bankName: doctorData.bankDetails?.bankName || '',
+      accountHolderName: doctorData.bankDetails?.accountHolderName || '',
+      accountNumber: doctorData.bankDetails?.accountNumber || '',
+      ifscCode: doctorData.bankDetails?.ifscCode || '',
+      accountProof: doctorData.bankDetails?.accountProof,
+    });
+    return;
+  }
+
+  if (type === 'kyc') {
+    const currentPan =
+      kycServer?.pan?.number ||
+      (doctorData.kycDetails?.panNumber === 'N/A' ? '' : doctorData.kycDetails?.panNumber || '');
+    setPanNumber(currentPan);
+    setPanImage(null);
+    setPancardUploaded(false);
+    return;
+  }
+};
+
+
   // Edit modal open/close
-  const handleEditOpen = (type: EditModalType) => {
-    setEditModalType(type);
-  };
-  const handleEditClose = () => setEditModalType(null);
+// Edit modal open/close
+const handleEditOpen = (type: EditModalType) => {
+  seedFormsFromSaved(type);        // <-- always seed from saved data on open
+  setEditModalType(type);
+};
+
+const handleEditClose = () => {
+  if (editModalType) seedFormsFromSaved(editModalType); // <-- revert unsaved edits on cancel/close
+  setEditModalType(null);
+};
+
 
   // ---------- Save handlers (match web flows) ----------
 
@@ -428,57 +496,7 @@ const DoctorProfileView: React.FC = () => {
     formData.append('degree', formProfessional?.selectedDegrees?.join(','));
     formData.append('bio', String(formProfessional?.about || ''));
 
-    // Helper to normalize uri for iOS (remove file://)
-    const normalizeFileUri = (uri?: string) => {
-      if (!uri) return undefined;
-      if (Platform.OS === 'ios') {
-        return uri.startsWith('file://') ? uri.replace('file://', '') : uri;
-      }
-      return uri;
-    };
-
-    // If your backend expects the same key names as handleNext, use them.
-    // Change the property names below if your API expects different names.
-    const degreeUri = doctorData.specialization?.[0]?.degreeCertificate
-;
-    if (degreeUri) {
-      const normalized = normalizeFileUri(degreeUri);
-      // If it's an http/https URL we can't directly upload — prefer local file objects (uploadedFiles).
-      if (!/^https?:\/\//i.test(degreeUri)) {
-        formData.append('degreeCertificate', {
-          uri: Platform.OS === 'android' ? degreeUri : normalized,
-          type: 'application/pdf',
-          name: 'degree.pdf',
-        } as any);
-      } else {
-        // optional: if it's remote and you want to pass the URL instead of file
-        // formData.append('degreeCertificateUrl', degreeUri);
-        // or download the file to local first before uploading
-        console.warn('degreeCertificateUrl is a remote URL — backend likely expects a file. Consider using uploadedFiles or downloading the file first.');
-      }
-    }
-
-    const specCertUri = doctorData.specialization?.[0]?.specializationCertificate;
-;
-    if (specCertUri) {
-      const normalized = normalizeFileUri(specCertUri);
-      if (!/^https?:\/\//i.test(specCertUri)) {
-        formData.append('specializationCertificate', {
-          uri: Platform.OS === 'android' ? specCertUri : normalized,
-          type: 'application/pdf',
-          name: 'certification.pdf',
-        } as any);
-      } else {
-        console.warn('specializationCertificateUrl is a remote URL — backend likely expects a file. Consider using uploadedFiles or downloading the file first.');
-      }
-    }
-
-    // debug: cannot reliably console.log FormData contents directly
-    // To inspect, iterate through keys (only for debugging)
-    // for (const pair of (formData as any)._parts || []) console.log(pair);
-console.log('Submitting professional form data:', formData);
     const response = await UpdateFiles('users/updateSpecialization', formData, token);
-    console.log('Response from server:', response);
 
     if (response?.status === 'success') {
       const userData = response?.data?.data;
@@ -502,26 +520,27 @@ console.log('Submitting professional form data:', formData);
 
     // Validate: every row must have both fields filled
     for (let idx = 0; idx < formConsultation.length; idx++) {
-      const row = formConsultation[idx];
+    const row = formConsultation[idx] as any;
+    const active = row.active ?? Number(row.fee) > 0;
 
-      if (!row.type || row.type.trim() === "") {
-        Alert.alert("Missing value", `Row ${idx + 1}: Please fill the Type.`);
-        return;
-      }
-
-      if (row.fee === "" || row.fee == null) {
-        Alert.alert("Missing value", `Row ${idx + 1}: Please fill the Fee.`);
-
-        return;
-      }
-
-      // Safety: initial > 0 should not be saved as 0
-      const initialFee = Number((row as any).__initialFee || 0);
-      if (initialFee > 0 && Number(row.fee) === 0) {
-        Alert.alert("Invalid fee", `Row ${idx + 1}: Fee cannot be 0 since it was initially > 0.`);
-        return;
-      }
+    // Type is always required
+    if (!row.type || row.type.trim() === '') {
+      Alert.alert('Missing value', `Row ${idx + 1}: Please fill the Type.`);
+      return;
     }
+
+    // If checkbox is selected (active), fee must be > 0
+    const feeNum = Number(row.fee);
+    if (active && (!row.fee || isNaN(feeNum) || feeNum <= 0)) {
+      Alert.alert('Invalid fee', `Row ${idx + 1}: Fee must be greater than 0 when enabled.`);
+      return;
+    }
+
+    // If inactive, normalize to 0 to send
+    if (!active) {
+      row.fee = '0';
+    }
+  }
 
     try {
       const cleaned = formConsultation.map((i) => ({
@@ -717,7 +736,6 @@ dispatch({ type: 'currentUser', payload: userData });
   };
 
   // ---------- Render helpers ----------
-console.log('Rendering DoctorProfileView with doctorData:', doctorData);
   const degreesDisplay = useMemo(() => {
     const d = doctorData?.specialization?.[0]?.degree || '';
     const list = String(d).split(',').map((s) => s.trim()).filter(Boolean);
@@ -753,6 +771,9 @@ console.log('Rendering DoctorProfileView with doctorData:', doctorData);
       </SafeAreaView>
     );
   }
+
+
+
 
   const showEditButtonKYC = !kycServer?.pan?.number;
   const showEditButtonBank = !doctorData.bankDetails?.accountNumber;
@@ -1223,6 +1244,7 @@ console.log('Rendering DoctorProfileView with doctorData:', doctorData);
                     keyboardType="numeric"
                     placeholder="Enter years of experience"
                     placeholderTextColor="#888"
+                    maxLength={2}
                   />
                 </View>
 
@@ -1297,7 +1319,7 @@ console.log('Rendering DoctorProfileView with doctorData:', doctorData);
                         justifyContent: 'space-between',
                       }}
                     >
-                      <Text style={{ fontSize: 14 }}>{item}</Text>
+                      <Text style={{ fontSize: 14, color: '#111' }}>{item}</Text>
                       {selected ? <Icon name="check" size={18} color="#16a34a" /> : null}
                     </TouchableOpacity>
                   );
@@ -1309,7 +1331,7 @@ console.log('Rendering DoctorProfileView with doctorData:', doctorData);
                   style={[styles.modalButton, styles.cancelButton, { flex: 1, marginRight: 8 }]}
                   onPress={() => setDegreeModalVisible(false)}
                 >
-                  <Text style={styles.modalButtonText}>Done</Text>
+                  <Text style={styles.modalButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.saveButton, { flex: 1 }]}
@@ -1431,7 +1453,7 @@ console.log('Rendering DoctorProfileView with doctorData:', doctorData);
                       <View style={{ width: 100, marginRight: 8 }}>
                         <Text style={styles.label}>Fee</Text>
                         {(() => {
-                          const isFeeInvalid = active && (!row.fee || Number(row.fee) <= 0);
+                          let isFeeInvalid = active && (!row.fee || Number(row.fee) <= 0);
                           return (
                             <>
                               <TextInput
