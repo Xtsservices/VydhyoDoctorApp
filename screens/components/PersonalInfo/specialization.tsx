@@ -23,7 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useSelector } from 'react-redux';
 import ProgressBar from '../progressBar/progressBar';
-import { AuthFetch, UploadFiles } from '../../auth/auth';
+import { AuthFetch, UpdateFiles, UploadFiles } from '../../auth/auth';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 
@@ -421,7 +421,7 @@ const SpecializationDetails = () => {
         } as any);
       }
 
-      const response = await UploadFiles('users/updateSpecialization', formDataObj, token);
+      const response = await UpdateFiles('users/updateSpecialization', formDataObj, token);
       if (response.status === 'success') {
         Toast.show({
           type: 'success',

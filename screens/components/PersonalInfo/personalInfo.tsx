@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect, useState, useRef } from 'react';
+
 import {
   View,
   Text,
@@ -16,6 +18,10 @@ import {
   Platform,
   Modal,
   FlatList,
+
+  LayoutAnimation,
+  SafeAreaView,
+
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -30,6 +36,9 @@ import { AuthFetch, AuthPut, UpdateFiles } from '../../auth/auth';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+
 const languageOptions = [
   { label: 'Telugu', value: 'Telugu' },
   { label: 'Hindi', value: 'Hindi' },
@@ -42,6 +51,9 @@ const { width, height } = Dimensions.get('window');
 const PersonalInfoScreen: React.FC = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation<any>();
+
+  const insets = useSafeAreaInsets();
+
 
   const [formData, setFormData] = useState<PersonalInfo>({
     firstName: '',
@@ -62,7 +74,9 @@ const PersonalInfoScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
-  const [profileImage, setProfileImage] = useState<any>(null); // For storing the selected image
+
+  const [profileImage, setProfileImage] = useState<any>(null);
+
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [tempSelectedLangs, setTempSelectedLangs] = useState<string[]>([]);
 
@@ -78,6 +92,41 @@ const PersonalInfoScreen: React.FC = () => {
     maritalStatus: '',
     yearsExperience: '',
   });
+
+
+  // keyboard state (height in px). used to lift Next button above keyboard
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // For optionally scrolling to focused input
+  const scrollRef = useRef<ScrollView | null>(null);
+  const inputRefs = {
+    firstName: useRef<TextInput | null>(null),
+    lastName: useRef<TextInput | null>(null),
+    medicalRegNumber: useRef<TextInput | null>(null),
+    email: useRef<TextInput | null>(null),
+  };
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e: any) => {
+      const h = e.endCoordinates?.height ?? 0;
+      if (Platform.OS === 'ios') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(h);
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'ios') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
 
   const getMinDate = () => {
     const today = new Date();
@@ -119,7 +168,7 @@ const PersonalInfoScreen: React.FC = () => {
             name: selectedImage.fileName || `profile_${Date.now()}.jpg`,
           });
 
-          // Also update the formData for display
+
           setFormData(prev => ({
             ...prev,
             profilePhoto: { uri: selectedImage.uri },
@@ -152,7 +201,7 @@ const PersonalInfoScreen: React.FC = () => {
       yearsExperience: '',
     };
 
-    // yearsExperience is OPTIONAL
+
     if (formData.yearsExperience && isNaN(Number(formData.yearsExperience))) {
       newErrors.yearsExperience =
         'Please enter a valid number for years of experience.';
@@ -319,7 +368,9 @@ const PersonalInfoScreen: React.FC = () => {
 
   // ===== Language Modal Logic =====
   const openLanguageModal = () => {
-    setTempSelectedLangs(formData.spokenLanguages); // start from current
+
+    setTempSelectedLangs(formData.spokenLanguages);
+
     setShowLanguageModal(true);
   };
 
@@ -353,42 +404,69 @@ const PersonalInfoScreen: React.FC = () => {
     );
   };
 
-  // Helper: show selected summary
+
   const selectedLangSummary =
     formData.spokenLanguages.length > 0
       ? formData.spokenLanguages.join(', ')
       : 'Select languages';
 
+  // When an input is focused, scroll it into view
+  const onInputFocus = (refName: keyof typeof inputRefs) => {
+    setTimeout(() => {
+      const inputRef = inputRefs[refName].current;
+      if (!inputRef || !scrollRef.current) return;
+      inputRef.measure?.((fx, fy, w, h, px, py) => {
+        const scrollTo = Math.max(py - 100, 0); // larger buffer so input isn't at absolute top
+        scrollRef.current?.scrollTo({ x: 0, y: scrollTo, animated: true });
+      });
+    }, 120);
+  };
+
+  // Android extra buffer
+  const androidBuffer = Platform.OS === 'android' ? 8 : 0;
+  // final bottom for Next button: keyboard + safe area + android buffer + small gap
+  const nextBottom =
+    keyboardHeight > 0 ? keyboardHeight + insets.bottom + androidBuffer + 8 : insets.bottom + 24;
+
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-      <View style={styles.container}>
-        {(loading || loadingUser) && (
-          <View style={styles.loaderOverlay}>
-            <ActivityIndicator size="large" color="#00203F" />
-            <Text style={styles.loaderText}>
-              {loadingUser ? 'Loading practice details...' : 'Processing...'}
-            </Text>
-          </View>
-        )}
-
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Icon name="arrow-left" size={width * 0.06} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Personal Info</Text>
-        </View>
-
-        <ProgressBar
-          currentStep={getCurrentStepIndex('PersonalInfo')}
-          totalSteps={TOTAL_STEPS}
-        />
-
-        {/* Form Content */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#DCFCE7' }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAvoidingView style={{ flex: 1 }}>
-            <ScrollView style={styles.formContainer}>
-              {/* Profile Photo Upload - Improved UI */}
+          <View style={styles.container}>
+            {(loading || loadingUser) && (
+              <View style={styles.loaderOverlay}>
+                <ActivityIndicator size="large" color="#00203F" />
+                <Text style={styles.loaderText}>
+                  {loadingUser ? 'Loading practice details...' : 'Processing...'}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.header}>
+              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+                <Icon name="arrow-left" size={width * 0.06} color="#fff" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Personal Info</Text>
+            </View>
+
+            <ProgressBar
+              currentStep={getCurrentStepIndex('PersonalInfo')}
+              totalSteps={TOTAL_STEPS}
+            />
+
+            <ScrollView
+              ref={c => (scrollRef.current = c)}
+              style={styles.formContainer}
+              contentContainerStyle={{ paddingBottom: Math.max(220, keyboardHeight + insets.bottom + 80), flexGrow: 1 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Profile Photo Upload */}
+
               <View style={styles.profilePhotoContainer}>
                 <View style={styles.profileWrapper}>
                   {formData.profilePhoto && formData.profilePhoto.uri ? (
@@ -399,13 +477,13 @@ const PersonalInfoScreen: React.FC = () => {
                       accessibilityLabel="Profile photo"
                     />
                   ) : (
-                    // neutral placeholder (no default image)
+
                     <View style={[styles.profilePhoto, styles.placeholderAvatar]}>
                       <Icon name="user-o" size={width * 0.12} color="#9E9E9E" />
                     </View>
                   )}
 
-                  {/* Small circular camera button overlapping bottom-right */}
+
                   <TouchableOpacity
                     style={styles.fabCamera}
                     onPress={handleImagePick}
@@ -417,7 +495,7 @@ const PersonalInfoScreen: React.FC = () => {
                   </TouchableOpacity>
                 </View>
 
-                {/* Optional short helper text below the avatar */}
+
                 <Text style={styles.photoHintText}>
                   Tap the camera to change profile photo
                 </Text>
@@ -425,8 +503,10 @@ const PersonalInfoScreen: React.FC = () => {
 
               <Text style={styles.label}>First Name*</Text>
               <TextInput
+                ref={r => (inputRefs.firstName.current = r)}
                 style={styles.input}
                 value={formData.firstName}
+                onFocus={() => onInputFocus('firstName')}
                 onChangeText={text => {
                   const lettersOnly = text.replace(/[^A-Za-z]/g, '');
                   setFormData(prev => ({ ...prev, firstName: lettersOnly }));
@@ -441,8 +521,10 @@ const PersonalInfoScreen: React.FC = () => {
 
               <Text style={styles.label}>Last Name*</Text>
               <TextInput
+                ref={r => (inputRefs.lastName.current = r)}
                 style={styles.input}
                 value={formData.lastName}
+                onFocus={() => onInputFocus('lastName')}
                 onChangeText={text => {
                   const lettersOnly = text.replace(/[^A-Za-z]/g, '');
                   setFormData(prev => ({ ...prev, lastName: lettersOnly }));
@@ -457,8 +539,10 @@ const PersonalInfoScreen: React.FC = () => {
 
               <Text style={styles.label}>Medical Registration Number*</Text>
               <TextInput
+                ref={r => (inputRefs.medicalRegNumber.current = r)}
                 style={styles.input}
                 value={formData.medicalRegNumber}
+                onFocus={() => onInputFocus('medicalRegNumber')}
                 onChangeText={text => {
                   setFormData(prev => ({ ...prev, medicalRegNumber: text }));
                   setErrors(prev => ({ ...prev, medicalRegNumber: '' }));
@@ -474,8 +558,10 @@ const PersonalInfoScreen: React.FC = () => {
 
               <Text style={styles.label}>Email*</Text>
               <TextInput
+                ref={r => (inputRefs.email.current = r)}
                 style={styles.input}
                 value={formData.email}
+                onFocus={() => onInputFocus('email')}
                 onChangeText={text => {
                   setFormData(prev => ({ ...prev, email: text }));
                   setErrors(prev => ({ ...prev, email: '' }));
@@ -510,7 +596,7 @@ const PersonalInfoScreen: React.FC = () => {
                 <Text style={styles.errorText}>{errors.gender}</Text>
               ) : null}
 
-              {/* ===== Languages Spoken (POP-OUT) ===== */}
+
               <Text style={styles.label}>Languages Spoken*</Text>
               <TouchableOpacity
                 style={styles.input}
@@ -532,78 +618,95 @@ const PersonalInfoScreen: React.FC = () => {
                 <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
               ) : null}
 
-              {/* Spacer */}
+
               <View style={styles.spacer} />
             </ScrollView>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
 
-        {/* Next Button */}
-        <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-          <Text style={styles.nextText}>Next</Text>
-        </TouchableOpacity>
+            {/* Next Button: positioned absolute and moves above keyboard (accounts for safe-area) */}
+            <TouchableOpacity
+              style={[
+                styles.nextButton,
+                {
+                  position: 'absolute',
+                  left: width * 0.05,
+                  right: width * 0.05,
+                  bottom: nextBottom,
+                  zIndex: 9999,
+                  elevation: 30,
+                },
+              ]}
+              onPress={handleNext}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.nextText}>Next</Text>
+              )}
+            </TouchableOpacity>
 
-        {/* ===== Language Selection Modal (centered, no search) ===== */}
-        <Modal
-          visible={showLanguageModal}
-          animationType="fade"
-          transparent
-          onRequestClose={() => setShowLanguageModal(false)}
-        >
-          <View style={styles.modalOverlayCentered}>
-            <View style={styles.modalCardCentered}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Languages</Text>
-                <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
-                  <Icon name="times" size={20} color="#333" />
-                </TouchableOpacity>
-              </View>
-
-              {/* List without search */}
-              <FlatList
-                data={languageOptions}
-                keyExtractor={(item) => item.value}
-                renderItem={renderLanguageItem}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-                style={{ flexGrow: 0, maxHeight: height * 0.45, marginTop: 8 }}
-                keyboardShouldPersistTaps="handled"
-              />
-
-              {/* Selected chips (optional visual feedback) */}
-              <View style={styles.selectedChipsWrap}>
-                {tempSelectedLangs.map(v => (
-                  <View key={v} style={styles.selectedChip}>
-                    <Text style={styles.selectedChipText}>{v}</Text>
-                    <TouchableOpacity
-                      onPress={() => toggleTempLang(v)}
-                      style={styles.selectedChipRemove}
-                      accessibilityLabel={`Remove ${v}`}
-                    >
-                      <Icon name="times" size={12} color="#D32F2F" />
+            {/* Language Modal */}
+            <Modal
+              visible={showLanguageModal}
+              animationType="fade"
+              transparent
+              onRequestClose={() => setShowLanguageModal(false)}
+            >
+              <View style={styles.modalOverlayCentered}>
+                <View style={styles.modalCardCentered}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Select Languages</Text>
+                    <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
+                      <Icon name="times" size={20} color="#333" />
                     </TouchableOpacity>
                   </View>
-                ))}
-              </View>
 
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.modalBtn, styles.cancelBtn]}
-                  onPress={() => setShowLanguageModal(false)}
-                >
-                  <Text style={styles.modalBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalBtn, styles.applyBtn]}
-                  onPress={applyLanguages}
-                >
-                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Apply</Text>
-                </TouchableOpacity>
+                  <FlatList
+                    data={languageOptions}
+                    keyExtractor={(item) => item.value}
+                    renderItem={renderLanguageItem}
+                    ItemSeparatorComponent={() => <View style={styles.separator} />}
+                    style={{ flexGrow: 0, maxHeight: height * 0.45, marginTop: 8 }}
+                    keyboardShouldPersistTaps="handled"
+                  />
+
+                  <View style={styles.selectedChipsWrap}>
+                    {tempSelectedLangs.map(v => (
+                      <View key={v} style={styles.selectedChip}>
+                        <Text style={styles.selectedChipText}>{v}</Text>
+                        <TouchableOpacity
+                          onPress={() => toggleTempLang(v)}
+                          style={styles.selectedChipRemove}
+                          accessibilityLabel={`Remove ${v}`}
+                        >
+                          <Icon name="times" size={12} color="#D32F2F" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity
+                      style={[styles.modalBtn, styles.cancelBtn]}
+                      onPress={() => setShowLanguageModal(false)}
+                    >
+                      <Text style={styles.modalBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalBtn, styles.applyBtn]}
+                      onPress={applyLanguages}
+                    >
+                      <Text style={[styles.modalBtnText, { color: '#fff' }]}>Apply</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-            </View>
+            </Modal>
           </View>
-        </Modal>
-      </View>
-    </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+
   );
 };
 
@@ -645,7 +748,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: height * 0.02,
   },
-  // wrapper to position fab
+
   profileWrapper: {
     width: width * 0.32,
     height: width * 0.32,
@@ -668,7 +771,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  // small floating camera FAB
+
   fabCamera: {
     position: 'absolute',
     right: -4,
@@ -691,6 +794,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: width * 0.032,
     color: '#666',
+
   },
   photoUploadButton: {
     flexDirection: 'row',
@@ -705,6 +809,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: width * 0.02,
     fontSize: width * 0.035,
+
   },
   label: {
     fontSize: width * 0.035,
@@ -741,13 +846,10 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: width * 0.05,
-    marginBottom: height * 0.03,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
-    elevation: 5,
   },
   nextText: {
     color: '#fff',
@@ -775,6 +877,7 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     marginTop: height * 0.02,
   },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -789,6 +892,7 @@ const styles = StyleSheet.create({
     paddingBottom: height * 0.03,
   },
   // ===== Centered modal styles (new) =====
+
   modalOverlayCentered: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -821,6 +925,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#222',
   },
+
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -836,6 +941,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+
   langRow: {
     flexDirection: 'row',
     alignItems: 'center',

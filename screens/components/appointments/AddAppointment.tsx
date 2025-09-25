@@ -1,8 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Alert, View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Platform,
-  Modal, ActivityIndicator,
-  Image
+  Alert,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Dimensions,
+  Platform,
+  Modal,
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -20,13 +32,14 @@ import moment from 'moment';
 const AddAppointment = () => {
   const userId = useSelector((state: any) => state.currentUserId);
   const currentuserDetails = useSelector((state: any) => state.currentUser);
-  const doctorId = currentuserDetails.role === "doctor" ? currentuserDetails.userId : currentuserDetails.createdBy;
+  const doctorId = currentuserDetails?.role === "doctor" ? currentuserDetails?.userId : currentuserDetails?.createdBy;
   const currentDoctor = useSelector((state: any) => state.currentDoctor);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [gender, setGender] = useState('Male');
   const [selectedTime, setSelectedTime] = useState('10:30 AM');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash');
-  const [showUpiModal, setShowUpiModal] = useState(false); const [searchMobile, setSearchMobile] = useState('');
+  const [showUpiModal, setShowUpiModal] = useState(false);
+  const [searchMobile, setSearchMobile] = useState('');
   const navigation = useNavigation<any>();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [mobileError, setMobileError] = useState<string | null>(null);
@@ -71,19 +84,16 @@ const AddAppointment = () => {
   const [isPatientAdded, setIsPatientAdded] = useState(false);
   const [patientCreated, setPatientCreated] = useState(false);
   const [fieldsDisabled, setFieldsDisabled] = useState(false);
-const [patientSelectModalVisible, setPatientSelectModalVisible] = useState(false);
-const [existingPatientModalVisible, setExistingPatientModalVisible] = useState(false);
-const [existingPatientData, setExistingPatientData] = useState<any>(null);
+  const [patientSelectModalVisible, setPatientSelectModalVisible] = useState(false);
+  const [existingPatientModalVisible, setExistingPatientModalVisible] = useState(false);
+  const [existingPatientData, setExistingPatientData] = useState<any>(null);
 
   const validateAge = (age: string): boolean => {
     if (!age) return false;
     const trimmed = age.trim();
-
-
     return /^\d+$/.test(trimmed) ||
       /^(\d+[myd])(\s?\d+[myd])*$/i.test(trimmed);
   };
-
 
   // Calculate age from DOB
   const calculateAgeFromDOB = (dob: string): string => {
@@ -131,6 +141,7 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
       !requiredAppointmentFields.some(field => !field) &&
       patientId; // Patient must be created or selected
   };
+
   const fetchQRCode = async (clinicId: string) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
@@ -139,14 +150,20 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
         token
       );
       if (response?.status === "success") {
-        const qrCodeUrl =
-          response.data?.data?.clinicQrCode ||
-          response.data?.data?.qrCodeUrl ||
-          response.data?.clinicQrCode ||
-          response.data?.qrCodeUrl ||
-          response.data?.data;
+        const raw =
+          response.data?.data?.clinicQrCode ??
+          response.data?.data?.qrCodeUrl ??
+          response.data?.clinicQrCode ??
+          response.data?.qrCodeUrl ??
+          response.data?.data ??
+          null;
 
-        setQrCodeUrl(qrCodeUrl || '');
+          const normalized =
+        typeof raw === 'string'
+          ? raw
+          : (raw?.Location || raw?.url || raw?.uri || '');
+
+        setQrCodeUrl(normalized || '');
       } else {
         setQrCodeUrl('');
       }
@@ -154,6 +171,7 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
       setQrCodeUrl('');
     }
   };
+
   // Handle input changes
   const handleInputChange = (field: string, value: string) => {
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -547,577 +565,612 @@ const [existingPatientData, setExistingPatientData] = useState<any>(null);
   // Disable add patient button
   const isAddPatientDisabled = patientCreated || !patientformData.age || !validateAge(patientformData.age.trim());
 
-  return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.sectionTitle}>Search By Mobile Number</Text>
-      <View style={styles.searchRow}>
-        <View style={styles.inputContainer}>
-          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-          <TextInput
-            placeholder="Enter mobile number"
-            style={styles.input}
-            keyboardType="number-pad"
-            value={searchMobile}
-            onChangeText={setSearchMobile}
-            placeholderTextColor="#9CA3AF"
-            maxLength={10}
-          />
-        </View>
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>Search</Text>
-        </TouchableOpacity>
-      </View>
+  // adjust this offset if your header/footer size differs
+  const keyboardVerticalOffset = Platform.select({ ios: 100, android: 80 }) as number;
 
-      {/* No Slots Available Modal */}
-      <Modal
-        visible={noSlotsModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setNoSlotsModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setNoSlotsModalVisible(false)}
-            >
-              <Ionicons name="close" size={24} color="#6B7280" />
-            </TouchableOpacity>
-            <View style={styles.modalHeader}>
-              <Ionicons name="warning" size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
-              <Text style={styles.modalTitle}>No Slots Available</Text>
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.sectionTitle}>Search By Mobile Number</Text>
+          <View style={styles.searchRow}>
+            <View style={styles.inputContainer}>
+              <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+              <TextInput
+                placeholder="Enter mobile number"
+                style={styles.input}
+                keyboardType="number-pad"
+                value={searchMobile}
+                onChangeText={setSearchMobile}
+                placeholderTextColor="#9CA3AF"
+                maxLength={10}
+              />
             </View>
-            <Text style={styles.modalMessage}>
-              There are no available time slots for the selected clinic on the selected date.
-              Please choose a different date or clinic.
-            </Text>
-            <TouchableOpacity
-              style={styles.singleActionButton}
-              onPress={() => {
-                setNoSlotsModalVisible(false);
-                navigation.navigate('Availability');
-              }}
-            >
-              <Text style={styles.singleActionButtonText}>Go to Availability</Text>
+            <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+              <Text style={styles.searchButtonText}>Search</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
 
-      {/* Patient Selection Modal */}
-      <Modal
-        visible={patientSelectModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setPatientSelectModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Select Patient</Text>
-            <ScrollView style={{ maxHeight: 300 }}>
-              {patientNames.map((patient: any) => (
+          {/* No Slots Available Modal */}
+          <Modal
+            visible={noSlotsModalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setNoSlotsModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
                 <TouchableOpacity
-                  key={patient._id}
-                  style={styles.patientOption}
+                  style={styles.closeButton}
+                  onPress={() => setNoSlotsModalVisible(false)}
+                >
+                  <Ionicons name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+                <View style={styles.modalHeader}>
+                  <Ionicons name="warning" size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
+                  <Text style={styles.modalTitle}>No Slots Available</Text>
+                </View>
+                <Text style={styles.modalMessage}>
+                  There are no available time slots for the selected clinic on the selected date.
+                  Please choose a different date or clinic.
+                </Text>
+                <TouchableOpacity
+                  style={styles.singleActionButton}
                   onPress={() => {
-                    prefillPatientDetails(patient);
-                    setFieldsDisabled(true);
-                    setPatientSelectModalVisible(false);
+                    setNoSlotsModalVisible(false);
+                    navigation.navigate('Availability');
                   }}
                 >
-                  <Text style={styles.patientText}>{patient.firstname} {patient.lastname}</Text>
+                  <Text style={styles.singleActionButtonText}>Go to Availability</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setPatientSelectModalVisible(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Patient Information */}
-      <View style={styles.patientsContainer}>
-        <Text style={styles.sectionTitle}>Patient Information</Text>
-        <View style={styles.row}>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.label}>First Name*</Text>
-            <TextInput
-              placeholder="First Name"
-              style={styles.inputFlex}
-              value={patientformData.firstName}
-              onChangeText={(text) => handleInputChange("firstName", text)}
-              editable={!isPatientAdded && !fieldsDisabled} // Add !fieldsDisabled
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Last Name</Text>
-            <TextInput
-              placeholder="Last Name"
-              style={styles.inputFlex}
-              value={patientformData.lastName}
-              onChangeText={(text) => handleInputChange("lastName", text)}
-              editable={!isPatientAdded && !fieldsDisabled} // Add !fieldsDisabled
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
-        </View>
-        <View style={styles.row}>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Date of Birth*</Text>
-            <TouchableOpacity
-              style={styles.inputFlex}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={{ color: patientformData.dob ? '#000' : '#9CA3AF' }}>
-                {patientformData.dob || 'DD-MM-YYYY'}
-              </Text>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={new Date()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                maximumDate={new Date()}
-                onChange={onDateChange}
-              />
-            )}
-          </View>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Age*</Text>
-            <TextInput
-              placeholder="e.g., 7, 6m, 2y, 15d, 5y10d, 1y 2m"
-              style={[styles.inputFlex, fieldErrors.age ? styles.errorInput : null]}
-              placeholderTextColor="#9CA3AF"
-              value={patientformData.age}
-              onChangeText={(text) => handleInputChange("age", text)}
-              editable={true} // Ensure age is always editable
-              maxLength={20}
-            />
-            {fieldErrors.age && <Text style={styles.errorText}>{fieldErrors.age}</Text>}
-          </View>
-        </View>
-        <View style={styles.mobileContainer}>
-          <Text style={styles.label}>Mobile Number*</Text>
-          <View style={styles.row}>
-            <TextInput
-              placeholder="Mobile Number"
-              style={[styles.inputFlex, mobileError ? styles.errorInput : null]}
-              keyboardType="phone-pad"
-              maxLength={10}
-              value={patientformData.mobile}
-              onChangeText={(text) => handleInputChange("mobile", text)}
-              editable={!isPatientAdded && !fieldsDisabled} // Add !fieldsDisabled
-              onBlur={() => validateMobile(patientformData.mobile)}
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
-          {mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
-        </View>
-        <Text style={styles.label}>Gender*</Text>
-        <View style={styles.radioRow}>
-          {['Male', 'Female', 'Other'].map((option) => (
-            <View key={option} style={styles.radioItem}>
-              <RadioButton
-                value={option}
-                status={patientformData.gender === option ? 'checked' : 'unchecked'}
-                onPress={() => {
-                  if (!fieldsDisabled && !isPatientAdded) {
-                    setpatientFormData({ ...patientformData, gender: option });
-                  }
-                }}
-                disabled={fieldsDisabled || isPatientAdded} // Add this line
-              />
-              <Text style={styles.radioText}>{option}</Text>
+              </View>
             </View>
-          ))}
-        </View>
-        <TouchableOpacity
-          style={[styles.addButton, isAddPatientDisabled && styles.disabledButton]}
-          onPress={handleAddPatient}
-          disabled={isAddPatientDisabled}
-        >
-          <Text style={styles.addButtonText}>Create Patient</Text>
-        </TouchableOpacity>
-      </View>
+          </Modal>
 
-      {/* Appointment Information */}
-      <View style={styles.patientsContainer}>
-        <Text style={styles.sectionTitle}>Appointment Information</Text>
-        <Text style={styles.label}>Appointment Type *</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.appointmentType}
-            onValueChange={(itemValue) =>
-              setFormData((prev) => ({ ...prev, appointmentType: itemValue }))
-            }
-            style={styles.picker}
+          {/* Patient Selection Modal */}
+          <Modal
+            visible={patientSelectModalVisible}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setPatientSelectModalVisible(false)}
           >
-            <Picker.Item label="Select Type" value="" />
-            <Picker.Item label="New Walkin" value="new-walkin" />
-            <Picker.Item label="New HomeCare" value="new-homecare" />
-            <Picker.Item label="Followup Walkin" value="followup-walkin" />
-            <Picker.Item label="Followup Video" value="followup-video" />
-            <Picker.Item label="Followup Homecare" value="followup-homecare" />
-          </Picker>
-        </View>
-        <Text style={styles.label}>Department *</Text>
-        <View style={styles.pickerContainer}>
-          <TextInput
-            style={styles.input}
-            value={formData?.department || currentuserDetails?.specialization?.name || ""}
-            editable={false}
-          />
-        </View>
-        <Text style={styles.label}>Appointment Date *</Text>
-        <View style={styles.pickerContainer}>
-          <TouchableOpacity style={styles.input} onPress={() => setShowappointmentDatePicker(true)}>
-            <Text style={{ color: formData.appointmentDate ? '#000' : '#9CA3AF', marginLeft: 5 }}>
-              {formData.appointmentDate || 'DD-MM-YYYY'}
-            </Text>
-          </TouchableOpacity>
-          {showappointmentDatePicker && (
-            <DateTimePicker
-              value={
-                formData.appointmentDate
-                  ? (() => {
-                    const [day, month, year] = formData.appointmentDate.split('-');
-                    if (day && month && year) {
-                      return new Date(Number(year), Number(month) - 1, Number(day));
-                    }
-                    return new Date();
-                  })()
-                  : new Date()
-              }
-              mode="date"
-              minimumDate={new Date()}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(event, selectedDate) => {
-                setShowappointmentDatePicker(false);
-                if (selectedDate) {
-                  const formattedDate = `${selectedDate.getDate().toString().padStart(2, '0')}-${(selectedDate.getMonth() + 1)
-                    .toString()
-                    .padStart(2, '0')}-${selectedDate.getFullYear()}`;
-                  setFormData({ ...formData, appointmentDate: formattedDate });
-                }
-              }}
-            />
-          )}
-        </View>
-        <Text style={styles.label}>Clinic Name *</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.clinicName}
-            onValueChange={(itemValue) => {
-              const selectedClinic = activeclinicsData.find(
-                (clinic: any) => clinic.clinicName === itemValue
-              );
-              setFormData((prev) => ({
-                ...prev,
-                clinicName: itemValue,
-                clinicAddressId: selectedClinic?.addressId || "",
-              }));
-            }}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select Clinic" value="" />
-            {activeclinicsData.map((clinic: any) => (
-              <Picker.Item
-                key={clinic._id || clinic.id}
-                label={clinic.clinicName}
-                value={clinic.clinicName}
-              />
-            ))}
-          </Picker>
-        </View>
-        <Text style={styles.label}>Available Slots *</Text>
-        <View style={styles.timeSlotContainer}>
-          {timeSlots.length > 0 ? (
-            timeSlots.map((slot) => (
-              <TouchableOpacity
-                key={slot.value}
-                onPress={() => setFormData({ ...formData, selectedTime: slot.value })}
-                style={[
-                  styles.timeSlot,
-                  formData.selectedTime === slot.value && styles.timeSlotSelected,
-                ]}
-              >
-                <Text
-                  style={
-                    formData.selectedTime === slot.value
-                      ? styles.timeSelectedText
-                      : styles.timeText
-                  }
-                >
-                  {slot.display}
-                </Text>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <Text style={styles.errorMessage}>{message}</Text>
-          )}
-        </View>
-      </View>
-
-      {/* Payment Section */}
-      <View style={styles.patientsContainer}>
-        <Text style={styles.sectionTitle}>Payment Summary</Text>
-        <Text style={styles.label}>Consultation Fee (₹) *</Text>
-        <TextInput
-          placeholder="Enter consultation fee"
-          placeholderTextColor="#9CA3AF"
-          style={[styles.inputFlex, fieldErrors.fee ? styles.errorInput : null]}
-          keyboardType="numeric"
-          value={formData.fee}
-          onChangeText={(text) => {
-            const value = text.replace(/\D/g, "");
-            if (value === "" || (Number(value) >= 0 && Number(value) <= 9999)) {
-              setFormData({ ...formData, fee: value });
-            }
-          }}
-        />
-        {fieldErrors.fee && <Text style={styles.errorText}>{fieldErrors.fee}</Text>}
-        <Text style={styles.label}>Discount</Text>
-        <View style={styles.row}>
-          <TextInput
-            placeholder="Enter discount"
-            placeholderTextColor="#9CA3AF"
-            style={[styles.inputFlex, fieldErrors.discount ? styles.errorInput : null]}
-            keyboardType="numeric"
-            value={formData.discount === "0" ? "0" : formData.discount} // Show "0" initially
-            onChangeText={(text) => handleInputChange("discount", text)}
-            onFocus={() => {
-              // Clear the field when user focuses on it if it's "0"
-              if (formData.discount === "0") {
-                handleInputChange("discount", "");
-              }
-            }}
-            onBlur={() => {
-              // If field is empty after blur, set it back to "0"
-              if (formData.discount === "") {
-                setFormData((prev) => ({ ...prev, discount: "0" }));
-              }
-            }}
-          />
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formData.discountType}
-              onValueChange={(itemValue) =>
-                setFormData((prev) => ({ ...prev, discountType: itemValue }))
-              }
-              style={styles.picker}
-            >
-              <Picker.Item label="Percentage" value="percentage" />
-              <Picker.Item label="Fixed" value="fixed" />
-            </Picker>
-          </View>
-        </View>
-        {fieldErrors.discount && <Text style={styles.errorText}>{fieldErrors.discount}</Text>}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₹{formData.fee || "0.00"}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Discount</Text>
-            <Text style={[styles.summaryValue, { color: '#ff4d4f' }]}>
-              {formData.discountType === "percentage" ? `${formData.discount}%` : `₹${formData.discount}`}
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Amount</Text>
-            <Text style={[styles.summaryValue, { color: '#52c41a' }]}>
-              ₹{(
-                formData.fee && formData.discountType === "percentage"
-                  ? Number(formData.fee) - (Number(formData.fee) * Number(formData.discount)) / 100
-                  : Number(formData.fee) - Number(formData.discount)
-              ).toFixed(2) || "0.00"}
-            </Text>
-          </View>
-        </View>
-        <Text style={styles.label}>Payment Method *</Text>
-        <View style={styles.radioRow}>
-          <View style={styles.radioItem}>
-            <RadioButton
-              value="cash"
-              status={paymentMethod === 'cash' ? 'checked' : 'unchecked'}
-              onPress={() => setPaymentMethod('cash')}
-            />
-            <Text style={styles.radioText}>Cash</Text>
-          </View>
-          <View style={styles.radioItem}>
-            <RadioButton
-              value="upi"
-              status={paymentMethod === 'upi' ? 'checked' : 'unchecked'}
-              onPress={() => {
-                if (!formData.clinicAddressId) {
-                  Alert.alert('Error', 'Please select a clinic first to use UPI payment');
-                  return;
-                }
-                setPaymentMethod('upi');
-                fetchQRCode(formData.clinicAddressId);
-              }}
-              disabled={!formData.clinicAddressId}
-            />
-            <Text style={[
-              styles.radioText,
-              !formData.clinicAddressId && { color: '#ccc' }
-            ]}>
-              UPI
-            </Text>
-          </View>
-        </View>
-
-        {/* UPI Payment Modal */}
-        <Modal
-          visible={showUpiModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowUpiModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowUpiModal(false)}
-              >
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-
-              <Text style={styles.modalTitle}>UPI Payment</Text>
-
-              <View style={styles.qrContainer}>
-                {qrCodeUrl ? (
-                  <>
-                    <Text style={styles.qrText}>Scan QR Code to Pay</Text>
-                    <Image
-                      source={{ uri: qrCodeUrl }}
-                      style={styles.qrImage}
-                      resizeMode="contain"
-                      onError={() => {
-                        setQrCodeUrl('');
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <Text style={styles.modalTitle}>Select Patient</Text>
+                <ScrollView style={{ maxHeight: 300 }}>
+                  {patientNames.map((patient: any) => (
+                    <TouchableOpacity
+                      key={patient._id}
+                      style={styles.patientOption}
+                      onPress={() => {
+                        prefillPatientDetails(patient);
+                        setFieldsDisabled(true);
+                        setPatientSelectModalVisible(false);
                       }}
-                    />
-                  </>
-                ) : (
-                  <View>
-                    <Text style={styles.errorText}>QR Code not available</Text>
-                    <Text style={{ marginTop: 10, textAlign: 'center' }}>
-                      Please use cash payment or contact clinic administrator
-                    </Text>
-                  </View>
+                    >
+                      <Text style={styles.patientText}>{patient.firstname} {patient.lastname}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setPatientSelectModalVisible(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Patient Information */}
+          <View style={styles.patientsContainer}>
+            <Text style={styles.sectionTitle}>Patient Information</Text>
+            <View style={styles.row}>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>First Name*</Text>
+                <TextInput
+                  placeholder="First Name"
+                  style={styles.inputFlex}
+                  value={patientformData.firstName}
+                  onChangeText={(text) => handleInputChange("firstName", text)}
+                  editable={!isPatientAdded && !fieldsDisabled}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Last Name</Text>
+                <TextInput
+                  placeholder="Last Name"
+                  style={styles.inputFlex}
+                  value={patientformData.lastName}
+                  onChangeText={(text) => handleInputChange("lastName", text)}
+                  editable={!isPatientAdded && !fieldsDisabled}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+            <View style={styles.row}>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Date of Birth*</Text>
+                <TouchableOpacity
+                  style={styles.inputFlex}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={{ color: patientformData.dob ? '#000' : '#9CA3AF' }}>
+                    {patientformData.dob || 'DD-MM-YYYY'}
+                  </Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    maximumDate={new Date()}
+                    onChange={onDateChange}
+                  />
                 )}
               </View>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Age*</Text>
+                <TextInput
+                  placeholder="e.g., 7, 6m, 2y, 15d, 5y10d, 1y 2m"
+                  style={[styles.inputFlex, fieldErrors.age ? styles.errorInput : null]}
+                  placeholderTextColor="#9CA3AF"
+                  value={patientformData.age}
+                  onChangeText={(text) => handleInputChange("age", text)}
+                  editable={true}
+                  maxLength={20}
+                />
+                {fieldErrors.age && <Text style={styles.errorText}>{fieldErrors.age}</Text>}
+              </View>
+            </View>
+            <View style={styles.mobileContainer}>
+              <Text style={styles.label}>Mobile Number*</Text>
+              <View style={styles.row}>
+                <TextInput
+                  placeholder="Mobile Number"
+                  style={[styles.inputFlex, mobileError ? styles.errorInput : null]}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={patientformData.mobile}
+                  onChangeText={(text) => handleInputChange("mobile", text)}
+                  editable={!isPatientAdded && !fieldsDisabled}
+                  onBlur={() => validateMobile(patientformData.mobile)}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+              {mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
+            </View>
+            <Text style={styles.label}>Gender*</Text>
+            <View style={styles.radioRow}>
+              {['Male', 'Female', 'Other'].map((option) => (
+                <View key={option} style={styles.radioItem}>
+                  <RadioButton
+                    value={option}
+                    status={patientformData.gender === option ? 'checked' : 'unchecked'}
+                    onPress={() => {
+                      if (!fieldsDisabled && !isPatientAdded) {
+                        setpatientFormData({ ...patientformData, gender: option });
+                      }
+                    }}
+                    disabled={fieldsDisabled || isPatientAdded}
+                  />
+                  <Text style={styles.radioText}>{option}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={[styles.addButton, isAddPatientDisabled && styles.disabledButton]}
+              onPress={handleAddPatient}
+              disabled={isAddPatientDisabled}
+            >
+              <Text style={styles.addButtonText}>Create Patient</Text>
+            </TouchableOpacity>
+          </View>
 
-              <TouchableOpacity
-                style={[styles.confirmButton, (!qrCodeUrl || isProcessingPayment) && styles.disabledButton]}
-                disabled={!qrCodeUrl || isProcessingPayment}
-                onPress={() => {
-                  setShowUpiModal(false);
-                  handleCreateAppointment();
-                }}
+          {/* Appointment Information */}
+          <View style={styles.patientsContainer}>
+            <Text style={styles.sectionTitle}>Appointment Information</Text>
+            <Text style={styles.label}>Appointment Type *</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.appointmentType}
+                onValueChange={(itemValue) =>
+                  setFormData((prev) => ({ ...prev, appointmentType: itemValue }))
+                }
+                style={styles.picker}
               >
-                <Text style={styles.confirmButtonText}>
-                  {isProcessingPayment ? "Processing..." : "Confirm Payment"}
+                <Picker.Item label="Select Type" value="" />
+                <Picker.Item label="New Walkin" value="new-walkin" />
+                <Picker.Item label="New HomeCare" value="new-homecare" />
+                <Picker.Item label="Followup Walkin" value="followup-walkin" />
+                <Picker.Item label="Followup Video" value="followup-video" />
+                <Picker.Item label="Followup Homecare" value="followup-homecare" />
+              </Picker>
+            </View>
+            <Text style={styles.label}>Department *</Text>
+            <View style={styles.pickerContainer}>
+              <TextInput
+                style={styles.input}
+                value={formData?.department || currentuserDetails?.specialization?.name || ""}
+                editable={false}
+              />
+            </View>
+            <Text style={styles.label}>Appointment Date *</Text>
+            <View style={styles.pickerContainer}>
+              <TouchableOpacity style={styles.input} onPress={() => setShowappointmentDatePicker(true)}>
+                <Text style={{ color: formData.appointmentDate ? '#000' : '#9CA3AF', marginLeft: 5 }}>
+                  {formData.appointmentDate || 'DD-MM-YYYY'}
                 </Text>
               </TouchableOpacity>
-
-              {!qrCodeUrl && (
-                <TouchableOpacity
-                  style={[styles.confirmButton, { backgroundColor: '#6c757d', marginTop: 10 }]}
-                  onPress={() => setShowUpiModal(false)}
-                >
-                  <Text style={styles.confirmButtonText}>Cancel</Text>
-                </TouchableOpacity>
+              {showappointmentDatePicker && (
+                <DateTimePicker
+                  value={
+                    formData.appointmentDate
+                      ? (() => {
+                        const [day, month, year] = formData.appointmentDate.split('-');
+                        if (day && month && year) {
+                          return new Date(Number(year), Number(month) - 1, Number(day));
+                        }
+                        return new Date();
+                      })()
+                      : new Date()
+                  }
+                  mode="date"
+                  minimumDate={new Date()}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, selectedDate) => {
+                    setShowappointmentDatePicker(false);
+                    if (selectedDate) {
+                      const formattedDate = `${selectedDate.getDate().toString().padStart(2, '0')}-${(selectedDate.getMonth() + 1)
+                        .toString()
+                        .padStart(2, '0')}-${selectedDate.getFullYear()}`;
+                      setFormData({ ...formData, appointmentDate: formattedDate });
+                    }
+                  }}
+                />
+              )}
+            </View>
+            <Text style={styles.label}>Clinic Name *</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.clinicName}
+                onValueChange={(itemValue) => {
+                  const selectedClinic = activeclinicsData.find(
+                    (clinic: any) => clinic.clinicName === itemValue
+                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    clinicName: itemValue,
+                    clinicAddressId: selectedClinic?.addressId || "",
+                  }));
+                }}
+                style={styles.picker}
+              >
+                <Picker.Item label="Select Clinic" value="" />
+                {activeclinicsData.map((clinic: any) => (
+                  <Picker.Item
+                    key={clinic._id || clinic.id}
+                    label={clinic.clinicName}
+                    value={clinic.clinicName}
+                  />
+                ))}
+              </Picker>
+            </View>
+            <Text style={styles.label}>Available Slots *</Text>
+            <View style={styles.timeSlotContainer}>
+              {timeSlots.length > 0 ? (
+                timeSlots.map((slot) => (
+                  <TouchableOpacity
+                    key={slot.value}
+                    onPress={() => setFormData({ ...formData, selectedTime: slot.value })}
+                    style={[
+                      styles.timeSlot,
+                      formData.selectedTime === slot.value && styles.timeSlotSelected,
+                    ]}
+                  >
+                    <Text
+                      style={
+                        formData.selectedTime === slot.value
+                          ? styles.timeSelectedText
+                          : styles.timeText
+                      }
+                    >
+                      {slot.display}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text style={styles.errorMessage}>{message}</Text>
               )}
             </View>
           </View>
-        </Modal>
 
-        {/* Existing patient confirm (same UX as web) */}
-<Modal
-  visible={existingPatientModalVisible}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setExistingPatientModalVisible(false)}
->
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalContainer}>
-      <Text style={styles.modalTitle}>Existing patient found</Text>
-      <Text style={styles.modalMessage}>
-        A patient with the same details already exists. Do you want to use the existing record and prefill?
-      </Text>
+          {/* Payment Section */}
+          <View style={styles.patientsContainer}>
+            <Text style={styles.sectionTitle}>₹ Payment Summary</Text>
+            <Text style={styles.label}>Consultation Fee (₹) *</Text>
+            <TextInput
+              placeholder="Enter consultation fee"
+              placeholderTextColor="#9CA3AF"
+              style={[styles.inputFlex, fieldErrors.fee ? styles.errorInput : null]}
+              keyboardType="numeric"
+              value={formData.fee}
+              onChangeText={(text) => {
+                const value = text.replace(/\D/g, "");
+                if (value === "" || (Number(value) >= 0 && Number(value) <= 9999)) {
+                  setFormData({ ...formData, fee: value });
+                }
+              }}
+            />
+            {fieldErrors.fee && <Text style={styles.errorText}>{fieldErrors.fee}</Text>}
+            <Text style={styles.label}>Discount(%)</Text>
+            <View style={styles.row}>
+              <TextInput
+                placeholder="Enter discount"
+                placeholderTextColor="#9CA3AF"
+                style={[styles.inputFlex, fieldErrors.discount ? styles.errorInput : null]}
+                keyboardType="numeric"
+                value={formData.discount === "0" ? "0" : formData.discount} // Show "0" initially
+                onChangeText={(text) => handleInputChange("discount", text)}
+                onFocus={() => {
+                  // Clear the field when user focuses on it if it's "0"
+                  if (formData.discount === "0") {
+                    handleInputChange("discount", "");
+                  }
+                }}
+                onBlur={() => {
+                  // If field is empty after blur, set it back to "0"
+                  if (formData.discount === "") {
+                    setFormData((prev) => ({ ...prev, discount: "0" }));
+                  }
+                }}
+              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={formData.discountType}
+                  onValueChange={(itemValue) =>
+                    setFormData((prev) => ({ ...prev, discountType: itemValue }))
+                  }
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Percentage" value="percentage" />
+                  <Picker.Item label="Fixed" value="fixed" />
+                </Picker>
+              </View>
+            </View>
+            {fieldErrors.discount && <Text style={styles.errorText}>{fieldErrors.discount}</Text>}
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={[styles.summaryValue, { color: '#0d0d0dff' }]}>₹{formData.fee || "0.00"}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Discount</Text>
+                <Text style={[styles.summaryValue, { color: '#ff4d4f' }]}>
+                  {formData.discountType === "percentage" ? `${formData.discount}%` : `₹${formData.discount}`}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Total Amount</Text>
+                <Text style={[styles.summaryValue, { color: '#52c41a' }]}>
+                  ₹{(
+                    formData.fee && formData.discountType === "percentage"
+                      ? Number(formData.fee) - (Number(formData.fee) * Number(formData.discount)) / 100
+                      : Number(formData.fee) - Number(formData.discount)
+                  ).toFixed(2) || "0.00"}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.label}>Payment Method *</Text>
+            <View style={styles.radioRow}>
+              <View style={styles.radioItem}>
+                <RadioButton
+                  value="cash"
+                  status={paymentMethod === 'cash' ? 'checked' : 'unchecked'}
+                  onPress={() => setPaymentMethod('cash')}
+                />
+                <Text style={styles.radioText}>Cash</Text>
+              </View>
+              <View style={styles.radioItem}>
+                <RadioButton
+                  value="upi"
+                  status={paymentMethod === 'upi' ? 'checked' : 'unchecked'}
+                  onPress={() => {
+                    if (!formData?.clinicAddressId) {
+                      Alert.alert('Error', 'Please select a clinic first to use UPI payment');
+                      return;
+                    }
+                    setPaymentMethod('upi');
+                    fetchQRCode(formData?.clinicAddressId);
+                  }}
+                  disabled={!formData?.clinicAddressId}
+                />
+                <Text style={[
+                  styles.radioText,
+                  !formData?.clinicAddressId && { color: '#ccc' }
+                ]}>
+                  UPI
+                </Text>
+              </View>
+            </View>
 
-      {existingPatientData && (
-        <View style={{ width: '100%', marginBottom: 12 }}>
-          <Text style={{ color: '#374151' }}>
-            {existingPatientData.firstname} {existingPatientData.lastname} • {existingPatientData.mobile}
-          </Text>
-        </View>
-      )}
+            {/* UPI Payment Modal */}
+            <Modal
+              visible={showUpiModal}
+              animationType="slide"
+              transparent={true}
+              onRequestClose={() => setShowUpiModal(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setShowUpiModal(false)}
+                  >
+                    <Ionicons name="close" size={24} color="#6B7280" />
+                  </TouchableOpacity>
 
-      <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
-        <TouchableOpacity
-          style={[styles.singleActionButton, { backgroundColor: '#2563EB', flex: 1 }]}
-          onPress={() => {
-            const p = existingPatientData;
-            prefillPatientDetails({
-              firstname: p?.firstname,
-              lastname: p?.lastname,
-              DOB: p?.DOB,
-              age: p?.age,
-              gender: p?.gender,
-              mobile: p?.mobile,
-              userId: p?.userId,
-            });
-            setFieldsDisabled(true);
-            setExistingPatientModalVisible(false);
-          }}
-        >
-          <Text style={styles.singleActionButtonText}>Yes, use existing</Text>
-        </TouchableOpacity>
+                  <Text style={styles.modalTitle}>UPI Payment</Text>
 
-        <TouchableOpacity
-          style={[styles.singleActionButton, { backgroundColor: '#6B7280', flex: 1, alignItems : 'center', justifyContent : 'center' }]}
-          onPress={() => setExistingPatientModalVisible(false)}
-        >
-          <Text style={styles.singleActionButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-</Modal>
+                  <View style={styles.qrContainer}>
+                    {qrCodeUrl ? (
+                      <>
+                        <Text style={styles.qrText}>Scan QR Code to Pay</Text>
+                        <Image
+                          source={{ uri: qrCodeUrl }}
+                          style={styles.qrImage}
+                          resizeMode="contain"
+                          onError={() => {
+                            setQrCodeUrl('');
+                          }}
+                        />
+                      </>
+                    ) : (
+                      <View>
+                        <Text style={styles.errorText}>QR Code not available</Text>
+                        <Text style={{ marginTop: 10, textAlign: 'center', color: '#6B7280' }}>
+                          Please use cash payment or contact clinic administrator
+                        </Text>
+                      </View>
+                    )}
+                  </View>
 
-        <TouchableOpacity
-          style={[
-            styles.payNowButton,
-            (isProcessingPayment || !validateRequiredFields()) && styles.disabledButton
-          ]}
-          onPress={() => {
-            if (paymentMethod === 'upi') {
-              if (!formData.clinicAddressId) {
-                Alert.alert('Error', 'Please select a clinic first');
-                return;
-              }
-              setShowUpiModal(true);
-            } else {
-              handleCreateAppointment();
-            }
-          }}
-          disabled={isProcessingPayment || !validateRequiredFields()}
-        >
-          {isProcessingPayment ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.payNowText}>Pay Now</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+                  <TouchableOpacity
+                    style={[styles.confirmButton, (!qrCodeUrl || isProcessingPayment) && styles.disabledButton]}
+                    disabled={!qrCodeUrl || isProcessingPayment}
+                    onPress={() => {
+                      setShowUpiModal(false);
+                      handleCreateAppointment();
+                    }}
+                  >
+                    <Text style={styles.confirmButtonText}>
+                      {isProcessingPayment ? "Processing..." : "Confirm Payment"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {!qrCodeUrl && (
+                    <TouchableOpacity
+                      style={[styles.confirmButton, { backgroundColor: '#6c757d', marginTop: 10 }]}
+                      onPress={() => setShowUpiModal(false)}
+                    >
+                      <Text style={styles.confirmButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </Modal>
+
+            {/* Existing patient confirm (same UX as web) */}
+            <Modal
+              visible={existingPatientModalVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setExistingPatientModalVisible(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                  <Text style={styles.modalTitle}>Existing patient found</Text>
+                  <Text style={styles.modalMessage}>
+                    A patient with the same details already exists. Do you want to use the existing record and prefill?
+                  </Text>
+
+                  {existingPatientData && (
+                    <View style={{ width: '100%', marginBottom: 12 }}>
+                      <Text style={{ color: '#374151' }}>
+                        {existingPatientData.firstname} {existingPatientData.lastname} • {existingPatientData.mobile}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                    <TouchableOpacity
+                      style={[styles.singleActionButton, { backgroundColor: '#2563EB', flex: 1 }]}
+                      onPress={() => {
+                        const p = existingPatientData;
+                        prefillPatientDetails({
+                          firstname: p?.firstname,
+                          lastname: p?.lastname,
+                          DOB: p?.DOB,
+                          age: p?.age,
+                          gender: p?.gender,
+                          mobile: p?.mobile,
+                          userId: p?.userId,
+                        });
+                        setFieldsDisabled(true);
+                        setExistingPatientModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.singleActionButtonText}>Yes, use existing</Text>
+                    </TouchableOpacity>
+
+             <TouchableOpacity
+              style={[styles.singleActionButton, { backgroundColor: '#6B7280', flex: 1, alignItems: 'center', justifyContent: 'center' }]}
+              onPress={() => {
+    setExistingPatientModalVisible(false);
+    // clear patient details
+    setpatientFormData({
+      firstName: '',
+      lastName: '',
+      gender: '',
+      dob: '',
+      age: '',
+      mobile: '',
+    });
+    setPatientId('');
+    setPatientCreated(false);
+    setIsPatientAdded(false);
+    setFieldsDisabled(false);
+    setExistingPatientData(null);
+  }}
+            >
+              <Text style={styles.singleActionButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+                  </View>
+                </View>
+              </View>
+            </Modal>
+
+            {/* Spacer so Pay Now can move above keyboard */}
+            <View style={{ flex: 1 }} />
+
+            <TouchableOpacity
+              style={[
+                styles.payNowButton,
+                (isProcessingPayment || !validateRequiredFields()) && styles.disabledButton
+              ]}
+              onPress={() => {
+                if (paymentMethod === 'upi') {
+                  if (!formData.clinicAddressId) {
+                    Alert.alert('Error', 'Please select a clinic first');
+                    return;
+                  }
+                  setShowUpiModal(true);
+                } else {
+                  handleCreateAppointment();
+                }
+              }}
+              disabled={isProcessingPayment || !validateRequiredFields()}
+            >
+              {isProcessingPayment ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.payNowText}>Pay Now</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -1405,6 +1458,7 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize: 12,
     marginTop: 4,
+    textAlign: 'center',
   },
   pickerContainer: {
     borderWidth: 1,

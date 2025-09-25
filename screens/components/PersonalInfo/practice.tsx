@@ -15,6 +15,8 @@ import {
   Linking,
   Alert,
   Image,
+  Keyboard,
+  KeyboardEvent,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -115,6 +117,13 @@ const PracticeScreen = () => {
   const lastPanUpdateRefs = useRef<{ [key: number]: number }>({});
   const lastAutoSelectedRefs = useRef<{ [key: number]: string }>({});
 
+
+  // ---------- NEW: keyboard state ----------
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // -----------------------------------------
+
+
   const isValidMobile = (mobile: string): boolean => {
     return mobile.length === 10 && /^[6-9]\d{9}$/.test(mobile);
   };
@@ -140,9 +149,37 @@ const PracticeScreen = () => {
       Object.values(reverseGeoDebounceRefs.current).forEach(timeout => {
         if (timeout) clearTimeout(timeout);
       });
+
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---------- NEW: keyboard listeners ----------
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e: KeyboardEvent) => {
+        const h = e.endCoordinates ? e.endCoordinates.height : 0;
+        setKeyboardHeight(h);
+        setKeyboardVisible(true);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
@@ -173,7 +210,7 @@ const PracticeScreen = () => {
       if (response.results && response.results.length > 0) {
         const result = response.results[0];
         const addressComponents = result.address_components;
-        
+
         let address = '';
         let city = '';
         let state = '';
@@ -329,6 +366,7 @@ const PracticeScreen = () => {
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
 
+
           Toast.show({
             type: 'info',
             text1: 'Getting Location',
@@ -336,6 +374,7 @@ const PracticeScreen = () => {
             position: 'top',
             visibilityTime: 2000,
           });
+
 
           locationRetryTimeoutRef.current = setTimeout(() => {
             initLocationWithRetry(index);
@@ -892,6 +931,7 @@ const PracticeScreen = () => {
       uniqueByNameMap.set(nameKey, p);
     }
 
+
     // Now filter out any clinics whose name already exists on server (combinedExistingNameSet)
     const toAddAll = Array.from(uniqueByNameMap.entries()).map(([nameKey, clinic]) => ({ nameKey, clinic }));
 
@@ -919,6 +959,7 @@ const PracticeScreen = () => {
       navigation.navigate('ConsultationPreferences');
       return;
     }
+
 
     if (skippedNames.length > 0) {
       Toast.show({
@@ -1446,13 +1487,34 @@ const PracticeScreen = () => {
         <View style={styles.spacer} />
       </ScrollView>
 
-      {skipButton && (
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+
+      {/* Skip button (floating) */}
+      {/* {skipButton && (
+        <TouchableOpacity
+          style={[
+            styles.skipButtonFloating,
+            {
+              bottom: keyboardVisible ? keyboardHeight + 12 : 16
+            }
+          ]}
+          onPress={handleSkip}
+        >
           <Text style={styles.skipButtonText}>Skip</Text>
         </TouchableOpacity>
-      )}
+      )} */}
 
-      <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+      {/* Next button (floating) */}
+      <TouchableOpacity
+        style={[
+          styles.nextButtonFloating,
+          {
+            bottom: keyboardVisible ? keyboardHeight + (skipButton ? 100 : 42) : 42
+            // if skipButton is visible reserve space above it
+          }
+        ]}
+        onPress={handleNext}
+      >
+
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
@@ -1493,7 +1555,7 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.03,
   },
   scrollContent: {
-    paddingBottom: height * 0.1,
+    paddingBottom: height * 0.28, // increased so floating buttons don't cover content
   },
   label: {
     fontSize: width * 0.04,
@@ -1569,6 +1631,7 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     fontWeight: '500',
   },
+
   skipButton: {
     backgroundColor: '#00203F',
     paddingVertical: height * 0.02,
@@ -1588,23 +1651,48 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   nextButton: {
+
     backgroundColor: '#00203F',
-    paddingVertical: height * 0.02,
+    paddingVertical: height * 0.015,
     borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: width * 0.05,
-    marginBottom: height * 0.03,
+    zIndex: 100,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
-    elevation: 5,
+    elevation: 8,
   },
+
+  skipButtonText: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+
+  // Floating Next button (always above skip button if skip present)
+  nextButtonFloating: {
+    position: 'absolute',
+    left: width * 0.05,
+    right: width * 0.05,
+    backgroundColor: '#00203F',
+    paddingVertical: height * 0.018,
+    borderRadius: 8,
+    alignItems: 'center',
+    zIndex: 110,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 10,
+  },
+
   nextButtonText: {
     color: '#fff',
     fontSize: width * 0.045,
     fontWeight: '600',
   },
+
   spacer: {
     height: height * 0.1,
   },
@@ -1717,11 +1805,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 12,
     color: '#3182CE',
+
   },
   inputDisabled: {
     backgroundColor: '#F5F5F5',
     color: '#999',
   },
+
   // search styles
   searchContainer: {
     position: 'relative',
