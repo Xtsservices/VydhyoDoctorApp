@@ -1,6 +1,17 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView, 
+  StyleSheet, 
+  KeyboardAvoidingView, 
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback
+} from 'react-native';
 import { useSelector } from 'react-redux';
 import { AuthPost, AuthFetch } from '../../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,7 +58,7 @@ const PatientDetails = () => {
   const [allClinics, setAllClinics] = useState({});
 
   const fetchPrescription = async () => {
-    const appointmentId = patientDetails?.appointmentId ||patientDetails?.id
+    const appointmentId = patientDetails?.appointmentId ||patientDetails?.id;
     if (!appointmentId) return;
 
     try {
@@ -95,7 +106,7 @@ const PatientDetails = () => {
           diagnosis: {
             diagnosisList: prescription.diagnosis?.diagnosisNote || "",
             selectedTests: prescription.diagnosis?.selectedTests || [],
-            medications: prescription.diagnosis?.medications.map(med => ({
+            medications: prescription.diagnosis?.medications?.map((med: any) => ({
               ...med,
               id: Date.now() + Math.random(),
               timings: typeof med.timings === "string" ? med.timings.split(", ") : med.timings,
@@ -120,7 +131,7 @@ const PatientDetails = () => {
       const userData = response.data?.data;
       if (response.data.status === 'success') {
         setDoctorData(userData);
-        const allClinics = (userData?.addresses?.filter(address => 
+        const allClinics = (userData?.addresses?.filter((address: any) => 
           address.type === "Clinic" && address.status === "Active" && address.addressId === patientDetails.addressId
         ) || [])[0] || {};
         setFormData((prevFormData) => ({
@@ -172,6 +183,17 @@ const PatientDetails = () => {
     }
   };
 
+  const handleNextPress = () => {
+    Keyboard.dismiss();
+    setTimeout(() => {
+      navigation.navigate('Vitals', { patientDetails, formData });
+    }, 100);
+  };
+
+  const handleCancelPress = () => {
+    Keyboard.dismiss();
+  };
+
   useEffect(() => {
     if (currentuserDetails) {
       fetchDoctorData();
@@ -180,121 +202,143 @@ const PatientDetails = () => {
     }
   }, [currentuserDetails]);
 
+  const keyboardVerticalOffset = Platform.select({ ios: 80, android: 80 }) as number;
+
   return (
-    <KeyboardAvoidingView style={styles.keyboardAvoidingContainer}
-                          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>👤 Patient Details</Text>
-          <Text style={styles.input}>{formData.patientInfo.patientName || 'Not provided'}</Text>
-          <Text style={styles.label}>Gender</Text>
-          <View style={styles.radioGroup}>
-            {['Male', 'Female', 'Other'].map((g) => {
-              const isSelected = formData.patientInfo.gender === g;
-              return (
-                <TouchableOpacity
-                  key={g}
-                  style={[
-                    styles.radioOption,
-                    !isSelected && styles.disabledOption,
-                  ]}
-                  onPress={() => {
-                    if (isSelected) return;
-                  }}
-                  disabled={!isSelected}
-                >
-                  <View style={styles.radioCircle}>
-                    {isSelected && <View style={styles.selectedCircle} />}
-                  </View>
-                  <Text style={{color:"black"}}>{g}</Text>
-                </TouchableOpacity>
-              );
-            })}
+    <KeyboardAvoidingView 
+      style={styles.keyboardAvoidingContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <ScrollView 
+            contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 140 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>👤 Patient Details</Text>
+              <Text style={styles.input}>{formData.patientInfo.patientName || 'Not provided'}</Text>
+              <Text style={styles.label}>Gender</Text>
+              <View style={styles.radioGroup}>
+                {['Male', 'Female', 'Other'].map((g) => {
+                  const isSelected = formData.patientInfo.gender === g;
+                  return (
+                    <TouchableOpacity
+                      key={g}
+                      style={[
+                        styles.radioOption,
+                        !isSelected && styles.disabledOption,
+                      ]}
+                      onPress={() => {
+                        if (isSelected) return;
+                      }}
+                      disabled={!isSelected}
+                    >
+                      <View style={styles.radioCircle}>
+                        {isSelected && <View style={styles.selectedCircle} />}
+                      </View>
+                      <Text style={{color:"black"}}>{g}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text style={styles.input}>{formData.patientInfo.age || 'Not provided'}</Text>
+              <Text style={styles.input}>{formData.patientInfo.mobileNumber || 'Not provided'}</Text>
+            </View>
+
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📘 Patient History</Text>
+              <Text style={styles.subtitle}>Complete medical history documentation</Text>
+              <TextInput
+                placeholder="Chief Complaint"
+                placeholderTextColor="#9CA3AF"
+                style={styles.textArea}
+                multiline
+                value={formData.patientInfo.chiefComplaint || ''}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    patientInfo: {
+                      ...prev.patientInfo,
+                      chiefComplaint: text,
+                    },
+                  }))
+                }
+                returnKeyType="done"
+              />
+              <TextInput
+                placeholder="Past Medical History"
+                placeholderTextColor="#9CA3AF"
+                style={styles.textArea}
+                multiline
+                value={formData.patientInfo.pastMedicalHistory || ''}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    patientInfo: {
+                      ...prev.patientInfo,
+                      pastMedicalHistory: text,
+                    },
+                  }))
+                }
+                returnKeyType="done"
+              />
+              <TextInput
+                placeholder="Family Medical History"
+                placeholderTextColor="#9CA3AF"
+                style={styles.textArea}
+                multiline
+                value={formData.patientInfo.familyMedicalHistory || ''}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    patientInfo: {
+                      ...prev.patientInfo,
+                      familyMedicalHistory: text,
+                    },
+                  }))
+                }
+                returnKeyType="done"
+              />
+              <TextInput
+                placeholder="Physical Examination"
+                placeholderTextColor="#9CA3AF"
+                style={styles.textArea}
+                multiline
+                value={formData.patientInfo.physicalExamination || ''}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    patientInfo: {
+                      ...prev.patientInfo,
+                      physicalExamination: text,
+                    },
+                  }))
+                }
+                returnKeyType="done"
+              />
+            </View>
+            <View style={{ flex: 1 }} />
+          </ScrollView>
+          <View style={[styles.buttonContainer, { paddingBottom: Platform.OS === 'ios' ? 20 : 12 }]}>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={handleCancelPress}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.nextButton} 
+              onPress={handleNextPress}
+            >
+              <Text style={styles.nextText}>Next</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.input}>{formData.patientInfo.age || 'Not provided'}</Text>
-          <Text style={styles.input}>{formData.patientInfo.mobileNumber || 'Not provided'}</Text>
         </View>
-
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📘 Patient History</Text>
-          <Text style={styles.subtitle}>Complete medical history documentation</Text>
-          <TextInput
-            placeholder="Chief Complaint"
-            placeholderTextColor="#9CA3AF"
-            style={styles.textArea}
-            multiline
-            value={formData.patientInfo.chiefComplaint || ''}
-            onChangeText={(text) =>
-              setFormData((prev) => ({
-                ...prev,
-                patientInfo: {
-                  ...prev.patientInfo,
-                  chiefComplaint: text,
-                },
-              }))
-            }
-          />
-          <TextInput
-            placeholder="Past Medical History"
-            placeholderTextColor="#9CA3AF"
-            style={styles.textArea}
-            multiline
-            value={formData.patientInfo.pastMedicalHistory || ''}
-            onChangeText={(text) =>
-              setFormData((prev) => ({
-                ...prev,
-                patientInfo: {
-                  ...prev.patientInfo,
-                  pastMedicalHistory: text,
-                },
-              }))
-            }
-          />
-          <TextInput
-            placeholder="Family Medical History"
-            placeholderTextColor="#9CA3AF"
-            style={styles.textArea}
-            multiline
-            value={formData.patientInfo.familyMedicalHistory || ''}
-            onChangeText={(text) =>
-              setFormData((prev) => ({
-                ...prev,
-                patientInfo: {
-                  ...prev.patientInfo,
-                  familyMedicalHistory: text,
-                },
-              }))
-            }
-          />
-          <TextInput
-            placeholder="Physical Examination"
-            placeholderTextColor="#9CA3AF"
-            style={styles.textArea}
-            multiline
-            value={formData.patientInfo.physicalExamination || ''}
-            onChangeText={(text) =>
-              setFormData((prev) => ({
-                ...prev,
-                patientInfo: {
-                  ...prev.patientInfo,
-                  physicalExamination: text,
-                },
-              }))
-            }
-          />
-        </View>
-
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.cancelButton}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.nextButton} onPress={() => navigation.navigate('Vitals', { patientDetails, formData })}>
-            <Text style={styles.nextText}>Next</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
@@ -302,9 +346,15 @@ const PatientDetails = () => {
 export default PatientDetails;
 
 const styles = StyleSheet.create({
+  keyboardAvoidingContainer: {
+    flex: 1,
+  },
   container: {
-    padding: 16,
+    flex: 1,
     backgroundColor: '#F0FDF4',
+  },
+  scrollContent: {
+    padding: 16,
   },
   section: {
     backgroundColor: '#fff',
@@ -378,23 +428,36 @@ const styles = StyleSheet.create({
   disabledOption: {
     opacity: 0.5,
   },
-  buttonRow: {
+  buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 24,
+    paddingVertical: 12,
+    backgroundColor: '#F0FDF4',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   cancelButton: {
     backgroundColor: '#ccc',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+    alignItems: 'center',
   },
   nextButton: {
     backgroundColor: '#007bff',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
   },
   cancelText: {
     color: '#000',
@@ -403,8 +466,5 @@ const styles = StyleSheet.create({
   nextText: {
     color: '#fff',
     fontWeight: '600',
-  },
-  keyboardAvoidingContainer: {
-    flex: 1,
   },
 });

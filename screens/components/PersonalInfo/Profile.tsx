@@ -25,7 +25,7 @@ import moment from 'moment';
 import { Dispatch } from 'redux';
 
 // API functions (keep your implementations)
-import { AuthFetch, AuthPut, UploadFiles, AuthPost } from '../../auth/auth';
+import { AuthFetch, AuthPut, UploadFiles, AuthPost, UpdateFiles } from '../../auth/auth';
 import { useDispatch, useSelector } from 'react-redux';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -408,42 +408,94 @@ const DoctorProfileView: React.FC = () => {
   };
 
   const saveProfessional = async () => {
-    if (!token || !doctorData) return;
+  // retrieve token inside function (like handleNext)
+  const token = await AsyncStorage.getItem('authToken');
+  if (!token || !doctorData) return;
 
-    // Validate at least one degree is selected
-    if (formProfessional.selectedDegrees.length === 0) {
-      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select at least one degree' });
-      return;
+  // Validate at least one degree is selected
+  if (!formProfessional.selectedDegrees || formProfessional.selectedDegrees.length === 0) {
+    Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select at least one degree' });
+    return;
+  }
+
+  try {
+
+    const firstSpec = doctorData?.specialization?.[0];
+    const formData = new FormData();
+    formData.append('id', String(doctorData?.userId || ''));
+    formData.append('name', String(firstSpec?.name || ''));
+    formData.append('experience', String(formProfessional?.experience || ''));
+    formData.append('degree', formProfessional?.selectedDegrees?.join(','));
+    formData.append('bio', String(formProfessional?.about || ''));
+
+    // Helper to normalize uri for iOS (remove file://)
+    const normalizeFileUri = (uri?: string) => {
+      if (!uri) return undefined;
+      if (Platform.OS === 'ios') {
+        return uri.startsWith('file://') ? uri.replace('file://', '') : uri;
+      }
+      return uri;
+    };
+
+    // If your backend expects the same key names as handleNext, use them.
+    // Change the property names below if your API expects different names.
+    const degreeUri = doctorData.specialization?.[0]?.degreeCertificate
+;
+    if (degreeUri) {
+      const normalized = normalizeFileUri(degreeUri);
+      // If it's an http/https URL we can't directly upload — prefer local file objects (uploadedFiles).
+      if (!/^https?:\/\//i.test(degreeUri)) {
+        formData.append('degreeCertificate', {
+          uri: Platform.OS === 'android' ? degreeUri : normalized,
+          type: 'application/pdf',
+          name: 'degree.pdf',
+        } as any);
+      } else {
+        // optional: if it's remote and you want to pass the URL instead of file
+        // formData.append('degreeCertificateUrl', degreeUri);
+        // or download the file to local first before uploading
+        console.warn('degreeCertificateUrl is a remote URL — backend likely expects a file. Consider using uploadedFiles or downloading the file first.');
+      }
     }
 
-    try {
-      const firstSpec = doctorData?.specialization?.[0];
-      const formData = new FormData();
-      formData.append('id', String(doctorData?.userId || ''));
-      formData.append('name', String(firstSpec?.name || ''));
-      formData.append('experience', String(formProfessional?.experience || ''));
-      formData.append('degree', formProfessional?.selectedDegrees?.join(','));
-      formData.append('bio', String(formProfessional?.about || ''));
+    const specCertUri = doctorData.specialization?.[0]?.specializationCertificate;
+;
+    if (specCertUri) {
+      const normalized = normalizeFileUri(specCertUri);
+      if (!/^https?:\/\//i.test(specCertUri)) {
+        formData.append('specializationCertificate', {
+          uri: Platform.OS === 'android' ? specCertUri : normalized,
+          type: 'application/pdf',
+          name: 'certification.pdf',
+        } as any);
+      } else {
+        console.warn('specializationCertificateUrl is a remote URL — backend likely expects a file. Consider using uploadedFiles or downloading the file first.');
+      }
+    }
 
-      const response = await UploadFiles('users/updateSpecialization', formData, token);
+    // debug: cannot reliably console.log FormData contents directly
+    // To inspect, iterate through keys (only for debugging)
+    // for (const pair of (formData as any)._parts || []) console.log(pair);
+console.log('Submitting professional form data:', formData);
+    const response = await UpdateFiles('users/updateSpecialization', formData, token);
+    console.log('Response from server:', response);
 
-      if (response?.status === 'success') {
+    if (response?.status === 'success') {
       const userData = response?.data?.data;
-
-dispatch({ type: 'currentUser', payload: userData });
+      dispatch({ type: 'currentUser', payload: userData });
 
       Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
-      handleEditClose();
-      fetchDoctorData();
-      }else{
-        Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'Please try again.' });
-      }
-
-      
-    } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Error', text2: e?.response?.data?.message?.message || e?.message || 'Failed to update profile' });
+      handleEditClose?.();
+      await fetchDoctorData?.();
+    } else {
+      Toast.show({ type: 'error', text1: 'Error', text2: response?.message?.message || 'Please try again.' });
     }
-  };
+  } catch (e: any) {
+    Toast.show({ type: 'error', text1: 'Error', text2: e?.response?.data?.message?.message || e?.message || 'Failed to update profile' });
+  } finally {
+  }
+};
+
 
   const saveConsultation = async () => {
     if (!token) return;
@@ -665,7 +717,7 @@ dispatch({ type: 'currentUser', payload: userData });
   };
 
   // ---------- Render helpers ----------
-
+console.log('Rendering DoctorProfileView with doctorData:', doctorData);
   const degreesDisplay = useMemo(() => {
     const d = doctorData?.specialization?.[0]?.degree || '';
     const list = String(d).split(',').map((s) => s.trim()).filter(Boolean);

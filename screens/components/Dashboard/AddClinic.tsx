@@ -162,7 +162,6 @@ const AddClinicForm = () => {
       const result = await PhotoManipulator.crop(normalized, cropRegion, destSize);
       return result || normalized;
     } catch (err) {
-      console.warn('cropImageUsingDims error', err);
       return srcUri;
     }
   };
@@ -413,7 +412,9 @@ const AddClinicForm = () => {
             };
             try {
               mapRef.current?.animateToRegion(newRegion, 500);
-            } catch (e) { }
+            } catch (e) { 
+                Alert.alert('Map Error', 'Could not animate to the selected region.');
+            }
           } else {
             setForm(prev => ({
               ...prev,
@@ -486,7 +487,9 @@ const AddClinicForm = () => {
         setTimeout(() => {
           try {
             mapRef.current?.animateToRegion(newRegion, 800);
-          } catch (e) { }
+            } catch (e) { 
+            Alert.alert('Map Error', 'Could not animate to the selected region.');
+            }
         }, 300);
         setIsFetchingLocation(false);
 
@@ -927,7 +930,7 @@ const AddClinicForm = () => {
           try {
             uri = (await cropImageToCenter(uri, targetWidth, targetHeight)) || uri;
           } catch (e) {
-            console.warn('Gallery crop failed, using original', e);
+            Alert.alert('Crop Error', 'Could not crop the selected image. Using the original image.');
           }
         }
         const file = {
@@ -969,11 +972,10 @@ const AddClinicForm = () => {
       try {
         finalUri = await cropImageUsingDims(imgUri, providedWidth, providedHeight, targetWidth, targetHeight);
       } catch (e) {
-        console.warn('cropImageUsingDims failed, falling back to cropImageToCenter', e);
+        Alert.alert('Crop Error', 'Could not crop the captured image. Using fallback crop.');
         try {
           finalUri = await cropImageToCenter(imgUri, targetWidth, targetHeight);
         } catch (e2) {
-          console.warn('fallback cropImageToCenter failed', e2);
           finalUri = imgUri;
         }
       }
@@ -986,7 +988,6 @@ const AddClinicForm = () => {
           );
         });
       } catch (err) {
-        console.warn('finalUri not readable after crop, using original uri', err);
         finalUri = imgUri;
       }
       const file = {
@@ -1052,7 +1053,7 @@ const AddClinicForm = () => {
                 try {
                   uri = (await cropImageToCenter(uri, HEADER_TARGET_WIDTH, HEADER_TARGET_HEIGHT)) || uri;
                 } catch (e) {
-                  console.warn('Fallback camera crop failed, using original', e);
+                    Alert.alert('Crop Error', 'Could not crop the captured image. Using the original image.');
                 }
                 const file = {
                   uri,
@@ -1292,7 +1293,7 @@ const AddClinicForm = () => {
             }
           }
         } catch (err) {
-          console.warn('CameraModal permission check error', err);
+            Alert.alert('Camera Permission Error', err?.message || 'Unable to check camera permission.');
         }
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1360,7 +1361,6 @@ const AddClinicForm = () => {
                       throw new Error('No capture method available on cameraRef.');
                     }
                   } catch (err) {
-                    console.warn('Vision capture failed, falling back to image-picker camera', err);
                     const { targetWidth: fbW, targetHeight: fbH } = getTargetCrop(activeFileTypeForCamera || 'header');
                     const options: CameraOptions = {
                       mediaType: 'photo',

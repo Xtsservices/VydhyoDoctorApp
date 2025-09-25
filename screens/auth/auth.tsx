@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // const BASE_URL = 'http://192.168.1.8:3000';
-// const BASE_URL = 'http://192.168.0.105:3000';
+// const BASE_URL = 'http://192.168.0.106:3000';
 
 
 const BASE_URL = 'https://server.vydhyo.com';

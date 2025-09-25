@@ -16,6 +16,8 @@ import {
   Platform,
   Dimensions,
   PermissionsAndroid,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthFetch, AuthPost, UploadFiles, UpdateFiles, AuthPut } from '../../auth/auth';
@@ -82,6 +84,8 @@ const getStatusStyle = (status: string) => {
 const HEADER_TARGET_WIDTH = 1200;
 const HEADER_TARGET_HEIGHT = 500;
 const OTHER_TARGET_SIZE = 1000; // square-ish for QR/signature previews
+
+const FOOTER_HEIGHT = 72; // approximate height of modal footer area (used to keep footer visible when keyboard opens)
 
 const ClinicManagementScreen = () => {
   const navigation = useNavigation<any>();
@@ -168,7 +172,7 @@ const ClinicManagementScreen = () => {
     key: FormKeys;
     label: string;
     editableInEdit?: boolean;
-    mmultiline?: boolean;
+    multiline?: boolean;
     keyboardType?:
     | 'default'
     | 'phone-pad'
@@ -199,6 +203,27 @@ const ClinicManagementScreen = () => {
       { key: 'labAddress', label: 'Lab Address', multiline: true },
     ];
 
+  // keyboard height tracking for modals
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e: any) => {
+      const h = e.endCoordinates?.height ?? 0;
+      setKeyboardHeight(h);
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const ensureFileUri = (p: string) => (String(p).startsWith('file://') ? String(p) : `file://${String(p)}`);
   const cropImageUsingDims = async (
@@ -287,7 +312,6 @@ const ClinicManagementScreen = () => {
       try {
         finalUri = await cropImageUsingDims(imgUri, providedWidth, providedHeight, targetWidth, targetHeight);
       } catch (e) {
-        console.warn('cropImageUsingDims failed, using original', e);
         finalUri = imgUri;
       }
 
@@ -300,7 +324,7 @@ const ClinicManagementScreen = () => {
           );
         });
       } catch (err) {
-        console.warn('finalUri not readable after crop, fallback to original', err);
+        Alert.alert('Image Error', 'Unable to load the captured image. Please try again or pick a different image.');
       }
 
       const file = { uri: finalUri, name: `${activeFileTypeForCamera}_camera.jpg`, type: 'image/jpeg' };
@@ -419,7 +443,7 @@ const ClinicManagementScreen = () => {
             }
           }
         } catch (err) {
-          console.warn('CameraModal permission check error', err);
+          Alert.alert('Camera Permission Error', err?.message || String(err));
         }
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -484,8 +508,6 @@ const ClinicManagementScreen = () => {
                       throw new Error('No capture method available on cameraRef.');
                     }
                   } catch (err) {
-                    console.warn('Vision capture failed, falling back to image-picker camera', err);
-                    // fallback to launchCamera with similar target dims
                     const { targetWidth: fbW, targetHeight: fbH } = getTargetCrop(activeFileTypeForCamera || 'header');
                     const result = await launchCamera({
                       mediaType: 'photo',
@@ -999,6 +1021,7 @@ const ClinicManagementScreen = () => {
     setClinicQrPreview(null);
     setPharmacyQrPreview(null);
     setLabQrPreview(null);
+    setKeyboardHeight(0);
   };
 
   const openHeaderModal = (clinic: Clinic) => {
@@ -1134,7 +1157,6 @@ const ClinicManagementScreen = () => {
                   throw new Error(linkResponse?.message || 'Failed to link lab');
                 }
               } catch (error: any) {
-                console.error('Link Lab Error:', error);
                 Toast.show({ type: 'error', text1: 'Error', text2: error?.response?.data?.message || error?.message || 'Failed to link lab', position: 'top', visibilityTime: 3000 });
                 await fetchClinics();
               }
@@ -1186,7 +1208,6 @@ const ClinicManagementScreen = () => {
         await fetchClinics();
       }
     } catch (error: any) {
-      console.error('Edit Clinic Error:', error);
       Alert.alert('Error', error?.response?.data?.message || error?.message || 'Failed to update clinic. Please try again.');
       await fetchClinics();
     } finally {
@@ -1203,7 +1224,7 @@ const ClinicManagementScreen = () => {
       const formData = new FormData();
       formData.append('userId', userId || (await AsyncStorage.getItem('userId')) || '');
       formData.append('addressId', selectedClinic.addressId || '');
-      formData.append('type', 'clinic');
+      formData.append('type', 'Clinic');
 
       if (headerFile) formData.append('file', headerFile as any);
       if (clinicQrFile) formData.append('clinicQR', clinicQrFile as any);
@@ -1319,6 +1340,15 @@ const ClinicManagementScreen = () => {
       Alert.alert('Error', err?.message || 'Failed to delete clinic. Please try again.');
     }
   };
+
+  // helper to compute modal maxHeight when keyboard is open
+  const computeModalMaxHeight = (basePercent = 0.8) => {
+    const reserved = Platform.OS === 'ios' ? 40 : 24;
+    const available = Math.max(120, height - keyboardHeight - reserved);
+    const desired = Math.floor(height * basePercent);
+    return Math.min(desired, available);
+  };
+
   return (
     <View style={styles.container}>
       {/* Camera modal for headers */}
@@ -1344,447 +1374,500 @@ const ClinicManagementScreen = () => {
 
       {/* Pharmacy View Modal */}
       <Modal visible={pharmacyViewModalVisible} transparent animationType="fade" onRequestClose={() => setPharmacyViewModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.8 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Pharmacy Details</Text>
-              <TouchableOpacity onPress={() => setPharmacyViewModalVisible(false)} style={styles.closeButton}>
-                <Icon name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.8) }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Pharmacy Details</Text>
+                <TouchableOpacity onPress={() => setPharmacyViewModalVisible(false)} style={styles.closeButton}>
+                  <Icon name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
 
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.inputGroup}><Text style={styles.label}>Pharmacy Name</Text><Text style={styles.value}>{form.pharmacyName || '—'}</Text></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>Registration Number</Text><Text style={styles.value}>{form.pharmacyRegNum || '—'}</Text></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>GST Number</Text><Text style={styles.value}>{form.pharmacyGST || '—'}</Text></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>PAN Number</Text><Text style={styles.value}>{form.pharmacyPAN || '—'}</Text></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>Pharmacy Address</Text><Text style={styles.value}>{form.pharmacyAddress || '—'}</Text></View>
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={{ paddingBottom: keyboardHeight + FOOTER_HEIGHT }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.inputGroup}><Text style={styles.label}>Pharmacy Name</Text><Text style={styles.value}>{form.pharmacyName || '—'}</Text></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>Registration Number</Text><Text style={styles.value}>{form.pharmacyRegNum || '—'}</Text></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>GST Number</Text><Text style={styles.value}>{form.pharmacyGST || '—'}</Text></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>PAN Number</Text><Text style={styles.value}>{form.pharmacyPAN || '—'}</Text></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>Pharmacy Address</Text><Text style={styles.value}>{form.pharmacyAddress || '—'}</Text></View>
 
-              {pharmacyHeaderPreview && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Pharmacy Header Image</Text>
-                  <TouchableOpacity onPress={() => openImagePreview(pharmacyHeaderPreview, 'Pharmacy Header')}>
-                    <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} />
-                  </TouchableOpacity>
-                </View>
-              )}
+                {pharmacyHeaderPreview && (
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Pharmacy Header Image</Text>
+                    <TouchableOpacity onPress={() => openImagePreview(pharmacyHeaderPreview, 'Pharmacy Header')}>
+                      <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} />
+                    </TouchableOpacity>
+                  </View>
+                )}
 
-              {pharmacyQrPreview && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Pharmacy QR Code</Text>
-                  <TouchableOpacity onPress={() => openImagePreview(pharmacyQrPreview, 'Pharmacy QR Code')}>
-                    <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
+                {pharmacyQrPreview && (
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Pharmacy QR Code</Text>
+                    <TouchableOpacity onPress={() => openImagePreview(pharmacyQrPreview, 'Pharmacy QR Code')}>
+                      <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setPharmacyViewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setPharmacyViewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Lab View Modal */}
       <Modal visible={labViewModalVisible} transparent animationType="fade" onRequestClose={() => setLabViewModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.8 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Lab Details</Text>
-              <TouchableOpacity onPress={() => setLabViewModalVisible(false)} style={styles.closeButton}>
-                <Icon name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.8) }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Lab Details</Text>
+                <TouchableOpacity onPress={() => setLabViewModalVisible(false)} style={styles.closeButton}>
+                  <Icon name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
 
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.inputGroup}><Text style={styles.label}>Lab Name</Text><Text style={styles.value}>{form.labName || '—'}</Text></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>Registration Number</Text><Text style={styles.value}>{form.labRegNum || '—'}</Text></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>GST Number</Text><Text style={styles.value}>{form.labGST || '—'}</Text></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>PAN Number</Text><Text style={styles.value}>{form.labPAN || '—'}</Text></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>Lab Address</Text><Text style={styles.value}>{form.labAddress || '—'}</Text></View>
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={{ paddingBottom: keyboardHeight + FOOTER_HEIGHT }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.inputGroup}><Text style={styles.label}>Lab Name</Text><Text style={styles.value}>{form.labName || '—'}</Text></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>Registration Number</Text><Text style={styles.value}>{form.labRegNum || '—'}</Text></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>GST Number</Text><Text style={styles.value}>{form.labGST || '—'}</Text></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>PAN Number</Text><Text style={styles.value}>{form.labPAN || '—'}</Text></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>Lab Address</Text><Text style={styles.value}>{form.labAddress || '—'}</Text></View>
 
-              {labHeaderPreview && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Lab Header Image</Text>
-                  <TouchableOpacity onPress={() => openImagePreview(labHeaderPreview, 'Lab Header')}>
-                    <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} />
-                  </TouchableOpacity>
-                </View>
-              )}
+                {labHeaderPreview && (
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Lab Header Image</Text>
+                    <TouchableOpacity onPress={() => openImagePreview(labHeaderPreview, 'Lab Header')}>
+                      <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} />
+                    </TouchableOpacity>
+                  </View>
+                )}
 
-              {labQrPreview && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Lab QR Code</Text>
-                  <TouchableOpacity onPress={() => openImagePreview(labQrPreview, 'Lab QR Code')}>
-                    <Image source={{ uri: labQrPreview }} style={styles.previewImage} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
+                {labQrPreview && (
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Lab QR Code</Text>
+                    <TouchableOpacity onPress={() => openImagePreview(labQrPreview, 'Lab QR Code')}>
+                      <Image source={{ uri: labQrPreview }} style={styles.previewImage} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setLabViewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setLabViewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Main Clinic Modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={closeModal}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.8 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {mode === 'view' && 'View Clinic Details'}
-                {mode === 'edit' && 'Edit Clinic Details'}
-                {mode === 'delete' && 'Delete Clinic'}
-              </Text>
-              <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
-                <Icon name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent}>
-              {FIELD_CONFIGS.map((cfg) => {
-                const value = String(form[cfg.key] ?? '');
-                const isEditable = mode === 'edit' && (cfg.editableInEdit === undefined ? true : cfg.editableInEdit);
-                return (
-                  <View key={String(cfg.key)} style={styles.inputGroup}>
-                    <Text style={styles.label}>{cfg.label}</Text>
-                    {mode === 'view' ? (
-                      <Text style={styles.value}>{value || '—'}</Text>
-                    ) : (
-                      <TextInput value={value} onChangeText={(text) => setForm((prev) => ({ ...prev, [cfg.key]: text }))} style={[styles.input, !isEditable && { backgroundColor: '#f3f4f6', opacity: 0.8 }]} editable={isEditable} multiline={!!cfg.multiline} keyboardType={cfg.keyboardType || 'default'} placeholder={cfg.label} placeholderTextColor="#6b7280" />
-                    )}
-                  </View>
-                );
-              })}
-
-              {mode === 'view' && (
-                <>
-                  {headerPreview && (
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Header Image</Text>
-                      <TouchableOpacity onPress={() => openImagePreview(headerPreview, 'Header Image')}>
-                        <Image source={{ uri: headerPreview }} style={styles.previewImage} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {signaturePreview && (
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Digital Signature</Text>
-                      <TouchableOpacity onPress={() => openImagePreview(signaturePreview, 'Digital Signature')}>
-                        <Image source={{ uri: signaturePreview }} style={styles.previewImage} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {clinicQrPreview && (
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Clinic QR Code</Text>
-                      <TouchableOpacity onPress={() => openImagePreview(clinicQrPreview, 'Clinic QR Code')}>
-                        <Image source={{ uri: clinicQrPreview }} style={styles.previewImage} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {pharmacyHeaderPreview && (
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Pharmacy Header Image</Text>
-                      <TouchableOpacity onPress={() => openImagePreview(pharmacyHeaderPreview, 'Pharmacy Header')}>
-                        <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {pharmacyQrPreview && (
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Pharmacy QR Code</Text>
-                      <TouchableOpacity onPress={() => openImagePreview(pharmacyQrPreview, 'Pharmacy QR Code')}>
-                        <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {labHeaderPreview && (
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Lab Header Image</Text>
-                      <TouchableOpacity onPress={() => openImagePreview(labHeaderPreview, 'Lab Header')}>
-                        <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {labQrPreview && (
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Lab QR Code</Text>
-                      <TouchableOpacity onPress={() => openImagePreview(labQrPreview, 'Lab QR Code')}>
-                        <Image source={{ uri: labQrPreview }} style={styles.previewImage} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </>
-              )}
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={closeModal}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-
-              {mode === 'edit' && (
-                <TouchableOpacity style={[styles.saveButton, loading && styles.disabledButton]} onPress={handleEditSubmit} disabled={loading}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Changes</Text>}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.85) - FOOTER_HEIGHT }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {mode === 'view' && 'View Clinic Details'}
+                  {mode === 'edit' && 'Edit Clinic Details'}
+                  {mode === 'delete' && 'Delete Clinic'}
+                </Text>
+                <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                  <Icon name="close" size={24} color="#6B7280" />
                 </TouchableOpacity>
-              )}
+              </View>
 
-              {mode === 'delete' && <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(form.addressId)}><Text style={styles.deleteText}>Delete Clinic</Text></TouchableOpacity>}
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={{ paddingBottom: keyboardHeight + FOOTER_HEIGHT }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {FIELD_CONFIGS.map((cfg) => {
+                  const value = String(form[cfg.key] ?? '');
+                  const isEditable = mode === 'edit' && (cfg.editableInEdit === undefined ? true : cfg.editableInEdit);
+                  return (
+                    <View key={String(cfg.key)} style={styles.inputGroup}>
+                      <Text style={styles.label}>{cfg.label}</Text>
+                      {mode === 'view' ? (
+                        <Text style={styles.value}>{value || '—'}</Text>
+                      ) : (
+                        <TextInput value={value} onChangeText={(text) => setForm((prev) => ({ ...prev, [cfg.key]: text }))} style={[styles.input, !isEditable && { backgroundColor: '#f3f4f6', opacity: 0.8 }]} editable={isEditable} multiline={!!cfg.multiline} keyboardType={cfg.keyboardType || 'default'} placeholder={cfg.label} placeholderTextColor="#6b7280" />
+                      )}
+                    </View>
+                  );
+                })}
+
+                {mode === 'view' && (
+                  <>
+                    {headerPreview && (
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Header Image</Text>
+                        <TouchableOpacity onPress={() => openImagePreview(headerPreview, 'Header Image')}>
+                          <Image source={{ uri: headerPreview }} style={styles.previewImage} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {signaturePreview && (
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Digital Signature</Text>
+                        <TouchableOpacity onPress={() => openImagePreview(signaturePreview, 'Digital Signature')}>
+                          <Image source={{ uri: signaturePreview }} style={styles.previewImage} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {clinicQrPreview && (
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Clinic QR Code</Text>
+                        <TouchableOpacity onPress={() => openImagePreview(clinicQrPreview, 'Clinic QR Code')}>
+                          <Image source={{ uri: clinicQrPreview }} style={styles.previewImage} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {pharmacyHeaderPreview && (
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Pharmacy Header Image</Text>
+                        <TouchableOpacity onPress={() => openImagePreview(pharmacyHeaderPreview, 'Pharmacy Header')}>
+                          <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {pharmacyQrPreview && (
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Pharmacy QR Code</Text>
+                        <TouchableOpacity onPress={() => openImagePreview(pharmacyQrPreview, 'Pharmacy QR Code')}>
+                          <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {labHeaderPreview && (
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Lab Header Image</Text>
+                        <TouchableOpacity onPress={() => openImagePreview(labHeaderPreview, 'Lab Header')}>
+                          <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {labQrPreview && (
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Lab QR Code</Text>
+                        <TouchableOpacity onPress={() => openImagePreview(labQrPreview, 'Lab QR Code')}>
+                          <Image source={{ uri: labQrPreview }} style={styles.previewImage} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </>
+                )}
+              </ScrollView>
+
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={closeModal}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+
+                {mode === 'edit' && (
+                  <TouchableOpacity style={[styles.saveButton, loading && styles.disabledButton]} onPress={handleEditSubmit} disabled={loading}>
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Changes</Text>}
+                  </TouchableOpacity>
+                )}
+
+                {mode === 'delete' && <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(form.addressId)}><Text style={styles.deleteText}>Delete Clinic</Text></TouchableOpacity>}
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Image Edit Modal */}
       <Modal visible={imageEditModalVisible} transparent animationType="fade" onRequestClose={() => setImageEditModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.8 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Images</Text>
-              <TouchableOpacity onPress={() => setImageEditModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Clinic Header Image (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('header')}>
-                  {headerPreview ? <Image source={{ uri: headerPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload clinic header</Text></View>}
-                </TouchableOpacity>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.85) - FOOTER_HEIGHT }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Images</Text>
+                <TouchableOpacity onPress={() => setImageEditModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Clinic QR Code (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('clinicQR')}>
-                  {clinicQrPreview ? <Image source={{ uri: clinicQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload clinic QR code</Text></View>}
-                </TouchableOpacity>
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Digital Signature (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('signature')}>
-                  {signaturePreview ? <Image source={{ uri: signaturePreview }} style={[styles.previewImage, { height: 80 }]} /> : <View style={styles.uploadPlaceholder}><Icon name="draw" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload digital signature</Text></View>}
-                </TouchableOpacity>
-              </View>
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={{ paddingBottom: keyboardHeight + FOOTER_HEIGHT }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Clinic Header Image (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('header')}>
+                    {headerPreview ? <Image source={{ uri: headerPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload clinic header</Text></View>}
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Pharmacy Header Image (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyHeader')}>
-                  {pharmacyHeaderPreview ? <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy header</Text></View>}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Clinic QR Code (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('clinicQR')}>
+                    {clinicQrPreview ? <Image source={{ uri: clinicQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload clinic QR code</Text></View>}
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Digital Signature (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('signature')}>
+                    {signaturePreview ? <Image source={{ uri: signaturePreview }} style={[styles.previewImage, { height: 80 }]} /> : <View style={styles.uploadPlaceholder}><Icon name="draw" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload digital signature</Text></View>}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Pharmacy Header Image (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyHeader')}>
+                    {pharmacyHeaderPreview ? <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy header</Text></View>}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Pharmacy QR Code (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyQR')}>
+                    {pharmacyQrPreview ? <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy QR code</Text></View>}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Lab Header Image (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labHeader')}>
+                    {labHeaderPreview ? <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab header</Text></View>}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Lab QR Code (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labQR')}>
+                    {labQrPreview ? <Image source={{ uri: labQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab QR code</Text></View>}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setImageEditModalVisible(false)} disabled={loading}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.saveButton, loading && styles.disabledButton]} onPress={handleImageEditSubmit} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Images</Text>}
                 </TouchableOpacity>
               </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Pharmacy QR Code (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyQR')}>
-                  {pharmacyQrPreview ? <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy QR code</Text></View>}
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Lab Header Image (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labHeader')}>
-                  {labHeaderPreview ? <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab header</Text></View>}
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Lab QR Code (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labQR')}>
-                  {labQrPreview ? <Image source={{ uri: labQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab QR code</Text></View>}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setImageEditModalVisible(false)} disabled={loading}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.saveButton, loading && styles.disabledButton]} onPress={handleImageEditSubmit} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Images</Text>}
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* QR Code Modal */}
       <Modal visible={qrModalVisible} transparent animationType="fade" onRequestClose={() => setQrModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.6, width: width * 0.8 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{previewTitle}</Text>
-              <TouchableOpacity onPress={() => setQrModalVisible(false)} style={styles.closeButton}>
-                <Icon name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.6), width: width * 0.8 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{previewTitle}</Text>
+                <TouchableOpacity onPress={() => setQrModalVisible(false)} style={styles.closeButton}>
+                  <Icon name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
 
-            <View style={styles.modalContent}>
-              {qrCodeImage ? (
-                <Image
-                  source={{ uri: qrCodeImage }}
-                  style={styles.qrCodeImage}
-                  resizeMode="contain"
-                  onError={(e) => {
-                    Toast.show({
-                      type: 'error',
-                      text1: 'Error',
-                      text2: 'Failed to load QR code image',
-                      position: 'top',
-                      visibilityTime: 3000
-                    });
-                  }}
-                />
-              ) : (
-                <ActivityIndicator size="large" color="#3B82F6" />
-              )}
-            </View>
+              <View style={styles.modalContent}>
+                {qrCodeImage ? (
+                  <Image
+                    source={{ uri: qrCodeImage }}
+                    style={styles.qrCodeImage}
+                    resizeMode="contain"
+                    onError={(e) => {
+                      Toast.show({
+                        type: 'error',
+                        text1: 'Error',
+                        text2: 'Failed to load QR code image',
+                        position: 'top',
+                        visibilityTime: 3000
+                      });
+                    }}
+                  />
+                ) : (
+                  <ActivityIndicator size="large" color="#3B82F6" />
+                )}
+              </View>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setQrModalVisible(false)}>
-                <Text style={styles.cancelText}>Close</Text>
-              </TouchableOpacity>
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setQrModalVisible(false)}>
+                  <Text style={styles.cancelText}>Close</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Header Upload Modal */}
       <Modal visible={headerModalVisible} transparent animationType="fade" onRequestClose={() => setHeaderModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.7 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Upload Header and Signature</Text>
-              <TouchableOpacity onPress={() => setHeaderModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Header Image</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('header')}>
-                  {headerPreview ? <Image source={{ uri: headerPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload header image</Text></View>}
-                </TouchableOpacity>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.75) }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Upload Header and Signature</Text>
+                <TouchableOpacity onPress={() => setHeaderModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Digital Signature</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('signature')}>
-                  {signaturePreview ? <Image source={{ uri: signaturePreview }} style={[styles.previewImage, { height: 80 }]} /> : <View style={styles.uploadPlaceholder}><Icon name="draw" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload signature</Text></View>}
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={{ paddingBottom: keyboardHeight + FOOTER_HEIGHT }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Header Image</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('header')}>
+                    {headerPreview ? <Image source={{ uri: headerPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload header image</Text></View>}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Digital Signature</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('signature')}>
+                    {signaturePreview ? <Image source={{ uri: signaturePreview }} style={[styles.previewImage, { height: 80 }]} /> : <View style={styles.uploadPlaceholder}><Icon name="draw" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload signature</Text></View>}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setHeaderModalVisible(false)} disabled={loading}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.saveButton, (!headerFile || !signatureFile || loading) && styles.disabledButton]} onPress={handleHeaderSubmit} disabled={!headerFile || !signatureFile || loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Upload</Text>}
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setHeaderModalVisible(false)} disabled={loading}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.saveButton, (!headerFile || !signatureFile || loading) && styles.disabledButton]} onPress={handleHeaderSubmit} disabled={!headerFile || !signatureFile || loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Upload</Text>}
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Pharmacy Modal */}
       <Modal visible={pharmacyModalVisible} transparent animationType="fade" onRequestClose={() => setPharmacyModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.8 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Pharmacy Details</Text>
-              <TouchableOpacity onPress={() => setPharmacyModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.inputGroup}><Text style={styles.label}>Pharmacy Name</Text><TextInput value={form.pharmacyName} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyName: text }))} style={styles.input} placeholder="Enter pharmacy name" placeholderTextColor='gray' /></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>Registration Number</Text><TextInput value={form.pharmacyRegNum} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyRegNum: text }))} style={styles.input} placeholder="Enter registration number" placeholderTextColor='gray' /></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>GST Number</Text><TextInput value={form.pharmacyGST} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyGST: text }))} style={styles.input} placeholder="Enter GST number" placeholderTextColor='gray' /></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>PAN Number</Text><TextInput value={form.pharmacyPAN} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyPAN: text }))} style={styles.input} placeholder="Enter PAN number" placeholderTextColor='gray' /></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>Pharmacy Address</Text><TextInput value={form.pharmacyAddress} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyAddress: text }))} style={[styles.input, { height: 80 }]} multiline placeholder="Enter pharmacy address" placeholderTextColor='gray' /></View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Pharmacy Header Image (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyHeader')}>
-                  {pharmacyHeaderPreview ? <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy header</Text></View>}
-                </TouchableOpacity>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.85) - FOOTER_HEIGHT }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Pharmacy Details</Text>
+                <TouchableOpacity onPress={() => setPharmacyModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Pharmacy QR Code (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyQR')}>
-                  {pharmacyQrPreview ? <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy QR code</Text></View>}
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={{ paddingBottom: keyboardHeight + FOOTER_HEIGHT }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.inputGroup}><Text style={styles.label}>Pharmacy Name</Text><TextInput value={form.pharmacyName} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyName: text }))} style={styles.input} placeholder="Enter pharmacy name" placeholderTextColor='gray' /></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>Registration Number</Text><TextInput value={form.pharmacyRegNum} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyRegNum: text }))} style={styles.input} placeholder="Enter registration number" placeholderTextColor='gray' /></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>GST Number</Text><TextInput value={form.pharmacyGST} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyGST: text }))} style={styles.input} placeholder="Enter GST number" placeholderTextColor='gray' /></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>PAN Number</Text><TextInput value={form.pharmacyPAN} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyPAN: text }))} style={styles.input} placeholder="Enter PAN number" placeholderTextColor='gray' /></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>Pharmacy Address</Text><TextInput value={form.pharmacyAddress} onChangeText={(text) => setForm(prev => ({ ...prev, pharmacyAddress: text }))} style={[styles.input, { height: 80 }]} multiline placeholder="Enter pharmacy address" placeholderTextColor='gray' /></View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Pharmacy Header Image (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyHeader')}>
+                    {pharmacyHeaderPreview ? <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy header</Text></View>}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Pharmacy QR Code (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyQR')}>
+                    {pharmacyQrPreview ? <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy QR code</Text></View>}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setPharmacyModalVisible(false)} disabled={loading}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.saveButton, loading && styles.disabledButton]} onPress={handlePharmacySubmit} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Details</Text>}
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setPharmacyModalVisible(false)} disabled={loading}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.saveButton, loading && styles.disabledButton]} onPress={handlePharmacySubmit} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Details</Text>}
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Lab Modal */}
       <Modal visible={labModalVisible} transparent animationType="fade" onRequestClose={() => setLabModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.8 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Lab Details</Text>
-              <TouchableOpacity onPress={() => setLabModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.inputGroup}><Text style={styles.label}>Lab Name</Text><TextInput value={form.labName} onChangeText={(text) => setForm(prev => ({ ...prev, labName: text }))} style={styles.input} placeholder="Enter lab name" placeholderTextColor='gray' /></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>Registration Number</Text><TextInput value={form.labRegNum} onChangeText={(text) => setForm(prev => ({ ...prev, labRegNum: text }))} style={styles.input} placeholder="Enter registration number" placeholderTextColor='gray' /></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>GST Number</Text><TextInput value={form.labGST} onChangeText={(text) => setForm(prev => ({ ...prev, labGST: text }))} style={styles.input} placeholder="Enter GST number" placeholderTextColor='gray' /></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>PAN Number</Text><TextInput value={form.labPAN} onChangeText={(text) => setForm(prev => ({ ...prev, labPAN: text }))} style={styles.input} placeholder="Enter PAN number" placeholderTextColor='gray' /></View>
-              <View style={styles.inputGroup}><Text style={styles.label}>Lab Address</Text><TextInput value={form.labAddress} onChangeText={(text) => setForm(prev => ({ ...prev, labAddress: text }))} style={[styles.input, { height: 80 }]} multiline placeholder="Enter lab address" placeholderTextColor='gray' /></View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Lab Header Image (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labHeader')}>
-                  {labHeaderPreview ? <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab header</Text></View>}
-                </TouchableOpacity>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.85) - FOOTER_HEIGHT }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Lab Details</Text>
+                <TouchableOpacity onPress={() => setLabModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Lab QR Code (Optional)</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labQR')}>
-                  {labQrPreview ? <Image source={{ uri: labQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab QR code</Text></View>}
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={{ paddingBottom: keyboardHeight + FOOTER_HEIGHT }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.inputGroup}><Text style={styles.label}>Lab Name</Text><TextInput value={form.labName} onChangeText={(text) => setForm(prev => ({ ...prev, labName: text }))} style={styles.input} placeholder="Enter lab name" placeholderTextColor='gray' /></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>Registration Number</Text><TextInput value={form.labRegNum} onChangeText={(text) => setForm(prev => ({ ...prev, labRegNum: text }))} style={styles.input} placeholder="Enter registration number" placeholderTextColor='gray' /></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>GST Number</Text><TextInput value={form.labGST} onChangeText={(text) => setForm(prev => ({ ...prev, labGST: text }))} style={styles.input} placeholder="Enter GST number" placeholderTextColor='gray' /></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>PAN Number</Text><TextInput value={form.labPAN} onChangeText={(text) => setForm(prev => ({ ...prev, labPAN: text }))} style={styles.input} placeholder="Enter PAN number" placeholderTextColor='gray' /></View>
+                <View style={styles.inputGroup}><Text style={styles.label}>Lab Address</Text><TextInput value={form.labAddress} onChangeText={(text) => setForm(prev => ({ ...prev, labAddress: text }))} style={[styles.input, { height: 80 }]} multiline placeholder="Enter lab address" placeholderTextColor='gray' /></View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Lab Header Image (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labHeader')}>
+                    {labHeaderPreview ? <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab header</Text></View>}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Lab QR Code (Optional)</Text>
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labQR')}>
+                    {labQrPreview ? <Image source={{ uri: labQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab QR code</Text></View>}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setLabModalVisible(false)} disabled={loading}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.saveButton, loading && styles.disabledButton]} onPress={handleLabSubmit} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Details</Text>}
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setLabModalVisible(false)} disabled={loading}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.saveButton, loading && styles.disabledButton]} onPress={handleLabSubmit} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Details</Text>}
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Image Preview Modal */}
       <Modal visible={imagePreviewModalVisible} transparent animationType="fade" onRequestClose={() => setImagePreviewModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modal, { maxHeight: height * 0.8, width: width * 0.9 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{previewTitle}</Text>
-              <TouchableOpacity onPress={() => setImagePreviewModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
-            </View>
-            {selectedImage && <Image source={{ uri: selectedImage }} style={styles.fullPreviewImage} resizeMode="contain" />}
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setImagePreviewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.overlay}>
+            <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.8), width: width * 0.9 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{previewTitle}</Text>
+                <TouchableOpacity onPress={() => setImagePreviewModalVisible(false)} style={styles.closeButton}><Icon name="close" size={24} color="#6B7280" /></TouchableOpacity>
+              </View>
+              {selectedImage && <Image source={{ uri: selectedImage }} style={styles.fullPreviewImage} resizeMode="contain" />}
+              <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setImagePreviewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Loading Overlay */}
@@ -1970,7 +2053,9 @@ const styles = StyleSheet.create({
   deleteButton: { paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#EF4444', borderRadius: 6 },
   deleteText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   disabledButton: { backgroundColor: '#D1D5DB' },
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyState: {
+    flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40
+  },
   emptyStateText: { fontSize: 18, fontWeight: '600', color: '#374151', marginTop: 16 },
   emptyStateSubtext: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
   uploadBox: { borderWidth: 1, borderColor: '#D1D5DB', borderStyle: 'dashed', borderRadius: 6, padding: 16, justifyContent: 'center', alignItems: 'center', minHeight: 120, backgroundColor: '#F9FAFB' },
