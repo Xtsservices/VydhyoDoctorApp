@@ -404,8 +404,10 @@ const SpecializationDetails = () => {
       formDataObj.append('experience', formData.yearsExperience);
       formDataObj.append('degree', formData.degree);
       formDataObj.append('bio', formData.bio);
-
-      if (uploadedFiles.degrees.file) {
+      if (hadDegreeCert && !uploadedFiles.degrees.file) {
+        console.log("degree removed")
+        formDataObj.append('removeDegreeCertificate', 'true');
+      } else if (uploadedFiles.degrees.file) {
         formDataObj.append('drgreeCertificate', {
           uri: Platform.OS === 'android' ? uploadedFiles.degrees.file.uri : uploadedFiles.degrees.file.uri.replace('file://', ''),
           type: uploadedFiles.degrees.file.type || 'application/pdf',
@@ -413,7 +415,10 @@ const SpecializationDetails = () => {
         } as any);
       }
 
-      if (uploadedFiles.certifications.file) {
+      if (hadSpecCert && !uploadedFiles.certifications.file) {
+        console.log("sep removed")
+        formDataObj.append('removeSpecializationCertificate', 'true');
+      } else if (uploadedFiles.certifications.file) {
         formDataObj.append('specializationCertificate', {
           uri: Platform.OS === 'android' ? uploadedFiles.certifications.file.uri : uploadedFiles.certifications.file.uri.replace('file://', ''),
           type: uploadedFiles.certifications.file.type || 'application/pdf',
@@ -421,7 +426,9 @@ const SpecializationDetails = () => {
         } as any);
       }
 
+      console.log('Form Data:', formDataObj);
       const response = await UpdateFiles('users/updateSpecialization', formDataObj, token);
+      console.log('Update Specialization Response:', response);
       if (response.status === 'success') {
         Toast.show({
           type: 'success',
@@ -481,6 +488,10 @@ const SpecializationDetails = () => {
     }
   };
 
+  const [hadDegreeCert, setHadDegreeCert] = useState(false);
+  const [hadSpecCert, setHadSpecCert] = useState(false);
+
+
   const fetchUserData = async () => {
     setLoadingUser(true);
     try {
@@ -512,6 +523,16 @@ const SpecializationDetails = () => {
           });
           setTempDegrees(userData?.specialization?.degree ? userData?.specialization?.degree.split(',').map((deg: string) => deg.trim()).filter((deg: string) => deg) : []);
 
+          if (userData?.specialization?.degreeCertificateUrl) {
+            setHadDegreeCert(true);
+          } else {
+            setHadDegreeCert(false);
+          }
+          if (userData?.specialization?.specializationCertificateUrl) {
+            setHadSpecCert(true);
+          } else {
+            setHadSpecCert(false);
+          }
           // Set file names if they exist
           setUploadedFiles({
             degrees: {
