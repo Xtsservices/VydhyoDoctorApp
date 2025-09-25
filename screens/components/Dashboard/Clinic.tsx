@@ -16,8 +16,10 @@ import {
   Platform,
   Dimensions,
   PermissionsAndroid,
+
   Keyboard,
   KeyboardAvoidingView,
+
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthFetch, AuthPost, UploadFiles, UpdateFiles, AuthPut } from '../../auth/auth';
@@ -85,7 +87,9 @@ const HEADER_TARGET_WIDTH = 1200;
 const HEADER_TARGET_HEIGHT = 500;
 const OTHER_TARGET_SIZE = 1000; // square-ish for QR/signature previews
 
+
 const FOOTER_HEIGHT = 72; // approximate height of modal footer area (used to keep footer visible when keyboard opens)
+
 
 const ClinicManagementScreen = () => {
   const navigation = useNavigation<any>();
@@ -172,7 +176,7 @@ const ClinicManagementScreen = () => {
     key: FormKeys;
     label: string;
     editableInEdit?: boolean;
-    multiline?: boolean;
+    mmultiline?: boolean;
     keyboardType?:
     | 'default'
     | 'phone-pad'
@@ -203,6 +207,7 @@ const ClinicManagementScreen = () => {
       { key: 'labAddress', label: 'Lab Address', multiline: true },
     ];
 
+
   // keyboard height tracking for modals
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -224,6 +229,7 @@ const ClinicManagementScreen = () => {
       hideSub.remove();
     };
   }, []);
+
 
   const ensureFileUri = (p: string) => (String(p).startsWith('file://') ? String(p) : `file://${String(p)}`);
   const cropImageUsingDims = async (
@@ -312,6 +318,7 @@ const ClinicManagementScreen = () => {
       try {
         finalUri = await cropImageUsingDims(imgUri, providedWidth, providedHeight, targetWidth, targetHeight);
       } catch (e) {
+
         finalUri = imgUri;
       }
 
@@ -324,7 +331,9 @@ const ClinicManagementScreen = () => {
           );
         });
       } catch (err) {
+
         Alert.alert('Image Error', 'Unable to load the captured image. Please try again or pick a different image.');
+
       }
 
       const file = { uri: finalUri, name: `${activeFileTypeForCamera}_camera.jpg`, type: 'image/jpeg' };
@@ -443,7 +452,9 @@ const ClinicManagementScreen = () => {
             }
           }
         } catch (err) {
+
           Alert.alert('Camera Permission Error', err?.message || String(err));
+
         }
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -508,6 +519,7 @@ const ClinicManagementScreen = () => {
                       throw new Error('No capture method available on cameraRef.');
                     }
                   } catch (err) {
+n
                     const { targetWidth: fbW, targetHeight: fbH } = getTargetCrop(activeFileTypeForCamera || 'header');
                     const result = await launchCamera({
                       mediaType: 'photo',
@@ -1157,6 +1169,7 @@ const ClinicManagementScreen = () => {
                   throw new Error(linkResponse?.message || 'Failed to link lab');
                 }
               } catch (error: any) {
+
                 Toast.show({ type: 'error', text1: 'Error', text2: error?.response?.data?.message || error?.message || 'Failed to link lab', position: 'top', visibilityTime: 3000 });
                 await fetchClinics();
               }
@@ -1208,6 +1221,7 @@ const ClinicManagementScreen = () => {
         await fetchClinics();
       }
     } catch (error: any) {
+
       Alert.alert('Error', error?.response?.data?.message || error?.message || 'Failed to update clinic. Please try again.');
       await fetchClinics();
     } finally {
@@ -1224,7 +1238,9 @@ const ClinicManagementScreen = () => {
       const formData = new FormData();
       formData.append('userId', userId || (await AsyncStorage.getItem('userId')) || '');
       formData.append('addressId', selectedClinic.addressId || '');
+
       formData.append('type', 'Clinic');
+
 
       if (headerFile) formData.append('file', headerFile as any);
       if (clinicQrFile) formData.append('clinicQR', clinicQrFile as any);
@@ -1341,6 +1357,7 @@ const ClinicManagementScreen = () => {
     }
   };
 
+
   // helper to compute modal maxHeight when keyboard is open
   const computeModalMaxHeight = (basePercent = 0.8) => {
     const reserved = Platform.OS === 'ios' ? 40 : 24;
@@ -1348,6 +1365,7 @@ const ClinicManagementScreen = () => {
     const desired = Math.floor(height * basePercent);
     return Math.min(desired, available);
   };
+
 
   return (
     <View style={styles.container}>
@@ -1374,6 +1392,7 @@ const ClinicManagementScreen = () => {
 
       {/* Pharmacy View Modal */}
       <Modal visible={pharmacyViewModalVisible} transparent animationType="fade" onRequestClose={() => setPharmacyViewModalVisible(false)}>
+
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.overlay}>
             <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.8) }]}>
@@ -1418,6 +1437,7 @@ const ClinicManagementScreen = () => {
               <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setPharmacyViewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1425,6 +1445,7 @@ const ClinicManagementScreen = () => {
 
       {/* Lab View Modal */}
       <Modal visible={labViewModalVisible} transparent animationType="fade" onRequestClose={() => setLabViewModalVisible(false)}>
+
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.overlay}>
             <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.8) }]}>
@@ -1469,6 +1490,7 @@ const ClinicManagementScreen = () => {
               <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setLabViewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1476,6 +1498,7 @@ const ClinicManagementScreen = () => {
 
       {/* Main Clinic Modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={closeModal}>
+
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.overlay}>
             <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.85) - FOOTER_HEIGHT }]}>
@@ -1507,6 +1530,7 @@ const ClinicManagementScreen = () => {
                       ) : (
                         <TextInput value={value} onChangeText={(text) => setForm((prev) => ({ ...prev, [cfg.key]: text }))} style={[styles.input, !isEditable && { backgroundColor: '#f3f4f6', opacity: 0.8 }]} editable={isEditable} multiline={!!cfg.multiline} keyboardType={cfg.keyboardType || 'default'} placeholder={cfg.label} placeholderTextColor="#6b7280" />
                       )}
+
                     </View>
                   );
                 })}
@@ -1521,6 +1545,7 @@ const ClinicManagementScreen = () => {
                         </TouchableOpacity>
                       </View>
                     )}
+
 
                     {signaturePreview && (
                       <View style={styles.inputGroup}>
@@ -1590,6 +1615,7 @@ const ClinicManagementScreen = () => {
 
                 {mode === 'delete' && <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(form.addressId)}><Text style={styles.deleteText}>Delete Clinic</Text></TouchableOpacity>}
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1666,6 +1692,7 @@ const ClinicManagementScreen = () => {
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Images</Text>}
                 </TouchableOpacity>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1673,6 +1700,7 @@ const ClinicManagementScreen = () => {
 
       {/* QR Code Modal */}
       <Modal visible={qrModalVisible} transparent animationType="fade" onRequestClose={() => setQrModalVisible(false)}>
+
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.overlay}>
             <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.6), width: width * 0.8 }]}>
@@ -1709,6 +1737,7 @@ const ClinicManagementScreen = () => {
                   <Text style={styles.cancelText}>Close</Text>
                 </TouchableOpacity>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1716,6 +1745,7 @@ const ClinicManagementScreen = () => {
 
       {/* Header Upload Modal */}
       <Modal visible={headerModalVisible} transparent animationType="fade" onRequestClose={() => setHeaderModalVisible(false)}>
+
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.overlay}>
             <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.75) }]}>
@@ -1751,6 +1781,7 @@ const ClinicManagementScreen = () => {
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Upload</Text>}
                 </TouchableOpacity>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1758,6 +1789,7 @@ const ClinicManagementScreen = () => {
 
       {/* Pharmacy Modal */}
       <Modal visible={pharmacyModalVisible} transparent animationType="fade" onRequestClose={() => setPharmacyModalVisible(false)}>
+
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.overlay}>
             <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.85) - FOOTER_HEIGHT }]}>
@@ -1799,6 +1831,7 @@ const ClinicManagementScreen = () => {
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Details</Text>}
                 </TouchableOpacity>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1847,6 +1880,7 @@ const ClinicManagementScreen = () => {
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Details</Text>}
                 </TouchableOpacity>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1854,6 +1888,7 @@ const ClinicManagementScreen = () => {
 
       {/* Image Preview Modal */}
       <Modal visible={imagePreviewModalVisible} transparent animationType="fade" onRequestClose={() => setImagePreviewModalVisible(false)}>
+
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.overlay}>
             <View style={[styles.modal, { maxHeight: computeModalMaxHeight(0.8), width: width * 0.9 }]}>
@@ -1865,6 +1900,7 @@ const ClinicManagementScreen = () => {
               <View style={[styles.modalFooter, { paddingBottom: Platform.OS === 'ios' ? 24 : 12 }]}>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setImagePreviewModalVisible(false)}><Text style={styles.cancelText}>Close</Text></TouchableOpacity>
               </View>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -2053,9 +2089,11 @@ const styles = StyleSheet.create({
   deleteButton: { paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#EF4444', borderRadius: 6 },
   deleteText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   disabledButton: { backgroundColor: '#D1D5DB' },
+
   emptyState: {
     flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40
   },
+
   emptyStateText: { fontSize: 18, fontWeight: '600', color: '#374151', marginTop: 16 },
   emptyStateSubtext: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
   uploadBox: { borderWidth: 1, borderColor: '#D1D5DB', borderStyle: 'dashed', borderRadius: 6, padding: 16, justifyContent: 'center', alignItems: 'center', minHeight: 120, backgroundColor: '#F9FAFB' },

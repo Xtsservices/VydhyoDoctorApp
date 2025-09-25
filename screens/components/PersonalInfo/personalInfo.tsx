@@ -1,4 +1,6 @@
+
 import React, { useEffect, useState, useRef } from 'react';
+
 import {
   View,
   Text,
@@ -16,8 +18,10 @@ import {
   Platform,
   Modal,
   FlatList,
+
   LayoutAnimation,
   SafeAreaView,
+
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -31,7 +35,9 @@ import { useDispatch } from 'react-redux';
 import { AuthFetch, AuthPut, UpdateFiles } from '../../auth/auth';
 import ProgressBar from '../progressBar/progressBar';
 import { getCurrentStepIndex, TOTAL_STEPS } from '../../utility/registrationSteps';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 
 const languageOptions = [
   { label: 'Telugu', value: 'Telugu' },
@@ -45,7 +51,9 @@ const { width, height } = Dimensions.get('window');
 const PersonalInfoScreen: React.FC = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation<any>();
+
   const insets = useSafeAreaInsets();
+
 
   const [formData, setFormData] = useState<PersonalInfo>({
     firstName: '',
@@ -66,7 +74,9 @@ const PersonalInfoScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
+
   const [profileImage, setProfileImage] = useState<any>(null);
+
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [tempSelectedLangs, setTempSelectedLangs] = useState<string[]>([]);
 
@@ -82,6 +92,7 @@ const PersonalInfoScreen: React.FC = () => {
     maritalStatus: '',
     yearsExperience: '',
   });
+
 
   // keyboard state (height in px). used to lift Next button above keyboard
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -116,6 +127,7 @@ const PersonalInfoScreen: React.FC = () => {
     };
   }, []);
 
+
   const getMinDate = () => {
     const today = new Date();
     const minDate = new Date(today.setFullYear(today.getFullYear() - 20));
@@ -135,6 +147,7 @@ const PersonalInfoScreen: React.FC = () => {
       { mediaType: 'photo' },
       (response: import('react-native-image-picker').ImagePickerResponse) => {
         if (response.didCancel) {
+          // user cancelled
         } else if (response.errorCode) {
           Toast.show({
             type: 'error',
@@ -154,6 +167,7 @@ const PersonalInfoScreen: React.FC = () => {
             type: selectedImage.type || 'image/jpeg',
             name: selectedImage.fileName || `profile_${Date.now()}.jpg`,
           });
+
 
           setFormData(prev => ({
             ...prev,
@@ -186,6 +200,7 @@ const PersonalInfoScreen: React.FC = () => {
       maritalStatus: '',
       yearsExperience: '',
     };
+
 
     if (formData.yearsExperience && isNaN(Number(formData.yearsExperience))) {
       newErrors.yearsExperience =
@@ -353,7 +368,9 @@ const PersonalInfoScreen: React.FC = () => {
 
   // ===== Language Modal Logic =====
   const openLanguageModal = () => {
+
     setTempSelectedLangs(formData.spokenLanguages);
+
     setShowLanguageModal(true);
   };
 
@@ -386,6 +403,7 @@ const PersonalInfoScreen: React.FC = () => {
       </TouchableOpacity>
     );
   };
+
 
   const selectedLangSummary =
     formData.spokenLanguages.length > 0
@@ -448,6 +466,7 @@ const PersonalInfoScreen: React.FC = () => {
               showsVerticalScrollIndicator={false}
             >
               {/* Profile Photo Upload */}
+
               <View style={styles.profilePhotoContainer}>
                 <View style={styles.profileWrapper}>
                   {formData.profilePhoto && formData.profilePhoto.uri ? (
@@ -458,10 +477,12 @@ const PersonalInfoScreen: React.FC = () => {
                       accessibilityLabel="Profile photo"
                     />
                   ) : (
+
                     <View style={[styles.profilePhoto, styles.placeholderAvatar]}>
                       <Icon name="user-o" size={width * 0.12} color="#9E9E9E" />
                     </View>
                   )}
+
 
                   <TouchableOpacity
                     style={styles.fabCamera}
@@ -473,6 +494,7 @@ const PersonalInfoScreen: React.FC = () => {
                     <Icon name="camera" size={16} color="#fff" />
                   </TouchableOpacity>
                 </View>
+
 
                 <Text style={styles.photoHintText}>
                   Tap the camera to change profile photo
@@ -574,6 +596,7 @@ const PersonalInfoScreen: React.FC = () => {
                 <Text style={styles.errorText}>{errors.gender}</Text>
               ) : null}
 
+
               <Text style={styles.label}>Languages Spoken*</Text>
               <TouchableOpacity
                 style={styles.input}
@@ -594,6 +617,7 @@ const PersonalInfoScreen: React.FC = () => {
               {errors.spokenLanguages ? (
                 <Text style={styles.errorText}>{errors.spokenLanguages}</Text>
               ) : null}
+
 
               <View style={styles.spacer} />
             </ScrollView>
@@ -682,6 +706,7 @@ const PersonalInfoScreen: React.FC = () => {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
+
   );
 };
 
@@ -723,6 +748,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: height * 0.02,
   },
+
   profileWrapper: {
     width: width * 0.32,
     height: width * 0.32,
@@ -745,6 +771,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+
   fabCamera: {
     position: 'absolute',
     right: -4,
@@ -767,6 +794,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: width * 0.032,
     color: '#666',
+
+  },
+  photoUploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00203F',
+    paddingVertical: height * 0.01,
+    paddingHorizontal: width * 0.04,
+    borderRadius: 8,
+    marginTop: height * 0.01,
+  },
+  photoUploadText: {
+    color: '#fff',
+    marginLeft: width * 0.02,
+    fontSize: width * 0.035,
+
   },
   label: {
     fontSize: width * 0.035,
@@ -834,6 +877,22 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     marginTop: height * 0.02,
   },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingHorizontal: width * 0.05,
+    paddingTop: height * 0.02,
+    paddingBottom: height * 0.03,
+  },
+  // ===== Centered modal styles (new) =====
+
   modalOverlayCentered: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -866,6 +925,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#222',
   },
+
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F6F6F6',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
+    marginBottom: 10,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#333',
+  },
+
   langRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -117,10 +117,12 @@ const PracticeScreen = () => {
   const lastPanUpdateRefs = useRef<{ [key: number]: number }>({});
   const lastAutoSelectedRefs = useRef<{ [key: number]: string }>({});
 
+
   // ---------- NEW: keyboard state ----------
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   // -----------------------------------------
+
 
   const isValidMobile = (mobile: string): boolean => {
     return mobile.length === 10 && /^[6-9]\d{9}$/.test(mobile);
@@ -147,6 +149,7 @@ const PracticeScreen = () => {
       Object.values(reverseGeoDebounceRefs.current).forEach(timeout => {
         if (timeout) clearTimeout(timeout);
       });
+
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -172,9 +175,11 @@ const PracticeScreen = () => {
     return () => {
       showSub.remove();
       hideSub.remove();
+
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // --------------------------------------------
+
 
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
@@ -360,6 +365,16 @@ const PracticeScreen = () => {
 
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
+
+
+          Toast.show({
+            type: 'info',
+            text1: 'Getting Location',
+            text2: `Trying again... Attempt ${locationRetryCount + 1} of 3`,
+            position: 'top',
+            visibilityTime: 2000,
+          });
+
 
           locationRetryTimeoutRef.current = setTimeout(() => {
             initLocationWithRetry(index);
@@ -916,6 +931,7 @@ const PracticeScreen = () => {
       uniqueByNameMap.set(nameKey, p);
     }
 
+
     // Now filter out any clinics whose name already exists on server (combinedExistingNameSet)
     const toAddAll = Array.from(uniqueByNameMap.entries()).map(([nameKey, clinic]) => ({ nameKey, clinic }));
 
@@ -943,6 +959,7 @@ const PracticeScreen = () => {
       navigation.navigate('ConsultationPreferences');
       return;
     }
+
 
     if (skippedNames.length > 0) {
       Toast.show({
@@ -1470,6 +1487,7 @@ const PracticeScreen = () => {
         <View style={styles.spacer} />
       </ScrollView>
 
+
       {/* Skip button (floating) */}
       {/* {skipButton && (
         <TouchableOpacity
@@ -1496,6 +1514,7 @@ const PracticeScreen = () => {
         ]}
         onPress={handleNext}
       >
+
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
@@ -1613,11 +1632,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Floating Skip button (when keyboard open keep above keyboard)
-  skipButtonFloating: {
-    position: 'absolute',
-    left: width * 0.05,
-    right: width * 0.05,
+  skipButton: {
+    backgroundColor: '#00203F',
+    paddingVertical: height * 0.02,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: width * 0.05,
+    marginBottom: height * 0.015,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  skipButtonText: {
+    color: '#fff',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+  nextButton: {
+
     backgroundColor: '#00203F',
     paddingVertical: height * 0.015,
     borderRadius: 8,
@@ -1771,11 +1805,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 12,
     color: '#3182CE',
+
   },
   inputDisabled: {
     backgroundColor: '#F5F5F5',
     color: '#999',
   },
+
   // search styles
   searchContainer: {
     position: 'relative',

@@ -156,12 +156,14 @@ const AddClinicForm = () => {
         offsetY = Math.round((imgH - cropH) / 2);
       }
 
+
       const cropRegion = { x: offsetX, y: offsetY, width: cropW, height: cropH };
       const destSize = { width: targetW, height: targetH };
 
       const result = await PhotoManipulator.crop(normalized, cropRegion, destSize);
       return result || normalized;
     } catch (err) {
+
       return srcUri;
     }
   };
@@ -412,9 +414,11 @@ const AddClinicForm = () => {
             };
             try {
               mapRef.current?.animateToRegion(newRegion, 500);
+
             } catch (e) { 
                 Alert.alert('Map Error', 'Could not animate to the selected region.');
             }
+
           } else {
             setForm(prev => ({
               ...prev,
@@ -487,9 +491,11 @@ const AddClinicForm = () => {
         setTimeout(() => {
           try {
             mapRef.current?.animateToRegion(newRegion, 800);
+
             } catch (e) { 
             Alert.alert('Map Error', 'Could not animate to the selected region.');
             }
+
         }, 300);
         setIsFetchingLocation(false);
 
@@ -972,10 +978,12 @@ const AddClinicForm = () => {
       try {
         finalUri = await cropImageUsingDims(imgUri, providedWidth, providedHeight, targetWidth, targetHeight);
       } catch (e) {
+
         Alert.alert('Crop Error', 'Could not crop the captured image. Using fallback crop.');
         try {
           finalUri = await cropImageToCenter(imgUri, targetWidth, targetHeight);
         } catch (e2) {
+
           finalUri = imgUri;
         }
       }
@@ -988,6 +996,7 @@ const AddClinicForm = () => {
           );
         });
       } catch (err) {
+
         finalUri = imgUri;
       }
       const file = {
@@ -1361,6 +1370,7 @@ const AddClinicForm = () => {
                       throw new Error('No capture method available on cameraRef.');
                     }
                   } catch (err) {
+
                     const { targetWidth: fbW, targetHeight: fbH } = getTargetCrop(activeFileTypeForCamera || 'header');
                     const options: CameraOptions = {
                       mediaType: 'photo',

@@ -328,10 +328,29 @@ const PrescriptionScreen = () => {
                 value={formData?.diagnosis?.diagnosisList || ''}
                 onChangeText={(text) => setFormData((prev: any) => ({
                   ...prev,
-                  diagnosis: { ...prev.diagnosis, diagnosisList: text.toUpperCase() },
-                }))}
-                placeholderTextColor="#9CA3AF"
-              />
+
+                  diagnosis: {
+                    ...prev.diagnosis,
+                    medications: transformed,
+                  },
+                }));
+
+                Toast.show({ type: 'success', text1: 'Medicine removed' });
+              }}
+              style={styles.deleteButton}
+            >
+              <Text style={styles.deleteText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+        {showMedicationForm && medications.map((med, index) => (
+          <View key={med.id} style={styles.medBlock}>
+            <View style={styles.rowSpaceBetween}>
+              <Text style={styles.medLabel}>Medicine #{index + 1}</Text>
+              <TouchableOpacity onPress={() => handleRemoveMedicine(index)}>
+                <Text style={{ color: 'red' }}>🗑️</Text>
+              </TouchableOpacity>
+
             </View>
 
             <View style={styles.section}>
@@ -378,6 +397,7 @@ const PrescriptionScreen = () => {
                   >
                     <Text style={styles.deleteText}>✕</Text>
                   </TouchableOpacity>
+
                 </View>
               ))}
 
@@ -520,6 +540,7 @@ const PrescriptionScreen = () => {
                     placeholderTextColor="#9CA3AF"
                   />
                 </View>
+
               ))}
 
               <TouchableOpacity onPress={handleAddMedicine} style={[styles.blueButton, { marginTop: 16 }]}>
@@ -570,6 +591,7 @@ const styles = StyleSheet.create({
   nextButton: { backgroundColor: '#007bff', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 },
   cancelText: { color: '#000', fontWeight: '500' },
   nextText: { color: '#fff', fontWeight: '600' },
+
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, flex: 1 },
   medLabel: { color: '#0A2342' },
   testItemContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
@@ -581,3 +603,4 @@ const styles = StyleSheet.create({
   pickerInner: { alignSelf: 'stretch', height: 48, color: 'gray', margin: 0, padding: 0 },
   deleteText: { color: 'white', fontWeight: 'bold' },
 });
+
