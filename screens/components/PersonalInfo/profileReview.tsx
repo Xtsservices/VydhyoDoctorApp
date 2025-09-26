@@ -134,7 +134,7 @@ const ProfileReview: React.FC = () => {
 
           <View style={styles.contentContainer}>
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>Will get back to you Shortly</Text>
+              <Text style={styles.title}>Will get back to you shortly</Text>
             </View>
 
             <View style={styles.timerContainer}>

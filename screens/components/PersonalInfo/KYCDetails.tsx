@@ -34,6 +34,72 @@ const pancard_icon = require('../../assets/pan.png');
 
 const { width, height } = Dimensions.get('window');
 
+const TERMS_URL = 'https://vydhyo.com/terms-and-conditions';
+
+// JS to hide site header/footer and keep only middle terms content.
+// Runs before content loads and also via MutationObserver to catch late-rendered elements (e.g., Elementor).
+const hideHeaderFooterJS = `
+(function() {
+  function applyHiding() {
+    try {
+      var selectors = [
+        'header',
+        'footer',
+        '.site-header',
+        '.site-footer',
+        '.elementor-location-header',
+        '.elementor-location-footer',
+        '[data-elementor-type="header"]',
+        '[data-elementor-type="footer"]',
+        '.ast-desktop-header',            /* common WP themes */
+        '.ast-mobile-header-wrap',
+        '#masthead',
+        '#colophon'
+      ];
+      selectors.forEach(function(sel){
+        document.querySelectorAll(sel).forEach(function(el){
+          el.style.setProperty('display','none','important');
+          el.style.setProperty('visibility','hidden','important');
+          el.style.setProperty('height','0px','important');
+          el.style.setProperty('margin','0','important');
+          el.style.setProperty('padding','0','important');
+        });
+      });
+
+      // Remove any body/page top spacing reserved for sticky headers
+      document.documentElement.style.setProperty('scroll-behavior','smooth','important');
+      document.body.style.setProperty('padding-top','0px','important');
+      document.body.style.setProperty('margin-top','0px','important');
+
+      // Stretch main content to full width if constrained by layout wrappers
+      var wrappers = ['main', '#content', '.site-content', '.elementor', '.elementor-section-wrap'];
+      wrappers.forEach(function(sel){
+        document.querySelectorAll(sel).forEach(function(el){
+          el.style.setProperty('max-width','100%','important');
+          el.style.setProperty('margin','0 auto','important');
+        });
+      });
+    } catch(e) {}
+  }
+
+  // Initial run
+  applyHiding();
+
+  // Observe DOM changes (catch SPA/theme late injections)
+  var obs = new MutationObserver(function(){ applyHiding(); });
+  if (document.body) {
+    obs.observe(document.body, { childList: true, subtree: true });
+  } else {
+    document.addEventListener('DOMContentLoaded', function(){
+      applyHiding();
+      obs.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+
+  true; // required to signal completion for RN WebView
+})();
+`;
+
 const KYCDetailsScreen = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
@@ -55,9 +121,6 @@ const KYCDetailsScreen = () => {
   // keyboard height & refs for scrolling if needed later
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ScrollView | null>(null);
-
-  // Terms HTML (kept same)
-  const termsAndConditionsHTML = `...`; // trimmed here for brevity in the message; keep your original HTML here
 
   // ---------- Keyboard listeners ----------
   useEffect(() => {
@@ -173,7 +236,6 @@ const KYCDetailsScreen = () => {
   const removePanFile = () => {
     setPanImage(null);
     setPancardUploaded(false);
-    // If it was prefill, also clear prefill status
     if (prefill) setPrefill(false);
   };
 
@@ -210,7 +272,6 @@ const KYCDetailsScreen = () => {
         if (userData?.pan?.number) {
           setPanNumber(userData.pan.number);
         }
-        // If there's a saved pan attachment URL, normalize to object form
         if (userData?.pan?.attachmentUrl) {
           setPanImage({
             uri: userData.pan.attachmentUrl,
@@ -220,7 +281,6 @@ const KYCDetailsScreen = () => {
           setPancardUploaded(true);
           setPrefill(true);
         }
-        // load other fields if needed...
       }
     } catch (error) {
       Toast.show({
@@ -239,7 +299,6 @@ const KYCDetailsScreen = () => {
 
   // ---------- Submit / Next ----------
   const handleNext = async () => {
-    // If neither PAN number nor uploaded pancard -> allow skip (existing logic)
     if (!panNumber && !pancardUploaded) {
       try {
         setLoading(true);
@@ -264,13 +323,11 @@ const KYCDetailsScreen = () => {
       return;
     }
 
-    // If PAN number present, validate it
     if (!panNumber || !validatePanNumber(panNumber)) {
       Alert.alert('Error', 'Please enter a valid 10-character PAN number (e.g., ABCDE1234F).');
       return;
     }
 
-    // Ensure a PAN file exists (either uploaded now or prefetched)
     if (!pancardUploaded || !panImage?.uri) {
       Alert.alert('Error', 'Please upload a PAN Card image.');
       return;
@@ -296,7 +353,6 @@ const KYCDetailsScreen = () => {
       fd.append('userId', userId);
       fd.append('panNumber', panNumber);
 
-      // attach pan file
       fd.append('panFile', {
         uri: panImage.uri,
         name: panImage.name || 'pan.jpg',
@@ -333,8 +389,15 @@ const KYCDetailsScreen = () => {
 
   // ---------- Layout math for Next button ----------
   const androidBuffer = Platform.OS === 'android' ? 12 : 0;
-  const extraGap = 10; // visual cushion
+  const extraGap = 10;
   const nextBottom = keyboardHeight > 0 ? keyboardHeight + insets.bottom + androidBuffer + extraGap : insets.bottom + 24;
+
+  const renderWebviewLoader = () => (
+    <View style={styles.webviewLoader}>
+      <ActivityIndicator size="large" color="#00203F" />
+      <Text style={styles.webviewLoaderText}>Loading Terms & Conditions…</Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -346,7 +409,12 @@ const KYCDetailsScreen = () => {
       )}
 
       {/* Terms modal */}
-      <Modal animationType="slide" transparent visible={termsModalVisible} onRequestClose={() => setTermsModalVisible(false)}>
+      <Modal
+        animationType="slide"
+        transparent
+        visible={termsModalVisible}
+        onRequestClose={() => setTermsModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -355,13 +423,35 @@ const KYCDetailsScreen = () => {
                 <Icon name="close" size={width * 0.06} color="#00203F" />
               </TouchableOpacity>
             </View>
-            <WebView originWhitelist={['*']} source={{ html: termsAndConditionsHTML }} style={styles.webview} />
+
+            <WebView
+              originWhitelist={['*']}
+              source={{ uri: TERMS_URL }}
+              style={styles.webview}
+              javaScriptEnabled
+              domStorageEnabled
+              allowsInlineMediaPlayback
+              setSupportMultipleWindows={false}
+              startInLoadingState
+              renderLoading={renderWebviewLoader}
+              injectedJavaScriptBeforeContentLoaded={hideHeaderFooterJS}
+              injectedJavaScript={hideHeaderFooterJS}
+              onMessage={() => {}}
+              mixedContentMode="always"
+              allowFileAccess
+              allowUniversalAccessFromFileURLs
+            />
           </View>
         </View>
       </Modal>
 
       {/* File view modal */}
-      <Modal animationType="slide" transparent visible={fileViewModalVisible} onRequestClose={() => setFileViewModalVisible(false)}>
+      <Modal
+        animationType="slide"
+        transparent
+        visible={fileViewModalVisible}
+        onRequestClose={() => setFileViewModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.fileModalContent}>
             <View style={styles.modalHeader}>
@@ -452,7 +542,7 @@ const KYCDetailsScreen = () => {
         <View style={styles.spacer} />
       </ScrollView>
 
-      {/* Floating Next button positioned above keyboard / safe area */}
+      {/* Floating Next button */}
       <TouchableOpacity
         style={[
           styles.nextButton,
@@ -589,10 +679,15 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: width * 0.9, height: height * 0.8, backgroundColor: '#fff', borderRadius: 10, overflow: 'hidden' },
   fileModalContent: { width: width * 0.9, height: height * 0.6, backgroundColor: '#fff', borderRadius: 10, overflow: 'hidden' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: width * 0.04, backgroundColor: '#f5f5f5', borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: width * 0.04, backgroundColor: '#f5f5f5', borderBottomWidth: 1, borderBottomColor: '#E0E0E0'
+  },
   modalTitle: { fontSize: width * 0.05, fontWeight: '600', color: '#00203F' },
-  webview: { flex: 1 },
+  webview: { flex: 1, backgroundColor: '#fff', marginTop: -30 },
   fileImage: { width: '100%', height: '100%' },
+  webviewLoader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  webviewLoaderText: { marginTop: 8, color: '#00203F' },
 });
 
 export default KYCDetailsScreen;

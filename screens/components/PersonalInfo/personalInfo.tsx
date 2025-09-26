@@ -638,11 +638,9 @@ const PersonalInfoScreen: React.FC = () => {
               onPress={handleNext}
               activeOpacity={0.85}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
+            
                 <Text style={styles.nextText}>Next</Text>
-              )}
+   
             </TouchableOpacity>
 
             {/* Language Modal */}
@@ -674,13 +672,13 @@ const PersonalInfoScreen: React.FC = () => {
                     {tempSelectedLangs.map(v => (
                       <View key={v} style={styles.selectedChip}>
                         <Text style={styles.selectedChipText}>{v}</Text>
-                        <TouchableOpacity
+                        {/* <TouchableOpacity
                           onPress={() => toggleTempLang(v)}
                           style={styles.selectedChipRemove}
                           accessibilityLabel={`Remove ${v}`}
                         >
                           <Icon name="times" size={12} color="#D32F2F" />
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                       </View>
                     ))}
                   </View>

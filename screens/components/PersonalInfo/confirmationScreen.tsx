@@ -165,9 +165,9 @@ const ConfirmationScreen: React.FC = () => {
           consultationPreferences:
             userData.consultationModeFee && userData.consultationModeFee.length > 0
               ? userData.consultationModeFee
-                  .filter((mode: any) => mode.fee > 0)
-                  .map((mode: any) => mode.type)
-                  .join(', ')
+                .filter((mode: any) => mode.fee > 0)
+                .map((mode: any) => mode.type)
+                .join(', ')
               : '',
           bank: (userData.bankDetails && userData.bankDetails.bankName) || '',
           accountNumber: maskAccountNumber(userData.bankDetails?.accountNumber || ''),
@@ -261,21 +261,24 @@ const ConfirmationScreen: React.FC = () => {
             <Text style={styles.error}>{errors.specialization}</Text>
           )}
 
-          {/* Practice Section */}
+          {/* Practice Section - Display All Clinics */}
           <View style={styles.row}>
             <Icon name="office-building" size={width * 0.05} color="#00203F" />
-            <Text style={styles.label}>Clinic Name</Text>
+            <Text style={styles.label}>Clinics ({formData.addresses?.length || 0})</Text>
           </View>
-          <TextInput
-            value={formData?.addresses && formData.addresses.length > 0 ? formData.addresses[0]?.clinicName || '' : ''}
-            onChangeText={text => handleChange('practice', text)}
-            style={[styles.input, errors.practice && styles.errorInput]}
-            placeholder="Enter Practice"
-            placeholderTextColor="#999"
-            editable={false}
-          />
-          {errors.practice && (
-            <Text style={styles.error}>{errors.practice}</Text>
+
+          {formData.addresses && formData.addresses.length > 0 ? (
+            <View style={styles.clinicsContainer}>
+              {formData.addresses.map((address: any, index: number) => (
+                <View key={index} style={styles.clinicItem}>
+                  <Text style={styles.clinicName}>
+                    {index + 1}. {address.clinicName || 'Unnamed Clinic'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.noClinicsText}>No clinics added</Text>
           )}
 
           {/* Consultation Preferences Section */}
@@ -450,6 +453,41 @@ const styles = StyleSheet.create({
   spacer: {
     height: height * 0.1,
   },
+  clinicsContainer: {
+  marginBottom: height * 0.01,
+},
+clinicItem: {
+  backgroundColor: '#F8F9FA',
+  padding: width * 0.03,
+  borderRadius: 6,
+  marginBottom: height * 0.01,
+  borderLeftWidth: 3,
+  borderLeftColor: '#00203F',
+},
+clinicName: {
+  fontSize: width * 0.04,
+  fontWeight: '600',
+  color: '#333',
+  marginBottom: 4,
+},
+clinicAddress: {
+  fontSize: width * 0.035,
+  color: '#666',
+  lineHeight: 18,
+},
+clinicMobile: {
+  fontSize: width * 0.035,
+  color: '#00203F',
+  fontWeight: '500',
+  marginTop: 2,
+},
+noClinicsText: {
+  fontSize: width * 0.04,
+  color: '#999',
+  fontStyle: 'italic',
+  textAlign: 'center',
+  padding: height * 0.02,
+},
   loaderOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay

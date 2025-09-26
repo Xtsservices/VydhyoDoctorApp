@@ -138,7 +138,10 @@ const PracticeScreen = () => {
   useEffect(() => {
     const initializeAllLocations = async () => {
       for (let i = 0; i < opdAddresses.length; i++) {
-        await initLocation(i);
+        const addr = opdAddresses[i];
+        if (!isPrefilledAddr(addr)) {
+          await initLocation(i);
+        }
       }
     };
 
@@ -288,6 +291,9 @@ const PracticeScreen = () => {
   };
 
   const initLocation = async (index: number) => {
+    const addr = opdAddresses[index];
+    if (addr && isPrefilledAddr(addr)) return;
+
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
       Alert.alert(
@@ -403,6 +409,9 @@ const PracticeScreen = () => {
   };
 
   const initLocationWithRetry = async (index: number) => {
+    const addr = opdAddresses[index];
+    if (addr && isPrefilledAddr(addr)) return;
+
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) return;
 
@@ -455,7 +464,7 @@ const PracticeScreen = () => {
 
         fetchAddressDetails(latitude, longitude, index);
       },
-      (error) => {
+      () => {
         setIsFetchingLocation(false);
         if (locationRetryCount < 3) {
           setLocationRetryCount(prev => prev + 1);
@@ -471,6 +480,9 @@ const PracticeScreen = () => {
       ...prev,
       [index]: query
     }));
+
+    // Block for prefilled/view-only rows
+    if (isPrefilledAddr(opdAddresses[index])) return;
 
     if (query.length < 3) {
       setSearchResultsPerAddress(prev => ({
@@ -507,7 +519,7 @@ const PracticeScreen = () => {
           [index]: []
         }));
       }
-    } catch (error) {
+    } catch {
       setSearchResultsPerAddress(prev => ({
         ...prev,
         [index]: []
@@ -516,6 +528,8 @@ const PracticeScreen = () => {
   };
 
   const handleSelectSearchResult = async (result: any, index: number) => {
+    if (isPrefilledAddr(opdAddresses[index])) return; // view-only
+
     setSearchQueryPerAddress(prev => ({
       ...prev,
       [index]: result.description
@@ -543,11 +557,7 @@ const PracticeScreen = () => {
         );
 
         if (!countryComponent || countryComponent.short_name !== 'IN') {
-          Alert.alert(
-            'Invalid Location',
-            'Please select a location within India.',
-            [{ text: 'OK', style: 'cancel' }]
-          );
+          Alert.alert('Invalid Location', 'Please select a location within India.', [{ text: 'OK', style: 'cancel' }]);
           setIsFetchingLocation(false);
           return;
         }
@@ -580,7 +590,7 @@ const PracticeScreen = () => {
 
         fetchAddressDetails(latitude, longitude, index);
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to fetch place details. Please try again.');
     } finally {
       setIsFetchingLocation(false);
@@ -591,6 +601,8 @@ const PracticeScreen = () => {
   const FINAL_REVERSE_DEBOUNCE_MS = 700;
 
   const handleRegionChange = (index: number, r: Region) => {
+    if (isPrefilledAddr(opdAddresses[index])) return; // no-op in view-only mode
+
     const now = Date.now();
     if (now - (lastPanUpdateRefs.current[index] || 0) < 120) return;
     lastPanUpdateRefs.current[index] = now;
@@ -631,6 +643,8 @@ const PracticeScreen = () => {
   };
 
   const handleRegionChangeComplete = (index: number, r: Region) => {
+    if (isPrefilledAddr(opdAddresses[index])) return; // no-op in view-only mode
+
     setPointerCoordsPerAddress(prev => ({
       ...prev,
       [index]: { latitude: r.latitude, longitude: r.longitude }
@@ -673,15 +687,13 @@ const PracticeScreen = () => {
   };
 
   const handleMapPress = (index: number, event: any) => {
+    if (isPrefilledAddr(opdAddresses[index])) return; // no-op in view-only mode
+
     const { coordinate } = event.nativeEvent;
     const { latitude, longitude } = coordinate;
 
     if (!isInIndia(latitude, longitude)) {
-      Alert.alert(
-        'Invalid Location',
-        'Please select a location within India.',
-        [{ text: 'OK', style: 'cancel' }]
-      );
+      Alert.alert('Invalid Location', 'Please select a location within India.', [{ text: 'OK', style: 'cancel' }]);
       return;
     }
 
@@ -715,11 +727,13 @@ const PracticeScreen = () => {
   };
 
   const handleMyLocation = async (index: number) => {
+    if (isPrefilledAddr(opdAddresses[index])) return; // disabled in view-only
     setLocationRetryCount(0);
     await initLocation(index);
   };
 
   const usePointerLocation = async (index: number) => {
+    if (isPrefilledAddr(opdAddresses[index])) return; // disabled in view-only
     try {
       let center: { latitude: number; longitude: number } | null = null;
       const mapAny: any = mapRefs.current[index] as any;
@@ -730,9 +744,7 @@ const PracticeScreen = () => {
           if (cam && cam.center && typeof cam.center.latitude === 'number' && typeof cam.center.longitude === 'number') {
             center = { latitude: cam.center.latitude, longitude: cam.center.longitude };
           }
-        } catch (e) {
-          // ignore
-        }
+        } catch { }
       }
 
       if (!center && pointerCoordsPerAddress[index]) {
@@ -753,7 +765,7 @@ const PracticeScreen = () => {
       }
 
       await fetchAddressDetails(center.latitude, center.longitude, index, true, true);
-    } catch (err: any) {
+    } catch {
       const center = pointerCoordsPerAddress[index];
       if (center) {
         if (!isInIndia(center.latitude, center.longitude)) {
@@ -828,6 +840,7 @@ const PracticeScreen = () => {
   };
 
   const handleInputChange = (index: number, field: keyof Address, value: string) => {
+    if (isPrefilledAddr(opdAddresses[index])) return; // lock fields in view-only
     setOpdAddresses(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value } as Address;
@@ -883,10 +896,11 @@ const PracticeScreen = () => {
     setLoading(true);
     const token = await AsyncStorage.getItem('authToken');
 
-    // validate
+    // validate only non-prefilled (editable) addresses
     let hasErrors = false;
     const newErrors: { [key: number]: Errors } = {};
     opdAddresses.forEach((addr, index) => {
+      if (isPrefilledAddr(addr)) return; // skip validation for view-only rows
       const e = validateFields(addr);
       if (Object.keys(e).length > 0) {
         newErrors[index] = e;
@@ -906,33 +920,28 @@ const PracticeScreen = () => {
       return;
     }
 
-    // prepare payload with times converted
-    const payload = opdAddresses.map(addr => ({
-      ...addr,
-      startTime: convertTo24HourFormat(addr?.startTime) || '06:00',
-      endTime: convertTo24HourFormat(addr?.endTime) || '21:00',
-    }));
+    // prepare payload with times converted (only for rows we can add)
+    const payload = opdAddresses
+      .filter(a => !isPrefilledAddr(a))
+      .map(addr => ({
+        ...addr,
+        startTime: convertTo24HourFormat(addr?.startTime) || '06:00',
+        endTime: convertTo24HourFormat(addr?.endTime) || '21:00',
+      }));
 
     // Build a set of existing clinic names (normalized). Includes server prefilled names and any existingAddressKeys transformed.
     const combinedExistingNameSet = new Set<string>();
-    // take names from prefilledKeys (we stored composite keys earlier) -> but we also have existingClinicNameSet
     existingClinicNameSet.forEach(n => combinedExistingNameSet.add(n));
-    // and ensure existingAddressKeys also contribute names (split composite)
     existingAddressKeys.forEach(k => {
       const namePart = k.split('|')[0];
       if (namePart) combinedExistingNameSet.add(namePart);
     });
-
-    // Deduplicate / filter payload by clinic name (server constraint).
-    // last one wins: loop through payload and keep latest occurrence for each clinic name (normalized)
     const uniqueByNameMap = new Map<string, typeof payload[0]>();
     for (const p of payload) {
       const nameKey = buildClinicNameKey(p);
       uniqueByNameMap.set(nameKey, p);
     }
 
-
-    // Now filter out any clinics whose name already exists on server (combinedExistingNameSet)
     const toAddAll = Array.from(uniqueByNameMap.entries()).map(([nameKey, clinic]) => ({ nameKey, clinic }));
 
     const skippedNames: string[] = [];
@@ -946,7 +955,6 @@ const PracticeScreen = () => {
     }
 
     if (skippedNames.length > 0 && toAdd.length === 0) {
-      // nothing to add - everything was already present by name
       Toast.show({
         type: 'info',
         text1: 'No new clinics',
@@ -959,7 +967,6 @@ const PracticeScreen = () => {
       navigation.navigate('ConsultationPreferences');
       return;
     }
-
 
     if (skippedNames.length > 0) {
       Toast.show({
@@ -1005,7 +1012,7 @@ const PracticeScreen = () => {
             const compKey = buildClinicKey(clinic);
             setExistingAddressKeys(prev => new Set([...Array.from(prev), compKey]));
           }
-        } catch (postErr) {
+        } catch {
           allOk = false;
           Toast.show({
             type: 'error',
@@ -1081,12 +1088,6 @@ const PracticeScreen = () => {
 
           const serverNameKeys = new Set((userData.addresses || []).map((a: any) => buildClinicNameKey(a)));
           setExistingClinicNameSet(prev => new Set([...Array.from(prev), ...Array.from(serverNameKeys)]));
-
-          setTimeout(() => {
-            userData.addresses.forEach((_: any, index: number) => {
-              initLocation(index);
-            });
-          }, 500);
         } else {
           setSkipButton(false);
         }
@@ -1173,348 +1174,336 @@ const PracticeScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {opdAddresses.map((addr, index) => (
-            <View key={index} style={styles.addressContainer}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Location on Map</Text>
+          {opdAddresses.map((addr, index) => {
+            const viewOnly = isPrefilledAddr(addr);
+            return (
+              <View key={index} style={styles.addressContainer}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Select Location on Map</Text>
 
-                {isFetchingLocation && (
-                  <View style={styles.locationStatus}>
-                    <ActivityIndicator size="small" color="#3182CE" />
-                    <Text style={styles.locationStatusText}>
-                      {locationRetryCount > 0
-                        ? `Getting location (attempt ${locationRetryCount + 1})...`
-                        : 'Getting your location...'
-                      }
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.searchContainer} pointerEvents={isPrefilledAddr(addr) ? 'none' : 'auto'}>
-                  <View style={styles.searchInputContainer}>
-                    <Icon name="magnify" size={20} color="#6B7280" style={styles.searchIcon} />
-                    <TextInput
-                      style={[styles.searchInput, isPrefilledAddr(addr) && styles.inputDisabled]}
-                      placeholder="Search for an address or location"
-                      placeholderTextColor="#A0AEC0"
-                      value={searchQueryPerAddress[index] || ''}
-                      onChangeText={(text) => {
-                        handleSearch(text, index);
-                      }}
-                      editable={!isPrefilledAddr(addr)}
-                    />
-                    {searchQueryPerAddress[index] && searchQueryPerAddress[index].length > 0 && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSearchQueryPerAddress(prev => ({
-                            ...prev,
-                            [index]: ''
-                          }));
-                        }}
-                      >
-                        <Icon name="close" size={20} color="#6B7280" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {showSearchResultsPerAddress[index] && searchResultsPerAddress[index] && searchResultsPerAddress[index].length > 0 && (
-                    <View style={styles.searchResultsContainer}>
-                      <ScrollView style={styles.searchResultsList}>
-                        {searchResultsPerAddress[index].map((result: any) => (
-                          <View key={result.place_id}>
-                            {renderSearchItem(result, index)}
-                          </View>
-                        ))}
-                      </ScrollView>
+                  {isFetchingLocation && !viewOnly && (
+                    <View style={styles.locationStatus}>
+                      <ActivityIndicator size="small" color="#3182CE" />
+                      <Text style={styles.locationStatusText}>
+                        {locationRetryCount > 0
+                          ? `Getting location (attempt ${locationRetryCount + 1})...`
+                          : 'Getting your location...'
+                        }
+                      </Text>
                     </View>
                   )}
-                </View>
 
-                <View style={styles.mapContainer} pointerEvents={isPrefilledAddr(addr) ? 'none' : 'auto'}>
-                  <MapView
-                    ref={(ref) => {
-                      if (ref) {
-                        mapRefs.current[index] = ref;
-                      }
-                    }}
-                    style={styles.map}
-                    provider={PROVIDER_GOOGLE}
-                    initialRegion={{
-                      latitude: parseFloat(addr.latitude) || 20.5937,
-                      longitude: parseFloat(addr.longitude) || 78.9629,
-                      latitudeDelta: 0.01,
-                      longitudeDelta: 0.01,
-                    }}
-                    onRegionChange={(r) => handleRegionChange(index, r)}
-                    onRegionChangeComplete={(r) => handleRegionChangeComplete(index, r)}
-                    onPress={(e) => handleMapPress(index, e)}
-                    scrollEnabled={true}
-                    zoomEnabled={true}
-                    pitchEnabled={true}
-                    rotateEnabled={true}
-                    showsUserLocation={true}
-                    showsMyLocationButton={false}
-                    followsUserLocation={false}
-                  >
-                    <Marker
-                      coordinate={{
-                        latitude: parseFloat(addr.latitude) || 20.5937,
-                        longitude: parseFloat(addr.longitude) || 78.9629,
-                      }}
-                    />
-                  </MapView>
+                  <View style={styles.searchContainer} pointerEvents={viewOnly ? 'none' : 'auto'}>
+                    <View style={styles.searchInputContainer}>
+                      <Icon name="magnify" size={20} color="#6B7280" style={styles.searchIcon} />
+                      <TextInput
+                        style={[styles.searchInput, viewOnly && styles.inputDisabled]}
+                        placeholder="Search for an address or location"
+                        placeholderTextColor="#A0AEC0"
+                        value={searchQueryPerAddress[index] || (viewOnly ? addr.address : '')}
+                        onChangeText={(text) => {
+                          handleSearch(text, index);
+                        }}
+                        editable={!viewOnly}
+                      />
+                      {(searchQueryPerAddress[index] && searchQueryPerAddress[index].length > 0 && !viewOnly) && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSearchQueryPerAddress(prev => ({
+                              ...prev,
+                              [index]: ''
+                            }));
+                          }}
+                        >
+                          <Icon name="close" size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
 
-                  <View style={styles.markerFixed}>
-                    {markerImage ? (
-                      <Image source={markerImage as any} style={styles.markerImage} />
-                    ) : (
-                      <View style={styles.marker}>
-                        <View style={styles.markerInner} />
+                    {showSearchResultsPerAddress[index] && searchResultsPerAddress[index] && searchResultsPerAddress[index].length > 0 && !viewOnly && (
+                      <View style={styles.searchResultsContainer}>
+                        <ScrollView style={styles.searchResultsList}>
+                          {searchResultsPerAddress[index].map((result: any) => (
+                            <View key={result.place_id}>
+                              {renderSearchItem(result, index)}
+                            </View>
+                          ))}
+                        </ScrollView>
                       </View>
                     )}
                   </View>
 
-                  {pointerCoordsPerAddress[index] && (
-                    <View style={styles.pointerPreview}>
-                      <Text style={{ fontSize: 10 }}>Lat: {pointerCoordsPerAddress[index]?.latitude.toFixed(6)}</Text>
-                      <Text style={{ fontSize: 10 }}>Lng: {pointerCoordsPerAddress[index]?.longitude.toFixed(6)}</Text>
+                  <View style={styles.mapContainer} pointerEvents={viewOnly ? 'none' : 'auto'}>
+                    <MapView
+                      ref={(ref) => {
+                        if (ref) {
+                          mapRefs.current[index] = ref;
+                        }
+                      }}
+                      style={styles.map}
+                      provider={PROVIDER_GOOGLE}
+                      initialRegion={{
+                        latitude: parseFloat(addr.latitude) || 20.5937,
+                        longitude: parseFloat(addr.longitude) || 78.9629,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                      }}
+                      onRegionChange={(r) => handleRegionChange(index, r)}
+                      onRegionChangeComplete={(r) => handleRegionChangeComplete(index, r)}
+                      onPress={(e) => handleMapPress(index, e)}
+                      scrollEnabled={!viewOnly}
+                      zoomEnabled={!viewOnly}
+                      pitchEnabled={!viewOnly}
+                      rotateEnabled={!viewOnly}
+                      showsUserLocation={!viewOnly} // disable blue dot when view-only
+                      showsMyLocationButton={false}
+                      followsUserLocation={false}
+                    >
+                      <Marker
+                        coordinate={{
+                          latitude: parseFloat(addr.latitude) || 20.5937,
+                          longitude: parseFloat(addr.longitude) || 78.9629,
+                        }}
+                      />
+                    </MapView>
+
+                    <View style={styles.markerFixed}>
+                      {markerImage ? (
+                        <Image source={markerImage as any} style={styles.markerImage} />
+                      ) : (
+                        <View style={styles.marker}>
+                          <View style={styles.markerInner} />
+                        </View>
+                      )}
                     </View>
+
+                    {pointerCoordsPerAddress[index] && !viewOnly && (
+                      <View style={styles.pointerPreview}>
+                        <Text style={{ fontSize: 10 }}>Lat: {pointerCoordsPerAddress[index]?.latitude.toFixed(6)}</Text>
+                        <Text style={{ fontSize: 10 }}>Lng: {pointerCoordsPerAddress[index]?.longitude.toFixed(6)}</Text>
+                      </View>
+                    )}
+
+                    {!viewOnly && (
+                      <>
+                        <TouchableOpacity
+                          style={styles.myLocationButton}
+                          onPress={() => handleMyLocation(index)}
+                        >
+                          <Icon name="crosshairs-gps" size={24} color="#3182CE" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.usePointerButton}
+                          onPress={() => usePointerLocation(index)}
+                        >
+                          <Text style={styles.usePointerText}>Use pointer location</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Clinic Name *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors[index]?.clinicName && styles.inputError,
+                      viewOnly && styles.inputDisabled,
+                    ]}
+                    placeholder="Enter Clinic Name"
+                    placeholderTextColor="#999"
+                    value={addr.clinicName}
+                    onChangeText={text => handleInputChange(index, 'clinicName', text)}
+                    editable={!viewOnly}
+                  />
+                  {errors[index]?.clinicName && (
+                    <Text style={styles.errorText}>{errors[index].clinicName}</Text>
                   )}
-
-                  <TouchableOpacity
-                    style={[styles.myLocationButton, isPrefilledAddr(addr) && { opacity: 0.5 }]}
-                    onPress={() => handleMyLocation(index)}
-                    disabled={isPrefilledAddr(addr)}
-                  >
-                    <Icon name="crosshairs-gps" size={24} color="#3182CE" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.usePointerButton, isPrefilledAddr(addr) && { opacity: 0.5 }]}
-                    onPress={() => usePointerLocation(index)}
-                    disabled={isPrefilledAddr(addr)}
-                  >
-                    <Text style={styles.usePointerText}>Use pointer location</Text>
-                  </TouchableOpacity>
                 </View>
-              </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Clinic Name *</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    errors[index]?.clinicName && styles.inputError,
-                    isPrefilledAddr(addr) && styles.inputDisabled,
-                  ]}
-                  placeholder="Enter Clinic Name"
-                  placeholderTextColor="#999"
-                  value={addr.clinicName}
-                  onChangeText={text => handleInputChange(index, 'clinicName', text)}
-                  editable={!isPrefilledAddr(addr)}
-                />
-                {errors[index]?.clinicName && (
-                  <Text style={styles.errorText}>{errors[index].clinicName}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Mobile *</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    errors[index]?.mobile && styles.inputError,
-                    isPrefilledAddr(addr) && styles.inputDisabled,
-                  ]}
-                  placeholder="Enter Mobile Number"
-                  placeholderTextColor="#999"
-                  value={addr.mobile}
-                  onChangeText={(text) => {
-                    const filteredText = text.replace(/[^0-9]/g, '');
-                    if (filteredText.length > 0) {
-                      const firstDigit = filteredText.charAt(0);
-                      if (!['6', '7', '8', '9'].includes(firstDigit)) {
-                        return;
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Mobile *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors[index]?.mobile && styles.inputError,
+                      viewOnly && styles.inputDisabled,
+                    ]}
+                    placeholder="Enter Mobile Number"
+                    placeholderTextColor="#999"
+                    value={addr.mobile}
+                    onChangeText={(text) => {
+                      const filteredText = text.replace(/[^0-9]/g, '');
+                      if (filteredText.length > 0) {
+                        const firstDigit = filteredText.charAt(0);
+                        if (!['6', '7', '8', '9'].includes(firstDigit)) {
+                          return;
+                        }
                       }
-                    }
-                    handleInputChange(index, 'mobile', filteredText);
-                  }}
-                  keyboardType="numeric"
-                  maxLength={10}
-                  editable={!isPrefilledAddr(addr)}
-                />
-                {errors[index]?.mobile && (
-                  <Text style={styles.errorText}>{errors[index].mobile}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Address *</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    errors[index]?.address && styles.inputError,
-                    isPrefilledAddr(addr) && styles.inputDisabled,
-                  ]}
-                  placeholder="Address"
-                  placeholderTextColor="#999"
-                  value={addr.address}
-                  onChangeText={text => handleInputChange(index, 'address', text)}
-                  editable={!isPrefilledAddr(addr)}
-                />
-                {errors[index]?.address && (
-                  <Text style={styles.errorText}>{errors[index].address}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Pincode *</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    errors[index]?.pincode && styles.inputError,
-                    isPrefilledAddr(addr) && styles.inputDisabled,
-                  ]}
-                  placeholder="Pincode"
-                  placeholderTextColor="#999"
-                  value={addr.pincode}
-                  maxLength={6}
-                  onChangeText={text => handleInputChange(index, 'pincode', text)}
-                  keyboardType="numeric"
-                  editable={!isPrefilledAddr(addr)}
-                />
-                {errors[index]?.pincode && (
-                  <Text style={styles.errorText}>{errors[index].pincode}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>City *</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    errors[index]?.city && styles.inputError,
-                    isPrefilledAddr(addr) && styles.inputDisabled,
-                  ]}
-                  placeholder="City"
-                  placeholderTextColor="#999"
-                  value={addr.city}
-                  onChangeText={text => handleInputChange(index, 'city', text)}
-                  editable={!isPrefilledAddr(addr)}
-                />
-                {errors[index]?.city && (
-                  <Text style={styles.errorText}>{errors[index].city}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>State *</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    errors[index]?.state && styles.inputError,
-                    isPrefilledAddr(addr) && styles.inputDisabled,
-                  ]}
-                  placeholder="State"
-                  placeholderTextColor="#999"
-                  value={addr.state}
-                  onChangeText={text => handleInputChange(index, 'state', text)}
-                  editable={!isPrefilledAddr(addr)}
-                />
-                {errors[index]?.state && (
-                  <Text style={styles.errorText}>{errors[index].state}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Country *</Text>
-                <TextInput
-                  style={[styles.input, errors[index]?.country && styles.inputError]}
-                  placeholder="Country"
-                  placeholderTextColor="#999"
-                  value={addr.country}
-                  onChangeText={text => handleInputChange(index, 'country', text)}
-                  editable={false}
-                />
-                {errors[index]?.country && (
-                  <Text style={styles.errorText}>{errors[index].country}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Latitude</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Latitude"
-                  placeholderTextColor="#999"
-                  value={String(addr?.latitude)}
-                  onChangeText={text => handleInputChange(index, 'latitude', text)}
-                  editable={false}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Longitude</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Longitude"
-                  placeholderTextColor="#999"
-                  value={String(addr?.longitude)}
-                  onChangeText={text => handleInputChange(index, 'longitude', text)}
-                  editable={false}
-                />
-              </View>
-
-              {/* Remove button: hidden/disabled for prefilled addresses */}
-              {!isPrefilledAddr(addr) && (
-                <TouchableOpacity
-                  style={styles.removeButton}
-                  onPress={() => handleRemoveAddress(index)}
-                  disabled={opdAddresses.length === 1}
-                >
-                  <Text style={styles.removeText}>×</Text>
-                </TouchableOpacity>
-              )}
-
-              {isPrefilledAddr(addr) && (
-                <View style={[styles.removeButton, { opacity: 0.5 }]}>
-                  {/* intentionally empty so layout stays consistent; no press */}
+                      handleInputChange(index, 'mobile', filteredText);
+                    }}
+                    keyboardType="numeric"
+                    maxLength={10}
+                    editable={!viewOnly}
+                  />
+                  {errors[index]?.mobile && (
+                    <Text style={styles.errorText}>{errors[index].mobile}</Text>
+                  )}
                 </View>
-              )}
-            </View>
-          ))}
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Address *</Text>
+                  <TextInput
+                    style={[
+                      errors[index]?.address && styles.inputError,
+                      viewOnly && styles.inputDisabled,
+                    ]}
+                    placeholder="Address"
+                    placeholderTextColor="#999"
+                    value={addr.address}
+                    onChangeText={text => handleInputChange(index, 'address', text)}
+                    editable={!viewOnly}
+                    multiline={true} 
+                    numberOfLines={2} 
+                    textAlignVertical="top" 
+                    scrollEnabled={false}
+                  />
+                  {errors[index]?.address && (
+                    <Text style={styles.errorText}>{errors[index].address}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Pincode *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors[index]?.pincode && styles.inputError,
+                      viewOnly && styles.inputDisabled,
+                    ]}
+                    placeholder="Pincode"
+                    placeholderTextColor="#999"
+                    value={addr.pincode}
+                    maxLength={6}
+                    onChangeText={text => handleInputChange(index, 'pincode', text)}
+                    keyboardType="numeric"
+                    editable={!viewOnly}
+                  />
+                  {errors[index]?.pincode && (
+                    <Text style={styles.errorText}>{errors[index].pincode}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>City *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors[index]?.city && styles.inputError,
+                      viewOnly && styles.inputDisabled,
+                    ]}
+                    placeholder="City"
+                    placeholderTextColor="#999"
+                    value={addr.city}
+                    onChangeText={text => handleInputChange(index, 'city', text)}
+                    editable={!viewOnly}
+                  />
+                  {errors[index]?.city && (
+                    <Text style={styles.errorText}>{errors[index].city}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>State *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors[index]?.state && styles.inputError,
+                      viewOnly && styles.inputDisabled,
+                    ]}
+                    placeholder="State"
+                    placeholderTextColor="#999"
+                    value={addr.state}
+                    onChangeText={text => handleInputChange(index, 'state', text)}
+                    editable={!viewOnly}
+                  />
+                  {errors[index]?.state && (
+                    <Text style={styles.errorText}>{errors[index].state}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Country *</Text>
+                  <TextInput
+                    style={[styles.input, errors[index]?.country && styles.inputError]}
+                    placeholder="Country"
+                    placeholderTextColor="#999"
+                    value={addr.country}
+                    onChangeText={text => handleInputChange(index, 'country', text)}
+                    editable={false}
+                  />
+                  {errors[index]?.country && (
+                    <Text style={styles.errorText}>{errors[index].country}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Latitude</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Latitude"
+                    placeholderTextColor="#999"
+                    value={String(addr?.latitude)}
+                    onChangeText={text => handleInputChange(index, 'latitude', text)}
+                    editable={false}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Longitude</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Longitude"
+                    placeholderTextColor="#999"
+                    value={String(addr?.longitude)}
+                    onChangeText={text => handleInputChange(index, 'longitude', text)}
+                    editable={false}
+                  />
+                </View>
+
+                {/* Remove button: hidden/disabled for prefilled addresses */}
+                {!viewOnly && (
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => handleRemoveAddress(index)}
+                    disabled={opdAddresses.length === 1}
+                  >
+                    <Text style={styles.removeText}>×</Text>
+                  </TouchableOpacity>
+                )}
+
+                {viewOnly && (
+                  <View style={[styles.removeButton, { opacity: 0.5 }]} />
+                )}
+              </View>
+            );
+          })}
         </View>
         <View style={styles.spacer} />
       </ScrollView>
-
-
-      {/* Skip button (floating) */}
-      {/* {skipButton && (
-        <TouchableOpacity
-          style={[
-            styles.skipButtonFloating,
-            {
-              bottom: keyboardVisible ? keyboardHeight + 12 : 16
-            }
-          ]}
-          onPress={handleSkip}
-        >
-          <Text style={styles.skipButtonText}>Skip</Text>
-        </TouchableOpacity>
-      )} */}
 
       {/* Next button (floating) */}
       <TouchableOpacity
         style={[
           styles.nextButtonFloating,
           {
-            bottom: keyboardVisible ? keyboardHeight + (skipButton ? 100 : 42) : 42
-            // if skipButton is visible reserve space above it
+            bottom: keyboardVisible ? keyboardHeight + (skipButton ? 40 : 10) : 42
           }
         ]}
         onPress={handleNext}
       >
-
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
@@ -1555,7 +1544,7 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.03,
   },
   scrollContent: {
-    paddingBottom: height * 0.28, // increased so floating buttons don't cover content
+    paddingBottom: height * 0.28,
   },
   label: {
     fontSize: width * 0.04,
@@ -1631,46 +1620,11 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
     fontWeight: '500',
   },
-
-  skipButton: {
-    backgroundColor: '#00203F',
-    paddingVertical: height * 0.02,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: width * 0.05,
-    marginBottom: height * 0.015,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 5,
-  },
   skipButtonText: {
     color: '#fff',
     fontSize: width * 0.045,
     fontWeight: '600',
   },
-  nextButton: {
-
-    backgroundColor: '#00203F',
-    paddingVertical: height * 0.015,
-    borderRadius: 8,
-    alignItems: 'center',
-    zIndex: 100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 8,
-  },
-
-  skipButtonText: {
-    color: '#fff',
-    fontSize: width * 0.045,
-    fontWeight: '600',
-  },
-
-  // Floating Next button (always above skip button if skip present)
   nextButtonFloating: {
     position: 'absolute',
     left: width * 0.05,
@@ -1686,13 +1640,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 10,
   },
-
   nextButtonText: {
     color: '#fff',
     fontSize: width * 0.045,
     fontWeight: '600',
   },
-
   spacer: {
     height: height * 0.1,
   },
@@ -1750,6 +1702,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 4,
   },
+  
   myLocationButton: {
     position: 'absolute',
     bottom: 10,
@@ -1805,14 +1758,11 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 12,
     color: '#3182CE',
-
   },
   inputDisabled: {
     backgroundColor: '#F5F5F5',
     color: '#999',
   },
-
-  // search styles
   searchContainer: {
     position: 'relative',
     zIndex: 10,

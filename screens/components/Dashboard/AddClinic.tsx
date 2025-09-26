@@ -118,6 +118,10 @@ const AddClinicForm = () => {
   const [activeFileTypeForCamera, setActiveFileTypeForCamera] = useState<
     'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR' | null
   >(null);
+  const [bypassModalVisible, setBypassModalVisible] = useState(false);
+  const [bypassData, setBypassData] = useState<any>(null);
+  const [bypassType, setBypassType] = useState<'pharmacy' | 'lab' | null>(null);
+
   const ensureFileUri = (p: string) => (String(p).startsWith('file://') ? String(p) : `file://${String(p)}`);
   const cropImageUsingDims = async (srcUri: string, srcW: number | null, srcH: number | null, targetW: number, targetH: number) => {
     try {
@@ -156,14 +160,12 @@ const AddClinicForm = () => {
         offsetY = Math.round((imgH - cropH) / 2);
       }
 
-
       const cropRegion = { x: offsetX, y: offsetY, width: cropW, height: cropH };
       const destSize = { width: targetW, height: targetH };
 
       const result = await PhotoManipulator.crop(normalized, cropRegion, destSize);
       return result || normalized;
     } catch (err) {
-
       return srcUri;
     }
   };
@@ -414,7 +416,6 @@ const AddClinicForm = () => {
             };
             try {
               mapRef.current?.animateToRegion(newRegion, 500);
-
             } catch (e) { 
                 Alert.alert('Map Error', 'Could not animate to the selected region.');
             }
@@ -491,11 +492,9 @@ const AddClinicForm = () => {
         setTimeout(() => {
           try {
             mapRef.current?.animateToRegion(newRegion, 800);
-
-            } catch (e) { 
+          } catch (e) { 
             Alert.alert('Map Error', 'Could not animate to the selected region.');
-            }
-
+          }
         }, 300);
         setIsFetchingLocation(false);
 
@@ -1145,9 +1144,145 @@ const AddClinicForm = () => {
     if (form.pincode && !/^\d{6}$/.test(form.pincode)) {
       newErrors.pincode = 'Enter a valid 6-digit pincode';
     }
+    if (form.pharmacyName && form.pharmacyName.trim()) {
+      if (!form.pharmacyAddress?.trim()) newErrors.pharmacyAddress = 'Pharmacy address is required when pharmacy name is provided';
+    }
+    if (form.labName && form.labName.trim()) {
+      if (!form.labAddress?.trim()) newErrors.labAddress = 'Lab address is required when lab name is provided';
+    }
 
     setErrors(newErrors);
     return { valid: Object.keys(newErrors).length === 0, newErrors };
+  };
+
+  // Build form data for submission
+  const buildFormData = () => {
+    const formData = new FormData();
+
+    formData.append('userId', doctorId || '');
+    formData.append('type', form.type);
+    formData.append('clinicName', form.clinicName);
+    formData.append('address', form.address);
+    formData.append('city', form.city);
+    formData.append('state', form.state);
+    formData.append('country', form.country);
+    formData.append('mobile', form.mobile);
+    formData.append('pincode', form.pincode);
+    formData.append('startTime', form.startTime);
+    formData.append('endTime', form.endTime);
+    formData.append('latitude', form.latitude);
+    formData.append('longitude', form.longitude);
+
+    if (headerFile) {
+      formData.append('file', {
+        uri: headerFile.uri,
+        type: headerFile.type || 'image/jpeg',
+        name: headerFile.name || 'header.jpg',
+      } as any);
+    }
+    if (signatureFile) {
+      formData.append('signature', {
+        uri: signatureFile.uri,
+        type: signatureFile.type || 'image/jpeg',
+        name: signatureFile.name || 'signature.jpg',
+      } as any);
+    }
+
+    if (form.pharmacyName && form.pharmacyName.trim()) {
+      formData.append('pharmacyName', form.pharmacyName);
+      if (form.pharmacyRegNum) formData.append('pharmacyRegistrationNo', form.pharmacyRegNum);
+      if (form.pharmacyGST) formData.append('pharmacyGst', form.pharmacyGST);
+      if (form.pharmacyPAN) formData.append('pharmacyPan', form.pharmacyPAN);
+      if (form.pharmacyAddress) formData.append('pharmacyAddress', form.pharmacyAddress);
+      if (pharmacyHeaderFile) {
+        formData.append('pharmacyHeader', {
+          uri: pharmacyHeaderFile.uri,
+          type: pharmacyHeaderFile.type || 'image/jpeg',
+          name: pharmacyHeaderFile.name || 'pharmacy_header.jpg',
+        } as any);
+      }
+    }
+
+    if (form.labName && form.labName.trim()) {
+      formData.append('labName', form.labName);
+      if (form.labRegNum) formData.append('labRegistrationNo', form.labRegNum);
+      if (form.labGST) formData.append('labGst', form.labGST);
+      if (form.labPAN) formData.append('labPan', form.labPAN);
+      if (form.labAddress) formData.append('labAddress', form.labAddress);
+      if (labHeaderFile) {
+        formData.append('labHeader', {
+          uri: labHeaderFile.uri,
+          type: labHeaderFile.type || 'image/jpeg',
+          name: labHeaderFile.name || 'lab_header.jpg',
+        } as any);
+      }
+    }
+
+    if (clinicQRFile) {
+      formData.append('clinicQR', {
+        uri: clinicQRFile.uri,
+        type: clinicQRFile.type || 'image/jpeg',
+        name: clinicQRFile.name || 'clinic_qr.jpg',
+      } as any);
+    }
+    if (pharmacyQRFile) {
+      formData.append('pharmacyQR', {
+        uri: pharmacyQRFile.uri,
+        type: pharmacyQRFile.type || 'image/jpeg',
+        name: pharmacyQRFile.name || 'pharmacy_qr.jpg',
+      } as any);
+    }
+    if (labQRFile) {
+      formData.append('labQR', {
+        uri: labQRFile.uri,
+        type: labQRFile.type || 'image/jpeg',
+        name: labQRFile.name || 'lab_qr.jpg',
+      } as any);
+    }
+
+    return formData;
+  };
+  const handleBypassSubmit = async () => {
+    if (!bypassData || !bypassType) return;
+
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const bypassFormData = bypassData;
+      const url = bypassType === 'pharmacy' 
+        ? 'users/addAddressFromWeb?bypassCheck=true'
+        : 'users/addAddressFromWeb?bypassCheck=true';
+
+      const response = await UploadFiles(url, bypassFormData, token);
+      
+      if (response.status === 'success' || response.status === 200 || response.status === 201) {
+        Toast.show({ 
+          type: 'success', 
+          text1: 'Success', 
+          text2: bypassType === 'pharmacy' 
+            ? 'Pharmacy linked successfully' 
+            : 'Lab linked successfully', 
+          position: 'top', 
+          visibilityTime: 3000 
+        });
+        setBypassModalVisible(false);
+        setBypassData(null);
+        setBypassType(null);
+        navigation.navigate('Clinic' as never);
+      } else {
+        Toast.show({ 
+          type: 'error', 
+          text1: 'Error', 
+          text2: response.message || `Failed to link ${bypassType}.`, 
+          position: 'top', 
+          visibilityTime: 3000 
+        });
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || `Failed to link ${bypassType}.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle form submission
@@ -1162,89 +1297,30 @@ const AddClinicForm = () => {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const userId = await AsyncStorage.getItem('userId');
-
-      const formData = new FormData();
-
-      formData.append('userId', doctorId || '');
-      formData.append('type', form.type);
-      formData.append('clinicName', form.clinicName);
-      formData.append('address', form.address);
-      formData.append('city', form.city);
-      formData.append('state', form.state);
-      formData.append('country', form.country);
-      formData.append('mobile', form.mobile);
-      formData.append('pincode', form.pincode);
-      formData.append('startTime', form.startTime);
-      formData.append('endTime', form.endTime);
-      formData.append('latitude', form.latitude);
-      formData.append('longitude', form.longitude);
-
-      if (headerFile) {
-        formData.append('file', {
-          uri: headerFile.uri,
-          type: headerFile.type || 'image/jpeg',
-          name: headerFile.name || 'header.jpg',
-        } as any);
-      }
-      if (signatureFile) {
-        formData.append('signature', {
-          uri: signatureFile.uri,
-          type: signatureFile.type || 'image/jpeg',
-          name: signatureFile.name || 'signature.jpg',
-        } as any);
-      }
-
-      if (form.pharmacyName) formData.append('pharmacyName', form.pharmacyName);
-      if (form.pharmacyRegNum) formData.append('pharmacyRegistrationNo', form.pharmacyRegNum);
-      if (form.pharmacyGST) formData.append('pharmacyGst', form.pharmacyGST);
-      if (form.pharmacyPAN) formData.append('pharmacyPan', form.pharmacyPAN);
-      if (form.pharmacyAddress) formData.append('pharmacyAddress', form.pharmacyAddress);
-      if (pharmacyHeaderFile) {
-        formData.append('pharmacyHeader', {
-          uri: pharmacyHeaderFile.uri,
-          type: pharmacyHeaderFile.type || 'image/jpeg',
-          name: pharmacyHeaderFile.name || 'pharmacy_header.jpg',
-        } as any);
-      }
-
-      if (form.labName) formData.append('labName', form.labName);
-      if (form.labRegNum) formData.append('labRegistrationNo', form.labRegNum);
-      if (form.labGST) formData.append('labGst', form.labGST);
-      if (form.labPAN) formData.append('labPan', form.labPAN);
-      if (form.labAddress) formData.append('labAddress', form.labAddress);
-      if (labHeaderFile) {
-        formData.append('labHeader', {
-          uri: labHeaderFile.uri,
-          type: labHeaderFile.type || 'image/jpeg',
-          name: labHeaderFile.name || 'lab_header.jpg',
-        } as any);
-      }
-
-      if (clinicQRFile) {
-        formData.append('clinicQR', {
-          uri: clinicQRFile.uri,
-          type: clinicQRFile.type || 'image/jpeg',
-          name: clinicQRFile.name || 'clinic_qr.jpg',
-        } as any);
-      }
-      if (pharmacyQRFile) {
-        formData.append('pharmacyQR', {
-          uri: pharmacyQRFile.uri,
-          type: pharmacyQRFile.type || 'image/jpeg',
-          name: pharmacyQRFile.name || 'pharmacy_qr.jpg',
-        } as any);
-      }
-      if (labQRFile) {
-        formData.append('labQR', {
-          uri: labQRFile.uri,
-          type: labQRFile.type || 'image/jpeg',
-          name: labQRFile.name || 'lab_qr.jpg',
-        } as any);
-      }
+      const formData = buildFormData();
 
       // upload
       const response = await UploadFiles('users/addAddressFromWeb', formData, token);
+      const isWarning = 
+        response?.data?.status === 'warning' ||
+        String(response?.message || response?.data?.message || '').toLowerCase().includes('already registered');
+
+      if (isWarning) {
+        const message = response?.data?.message || response?.message || '';
+        
+        if (message.toLowerCase().includes('pharmacy')) {
+          setBypassType('pharmacy');
+          setBypassData(formData);
+          setBypassModalVisible(true);
+          return;
+        } else if (message.toLowerCase().includes('lab')) {
+          setBypassType('lab');
+          setBypassData(formData);
+          setBypassModalVisible(true);
+          return;
+        }
+      }
+
       if (response.status === 'success' || response.status === 200 || response.status === 201) {
         Toast.show({ type: 'success', text1: 'Success', text2: 'Clinic added successfully', position: 'top', visibilityTime: 3000 });
         navigation.navigate('Clinic' as never);
@@ -1430,6 +1506,47 @@ const AddClinicForm = () => {
       </Modal>
     );
   };
+  const BypassModal = () => (
+    <Modal visible={bypassModalVisible} transparent animationType="fade">
+      <View style={styles.bypassModalContainer}>
+        <View style={styles.bypassModalContent}>
+          <Text style={styles.bypassModalTitle}>
+            {bypassType === 'pharmacy' ? 'Pharmacy Already Exists' : 'Lab Already Exists'}
+          </Text>
+          <Text style={styles.bypassModalText}>
+            {bypassType === 'pharmacy' 
+              ? 'This pharmacy is already registered with another doctor. Do you want to link this pharmacy to your clinic?'
+              : 'This lab is already registered with another doctor. Do you want to link this lab to your clinic?'}
+          </Text>
+          <View style={styles.bypassModalButtons}>
+            <TouchableOpacity 
+              style={[styles.bypassModalButton, styles.bypassModalCancel]} 
+              onPress={() => {
+                setBypassModalVisible(false);
+                setBypassData(null);
+                setBypassType(null);
+              }}
+            >
+              <Text style={styles.bypassModalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.bypassModalButton, styles.bypassModalConfirm]} 
+              onPress={handleBypassSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.bypassModalConfirmText}>
+                  {bypassType === 'pharmacy' ? 'Link Pharmacy' : 'Link Lab'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   // Render file upload element
   const renderFileUpload = (type: 'header' | 'signature' | 'pharmacyHeader' | 'labHeader' | 'clinicQR' | 'pharmacyQR' | 'labQR', label: string, preview: string | number | null) => {
@@ -1476,6 +1593,9 @@ const AddClinicForm = () => {
           <Text style={styles.loaderText}>Processing...</Text>
         </View>
       )}
+      
+      <BypassModal />
+      
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
         <View style={styles.mapSection}>
           <Text style={styles.label}>Location (Move map to position pointer — map auto-selects when you stop)</Text>
@@ -1624,8 +1744,17 @@ const AddClinicForm = () => {
         <Text style={styles.label}>Pharmacy PAN</Text>
         <TextInput style={styles.input} placeholder="Enter PAN number" value={form.pharmacyPAN} onChangeText={(text) => handleChange('pharmacyPAN', text)} placeholderTextColor="gray" />
 
-        <Text style={styles.label}>Pharmacy Address</Text>
-        <TextInput style={[styles.input, styles.textarea]} placeholder="Enter pharmacy address" multiline numberOfLines={3} value={form.pharmacyAddress} onChangeText={(text) => handleChange('pharmacyAddress', text)} placeholderTextColor="gray" />
+               <Text style={styles.label}>Pharmacy Address</Text>
+        <TextInput 
+          style={[styles.input, styles.textarea, errors.pharmacyAddress && styles.inputError]} 
+          placeholder="Enter pharmacy address" 
+          multiline 
+          numberOfLines={3} 
+          value={form.pharmacyAddress} 
+          onChangeText={(text) => handleChange('pharmacyAddress', text)} 
+          placeholderTextColor="gray" 
+        />
+        {errors.pharmacyAddress && <Text style={styles.errorText}>{errors.pharmacyAddress}</Text>}
 
         {renderFileUpload('pharmacyHeader', 'Pharmacy Header Image (Optional)', pharmacyHeaderPreview)}
         {renderFileUpload('pharmacyQR', 'Pharmacy QR Code (Optional)', pharmacyQRPreview)}
@@ -1645,7 +1774,16 @@ const AddClinicForm = () => {
         <TextInput style={styles.input} placeholder="Enter PAN number" value={form.labPAN} onChangeText={(text) => handleChange('labPAN', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Lab Address</Text>
-        <TextInput style={[styles.input, styles.textarea]} placeholder="Enter lab address" multiline numberOfLines={3} value={form.labAddress} onChangeText={(text) => handleChange('labAddress', text)} placeholderTextColor="gray" />
+        <TextInput 
+          style={[styles.input, styles.textarea, errors.labAddress && styles.inputError]} 
+          placeholder="Enter lab address" 
+          multiline 
+          numberOfLines={3} 
+          value={form.labAddress} 
+          onChangeText={(text) => handleChange('labAddress', text)} 
+          placeholderTextColor="gray" 
+        />
+        {errors.labAddress && <Text style={styles.errorText}>{errors.labAddress}</Text>}
 
         {renderFileUpload('labHeader', 'Lab Header Image (Optional)', labHeaderPreview)}
         {renderFileUpload('labQR', 'Lab QR Code (Optional)', labQRPreview)}
@@ -1753,4 +1891,62 @@ const styles = StyleSheet.create({
   cameraGallery: { padding: 10 },
   cameraCapture: { padding: 10 },
   captureCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff', opacity: 0.9 },
+
+  /* bypass modal styles */
+  bypassModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  bypassModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+  bypassModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  bypassModalText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  bypassModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  bypassModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bypassModalCancel: {
+    backgroundColor: '#F3F4F6',
+  },
+  bypassModalConfirm: {
+    backgroundColor: '#3B82F6',
+  },
+  bypassModalCancelText: {
+    color: '#374151',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  bypassModalConfirmText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
 });
