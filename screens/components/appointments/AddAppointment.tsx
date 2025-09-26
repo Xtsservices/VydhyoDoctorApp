@@ -278,7 +278,7 @@ const AddAppointment = () => {
         }
       }
     } catch (e) {
-      console.error(e);
+      Alert.alert('Error', e?.message || 'Failed to fetch user profile');
     }
   };
 
@@ -393,8 +393,9 @@ const AddAppointment = () => {
       const token = await AsyncStorage.getItem('authToken');
       const response = await AuthFetch(`doctor/searchUser?mobile=${searchMobile}`, token);
       if (response?.status === "success") {
-        const patients = response.data.data;
-        if (patients.length > 0) {
+        const patients = response?.data?.data;
+       
+ if (patients.length > 0) {
           if (patients.length === 1) {
             prefillPatientDetails(patients[0]);
             setFieldsDisabled(true);
@@ -404,14 +405,16 @@ const AddAppointment = () => {
             setPatientSelectModalVisible(true);
           }
         } else {
-          Alert.alert('Not Found', 'Patient does not exist. Please add patient.');
+          prefillPatientDetails(patients);
           setFieldsDisabled(false);
         }
+        
+       
       } else {
         Alert.alert(response?.message?.message || "No User found. Please add patient.");
       }
     } catch (error) {
-      console.error(error);
+      Alert.alert('Error', error?.message || 'Failed to search patient. Please try again.');
     }
   };
 
