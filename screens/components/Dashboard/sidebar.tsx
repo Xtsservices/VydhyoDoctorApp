@@ -101,6 +101,14 @@ const Sidebar = () => {
       onPress: () => navigation.navigate('Pharmacy'),
     },
     {
+      key: 'templates',
+      label: 'Templates',
+      description: 'Create & reuse Rx sets',
+      icon: 'collections-bookmark',
+      onPress: () => navigation.navigate('Templates'),
+    },
+
+    {
       key: 'staff-management',
       label: 'Staff Management',
       description: 'Update Staff Management',

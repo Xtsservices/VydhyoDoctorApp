@@ -44,7 +44,7 @@ import PreviousPrescription from "../components/DegitalPrescription/PreviousPres
 import labs from "../components/Dashboard/labs";
 import LabPatientManagement from "../components/Dashboard/LabPatientManagement";
 import Billing from "../components/Dashboard/Billing";
-
+import Templates from "../components/Dashboard/Templates";
 // import Appointments from "../components/appointments/appointments";
 // import MyPatient from "../components/Dashboard/MyPatient";
 
@@ -99,8 +99,7 @@ const Routing = () => {
         <Stack.Screen name="Profile" component={Profile} options={{ title: "Profile", headerTitleAlign: "center", }}/>
         <Stack.Screen name="PreviousPrescription" component={PreviousPrescription} options={{ title: "Previous Prescription", headerTitleAlign: "center", }}/>
         <Stack.Screen name="EPrescriptionList" component={EPrescriptionList} options={{ title: "Digital-Prescription", headerTitleAlign: "center", }}/>
-
-
+        <Stack.Screen name="Templates" component={Templates} options={{ title: "Templates", headerTitleAlign: "center", }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

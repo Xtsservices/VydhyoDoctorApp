@@ -299,6 +299,10 @@ const KYCDetailsScreen = () => {
 
   // ---------- Submit / Next ----------
   const handleNext = async () => {
+    if (!termsAccepted) {
+      Alert.alert('Error', 'Please accept the Terms & Conditions to proceed.');
+      return;
+    }
     if (!panNumber && !pancardUploaded) {
       try {
         setLoading(true);
@@ -436,7 +440,7 @@ const KYCDetailsScreen = () => {
               renderLoading={renderWebviewLoader}
               injectedJavaScriptBeforeContentLoaded={hideHeaderFooterJS}
               injectedJavaScript={hideHeaderFooterJS}
-              onMessage={() => {}}
+              onMessage={() => { }}
               mixedContentMode="always"
               allowFileAccess
               allowUniversalAccessFromFileURLs

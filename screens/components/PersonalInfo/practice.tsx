@@ -1376,6 +1376,8 @@ const PracticeScreen = () => {
                   <Text style={styles.label}>Address *</Text>
                   <TextInput
                     style={[
+                      styles.input,
+                      styles.textArea,
                       errors[index]?.address && styles.inputError,
                       viewOnly && styles.inputDisabled,
                     ]}
@@ -1384,9 +1386,9 @@ const PracticeScreen = () => {
                     value={addr.address}
                     onChangeText={text => handleInputChange(index, 'address', text)}
                     editable={!viewOnly}
-                    multiline={true} 
-                    numberOfLines={2} 
-                    textAlignVertical="top" 
+                    multiline={true}
+                    numberOfLines={2}
+                    textAlignVertical="top"
                     scrollEnabled={false}
                   />
                   {errors[index]?.address && (
@@ -1518,7 +1520,7 @@ const PracticeScreen = () => {
         style={[
           styles.nextButtonFloating,
           {
-            bottom: keyboardVisible ? keyboardHeight + (skipButton ? 40 : 10) : 42
+            bottom: keyboardVisible ? keyboardHeight + 16 : 42
           }
         ]}
         onPress={handleNext}
@@ -1533,6 +1535,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#DCFCE7',
+    height: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -1545,6 +1548,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 5,
+  },
+  textArea: {
+    height: height * 0.15,
+    textAlignVertical: 'top',
+    paddingVertical: height * 0.015,
   },
   backButton: {
     padding: width * 0.02,
@@ -1658,6 +1666,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 10,
+    marginBottom: height * 0.035,
   },
   nextButtonText: {
     color: '#fff',
@@ -1721,7 +1730,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 4,
   },
-  
+
   myLocationButton: {
     position: 'absolute',
     bottom: 10,
