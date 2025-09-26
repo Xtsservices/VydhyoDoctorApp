@@ -428,7 +428,7 @@ const ConsultationPreferences = () => {
               onPress={handleNext}
               activeOpacity={0.85}
             >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextText}>Next</Text>}
+                <Text style={styles.nextText}>Next</Text>
             </TouchableOpacity>
           </View>
         </TouchableWithoutFeedback>
