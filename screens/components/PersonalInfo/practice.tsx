@@ -116,7 +116,21 @@ const PracticeScreen = () => {
   const reverseGeoDebounceRefs = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
   const lastPanUpdateRefs = useRef<{ [key: number]: number }>({});
   const lastAutoSelectedRefs = useRef<{ [key: number]: string }>({});
+const MAP_DELTA = 0.02; // a little zoomed-out so it doesn't feel too close
 
+
+  const [userDataLoaded, setUserDataLoaded] = useState(false);
+const [hasInitialized, setHasInitialized] = useState(false);
+
+// near other state
+const [pendingDetectIndex, setPendingDetectIndex] = useState<number | null>(null);
+
+const maybeInitForIndex = (i: number) => {
+  if (pendingDetectIndex === i) {
+    setPendingDetectIndex(null);
+    initLocation(i);
+  }
+};
 
   // ---------- NEW: keyboard state ----------
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -153,21 +167,29 @@ const PracticeScreen = () => {
 
 
    useEffect(() => {
-   const initializeAsNeeded = async () => {
-     for (let i = 0; i < opdAddresses.length; i++) {
-       const addr = opdAddresses[i];
-       // If coords are missing/placeholder -> init; otherwise do nothing
-       if (!hasValidCoords(addr) && !isPrefilledAddr(addr)) {
-         await initLocation(i);
-       }
-     }
-   };
-   initializeAsNeeded();
-   return () => {
-     if (locationRetryTimeoutRef.current) clearTimeout(locationRetryTimeoutRef.current);
-     Object.values(reverseGeoDebounceRefs.current).forEach(t => t && clearTimeout(t));
-   };
- }, [opdAddresses, prefilledKeys]);
+  if (hasInitialized || !userDataLoaded) return;
+
+ 
+  const shouldInitialDetect =
+    prefilledKeys.size === 0 &&
+    opdAddresses.length > 0 &&
+    !hasValidCoords(opdAddresses[0]); // initial row is placeholder/empty
+
+  if (shouldInitialDetect) {
+    // detect only for the first/new form
+    initLocation(0);
+  }
+
+  setHasInitialized(true);
+}, [hasInitialized, userDataLoaded, prefilledKeys, opdAddresses]);
+
+useEffect(() => {
+  return () => {
+    if (locationRetryTimeoutRef.current) clearTimeout(locationRetryTimeoutRef.current);
+    Object.values(reverseGeoDebounceRefs.current).forEach(t => t && clearTimeout(t));
+  };
+}, []);
+
 
   // ---------- NEW: keyboard listeners ----------
   useEffect(() => {
@@ -344,8 +366,8 @@ const PracticeScreen = () => {
         const newRegion = {
           latitude,
           longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+          latitudeDelta: MAP_DELTA,
+          longitudeDelta: MAP_DELTA,
         };
 
         setOpdAddresses(prev => {
@@ -365,7 +387,10 @@ const PracticeScreen = () => {
         }));
 
         if (mapRefs.current[index]) {
-          mapRefs.current[index].animateToRegion(newRegion, 1000);
+requestAnimationFrame(() => {
+     mapRefs.current[index]?.animateToRegion(newRegion, 800);
+   });
+
         }
 
         fetchAddressDetails(latitude, longitude, index);
@@ -817,6 +842,7 @@ const PracticeScreen = () => {
     setOpdAddresses(prev => [newAddress, ...prev]);
     mapRefs.current = [];
     setCurrentOpdIndex(0);
+    setPendingDetectIndex(0);
     setTimeout(() => {
       initLocation(0);
     }, 100);
@@ -1114,6 +1140,7 @@ const PracticeScreen = () => {
       });
     } finally {
       setLoadingUser(false);
+      setUserDataLoaded(true);
     }
   };
 
@@ -1247,7 +1274,7 @@ const PracticeScreen = () => {
 
                   <View style={styles.mapContainer} pointerEvents={viewOnly ? 'none' : 'auto'}>
                     <MapView
-                    key={`${index}-${addr.latitude}-${addr.longitude}`}
+                    key={`${index}`}
                       ref={(ref) => {
                         if (ref) {
                           mapRefs.current[index] = ref;
@@ -1255,19 +1282,21 @@ const PracticeScreen = () => {
                       }}
                       style={styles.map}
                       provider={PROVIDER_GOOGLE}
-                      // initialRegion={{
-                      //   latitude: parseFloat(addr.latitude) || 20.5937,
-                      //   longitude: parseFloat(addr.longitude) || 78.9629,
-                      //   latitudeDelta: 0.01,
-                      //   longitudeDelta: 0.01,
-                      // }}
+                      initialRegion={{
+                        latitude: parseFloat(addr.latitude) || 20.5937,
+                        longitude: parseFloat(addr.longitude) || 78.9629,
+                        latitudeDelta: MAP_DELTA,
+                        longitudeDelta: MAP_DELTA,
+                      }}
 
-                       region={{
-     latitude: parseFloat(String(addr.latitude).trim()) || 20.5937,
-   longitude: parseFloat(String(addr.longitude).trim()) || 78.9629,
-     latitudeDelta: 0.01,
-     longitudeDelta: 0.01,
-   }}
+  //                      region={{
+  //    latitude: parseFloat(String(addr.latitude).trim()) || 20.5937,
+  //  longitude: parseFloat(String(addr.longitude).trim()) || 78.9629,
+  //    latitudeDelta: 0.01,
+  //    longitudeDelta: 0.01,
+  //  }}
+    onMapReady={() => maybeInitForIndex(index)}
+  onLayout={() => maybeInitForIndex(index)}
                       onRegionChange={(r) => handleRegionChange(index, r)}
                       onRegionChangeComplete={(r) => handleRegionChangeComplete(index, r)}
                       onPress={(e) => handleMapPress(index, e)}
@@ -1275,14 +1304,21 @@ const PracticeScreen = () => {
                       zoomEnabled={!viewOnly}
                       pitchEnabled={!viewOnly}
                       rotateEnabled={!viewOnly}
-                      showsUserLocation={!viewOnly} // disable blue dot when view-only
+                      showsUserLocation={false} // disable blue dot when view-only
                       showsMyLocationButton={false}
                       followsUserLocation={false}
                     >
                       <Marker
                         coordinate={{
-                           latitude: parseFloat(String(addr.latitude).trim()) || 20.5937,
-                           longitude: parseFloat(String(addr.longitude).trim()) || 78.9629,}}
+    latitude:
+      ((pointerCoordsPerAddress[index]?.latitude ??
+       parseFloat(String(addr.latitude).trim())) ||
+       20.5937),
+    longitude:
+      ((pointerCoordsPerAddress[index]?.longitude ??
+       parseFloat(String(addr.longitude).trim())) ||
+       78.9629),
+  }}
                       />
                     </MapView>
 

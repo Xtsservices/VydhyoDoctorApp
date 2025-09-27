@@ -223,6 +223,7 @@ let isFeeInvalid
       if (res?.status === 'error') throw new Error(res?.message || 'Failed to fetch doctor data');
 
       const userData = res?.data?.data;
+      dispatch({ type: 'currentUser', payload: userData });
       if (!userData) {
         setDoctorData(null);
         return;
@@ -487,10 +488,9 @@ const handleEditClose = () => {
     formData.append('bio', String(formProfessional?.about || ''));
 
     const response = await UpdateFiles('users/updateSpecialization', formData, token);
-
     if (response?.status === 'success') {
       const userData = response?.data?.data;
-      dispatch({ type: 'currentUser', payload: userData });
+      
 
       Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
       handleEditClose?.();
@@ -550,7 +550,6 @@ const handleEditClose = () => {
       if (response?.status === 'success') {  
       const userData = response?.data?.data;
 
-dispatch({ type: 'currentUser', payload: userData });
       Toast.show({
         type: "success",
         text1: "Success",
@@ -604,7 +603,6 @@ dispatch({ type: 'currentUser', payload: userData });
       if (response?.status === 'success') {  
       const userData = response?.data?.data;
 
-dispatch({ type: 'currentUser', payload: userData });
       Toast.show({ type: 'success', text1: 'Success', text2: 'Bank details updated' });
       handleEditClose();
       fetchDoctorData();

@@ -571,6 +571,9 @@ const AddAppointment = () => {
   // adjust this offset if your header/footer size differs
   const keyboardVerticalOffset = Platform.select({ ios: 100, android: 80 }) as number;
 
+  const maxDate = new Date();
+maxDate.setDate(maxDate.getDate() + 14);
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -718,6 +721,7 @@ const AddAppointment = () => {
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     maximumDate={new Date()}
                     onChange={onDateChange}
+
                   />
                 )}
               </View>
@@ -829,6 +833,7 @@ const AddAppointment = () => {
                   }
                   mode="date"
                   minimumDate={new Date()}
+                  maximumDate={maxDate}
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={(event, selectedDate) => {
                     setShowappointmentDatePicker(false);
