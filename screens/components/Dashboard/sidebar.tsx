@@ -103,7 +103,7 @@ const Sidebar = () => {
     {
       key: 'templates',
       label: 'Templates',
-      description: 'Create & reuse Rx sets',
+      description: 'Create & Reuse templates',
       icon: 'collections-bookmark',
       onPress: () => navigation.navigate('Templates'),
     },

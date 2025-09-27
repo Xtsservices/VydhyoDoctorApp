@@ -863,16 +863,6 @@ const Templates: React.FC = () => {
               />
               {tplNameTouched && tplNameError ? <Text style={styles.errorText}>{tplNameError}</Text> : null}
 
-              {/* Status (only while editing) */}
-              {isEditing ? (
-                <Select
-                  label="Status *"
-                  value={tplStatus}
-                  options={statusOptions}
-                  onChange={(v) => setTplStatus(v as 'active' | 'inactive')}
-                />
-              ) : null}
-
               {/* Medications header */}
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Medications</Text>

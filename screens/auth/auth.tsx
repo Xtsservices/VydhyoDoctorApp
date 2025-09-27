@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 // const BASE_URL = 'http://192.168.1.8:3000';
-const BASE_URL = 'http://192.168.0.104:3000';
+// const BASE_URL = 'http://192.168.0.104:3000';
 
 
-// const BASE_URL = 'https://server.vydhyo.com';
+const BASE_URL = 'https://server.vydhyo.com';
 
 
 // Common error handling function
