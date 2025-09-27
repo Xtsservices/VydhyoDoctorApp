@@ -8,7 +8,6 @@ import {
   TextInput,
   ActivityIndicator,
   Platform,
-  PermissionsAndroid,
   Modal,
   Image,
   Keyboard
@@ -17,7 +16,6 @@ import Toast from "react-native-toast-message";
 import { useSelector } from "react-redux";
 import { AuthFetch, AuthPost } from "../../auth/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import RNFS from "react-native-fs";
 import FileViewer from "react-native-file-viewer";
 import RNHTMLtoPDF from "react-native-html-to-pdf";
 
@@ -80,8 +78,9 @@ export default function PatientsTab({
   const [totalPatients, setTotalPatients] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
- const listRef = useRef<FlatList<any>>(null);
+  const listRef = useRef<FlatList<any>>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
   // QR code states
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
@@ -213,9 +212,9 @@ export default function PatientsTab({
       prev.map((patient) =>
         patient.patientId === patientId
           ? {
-              ...patient,
-              medicines: patient.medicines.map((med) => (med._id === medicineId ? { ...med, price: value } : med)),
-            }
+            ...patient,
+            medicines: patient.medicines.map((med) => (med._id === medicineId ? { ...med, price: value } : med)),
+          }
           : patient
       )
     );
@@ -410,85 +409,37 @@ export default function PatientsTab({
     }
   };
 
-  // Android storage permission helper
-  const ensureAndroidWritePermission = async () => {
-    if (Platform.OS !== "android") return true;
-    try {
-      const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE, {
-        title: "Storage permission",
-        message: "Allow saving invoices to your Downloads folder.",
-        buttonPositive: "Allow",
-      });
-      return granted === PermissionsAndroid.RESULTS.GRANTED || granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN;
-    } catch (err: any) {
-      Toast.show({
-        type: "error",
-        text1: err?.message || "Failed to request storage permission",
-      });
-      return false;
-    }
-  };
 
   const downloadInvoice = async (patient: Patient) => {
     try {
       setDownloading((prev) => ({ ...prev, [patient.patientId]: true }));
 
-      if (Platform.OS === "android") {
-        const hasPermission = await ensureAndroidWritePermission();
-        if (!hasPermission) {
-          throw new Error("Storage permission denied");
-        }
-      }
-
       const invoiceHTML = generateInvoiceHTML(patient);
-      const fileName = `Invoice_${patient.patientId}_${Date.now()}.pdf`;
+      const fileNameBase = `Invoice_${patient.patientId}_${Date.now()}`; 
 
-      const options = {
+      const file = await RNHTMLtoPDF.convert({
         html: invoiceHTML,
-        fileName: fileName,
+        fileName: fileNameBase,
         directory: "Documents",
-      };
+        base64: false,
+      });
 
-      const file = await RNHTMLtoPDF.convert(options);
+      if (!file?.filePath) throw new Error("PDF path unavailable");
 
-      if (Platform.OS === "android" && file.filePath) {
-        const downloadsPath = RNFS.DownloadDirectoryPath;
-        const destinationPath = `${downloadsPath}/${fileName}`;
+      Toast.show({
+        type: "success",
+        text1: "Invoice generated",
+        text2: file.filePath,
+      });
 
-        const fileExists = await RNFS.exists(destinationPath);
-        if (fileExists) {
-          await RNFS.unlink(destinationPath);
-        }
-
-        await RNFS.moveFile(file.filePath, destinationPath);
-
+      try {
+        await FileViewer.open(file.filePath);
+      } catch (error: any) {
         Toast.show({
           type: "success",
-          text1: "Invoice saved to Downloads",
+          text1: "Invoice generated",
+          text2: file.filePath,
         });
-
-        try {
-          await FileViewer.open(destinationPath);
-        } catch (error: any) {
-          Toast.show({
-            type: "error",
-            text1: error?.message || "Failed to open invoice",
-          });
-        }
-      } else if (file.filePath) {
-        Toast.show({
-          type: "success",
-          text1: "Invoice generated successfully",
-        });
-
-        try {
-          await FileViewer.open(file.filePath);
-        } catch (error: any) {
-          Toast.show({
-            type: "error",
-            text1: error?.message || "Failed to open invoice",
-          });
-        }
       }
     } catch (error: any) {
       Toast.show({
@@ -526,8 +477,6 @@ export default function PatientsTab({
             @page { margin: 0; size: A4; }
             .invoice-container { padding: 15px; max-width: 210mm; margin: 0 auto; min-height: calc(100vh - 30px); display: flex; flex-direction: column; }
             .invoice-content { flex: 1; }
-            .invoice-header-image-only { width: 100%; margin-bottom: 12px; page-break-inside: avoid; }
-            .invoice-header-image-only img { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; background: #fff; }
             .provider-name { font-size: 20px; font-weight: bold; color: #333; margin-bottom: 6px; }
             .section { margin-bottom: 20px; }
             .patient-info { display: flex; justify-content: space-between; background-color: #f8f9fa; padding: 12px; border-radius: 5px; }
@@ -560,9 +509,7 @@ export default function PatientsTab({
                     <p><strong>Mobile:</strong> ${patient.mobile || "Not Provided"}</p>
                   </div>
                   <div>
-                    <p><strong>Referred by Dr.</strong> ${currentuserDetails?.firstname || "N/A"} ${
-      currentuserDetails?.lastname || "N/A"
-    }</p>
+                    <p><strong>Referred by Dr.</strong> ${currentuserDetails?.firstname || "N/A"} ${currentuserDetails?.lastname || "N/A"}</p>
                     <p><strong>Appointment Date&Time:</strong> ${itemDate}</p>
                     <div><strong>Invoice No:</strong> #${invoiceNumber}</div>
                   </div>
@@ -586,11 +533,11 @@ export default function PatientsTab({
                     ${completedMedicines
                       .map(
                         (med, idx) => {
-                          const subtotal = (Number(med.price) || 0) * (Number(med.quantity) || 1);
-                          return `
+          const subtotal = (Number(med.price) || 0) * (Number(med.quantity) || 1);
+          return `
                           <tr>
                             <td>${idx + 1}.</td>
-                            <td>${med.medName || ""}</td>
+                            <td>${med.medName || ""} ${med.dosage || ""}</td>
                             <td class="price-column">${Number(med.price || 0).toFixed(2)}</td>
                             <td>${Number(med.quantity || 1)}</td>
                             <td>${Number(med.gst || 0)}</td>
@@ -598,9 +545,9 @@ export default function PatientsTab({
                             <td class="price-column">${subtotal.toFixed(2)}</td>
                           </tr>
                         `;
-                        }
-                      )
-                      .join("")}
+
+        })
+        .join("")}
                   </tbody>
                 </table>
                 <div>
@@ -702,7 +649,7 @@ export default function PatientsTab({
     return { label: "Partial", color: "#f59e0b" };
   };
 
-  const renderPatient = ({ item }: { item: Patient, index:number }) => {
+  const renderPatient = ({ item }: { item: Patient, index: number }) => {
     const total = calcTotal(item);
     const hasPending = item.medicines.some((med) => med.status === "pending");
     const paid = isPaymentDone[item.patientId];
@@ -824,7 +771,7 @@ export default function PatientsTab({
   }, [doctorId, status, searchQuery, refreshTrigger, page, pageSize]);
 
 
-   useEffect(() => {
+  useEffect(() => {
     const showEvt = Platform.OS === "android" ? "keyboardDidShow" : "keyboardWillShow";
     const hideEvt = Platform.OS === "android" ? "keyboardDidHide" : "keyboardWillHide";
     const sh = Keyboard.addListener(showEvt, (e) => {
@@ -836,7 +783,7 @@ export default function PatientsTab({
       hi.remove();
     };
   }, []);
-
+  
 
   const loadMore = () => {
     const maxPages = Math.ceil(totalPatients / pageSize);
@@ -858,11 +805,11 @@ export default function PatientsTab({
         </View>
       ) : (
         <FlatList
-        ref={listRef}
+          ref={listRef}
           data={patients}
           keyExtractor={(x) => x.patientId}
           renderItem={renderPatient}
-           contentContainerStyle={{ paddingBottom: 24 + keyboardHeight }}
+          contentContainerStyle={{ paddingBottom: 24 + keyboardHeight }}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
           automaticallyAdjustKeyboardInsets

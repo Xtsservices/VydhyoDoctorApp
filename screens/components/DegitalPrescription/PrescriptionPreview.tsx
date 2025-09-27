@@ -167,50 +167,50 @@ const PrescriptionPreview = () => {
     return `...`; // unchanged PDF generation body for brevity
   };
 
-  const downloadPDF = async () => {
-    try {
-      if (Platform.OS === 'android' && Platform.Version < 33) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
-        );
+  // const downloadPDF = async () => {
+  //   try {
+  //     if (Platform.OS === 'android' && Platform.Version < 33) {
+  //       const granted = await PermissionsAndroid.request(
+  //         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
+  //       );
 
-        if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-          Alert.alert(
-            'Permission Required',
-            'Go to Settings > App > Permissions and enable Storage to save the PDF.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            ]
-          );
-          return;
-        }
+  //       if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+  //         Alert.alert(
+  //           'Permission Required',
+  //           'Go to Settings > App > Permissions and enable Storage to save the PDF.',
+  //           [
+  //             { text: 'Cancel', style: 'cancel' },
+  //             { text: 'Open Settings', onPress: () => Linking.openSettings() },
+  //           ]
+  //         );
+  //         return;
+  //       }
 
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('Permission Denied', 'Cannot save PDF without storage permission.');
-          return;
-        }
-      }
+  //       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+  //         Alert.alert('Permission Denied', 'Cannot save PDF without storage permission.');
+  //         return;
+  //       }
+  //     }
 
-      const html = generatePDFContent(formData);
-      const timestamp = dayjs().format('YYYYMMDD_HHmmss');
-      const fileName = `Prescription_${timestamp}`;
-      const pdf = await RNHTMLtoPDF.convert({
-        html,
-        fileName,
-        base64: false,
-      });
+  //     const html = generatePDFContent(formData);
+  //     const timestamp = dayjs().format('YYYYMMDD_HHmmss');
+  //     const fileName = `Prescription_${timestamp}`;
+  //     const pdf = await RNHTMLtoPDF.convert({
+  //       html,
+  //       fileName,
+  //       base64: false,
+  //     });
 
-      const downloadPath = `${RNFS.DownloadDirectoryPath}/${fileName}.pdf`;
-      await RNFS.moveFile(pdf.filePath, downloadPath);
+  //     const downloadPath = `${RNFS.DownloadDirectoryPath}/${fileName}.pdf`;
+  //     await RNFS.moveFile(pdf.filePath, downloadPath);
 
-      Alert.alert('Success', `Prescription saved in Downloads as ${fileName}.pdf`);
-      return { filePath: downloadPath, fileName: `${fileName}.pdf` };
-    } catch (err) {
-      Alert.alert('Error', 'Failed to generate and save PDF.');
-      throw err;
-    }
-  };
+  //     Alert.alert('Success', `Prescription saved in Downloads as ${fileName}.pdf`);
+  //     return { filePath: downloadPath, fileName: `${fileName}.pdf` };
+  //   } catch (err) {
+  //     Alert.alert('Error', 'Failed to generate and save PDF.');
+  //     throw err;
+  //   }
+  // };
 
   const shareViaWhatsApp = async (pdfPath, fileName) => {
     try {
@@ -278,7 +278,6 @@ const PrescriptionPreview = () => {
       const token = await AsyncStorage.getItem('authToken');
 
       const response = await AuthPost('pharmacy/addPrescription', formattedData, token);
-
       const statusVal = response?.status ?? response?.data?.statusCode ?? response?.data?.status;
       const isOk = statusVal === 201 || statusVal === 200 || statusVal === 'success';
 
@@ -357,10 +356,10 @@ const PrescriptionPreview = () => {
           return;
         }
 
-        if (type === 'download') {
-          await downloadPDF();
-          return;
-        }
+        // if (type === 'download') {
+        //   await downloadPDF();
+        //   return;
+        // }
 
         if (type === 'save') {
           setTimeout(() => {

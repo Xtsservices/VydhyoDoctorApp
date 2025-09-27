@@ -29,7 +29,7 @@ import { AuthFetch, AuthPost, AuthPut, authDelete } from '../../auth/auth';
 type Medication = {
   _id?: string;
   medName: string;
-  medicineType: 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Ointment' | 'Other';
+  medicineType: 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Cream' | 'Other';
   quantity: number | string; // string when manual (e.g., "1 bottle")
   dosage: string;
   duration: number | null;
@@ -76,7 +76,7 @@ type MedInventoryItem = {
 // =============================
 // Constants
 // =============================
-const MEDICINE_TYPES = ['Tablet','Capsule','Syrup','Injection','Ointment','Other'] as const;
+const MEDICINE_TYPES = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Drops'] as const;
 const FREQ = ['1-0-0','0-1-0','0-0-1','1-1-0','1-0-1','0-1-1','1-1-1','SOS','Other'] as const;
 const TIMINGS = [
   'Before Breakfast','After Breakfast','Before Lunch','After Lunch','Before Dinner','After Dinner','Bedtime',
@@ -85,7 +85,7 @@ const TIMINGS = [
 const PAGE_SIZE = 8;
 
 // Manual quantity types
-const MANUAL_QTY_TYPES: Medication['medicineType'][] = ['Syrup', 'Ointment'];
+const MANUAL_QTY_TYPES: Medication['medicineType'][] = ['Syrup', 'Cream'];
 
 const monthShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const formatDDMonYYYY = (val?: string) => {
@@ -525,6 +525,7 @@ const Templates: React.FC = () => {
             ...(m.medInventoryId ? { medInventoryId: m.medInventoryId } : {}),
           })),
         };
+        console.log('create payload', payload);
 
         setSubmitting(true);
         const res = await AuthPost('template/addTemplate', payload, token as any);

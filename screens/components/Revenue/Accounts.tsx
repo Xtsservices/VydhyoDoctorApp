@@ -8,8 +8,8 @@ import {
   ScrollView,
   Platform,
   Alert,
-  PermissionsAndroid,
   Modal,
+  Share,
   Linking,
 } from 'react-native';
 import { ActivityIndicator } from 'react-native';
@@ -202,89 +202,89 @@ if (dateRangeActive && startDate && endDate) {
     }
   };
 
-  const exportTransactionsToPDF = async () => {
-    try {
-      setExportingPdf(true);
+  // const exportTransactionsToPDF = async () => {
+  //   try {
+  //     setExportingPdf(true);
 
-      if (Platform.OS === 'android' && Platform.Version < 29) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
-        );
-        if (granted === PermissionsAndroid.RESULTS.DENIED) {
-          Alert.alert('Permission Denied', 'Storage permission is required to save the PDF.');
-          return;
-        } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-          Alert.alert(
-            'Permission Required',
-            'Storage permission is required to save the PDF. Please enable it in Settings > Apps > Your App > Permissions.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            ]
-          );
-          return;
-        }
-      }
+  //     if (Platform.OS === 'android' && Platform.Version < 29) {
+  //       const granted = await PermissionsAndroid.request(
+  //         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
+  //       );
+  //       if (granted === PermissionsAndroid.RESULTS.DENIED) {
+  //         Alert.alert('Permission Denied', 'Storage permission is required to save the PDF.');
+  //         return;
+  //       } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+  //         Alert.alert(
+  //           'Permission Required',
+  //           'Storage permission is required to save the PDF. Please enable it in Settings > Apps > Your App > Permissions.',
+  //           [
+  //             { text: 'Cancel', style: 'cancel' },
+  //             { text: 'Open Settings', onPress: () => Linking.openSettings() },
+  //           ]
+  //         );
+  //         return;
+  //       }
+  //     }
 
-      const htmlContent = `
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h1 { text-align: center; color: #333; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
-          </style>
-        </head>
-        <body>
-          <h1>Transaction Report</h1>
-          <table>
-            <tr>
-              <th>Patient Name</th>
-              <th>Payment ID</th>
-              <th>Amount</th>
-              <th>Date</th>
-              <th>Time</th>
-            </tr>
-            ${transactions
-          .map(
-            (txn) => `
-                  <tr>
-                    <td>${txn.patientName || '-'}</td>
-                    <td>${txn.paymentId || '-'}</td>
-                    <td>₹${txn.finalAmount}</td>
-                    <td>${dayjs(txn.paidAt || txn.updatedAt).format('YYYY-MM-DD')}</td>
-                    <td>${dayjs(txn.paidAt || txn.updatedAt).format('HH:mm')}</td>
-                  </tr>
-                `
-          )
-          .join('')}
-          </table>
-        </body>
-      </html>
-    `;
+  //     const htmlContent = `
+  //     <html>
+  //       <head>
+  //         <style>
+  //           body { font-family: Arial, sans-serif; padding: 20px; }
+  //           h1 { text-align: center; color: #333; }
+  //           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  //           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  //           th { background-color: #f2f2f2; font-weight: bold; }
+  //           tr:nth-child(even) { background-color: #f9f9f9; }
+  //         </style>
+  //       </head>
+  //       <body>
+  //         <h1>Transaction Report</h1>
+  //         <table>
+  //           <tr>
+  //             <th>Patient Name</th>
+  //             <th>Payment ID</th>
+  //             <th>Amount</th>
+  //             <th>Date</th>
+  //             <th>Time</th>
+  //           </tr>
+  //           ${transactions
+  //         .map(
+  //           (txn) => `
+  //                 <tr>
+  //                   <td>${txn.patientName || '-'}</td>
+  //                   <td>${txn.paymentId || '-'}</td>
+  //                   <td>₹${txn.finalAmount}</td>
+  //                   <td>${dayjs(txn.paidAt || txn.updatedAt).format('YYYY-MM-DD')}</td>
+  //                   <td>${dayjs(txn.paidAt || txn.updatedAt).format('HH:mm')}</td>
+  //                 </tr>
+  //               `
+  //         )
+  //         .join('')}
+  //         </table>
+  //       </body>
+  //     </html>
+  //   `;
 
-      const timestamp = dayjs().format('YYYYMMDD_HHmmss');
-      const fileName = `Transaction_Report_${timestamp}.pdf`;
+  //     const timestamp = dayjs().format('YYYYMMDD_HHmmss');
+  //     const fileName = `Transaction_Report_${timestamp}.pdf`;
 
-      const pdf = await RNHTMLtoPDF.convert({
-        html: htmlContent,
-        fileName: `Transaction_Report_${timestamp}`,
-        base64: false,
-      });
+  //     const pdf = await RNHTMLtoPDF.convert({
+  //       html: htmlContent,
+  //       fileName: `Transaction_Report_${timestamp}`,
+  //       base64: false,
+  //     });
 
-      const downloadsPath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-      await RNFS.moveFile(pdf.filePath!, downloadsPath);
+  //     const downloadsPath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+  //     await RNFS.moveFile(pdf.filePath!, downloadsPath);
 
-      Alert.alert('Success', `PDF saved in Files > Downloads as ${fileName}`);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate PDF.');
-    } finally {
-      setExportingPdf(false);
-    }
-  };
+  //     Alert.alert('Success', `PDF saved in Files > Downloads as ${fileName}`);
+  //   } catch (error) {
+  //     Alert.alert('Error', 'Failed to generate PDF.');
+  //   } finally {
+  //     setExportingPdf(false);
+  //   }
+  // };
 
   const renderPagination = () => {
     const totalPages = Math.ceil(totalItems / 10);

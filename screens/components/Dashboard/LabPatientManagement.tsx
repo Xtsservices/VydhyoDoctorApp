@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   TextInput,
   Platform,
-  PermissionsAndroid,
   Image,
   Modal,
   Keyboard
@@ -42,7 +41,7 @@ type PatientRow = {
   mobile?: string;
   tests: TestItem[];
   labData?: Record<string, any>;
-  addressId?: string; // Add this field to match web version
+  addressId?: string;
 };
 
 type Props = {
@@ -132,18 +131,18 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     fetchPatients(1, PAGE_SIZE_DEFAULT);
   }, [doctorId, status, searchValue, fetchPatients]);
 
-    useEffect(() => {
-  const showEvt = Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow';
-  const hideEvt = Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide';
-  const sh = Keyboard.addListener(showEvt, (e) => {
-    setKeyboardHeight(e?.endCoordinates?.height ?? 0);
-  });
-  const hi = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
-  return () => {
-    sh.remove();
-    hi.remove();
-  };
-}, [])
+  useEffect(() => {
+    const showEvt = Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow';
+    const hideEvt = Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide';
+    const sh = Keyboard.addListener(showEvt, (e) => {
+      setKeyboardHeight(e?.endCoordinates?.height ?? 0);
+    });
+    const hi = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      sh.remove();
+      hi.remove();
+    };
+  }, []);
 
   const loadMore = () => {
     const maxPages = Math.ceil(totalPatients / pageSize);
@@ -162,9 +161,9 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       prev.map((p) =>
         p.patientId === patientId
           ? {
-              ...p,
-              tests: p.tests.map((t) => (t._id === testId ? { ...t, price: isNaN(num) ? 0 : num } : t)),
-            }
+            ...p,
+            tests: p.tests.map((t) => (t._id === testId ? { ...t, price: isNaN(num) ? 0 : num } : t)),
+          }
           : p
       )
     );
@@ -346,29 +345,29 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       tests.length === 1
         ? tests[0].updatedAt
           ? new Date(tests[0].updatedAt).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            })
-          : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            })
-        : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",
             hour: "numeric",
             minute: "2-digit",
             hour12: true,
-          });
+          })
+          : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : new Date(tests[0].createdAt || Date.now()).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
 
     const contactInfoHTML = `
       <div class="provider-name">${lab.labName || "Diagnostic Lab"}</div>
@@ -452,25 +451,6 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     return { html, fileBaseName };
   };
 
-  // ============ NEW: Permission helper for Android ============
-  const ensureAndroidWritePermission = async () => {
-    if (Platform.OS !== "android") return true;
-    try {
-      const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE, {
-        title: "Storage permission",
-        message: "Allow saving invoices to your Downloads folder.",
-        buttonPositive: "Allow",
-      });
-      return (
-        granted === PermissionsAndroid.RESULTS.GRANTED ||
-        granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
-      );
-    } catch {
-      return false;
-    }
-  };
-
-  // ============ NEW: Download (replaces print) ============
   const downloadInvoicePdf = async (p: PatientRow) => {
     // Include only completed items (same as your print rule)
     const completed = p.tests.filter((t) =>
@@ -481,53 +461,24 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
     }
 
     try {
-      if (Platform.OS === "android") {
-        const ok = await ensureAndroidWritePermission();
-        if (!ok) {
-          Toast.show({ type: "error", text1: "Storage permission denied" });
-          return;
-        }
-      }
-
       const { html, fileBaseName } = buildInvoiceHTML(p, completed);
 
-      // 1) Create PDF from HTML
       const { filePath } = await RNHTMLtoPDF.convert({
         html,
         fileName: fileBaseName,
         base64: false,
+        directory: "Documents",
       });
 
-      let finalPath = filePath;
-
-      // 2) Move/copy into Downloads on Android
-      if (Platform.OS === "android" && RNFS.DownloadDirectoryPath) {
-        const dest = `${RNFS.DownloadDirectoryPath}/${fileBaseName}.pdf`;
-        try {
-          // ensure we overwrite if exists
-          const exists = await RNFS.exists(dest);
-          if (exists) {
-            await RNFS.unlink(dest);
-          }
-          await RNFS.copyFile(filePath!, dest);
-          finalPath = dest;
-          Toast.show({ type: "success", text1: "Saved to Downloads", text2: finalPath });
-        } catch (e: any) {
-          // fallback: keep original location but still inform path
-          Toast.show({
-            type: "info",
-            text1: "Saved (fallback path)",
-            text2: finalPath,
-          });
-        }
-      } else {
-        // iOS or other platforms
-        Toast.show({
-          type: "success",
-          text1: "PDF saved",
-          text2: finalPath,
-        });
+      if (!filePath) {
+        throw new Error("PDF path not available");
       }
+
+      Toast.show({
+        type: "success",
+        text1: "PDF saved",
+        text2: filePath,
+      });
     } catch (e: any) {
       Toast.show({
         type: "error",
@@ -544,22 +495,22 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
       norm === "completed"
         ? "#16a34a"
         : norm === "pending"
-        ? "#d97706"
-        : norm === "cancelled"
-        ? "#dc2626"
-        : norm === "in_progress"
-        ? "#2563eb"
-        : "#6b7280";
+          ? "#d97706"
+          : norm === "cancelled"
+            ? "#dc2626"
+            : norm === "in_progress"
+              ? "#2563eb"
+              : "#6b7280";
     const label =
       norm === "completed"
         ? "Completed"
         : norm === "pending"
-        ? "Pending"
-        : norm === "cancelled"
-        ? "Cancelled"
-        : norm === "in_progress"
-        ? "In Progress"
-        : "Unknown";
+          ? "Pending"
+          : norm === "cancelled"
+            ? "Cancelled"
+            : norm === "in_progress"
+              ? "In Progress"
+              : "Unknown";
     return (
       <View style={[styles.tag, { backgroundColor: color + "22", borderColor: color }]}>
         <Text style={{ color, fontWeight: "600" }}>{label}</Text>
@@ -597,7 +548,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
             style={[
               styles.saveBtn,
               (t.price == null || saving[t._id] || !(t.status === "pending" && (isEditable || initiallyNull))) &&
-                styles.btnDisabled,
+              styles.btnDisabled,
             ]}
           >
             <Text style={styles.saveBtnText}>{saving[t._id] ? "Saving..." : "Save"}</Text>
@@ -783,7 +734,7 @@ export default function LabPatientManagement({ status, updateCount, searchValue 
         </View>
       ) : (
         <FlatList
-        ref={listRef}
+          ref={listRef}
           data={patients}
           keyExtractor={(x) => x.patientId}
           renderItem={renderPatient}

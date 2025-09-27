@@ -10,9 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  TouchableWithoutFeedback,
   Modal,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -44,7 +44,7 @@ const PrescriptionScreen = () => {
   const [medInventory, setMedInventory] = useState<any[]>([]);
   const [medicineOptions, setMedicineOptions] = useState<any[]>([]);
   // NOTE: changed to object suggestions to support name+dosage filling
-  const [filteredMedicines, setFilteredMedicines] = useState<{label: string; name: string; dosage?: string; type?: string}[]>([]);
+  const [filteredMedicines, setFilteredMedicines] = useState<{ label: string; name: string; dosage?: string; type?: string }[]>([]);
 
   // saved cards (finalized for this visit)
   const [savedMeds, setSavedMeds] = useState<any[]>(
@@ -72,6 +72,9 @@ const PrescriptionScreen = () => {
     { name: string; dosage?: string; type?: string }[]
   >([]);
   const [loadingPrevMeds, setLoadingPrevMeds] = useState(false);
+
+  const [tplKey, setTplKey] = useState(0);
+  const [prevKey, setPrevKey] = useState(0);
 
   const frequencyOptions = ['1-0-0', '1-0-1', '1-1-1', '0-0-1', '0-1-0', '1-1-0', '0-1-1', 'SOS'];
   const timingOptions = ['Before Breakfast', 'After Breakfast', 'Before Lunch', 'After Lunch', 'Before Dinner', 'After Dinner', 'Bedtime'];
@@ -256,7 +259,7 @@ const PrescriptionScreen = () => {
     const required = med.frequency === 'SOS' ? 0 : med.frequency.split('-').filter((x: string) => x === '1').length;
     if ((med.timing?.length || 0) !== required) { Alert.alert('Error', `Select ${required} timing(s)`); return false; }
     if ((!med.manualQuantity && (!med.quantity || med.quantity <= 0)) ||
-        (med.manualQuantity && (!med.quantity || String(med.quantity).length === 0))) {
+      (med.manualQuantity && (!med.quantity || String(med.quantity).length === 0))) {
       Alert.alert('Error', 'Quantity must be greater than 0'); return false;
     }
     return true;
@@ -403,7 +406,7 @@ const PrescriptionScreen = () => {
     Toast.show({ type: 'success', text1: `Template "${template.name}" loaded into forms` });
   };
 
-  // Update previous prescription when medicine is edited (placeholder)
+    // Update previous prescription when medicine is edited (placeholder)
   const updatePreviousPrescription = async (updatedMedication: any) => {
     try {
       if (!updatedMedication.originalPrescriptionId) return;
@@ -589,347 +592,374 @@ const PrescriptionScreen = () => {
   // helpers for UI
   const getTemplateById = (id: string | null) => templates.find(t => t._id === id);
 
+  const modalScrollMaxHeight = Platform.OS === 'android'
+    ? 0.85 * Dimensions.get('window').height
+    : undefined;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
       keyboardVerticalOffset={keyboardVerticalOffset}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={{ flex: 1 }}>
-          <ScrollView
-            contentContainerStyle={[styles.container, { flexGrow: 1, paddingBottom: 140 }]}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Tests */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🧪 Diagnostic Tests</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter test name"
-                value={testInput}
-                onChangeText={setTestInput}
-                onFocus={() => setActiveDropdown('test')}
-                placeholderTextColor="#9CA3AF"
-              />
-              {activeDropdown === 'test' && testOptions.length > 0 && (
-                <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
-                  {testOptions.map((test, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      onPress={() => {
-                        handleAddTest(test.value);
-                        setActiveDropdown(null);
-                      }}
-                      style={styles.dropdownItem}
-                    >
-                      <Text style={{ color: 'black' }}>{test.value}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-              <TouchableOpacity style={styles.addButton} onPress={() => handleAddTest(testInput)}>
-                <Text style={styles.addButtonText}>+ Add Test</Text>
-              </TouchableOpacity>
-
-              {(formData?.diagnosis?.selectedTests || []).map((test: any, index: number) => (
-                <View key={index} style={styles.testItemContainer}>
-                  <Text style={styles.testTag}>{test.testName}</Text>
-                  <TouchableOpacity onPress={() => handleRemoveTest(index)} style={styles.deleteButton}>
-                    <Text style={styles.deleteText}>✕</Text>
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="always"
+          nestedScrollEnabled
+          removeClippedSubviews={false}
+          scrollEnabled
+          showsVerticalScrollIndicator
+          contentContainerStyle={[styles.container, { flexGrow: 1, paddingBottom: 140 }]}
+        >
+          {/* Tests */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🧪 Diagnostic Tests</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter test name"
+              value={testInput}
+              onChangeText={setTestInput}
+              onFocus={() => setActiveDropdown('test')}
+              placeholderTextColor="#9CA3AF"
+            />
+            {activeDropdown === 'test' && testOptions.length > 0 && (
+              <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
+                {testOptions.map((test, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => {
+                      handleAddTest(test.value);
+                      setActiveDropdown(null);
+                    }}
+                    style={styles.dropdownItem}
+                  >
+                    <Text style={{ color: 'black' }}>{test.value}</Text>
                   </TouchableOpacity>
-                </View>
-              ))}
-            </View>
+                ))}
+              </ScrollView>
+            )}
+            <TouchableOpacity style={styles.addButton} onPress={() => handleAddTest(testInput)}>
+              <Text style={styles.addButtonText}>+ Add Test</Text>
+            </TouchableOpacity>
 
-            {/* Diagnosis */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🩺 Diagnosis</Text>
-              <TextInput
-                style={styles.textArea}
-                placeholder="e.g. Hypertension, Diabetes"
-                multiline
-                value={formData?.diagnosis?.diagnosisList || ''}
-                onChangeText={(text) =>
-                  setFormData((prev: any) => ({
-                    ...prev,
-                    diagnosis: { ...prev.diagnosis, diagnosisList: text.toUpperCase() },
-                  }))
-                }
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-
-            {/* Template and Previous Prescriptions Buttons */}
-            <View style={styles.buttonRowContainer}>
-              <TouchableOpacity
-                style={styles.templateButton}
-                onPress={() => setShowTemplateModal(true)}
-                disabled={loadingTemplates}
-              >
-                {loadingTemplates ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.templateButtonText}>Templates</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.getPrescriptionButton}
-                onPress={fetchPreviousPrescriptions}
-                disabled={loadingPrescriptions}
-              >
-                {loadingPrescriptions ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.getPrescriptionButtonText}>Previous Prescriptions</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Medications */}
-            <View style={styles.section}>
-              <View style={styles.medHeader}>
-                <Text style={styles.sectionTitle}>💊 Prescribed Medications</Text>
+            {(formData?.diagnosis?.selectedTests || []).map((test: any, index: number) => (
+              <View key={index} style={styles.testItemContainer}>
+                <Text style={styles.testTag}>{test.testName}</Text>
+                <TouchableOpacity onPress={() => handleRemoveTest(index)} style={styles.deleteButton}>
+                  <Text style={styles.deleteText}>✕</Text>
+                </TouchableOpacity>
               </View>
+            ))}
+          </View>
 
-              {/* Saved cards */}
-              {savedMeds.map((med: any, index: number) => (
-                <View key={`card-${index}`} style={styles.medicationItemContainer}>
-                  <View style={styles.medicationContent}>
-                    <Text style={styles.medicationText}>
-                      {med.medName} {med.dosage} 
-                      {med.isFromPrevious && <Text style={styles.previousTag}> (Previous)</Text>}
-                      {med.isFromTemplate && <Text style={styles.templateTag}> (Template)</Text>}
-                    </Text>
-                    <Text style={styles.medicationSubText}>
-                      {med.duration} days • {med.frequency} • {med.medicineType}
-                    </Text>
-                    {med.timings && med.timings.length > 0 && (
-                      <Text style={styles.medicationSubText}>Timings: {med.timings.join(', ')}</Text>
-                    )}
-                  </View>
-                  <TouchableOpacity onPress={() => handleRemoveMedicine(index)} style={styles.deleteButton}>
-                    <Text style={styles.deleteText}>✕</Text>
+          {/* Diagnosis */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🩺 Diagnosis</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="e.g. Hypertension, Diabetes"
+              multiline
+              value={formData?.diagnosis?.diagnosisList || ''}
+              onChangeText={(text) =>
+                setFormData((prev: any) => ({
+                  ...prev,
+                  diagnosis: { ...prev.diagnosis, diagnosisList: text.toUpperCase() },
+                }))
+              }
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+
+          {/* Template and Previous Prescriptions Buttons */}
+          <View style={styles.buttonRowContainer}>
+            <TouchableOpacity
+              style={styles.templateButton}
+              onPress={() => {
+                setTplKey((k) => k + 1);
+                setShowTemplateModal(true);
+              }}
+              disabled={loadingTemplates}
+            >
+              {loadingTemplates ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.templateButtonText}>Templates</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.getPrescriptionButton}
+              onPress={() => {
+                setPrevKey((k) => k + 1);
+                fetchPreviousPrescriptions();
+              }}
+              disabled={loadingPrescriptions}
+            >
+              {loadingPrescriptions ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.getPrescriptionButtonText}>Previous Prescriptions</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Medications */}
+          <View style={styles.section}>
+            <View style={styles.medHeader}>
+              <Text style={styles.sectionTitle}>💊 Prescribed Medications</Text>
+            </View>
+
+            {/* Saved cards */}
+            {savedMeds.map((med: any, index: number) => (
+              <View key={`card-${index}`} style={styles.medicationItemContainer}>
+                <View style={styles.medicationContent}>
+                  <Text style={styles.medicationText}>
+                    {med.medName} {med.dosage}
+                    {med.isFromPrevious && <Text style={styles.previousTag}> (Previous)</Text>}
+                    {med.isFromTemplate && <Text style={styles.templateTag}> (Template)</Text>}
+                  </Text>
+                  <Text style={styles.medicationSubText}>
+                    {med.duration} days • {med.frequency} • {med.medicineType}
+                  </Text>
+                  {med.timings && med.timings.length > 0 && (
+                    <Text style={styles.medicationSubText}>Timings: {med.timings.join(', ')}</Text>
+                  )}
+                </View>
+                <TouchableOpacity onPress={() => handleRemoveMedicine(index)} style={styles.deleteButton}>
+                  <Text style={styles.deleteText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {/* Draft forms (multiple) */}
+            {showMedicationForm && draftMeds.map((draft) => (
+              <View key={draft.id} style={styles.medBlock}>
+                <View style={styles.rowSpaceBetween}>
+                  <Text style={styles.medLabel}>
+                    {draft.isFromPrevious
+                      ? '📋 Previous Medicine'
+                      : draft.isFromTemplate
+                        ? '📄 Template Medicine'
+                        : ' New Medicine'}
+                  </Text>
+                  <TouchableOpacity onPress={() => handleCancelDraft(draft.id)}>
+                    <Text style={{ color: 'red', fontSize: 16 }}>🗑️</Text>
                   </TouchableOpacity>
                 </View>
-              ))}
 
-              {/* Draft forms (multiple) */}
-              {showMedicationForm && draftMeds.map((draft) => (
-                <View key={draft.id} style={styles.medBlock}>
-                  <View style={styles.rowSpaceBetween}>
-                    <Text style={styles.medLabel}>
-                      {draft.isFromPrevious 
-                        ? '📋 Previous Medicine' 
-                        : draft.isFromTemplate
-                          ? '📄 Template Medicine'
-                          : ' New Medicine'}
-                    </Text>
-                    <TouchableOpacity onPress={() => handleCancelDraft(draft.id)}>
-                      <Text style={{ color: 'red', fontSize: 16 }}>🗑️</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={{ position: 'relative' }}>
-                    <TextInput
-                      placeholder="Medicine Name"
-                      style={[styles.input, (draft.isFromPrevious || draft.isFromTemplate) && styles.disabledInput]}
-                      value={draft.name}
-                      onChangeText={(text) => handleDraftChange(draft.id, 'name', text)}
-                      onFocus={() => {
-                        // refresh suggestions on focus
-                        if (!prevMedSuggestions.length) fetchPreviousMedicineSuggestions();
-                        const matches = (prevMedSuggestions || []).slice(0, 50).map(m => ({
-                          label: `${m.name}${m.dosage ? ` (${m.dosage})` : ''}`,
-                          name: m.name,
-                          dosage: m.dosage,
-                          type: m.type,
-                        }));
-                        setFilteredMedicines(matches);
-                        setActiveDropdown('medicine');
-                      }}
-                      placeholderTextColor="#9CA3AF"
-                      editable={!draft.isFromPrevious && !draft.isFromTemplate}
-                    />
-                    {/* Name dropdown (previous meds) */}
-                    {activeDropdown === 'medicine' && filteredMedicines.length > 0 && !draft.isFromPrevious && !draft.isFromTemplate && (
-                      <ScrollView style={[styles.dropdown, { position: 'absolute', top: 52, left: 0, right: 0, zIndex: 30 }]} nestedScrollEnabled={true}>
-                        {loadingPrevMeds ? (
-                          <View style={{ padding: 12, alignItems: 'center' }}>
-                            <ActivityIndicator />
-                            <Text style={{ marginTop: 6, color: '#475569' }}>Loading previous meds…</Text>
-                          </View>
-                        ) : (
-                          filteredMedicines.map((opt, idx) => (
-                            <TouchableOpacity
-                              key={idx}
-                              onPress={() => {
-                                handleDraftChange(draft.id, 'name', opt.name);
-                                if (opt.dosage && !(draft.isFromPrevious || draft.isFromTemplate)) {
-                                  handleDraftChange(draft.id, 'dosage', opt.dosage);
-                                }
-                                if (opt.type && !(draft.isFromPrevious || draft.isFromTemplate)) {
-                                  handleDraftChange(draft.id, 'type', opt.type);
-                                }
-                                setActiveDropdown(null);
-                                setFilteredMedicines([]);
-                                Toast.show({ type: 'success', text1: 'Selected from previous prescriptions' });
-                              }}
-                              style={styles.dropdownItem}
-                            >
-                              <Text style={{ color: 'black' }}>{opt.label}</Text>
-                            </TouchableOpacity>
-                          ))
-                        )}
-                      </ScrollView>
-                    )}
-                  </View>
-
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={draft.type}
-                      onValueChange={(value) => handleDraftChange(draft.id, 'type', value)}
-                      style={[styles.pickerInner, { color: draft.type ? '#111' : '#928686' }]}
-                      mode="dropdown"
-                    >
-                      <Picker.Item label="Select Type" value={null} color="#928686ff" />
-                      {medicineTypeOptions.map((option) => (
-                        <Picker.Item key={option} label={option} value={option} />
-                      ))}
-                    </Picker>
-                  </View>
-
+                <View style={{ position: 'relative' }}>
                   <TextInput
-                    placeholder="Dosage (e.g. 100mg, 5ml)"
+                    placeholder="Medicine Name"
                     style={[styles.input, (draft.isFromPrevious || draft.isFromTemplate) && styles.disabledInput]}
-                    value={draft.dosage}
-                    onChangeText={(text) => handleDraftChange(draft.id, 'dosage', text)}
+                    value={draft.name}
+                    onChangeText={(text) => handleDraftChange(draft.id, 'name', text)}
+                    onFocus={() => {
+                      // refresh suggestions on focus                    
+                      if (!prevMedSuggestions.length) fetchPreviousMedicineSuggestions();
+                      const matches = (prevMedSuggestions || []).slice(0, 50).map(m => ({
+                        label: `${m.name}${m.dosage ? ` (${m.dosage})` : ''}`,
+                        name: m.name,
+                        dosage: m.dosage,
+                        type: m.type,
+                      }));
+                      setFilteredMedicines(matches);
+                      setActiveDropdown('medicine');
+                    }}
                     placeholderTextColor="#9CA3AF"
                     editable={!draft.isFromPrevious && !draft.isFromTemplate}
                   />
-
-                  <TextInput
-                    placeholder="Duration (days)"
-                    style={styles.input}
-                    value={draft.duration?.toString() || ''}
-                    onChangeText={(text) => handleDraftChange(draft.id, 'duration', parseInt(text) || null)}
-                    keyboardType="numeric"
-                    placeholderTextColor="#9CA3AF"
-                  />
-
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={draft.frequency}
-                      onValueChange={(value) => updateDraftFrequency(draft.id, value)}
-                      style={[styles.pickerInner, { color: draft.type ? '#111' : '#928686' }]}
-                      mode="dropdown"
+                  {/* Name dropdown (previous meds) */}
+                  {activeDropdown === 'medicine' && filteredMedicines.length > 0 && !draft.isFromPrevious && !draft.isFromTemplate && (
+                    <ScrollView
+                      style={[styles.dropdown, { position: 'absolute', top: 52, left: 0, right: 0, zIndex: 30 }]}
+                      nestedScrollEnabled
+                      removeClippedSubviews={false}
+                      keyboardShouldPersistTaps="always"
                     >
-                      <Picker.Item label="Select Frequency" value={null} color="#9a9aa5ff" />
-                      {frequencyOptions.map((option) => (
-                        <Picker.Item key={option} label={option} value={option} />
-                      ))}
-                    </Picker>
-                  </View>
-
-                  <View style={{ marginBottom: 10 }}>
-                    <Text style={{ fontWeight: '600', marginBottom: 4, color: 'black' }}>Timing:</Text>
-                    {timingOptions.map((option) => {
-                      const selected = (draft.timing || []).includes(option);
-                      const maxTimings =
-                        draft.frequency === 'SOS'
-                          ? 0
-                          : (draft.frequency?.split('-').filter((x: string) => x === '1').length || 0);
-                      return (
-                        <TouchableOpacity
-                          key={option}
-                          onPress={() => {
-                            if (draft.frequency === 'SOS') return;
-                            const current = draft.timing || [];
-                            let updated = current;
-                            if (selected) {
-                              updated = current.filter((t: string) => t !== option);
-                            } else if (current.length < maxTimings) {
-                              updated = [...current, option];
-                            } else {
-                              Toast.show({ type: 'error', text1: `You can select max ${maxTimings} timing(s)` });
-                              return;
-                            }
-                            handleDraftChange(draft.id, 'timing', updated);
-                          }}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            marginBottom: 4,
-                            backgroundColor: selected ? '#007bff' : '#f0f0f0',
-                            padding: 6,
-                            borderRadius: 6,
-                          }}
-                        >
-                          <Text style={{ color: selected ? '#fff' : '#000' }}>{option}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  {draft.manualQuantity ? (
-                    <TextInput
-                      placeholder="Quantity (e.g. 1 bottle, 1 tube)"
-                      style={styles.input}
-                      value={String(draft.quantity ?? '')}
-                      onChangeText={(text) => handleDraftChange(draft.id, 'quantity', text)}
-                      keyboardType="default"
-                    />
-                  ) : (
-                    <TextInput
-                      placeholder="Quantity"
-                      style={[styles.input, { backgroundColor: '#eaeaea' }]}
-                      value={String(draft.quantity ?? '')}
-                      editable={false}
-                      placeholderTextColor="#9CA3AF"
-                    />
+                      {loadingPrevMeds ? (
+                        <View style={{ padding: 12, alignItems: 'center' }}>
+                          <ActivityIndicator />
+                          <Text style={{ marginTop: 6, color: '#475569' }}>Loading previous meds…</Text>
+                        </View>
+                      ) : (
+                        filteredMedicines.map((opt, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            onPress={() => {
+                              handleDraftChange(draft.id, 'name', opt.name);
+                              if (opt.dosage && !(draft.isFromPrevious || draft.isFromTemplate)) {
+                                handleDraftChange(draft.id, 'dosage', opt.dosage);
+                              }
+                              if (opt.type && !(draft.isFromPrevious || draft.isFromTemplate)) {
+                                handleDraftChange(draft.id, 'type', opt.type);
+                              }
+                              setActiveDropdown(null);
+                              setFilteredMedicines([]);
+                              Toast.show({ type: 'success', text1: 'Selected from previous prescriptions' });
+                            }}
+                            style={styles.dropdownItem}
+                          >
+                            <Text style={{ color: 'black' }}>{opt.label}</Text>
+                          </TouchableOpacity>
+                        ))
+                      )}
+                    </ScrollView>
                   )}
+                </View>
 
+                <View style={styles.pickerWrapper}>
+                  <Picker
+                    selectedValue={draft.type}
+                    onValueChange={(value) => handleDraftChange(draft.id, 'type', value)}
+                    style={[styles.pickerInner, { color: draft.type ? '#111' : '#928686' }]}
+                    mode="dropdown"
+                  >
+                    <Picker.Item label="Select Type" value={null} color="#928686ff" />
+                    {medicineTypeOptions.map((option) => (
+                      <Picker.Item key={option} label={option} value={option} />
+                    ))}
+                  </Picker>
+                </View>
+
+                <TextInput
+                  placeholder="Dosage (e.g. 100mg, 5ml)"
+                  style={[styles.input, (draft.isFromPrevious || draft.isFromTemplate) && styles.disabledInput]}
+                  value={draft.dosage}
+                  onChangeText={(text) => handleDraftChange(draft.id, 'dosage', text)}
+                  placeholderTextColor="#9CA3AF"
+                  editable={!draft.isFromPrevious && !draft.isFromTemplate}
+                />
+
+                <TextInput
+                  placeholder="Duration (days)"
+                  style={styles.input}
+                  value={draft.duration?.toString() || ''}
+                  onChangeText={(text) => handleDraftChange(draft.id, 'duration', parseInt(text) || null)}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+
+                <View style={styles.pickerWrapper}>
+                  <Picker
+                    selectedValue={draft.frequency}
+                    onValueChange={(value) => updateDraftFrequency(draft.id, value)}
+                    style={[styles.pickerInner, { color: draft.type ? '#111' : '#928686' }]}
+                    mode="dropdown"
+                  >
+                    <Picker.Item label="Select Frequency" value={null} color="#9a9aa5ff" />
+                    {frequencyOptions.map((option) => (
+                      <Picker.Item key={option} label={option} value={option} />
+                    ))}
+                  </Picker>
+                </View>
+
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontWeight: '600', marginBottom: 4, color: 'black' }}>Timing:</Text>
+                  {timingOptions.map((option) => {
+                    const selected = (draft.timing || []).includes(option);
+                    const maxTimings =
+                      draft.frequency === 'SOS'
+                        ? 0
+                        : (draft.frequency?.split('-').filter((x: string) => x === '1').length || 0);
+                    return (
+                      <TouchableOpacity
+                        key={option}
+                        onPress={() => {
+                          if (draft.frequency === 'SOS') return;
+                          const current = draft.timing || [];
+                          let updated = current;
+                          if (selected) {
+                            updated = current.filter((t: string) => t !== option);
+                          } else if (current.length < maxTimings) {
+                            updated = [...current, option];
+                          } else {
+                            Toast.show({ type: 'error', text1: `You can select max ${maxTimings} timing(s)` });
+                            return;
+                          }
+                          handleDraftChange(draft.id, 'timing', updated);
+                        }}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          marginBottom: 4,
+                          backgroundColor: selected ? '#007bff' : '#f0f0f0',
+                          padding: 6,
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Text style={{ color: selected ? '#fff' : '#000' }}>{option}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {draft.manualQuantity ? (
                   <TextInput
-                    placeholder="Notes"
-                    style={styles.textArea}
-                    multiline
-                    value={draft.notes || ''}
-                    onChangeText={(text) => handleDraftChange(draft.id, 'notes', text)}
+                    placeholder="Quantity (e.g. 1 bottle, 1 tube)"
+                    style={styles.input}
+                    value={String(draft.quantity ?? '')}
+                    onChangeText={(text) => handleDraftChange(draft.id, 'quantity', text)}
+                    keyboardType="default"
+                  />
+                ) : (
+                  <TextInput
+                    placeholder="Quantity"
+                    style={[styles.input, { backgroundColor: '#eaeaea' }]}
+                    value={String(draft.quantity ?? '')}
+                    editable={false}
                     placeholderTextColor="#9CA3AF"
                   />
-                </View>
-              ))}
+                )}
 
-              {/* Add medicine button */}
-              <TouchableOpacity onPress={handleAddMedicine} style={[styles.blueButton, { marginTop: 16 }]}>
-                <Text style={styles.blueButtonText}>+ Add Medicine</Text>
+                <TextInput
+                  placeholder="Notes"
+                  style={styles.textArea}
+                  multiline
+                  value={draft.notes || ''}
+                  onChangeText={(text) => handleDraftChange(draft.id, 'notes', text)}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            ))}
+
+            {/* Add medicine button */}
+            <TouchableOpacity onPress={handleAddMedicine} style={[styles.blueButton, { marginTop: 16 }]}>
+              <Text style={styles.blueButtonText}>+ Add Medicine</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* spacer so content can push up above fixed buttons */}
+          <View style={{ flex: 1 }} />
+        </ScrollView>
+
+        {/* Template Modal */}
+        <Modal
+          visible={showTemplateModal}
+          animationType="slide"
+          onRequestClose={() => setShowTemplateModal(false)}
+          presentationStyle="fullScreen"
+          statusBarTranslucent
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Templates</Text>
+              <TouchableOpacity onPress={() => setShowTemplateModal(false)}>
+                <Text style={styles.closeButton}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {/* spacer so content can push up above fixed buttons */}
-            <View style={{ flex: 1 }} />
-          </ScrollView>
-
-          {/* Template Modal */}
-          <Modal
-            visible={showTemplateModal}
-            animationType="slide"
-            onRequestClose={() => setShowTemplateModal(false)}
-          >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Templates</Text>
-                <TouchableOpacity onPress={() => setShowTemplateModal(false)}>
-                  <Text style={styles.closeButton}>✕</Text>
-                </TouchableOpacity>
-              </View>
-<View style={{ flex: 1 }}>
-
-              <ScrollView style={styles.modalContent}>
-                {/* Top dropdown to pick a template by name (e.g., Fever) */}
+            <View style={{ flex: 1 }} key={`tpl-wrap-${tplKey}`}>
+              <ScrollView
+                contentContainerStyle={styles.modalContent}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
+                removeClippedSubviews={false}
+                scrollEnabled
+                style={{ maxHeight: modalScrollMaxHeight }}
+                showsVerticalScrollIndicator
+              >
+                {/* Top dropdown to pick a template by name */}
                 {templates.length > 0 && (
                   <View style={{ marginBottom: 16 }}>
                     <Text style={{ color: '#0A2342', fontWeight: '600', marginBottom: 6 }}>Select Template</Text>
@@ -970,12 +1000,12 @@ const PrescriptionScreen = () => {
                           {template.updatedAt ? new Date(template.updatedAt).toLocaleDateString() : 'No date'}
                         </Text>
                       </View>
-                      
+
                       <View style={styles.prescriptionStats}>
                         <Text style={styles.prescriptionStat}>
                           💊 {template.medications?.length || 0} Medications
                         </Text>
-                        
+
                       </View>
 
                       {/* Load entire template -> drafts */}
@@ -1022,26 +1052,36 @@ const PrescriptionScreen = () => {
                   ))
                 )}
               </ScrollView>
-              </View>
             </View>
-          </Modal>
+          </View>
+        </Modal>
 
-          {/* Previous Prescriptions Modal */}
-          <Modal
-            visible={showPrescriptionsModal}
-            animationType="slide"
-            onRequestClose={() => setShowPrescriptionsModal(false)}
-          >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Previous Prescriptions</Text>
-                <TouchableOpacity onPress={() => setShowPrescriptionsModal(false)}>
-                  <Text style={styles.closeButton}>✕</Text>
-                </TouchableOpacity>
-              </View>
-<View style={{ flex: 1 }}>
+        {/* Previous Prescriptions Modal */}
+        <Modal
+          visible={showPrescriptionsModal}
+          animationType="slide"
+          onRequestClose={() => setShowPrescriptionsModal(false)}
+          presentationStyle="fullScreen"
+          statusBarTranslucent
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Previous Prescriptions</Text>
+              <TouchableOpacity onPress={() => setShowPrescriptionsModal(false)}>
+                <Text style={styles.closeButton}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-              <ScrollView style={styles.modalContent}>
+            <View style={{ flex: 1 }} key={`prev-wrap-${prevKey}`}>
+              <ScrollView
+                contentContainerStyle={styles.modalContent}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
+                removeClippedSubviews={false}
+                scrollEnabled
+                style={{ maxHeight: modalScrollMaxHeight }}
+                showsVerticalScrollIndicator
+              >
                 {previousPrescriptions.length === 0 ? (
                   <Text style={styles.noPrescriptionsText}>No previous prescriptions found</Text>
                 ) : (
@@ -1051,14 +1091,14 @@ const PrescriptionScreen = () => {
                         <Text style={styles.prescriptionTitle}>
                           Prescription #{previousPrescriptions.length - index}
                         </Text>
-                        
+
                       </View>
-                      
+
                       <View style={styles.prescriptionStats}>
                         <Text style={styles.prescriptionStat}>
                           💊 {prescription.medications?.length || 0} Medications
                         </Text>
-                      
+
                       </View>
 
                       {/* Entire prescription -> drafts */}
@@ -1099,21 +1139,20 @@ const PrescriptionScreen = () => {
                   ))
                 )}
               </ScrollView>
-              </View>
             </View>
-          </Modal>
-
-          {/* Fixed button bar */}
-          <View style={[styles.buttonRow, { paddingBottom: Platform.OS === 'ios' ? 20 : 12 }]}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => { Keyboard.dismiss(); navigation.goBack(); }}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-              <Text style={styles.nextText}>Next</Text>
-            </TouchableOpacity>
           </View>
+        </Modal>
+
+        {/* Fixed button bar */}
+        <View style={[styles.buttonRow, { paddingBottom: Platform.OS === 'ios' ? 20 : 12 }]}>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => { Keyboard.dismiss(); navigation.goBack(); }}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+            <Text style={styles.nextText}>Next</Text>
+          </TouchableOpacity>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </KeyboardAvoidingView>
   );
 };
@@ -1146,13 +1185,13 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, flex: 1 },
   medLabel: { color: '#0A2342', fontWeight: '600' },
   testItemContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  medicationItemContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    marginBottom: 8, 
-    backgroundColor: '#f8f9fa', 
-    padding: 12, 
+  medicationItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    backgroundColor: '#f8f9fa',
+    padding: 12,
     borderRadius: 8,
     borderLeftWidth: 4,
     borderLeftColor: '#007bff'
@@ -1216,6 +1255,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
     backgroundColor: '#f8f9fa',
+    marginTop: Platform.OS === 'android' ? 24 : 0,
   },
   modalTitle: {
     fontSize: 18,
@@ -1228,7 +1268,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   modalContent: {
-    flex: 1,
     padding: 16,
   },
   prescriptionItem: {
@@ -1325,7 +1364,7 @@ const styles = StyleSheet.create({
   addedText: {
     color: '#155724',
     fontWeight: '600',
-    fontSize: 12, 
+    fontSize: 12,
   },
   noPrescriptionsText: {
     textAlign: 'center',

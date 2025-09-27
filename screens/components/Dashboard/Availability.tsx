@@ -18,7 +18,6 @@ import { AuthPost, AuthFetch, AuthPut, authDelete } from '../../auth/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import moment from 'moment';
-import { AntDesign } from '@expo/vector-icons';
 
 // Define interfaces for type safety
 interface Clinic {
@@ -159,8 +158,8 @@ const AvailabilityScreen: React.FC = () => {
   };
 
   const start24 = convertTo24Hour(startTime, startPeriod);
-  const end24 = showEndTimeAs1159 && endPeriod === 'PM' 
-    ? '23:59' 
+  const end24 = showEndTimeAs1159 && endPeriod === 'PM'
+    ? '23:59'
     : convertTo24Hour(endTime, endPeriod);
 
   // Check if end time is after start time
@@ -258,23 +257,23 @@ const AvailabilityScreen: React.FC = () => {
         setUnAvailableSlots(unavailable);
       }
     } catch (err) {
-       const errorMessage = err?.message || 'Please Retry';
-       Alert.alert('Error', errorMessage);
-      
+      const errorMessage = err?.message || 'Please Retry';
+      Alert.alert('Error', errorMessage);
+
     }
   };
 
-useEffect(() => {
-  if (moment(fromDate).isSame(moment(), 'day')) {
-    const currentHour = moment().hour();
-    const current12Hour = currentHour > 12 ? currentHour - 12 : currentHour;
-    const formattedHour = (current12Hour === 0 ? 12 : current12Hour).toString().padStart(2, '0');
-    setStartTime(formattedHour);
-    
-    // Also set appropriate period
-    setStartPeriod(currentHour >= 12 ? 'PM' : 'AM');
-  }
-}, [fromDate]);
+  useEffect(() => {
+    if (moment(fromDate).isSame(moment(), 'day')) {
+      const currentHour = moment().hour();
+      const current12Hour = currentHour > 12 ? currentHour - 12 : currentHour;
+      const formattedHour = (current12Hour === 0 ? 12 : current12Hour).toString().padStart(2, '0');
+      setStartTime(formattedHour);
+
+      // Also set appropriate period
+      setStartPeriod(currentHour >= 12 ? 'PM' : 'AM');
+    }
+  }, [fromDate]);
 
   useEffect(() => {
     const date = new Date().toISOString().split('T')[0];
@@ -287,102 +286,113 @@ useEffect(() => {
     }
   }, [fromDate, doctorId, selectedClinic]);
 
-const generateTimeSlots = async () => {
-  if (!isEndTimeValid()) {
-    Toast.show({
-      type: 'error',
-      text1: 'Error',
-      text2: 'End time must be after start time',
-      position: 'top',
-      visibilityTime: 3000,
-    });
-    return;
-  }
-
-  setIsAddingSlots(true);
-  try {
-    const startDateObj = dayjs(fromDate);
-    const endDateObj = dayjs(toDate);
-    const daysDifference = endDateObj.diff(startDateObj, 'day');
-
-    if (daysDifference > 6) {
+  const generateTimeSlots = async () => {
+    if (!isEndTimeValid()) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Cannot add slots for more than 1 week at a time',
+        text2: 'End time must be after start time',
         position: 'top',
         visibilityTime: 3000,
       });
-      setIsAddingSlots(false);
       return;
     }
 
-    const getDateRangeArray = (fromDate: string, toDate: string): string[] => {
-      const dates: string[] = [];
-      const start = moment(fromDate, 'YYYY-MM-DD');
-      const end = moment(toDate, 'YYYY-MM-DD');
-      if (end.isAfter(start)) {
-        let currentDate = start.clone();
-        while (currentDate.isSameOrBefore(end)) {
-          dates.push(currentDate.format('YYYY-MM-DD'));
-          currentDate.add(1, 'days');
-        }
-      } else {
-        dates.push(start.format('YYYY-MM-DD'));
-      }
-      return dates;
-    };
+    setIsAddingSlots(true);
+    try {
+      const startDateObj = dayjs(fromDate);
+      const endDateObj = dayjs(toDate);
+      const daysDifference = endDateObj.diff(startDateObj, 'day');
 
-    const startDate = dayjs(fromDate).format('YYYY-MM-DD');
-    const endDate = dayjs(toDate).format('YYYY-MM-DD');
-    const selectedDates = fromDate && endDate ? getDateRangeArray(startDate, endDate) : [startDate];
-
-    const start24 = convertTo24Hour(startTime, startPeriod);
-    const end24 = showEndTimeAs1159 && endPeriod === 'PM' 
-      ? '23:59' 
-      : convertTo24Hour(endTime, endPeriod);
-
-    const payload = {
-      doctorId,
-      dates: selectedDates,
-      startTime: start24,
-      endTime: end24,
-      interval: parseInt(duration),
-      isAvailable: true,
-      addressId: selectedClinic,
-    };
-    const token = await AsyncStorage.getItem('authToken');
-    const response = await AuthPost('appointment/createSlotsForDoctor', payload, token);
-
-    if (response?.data && response?.data?.status === 'success') {
-      // Always refresh the slots after a successful API call
-      await fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
-      setToDate(new Date());
-
-      // Check if these properties exist before accessing them
-      const overlap = response?.data?.results?.[0]?.reason;
-      const clinicname = response?.data?.results?.[0]?.overlaps?.[0]?.clinic;
-      
-      // Only show success toast if there are no overlaps
-      if (!overlap) {
+      if (daysDifference > 6) {
         Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'Slots Added Successfully',
+          type: 'error',
+          text1: 'Error',
+          text2: 'Cannot add slots for more than 1 week at a time',
           position: 'top',
           visibilityTime: 3000,
         });
+        setIsAddingSlots(false);
+        return;
       }
 
-  
-      
-      if (overlap && clinicname) {
-        Alert.alert(overlap, `Clinic Name: ${clinicname}`);
-      }else if (overlap) {
-        Alert.alert('overlap', overlap);
+      const getDateRangeArray = (fromDate: string, toDate: string): string[] => {
+        const dates: string[] = [];
+        const start = moment(fromDate, 'YYYY-MM-DD');
+        const end = moment(toDate, 'YYYY-MM-DD');
+        if (end.isAfter(start)) {
+          let currentDate = start.clone();
+          while (currentDate.isSameOrBefore(end)) {
+            dates.push(currentDate.format('YYYY-MM-DD'));
+            currentDate.add(1, 'days');
+          }
+        } else {
+          dates.push(start.format('YYYY-MM-DD'));
+        }
+        return dates;
+      };
+
+      const startDate = dayjs(fromDate).format('YYYY-MM-DD');
+      const endDate = dayjs(toDate).format('YYYY-MM-DD');
+      const selectedDates = fromDate && endDate ? getDateRangeArray(startDate, endDate) : [startDate];
+
+      const start24 = convertTo24Hour(startTime, startPeriod);
+      const end24 = showEndTimeAs1159 && endPeriod === 'PM'
+        ? '23:59'
+        : convertTo24Hour(endTime, endPeriod);
+
+      const payload = {
+        doctorId,
+        dates: selectedDates,
+        startTime: start24,
+        endTime: end24,
+        interval: parseInt(duration),
+        isAvailable: true,
+        addressId: selectedClinic,
+      };
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await AuthPost('appointment/createSlotsForDoctor', payload, token);
+
+      if (response?.data && response?.data?.status === 'success') {
+        // Always refresh the slots after a successful API call
+        await fetchSlotsForDate(dayjs(fromDate).format('YYYY-MM-DD'));
+        setToDate(new Date());
+
+        // Check if these properties exist before accessing them
+        const overlap = response?.data?.results?.[0]?.reason;
+        const clinicname = response?.data?.results?.[0]?.overlaps?.[0]?.clinic;
+
+        // Only show success toast if there are no overlaps
+        if (!overlap) {
+          Toast.show({
+            type: 'success',
+            text1: 'Success',
+            text2: 'Slots Added Successfully',
+            position: 'top',
+            visibilityTime: 3000,
+          });
+        }
+
+
+
+        if (overlap && clinicname) {
+          Alert.alert(overlap, `Clinic Name: ${clinicname}`);
+        }else if (overlap) {
+          Alert.alert('overlap', overlap);
+        }
+      } else {
+        const errorMessage = response?.data?.message || response?.message || 'Please Retry';
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: errorMessage,
+          position: 'top',
+          visibilityTime: 3000,
+        });
+
       }
-    } else {
-      const errorMessage = response?.data?.message || response?.message || 'Please Retry';
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Please Retry';
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -390,21 +400,10 @@ const generateTimeSlots = async () => {
         position: 'top',
         visibilityTime: 3000,
       });
-
+    } finally {
+      setIsAddingSlots(false);
     }
-  } catch (error: any) {
-    const errorMessage = error?.message || 'Please Retry';
-    Toast.show({
-      type: 'error',
-      text1: 'Error',
-      text2: errorMessage,
-      position: 'top',
-      visibilityTime: 3000,
-    });
-  } finally {
-    setIsAddingSlots(false);
-  }
-};
+  };
   const generateUnavailableTimeSlots = async () => {
     try {
       const startTime = moment(`${unavailableStartTime}:00 ${unavailableStartPeriod}`, 'hh:mm A').format('HH:mm');
@@ -764,8 +763,8 @@ const generateTimeSlots = async () => {
                 <TouchableOpacity onPress={() => adjustTime('end', 'up', 'available')} style={styles.arrowButton}>
                   <Text style={styles.arrowButton}>▲</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => adjustTime('end', 'down', 'available')} 
+                <TouchableOpacity
+                  onPress={() => adjustTime('end', 'down', 'available')}
                   style={styles.arrowButton}
                   disabled={showEndTimeAs1159 ? false : parseInt(endTime, 10) === 1 && endPeriod === 'AM'}
                 >
@@ -777,10 +776,9 @@ const generateTimeSlots = async () => {
               </View>
               <TouchableOpacity
                 style={[
-                  styles.periodButton, 
-                  { 
-                    backgroundColor: endPeriod === 'PM' ? '#ffeaa7' : '#fff',
-                    opacity: showEndTimeAs1159 ? 0.5 : 1
+                  styles.periodButton,
+                  {
+                    backgroundColor: showEndTimeAs1159 ? '#ffeaa7' : (endPeriod === 'PM' ? '#ffeaa7' : '#fff'),
                   }
                 ]}
                 onPress={() => {
@@ -790,7 +788,9 @@ const generateTimeSlots = async () => {
                 }}
                 disabled={showEndTimeAs1159}
               >
-                <Text style={{ color: '#333' }}>{endPeriod}</Text>
+                <Text style={{
+                  color: showEndTimeAs1159 ? '#000000' : '#333' 
+                }}>{endPeriod}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -948,6 +948,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#EFFFFA',
     padding: 16,
+    paddingBottom: 30,
   },
   noSlotsText: {
     textAlign: 'center',
@@ -1131,9 +1132,9 @@ const styles = StyleSheet.create({
     paddingLeft: 2,
   },
   disabledArrow: {
-  color: '#ccc',
-  opacity: 0.5,
-},
+    color: '#ccc',
+    opacity: 0.5,
+  },
   periodButton: {
     marginLeft: 8,
     borderWidth: 1,
@@ -1185,7 +1186,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 60,
   },
   slotBubble: {
     backgroundColor: '#cffedcff',

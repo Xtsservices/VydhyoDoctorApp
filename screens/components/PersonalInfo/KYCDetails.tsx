@@ -440,7 +440,6 @@ const KYCDetailsScreen = () => {
               renderLoading={renderWebviewLoader}
               injectedJavaScriptBeforeContentLoaded={hideHeaderFooterJS}
               injectedJavaScript={hideHeaderFooterJS}
-              onMessage={() => { }}
               mixedContentMode="always"
               allowFileAccess
               allowUniversalAccessFromFileURLs
