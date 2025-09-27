@@ -416,8 +416,8 @@ const AddClinicForm = () => {
             };
             try {
               mapRef.current?.animateToRegion(newRegion, 500);
-            } catch (e) { 
-                Alert.alert('Map Error', 'Could not animate to the selected region.');
+            } catch (e) {
+              Alert.alert('Map Error', 'Could not animate to the selected region.');
             }
 
           } else {
@@ -492,7 +492,7 @@ const AddClinicForm = () => {
         setTimeout(() => {
           try {
             mapRef.current?.animateToRegion(newRegion, 800);
-          } catch (e) { 
+          } catch (e) {
             Alert.alert('Map Error', 'Could not animate to the selected region.');
           }
         }, 300);
@@ -811,7 +811,7 @@ const AddClinicForm = () => {
             center = { latitude: cam.center.latitude, longitude: cam.center.longitude };
           }
         } catch (e) {
-            Alert.alert('Camera Error', `Unable to get camera center: ${e?.message || e}`);
+          Alert.alert('Camera Error', `Unable to get camera center: ${e?.message || e}`);
         }
       }
 
@@ -1061,7 +1061,7 @@ const AddClinicForm = () => {
                 try {
                   uri = (await cropImageToCenter(uri, HEADER_TARGET_WIDTH, HEADER_TARGET_HEIGHT)) || uri;
                 } catch (e) {
-                    Alert.alert('Crop Error', 'Could not crop the captured image. Using the original image.');
+                  Alert.alert('Crop Error', 'Could not crop the captured image. Using the original image.');
                 }
                 const file = {
                   uri,
@@ -1249,33 +1249,33 @@ const AddClinicForm = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const bypassFormData = bypassData;
-      const url = bypassType === 'pharmacy' 
+      const url = bypassType === 'pharmacy'
         ? 'users/addAddressFromWeb?bypassCheck=true'
         : 'users/addAddressFromWeb?bypassCheck=true';
 
       const response = await UploadFiles(url, bypassFormData, token);
-      
+
       if (response.status === 'success' || response.status === 200 || response.status === 201) {
-        Toast.show({ 
-          type: 'success', 
-          text1: 'Success', 
-          text2: bypassType === 'pharmacy' 
-            ? 'Pharmacy linked successfully' 
-            : 'Lab linked successfully', 
-          position: 'top', 
-          visibilityTime: 3000 
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: bypassType === 'pharmacy'
+            ? 'Pharmacy linked successfully'
+            : 'Lab linked successfully',
+          position: 'top',
+          visibilityTime: 3000
         });
         setBypassModalVisible(false);
         setBypassData(null);
         setBypassType(null);
         navigation.navigate('Clinic' as never);
       } else {
-        Toast.show({ 
-          type: 'error', 
-          text1: 'Error', 
-          text2: response.message || `Failed to link ${bypassType}.`, 
-          position: 'top', 
-          visibilityTime: 3000 
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: response.message || `Failed to link ${bypassType}.`,
+          position: 'top',
+          visibilityTime: 3000
         });
       }
     } catch (error: any) {
@@ -1301,13 +1301,13 @@ const AddClinicForm = () => {
 
       // upload
       const response = await UploadFiles('users/addAddressFromWeb', formData, token);
-      const isWarning = 
+      const isWarning =
         response?.data?.status === 'warning' ||
         String(response?.message || response?.data?.message || '').toLowerCase().includes('already registered');
 
       if (isWarning) {
         const message = response?.data?.message || response?.message || '';
-        
+
         if (message.toLowerCase().includes('pharmacy')) {
           setBypassType('pharmacy');
           setBypassData(formData);
@@ -1378,7 +1378,7 @@ const AddClinicForm = () => {
             }
           }
         } catch (err) {
-            Alert.alert('Camera Permission Error', err?.message || 'Unable to check camera permission.');
+          Alert.alert('Camera Permission Error', err?.message || 'Unable to check camera permission.');
         }
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1514,13 +1514,13 @@ const AddClinicForm = () => {
             {bypassType === 'pharmacy' ? 'Pharmacy Already Exists' : 'Lab Already Exists'}
           </Text>
           <Text style={styles.bypassModalText}>
-            {bypassType === 'pharmacy' 
+            {bypassType === 'pharmacy'
               ? 'This pharmacy is already registered with another doctor. Do you want to link this pharmacy to your clinic?'
               : 'This lab is already registered with another doctor. Do you want to link this lab to your clinic?'}
           </Text>
           <View style={styles.bypassModalButtons}>
-            <TouchableOpacity 
-              style={[styles.bypassModalButton, styles.bypassModalCancel]} 
+            <TouchableOpacity
+              style={[styles.bypassModalButton, styles.bypassModalCancel]}
               onPress={() => {
                 setBypassModalVisible(false);
                 setBypassData(null);
@@ -1529,8 +1529,8 @@ const AddClinicForm = () => {
             >
               <Text style={styles.bypassModalCancelText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.bypassModalButton, styles.bypassModalConfirm]} 
+            <TouchableOpacity
+              style={[styles.bypassModalButton, styles.bypassModalConfirm]}
               onPress={handleBypassSubmit}
               disabled={loading}
             >
@@ -1593,9 +1593,9 @@ const AddClinicForm = () => {
           <Text style={styles.loaderText}>Processing...</Text>
         </View>
       )}
-      
+
       <BypassModal />
-      
+
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
         <View style={styles.mapSection}>
           <Text style={styles.label}>Location (Move map to position pointer — map auto-selects when you stop)</Text>
@@ -1744,15 +1744,15 @@ const AddClinicForm = () => {
         <Text style={styles.label}>Pharmacy PAN</Text>
         <TextInput style={styles.input} placeholder="Enter PAN number" value={form.pharmacyPAN} onChangeText={(text) => handleChange('pharmacyPAN', text)} placeholderTextColor="gray" />
 
-               <Text style={styles.label}>Pharmacy Address</Text>
-        <TextInput 
-          style={[styles.input, styles.textarea, errors.pharmacyAddress && styles.inputError]} 
-          placeholder="Enter pharmacy address" 
-          multiline 
-          numberOfLines={3} 
-          value={form.pharmacyAddress} 
-          onChangeText={(text) => handleChange('pharmacyAddress', text)} 
-          placeholderTextColor="gray" 
+        <Text style={styles.label}>Pharmacy Address</Text>
+        <TextInput
+          style={[styles.input, styles.textarea, errors.pharmacyAddress && styles.inputError]}
+          placeholder="Enter pharmacy address"
+          multiline
+          numberOfLines={3}
+          value={form.pharmacyAddress}
+          onChangeText={(text) => handleChange('pharmacyAddress', text)}
+          placeholderTextColor="gray"
         />
         {errors.pharmacyAddress && <Text style={styles.errorText}>{errors.pharmacyAddress}</Text>}
 
@@ -1774,14 +1774,14 @@ const AddClinicForm = () => {
         <TextInput style={styles.input} placeholder="Enter PAN number" value={form.labPAN} onChangeText={(text) => handleChange('labPAN', text)} placeholderTextColor="gray" />
 
         <Text style={styles.label}>Lab Address</Text>
-        <TextInput 
-          style={[styles.input, styles.textarea, errors.labAddress && styles.inputError]} 
-          placeholder="Enter lab address" 
-          multiline 
-          numberOfLines={3} 
-          value={form.labAddress} 
-          onChangeText={(text) => handleChange('labAddress', text)} 
-          placeholderTextColor="gray" 
+        <TextInput
+          style={[styles.input, styles.textarea, errors.labAddress && styles.inputError]}
+          placeholder="Enter lab address"
+          multiline
+          numberOfLines={3}
+          value={form.labAddress}
+          onChangeText={(text) => handleChange('labAddress', text)}
+          placeholderTextColor="gray"
         />
         {errors.labAddress && <Text style={styles.errorText}>{errors.labAddress}</Text>}
 
@@ -1793,11 +1793,9 @@ const AddClinicForm = () => {
             <Text style={styles.cancelText}>✖ Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.confirmBtn} onPress={handleSubmit} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.confirmText}>✔ Confirm</Text>
-            )}
+
+            <Text style={styles.confirmText}>✔ Confirm</Text>
+
           </TouchableOpacity>
         </View>
       </ScrollView>

@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  Linking,
   Image,
-  ScrollView,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  ScrollView,
+  NativeSyntheticEvent,
+  TextInputFocusEventData,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Toast from 'react-native-toast-message';
@@ -40,6 +42,33 @@ const DoctorLoginScreen = () => {
   const [canResend, setCanResend] = useState(false);
   const otpRefs = useRef<(TextInput | null)[]>(Array(6).fill(null));
 
+  const [kbHeight, setKbHeight] = useState(0);
+  const [kbVisible, setKbVisible] = useState(false);
+
+  const scrollRef = useRef<ScrollView | null>(null);
+  const otpContainerYRef = useRef(0);
+  const BUTTON_HEIGHT = height * 0.08; // visual height of button area (approx)
+  const BUTTON_MARGIN = 16;            // spacing above keyboard
+
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      setKbVisible(true);
+      setKbHeight(e.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => {
+      setKbVisible(false);
+      setKbHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   const validateMobile = (number: string) => /^[6-9]\d{9}$/.test(number);
 
   const handleOtpChange = (text: string, index: number) => {
@@ -50,20 +79,33 @@ const DoctorLoginScreen = () => {
     if (!text && index > 0) otpRefs.current[index - 1]?.focus();
   };
 
+  const handleOtpFocus = (_e?: NativeSyntheticEvent<TextInputFocusEventData>) => {
+    // Scroll so the OTP row sits above the floating button + keyboard
+    requestAnimationFrame(() => {
+      const extraClearance = 24;
+      const targetY =
+        otpContainerYRef.current -
+        (height * 0.15);
+
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({
+          y: targetY > 0 ? targetY : 0,
+          animated: true,
+        });
+      }
+    });
+  };
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
     if (isOtpSent && resendTimer > 0) {
-      interval = setInterval(() => {
-        setResendTimer((prev) => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setResendTimer((prev) => prev - 1), 1000);
     } else if (resendTimer === 0) {
       setCanResend(true);
     }
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    return () => interval && clearInterval(interval);
   }, [isOtpSent, resendTimer]);
 
   const handleSendOtp = async () => {
@@ -94,7 +136,7 @@ const DoctorLoginScreen = () => {
         setMobileError(response?.message || 'Failed to send OTP');
         setIsOtpSent(false);
       }
-    } catch (err) {
+    } catch {
       setMobileError('Network error. Please try again.');
       setIsOtpSent(false);
     } finally {
@@ -129,7 +171,7 @@ const DoctorLoginScreen = () => {
         setMobileError(response?.message || 'Failed to resend OTP');
         setCanResend(true);
       }
-    } catch (err) {
+    } catch {
       setMobileError('Network error. Please try again.');
       setCanResend(true);
     }
@@ -160,33 +202,54 @@ const DoctorLoginScreen = () => {
         dispatch({ type: 'currentUser', payload: userData });
         dispatch({ type: 'currentUserID', payload: id });
 
-        Toast.show({
-          type: 'success',
-          text1: 'Login successful',
-        });
-
+        Toast.show({ type: 'success', text1: 'Login successful' });
         navigation.replace('Authloader');
       } else {
         setOtpError(response?.message || 'Invalid OTP');
       }
-    } catch (err) {
+    } catch {
       setOtpError('Network error. Please try again.');
     } finally {
       setVerifyingOtp(false);
     }
   };
 
+  const renderActionButton = () => {
+    const isLoginPhase = showOtp;
+    return (
+      <TouchableOpacity
+        style={[styles.button]}
+        onPress={isLoginPhase ? handleLogin : handleSendOtp}
+        disabled={!isLoginPhase && isOtpSent}
+        activeOpacity={0.8}
+      >
+        {isLoginPhase ? (
+          verifyingOtp ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>
+        ) : (
+          sendingOtp ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
+  const contentBottomPad = (kbVisible ? kbHeight : 0) + BUTTON_HEIGHT + BUTTON_MARGIN + 24;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Partner Login</Text>
       </View>
 
-      <View style={styles.formContainer}>
-
+      <ScrollView
+        ref={scrollRef}
+        style={styles.formContainer}
+        contentContainerStyle={[styles.formContent, { paddingBottom: contentBottomPad }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.logoContainer1}>
           <Image source={require('../assets/doclogo.png')} style={styles.doclogo} />
         </View>
@@ -213,6 +276,7 @@ const DoctorLoginScreen = () => {
               setIsOtpSent(false);
             }}
             maxLength={10}
+            returnKeyType="done"
           />
         </View>
         {mobileError ? <Text style={styles.errorText}>{mobileError}</Text> : null}
@@ -220,7 +284,12 @@ const DoctorLoginScreen = () => {
         {showOtp && (
           <>
             <Text style={styles.label}>OTP</Text>
-            <View style={styles.otpContainer}>
+            <View
+              style={styles.otpContainer}
+              onLayout={(e) => {
+                otpContainerYRef.current = e.nativeEvent.layout.y;
+              }}
+            >
               {otp.map((digit, index) => (
                 <TextInput
                   key={index}
@@ -230,48 +299,36 @@ const DoctorLoginScreen = () => {
                   maxLength={1}
                   value={digit}
                   onChangeText={(text) => handleOtpChange(text, index)}
+                  onFocus={handleOtpFocus}
+                  returnKeyType={index === 5 ? 'done' : 'next'}
                 />
               ))}
             </View>
             {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
 
-            {/* Add resend OTP option */}
             <View style={styles.resendContainer}>
               {canResend ? (
                 <TouchableOpacity onPress={handleResendOtp}>
                   <Text style={styles.resendText}>Resend OTP</Text>
                 </TouchableOpacity>
               ) : (
-                <Text style={styles.resendTimerText}>
-                  Resend OTP in {resendTimer} seconds
-                </Text>
+                <Text style={styles.resendTimerText}>Resend OTP in {resendTimer} seconds</Text>
               )}
             </View>
           </>
         )}
-      </View>
+      </ScrollView>
 
-      {!showOtp ? (
-        <TouchableOpacity
-          style={[styles.button, isOtpSent && styles.disabledButton]}
-          onPress={handleSendOtp}
-          disabled={isOtpSent}
-        >
-          {sendingOtp ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>{isOtpSent ? 'OTP Sent' : 'Send OTP'}</Text>
-          )}
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          {verifyingOtp ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Login</Text>
-          )}
-        </TouchableOpacity>
-      )}
+      {/* Floating action button just above keyboard (raised a bit higher) */}
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.floatingButtonContainer,
+          { bottom: kbVisible ? kbHeight + 40 : 50 },
+        ]}
+      >
+        {renderActionButton()}
+      </View>
     </KeyboardAvoidingView>
   );
 };
@@ -292,6 +349,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 5,
+    zIndex: 2,
   },
   headerTitle: {
     flex: 1,
@@ -303,19 +361,16 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
-    backgroundColor: '#DCFCE7', // Ensure ScrollView has the same background
+    backgroundColor: '#DCFCE7',
+  },
+  formContent: {
     paddingHorizontal: width * 0.05,
-    paddingVertical: height * 0.03,
+    paddingTop: height * 0.03,
   },
-  formContentContainer: {
-    paddingBottom: height * 0.15, // Ensure enough padding for button to stay visible
-    backgroundColor: '#DCFCE7', // Match container background
-    minHeight: height, // Ensure content fills screen height
-  },
- logoContainer1: {
+  logoContainer1: {
     alignItems: 'center',
     marginBottom: height * 0.03,
-    marginTop: height * 0.04, 
+    marginTop: height * 0.04,
   },
   doclogo: {
     width: width * 0.5,
@@ -346,9 +401,7 @@ const styles = StyleSheet.create({
     borderColor: '#D32F2F',
     borderWidth: 1,
   },
-  icon: {
-    marginHorizontal: width * 0.03,
-  },
+  icon: { marginHorizontal: width * 0.03 },
   input: {
     flex: 1,
     fontSize: width * 0.04,
@@ -395,16 +448,11 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: width * 0.05,
-    marginBottom: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 5,
-  },
-  disabledButton: {
-    backgroundColor: '#B0BEC5',
   },
   buttonText: {
     color: '#fff',
@@ -417,19 +465,11 @@ const styles = StyleSheet.create({
     marginTop: height * 0.005,
     marginBottom: height * 0.01,
   },
-  spacer: {
-    height: height * 0.1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-  },
-  loadingText: {
-    marginTop: height * 0.02,
-    fontSize: width * 0.04,
-    color: '#333',
+  floatingButtonContainer: {
+    position: 'absolute',
+    left: width * 0.05,
+    right: width * 0.05,
+    zIndex: 3,
   },
 });
 

@@ -580,7 +580,7 @@ const AddAppointment = () => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
           style={styles.container}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.sectionTitle}>Search By Mobile Number</Text>
@@ -1180,7 +1180,7 @@ const AddAppointment = () => {
 export default AddAppointment;
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: '#F0FDF4', paddingTop: 5, paddingHorizontal: 20, marginBottom: 50 },
+  container: { backgroundColor: '#F0FDF4', paddingTop: 5, paddingHorizontal: 20, height : '100%' },
   searchRow: {
     flexDirection: 'row',
     marginBottom: 20,

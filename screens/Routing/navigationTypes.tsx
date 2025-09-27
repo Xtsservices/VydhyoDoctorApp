@@ -40,4 +40,5 @@ export type RootStackParamList = {
   Pharmacy:undefined;
   PharmacyPatientsTab:undefined;
   PharmacyMedicinesTab:undefined;
+  Templates:undefined;
 };

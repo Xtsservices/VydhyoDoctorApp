@@ -73,6 +73,7 @@ const AvailabilityScreen: React.FC = () => {
   const [isDeletingSlots, setIsDeletingSlots] = useState<boolean>(false);
   const [isClinicModalVisible, setIsClinicModalVisible] = useState<boolean>(false);
   const [isDurationModalVisible, setIsDurationModalVisible] = useState<boolean>(false);
+  const [showEndTimeAs1159, setShowEndTimeAs1159] = useState<boolean>(false);
   const fullToShortMap: { [key: string]: string } = {
     Monday: 'Mon',
     Tuesday: 'Tue',
@@ -117,11 +118,29 @@ const AvailabilityScreen: React.FC = () => {
           return newNum.toString().padStart(2, '0');
         });
       } else {
-        setEndTime((prev) => {
-          const prevNum = parseInt(prev, 10);
-          const newNum = direction === 'up' ? (prevNum === 12 ? 1 : prevNum + 1) : (prevNum === 1 ? 12 : prevNum - 1);
-          return newNum.toString().padStart(2, '0');
-        });
+        if (showEndTimeAs1159) {
+          if (direction === 'down') {
+            setShowEndTimeAs1159(false);
+            setEndTime('11');
+            setEndPeriod('PM');
+          }
+          return;
+        } else {
+          setEndTime((prev) => {
+            const prevNum = parseInt(prev, 10);
+            if (direction === 'up') {
+              if (prevNum === 11 && endPeriod === 'PM') {
+                setShowEndTimeAs1159(true);
+                return '11'; // Keep the value as 11 but we'll display it differently
+              }
+              const newNum = prevNum === 12 ? 1 : prevNum + 1;
+              return newNum.toString().padStart(2, '0');
+            } else {
+              const newNum = prevNum === 1 ? 12 : prevNum - 1;
+              return newNum.toString().padStart(2, '0');
+            }
+          });
+        }
       }
     } else {
       if (type === 'start') {
@@ -140,7 +159,9 @@ const AvailabilityScreen: React.FC = () => {
   };
 
   const start24 = convertTo24Hour(startTime, startPeriod);
-  const end24 = convertTo24Hour(endTime, endPeriod);
+  const end24 = showEndTimeAs1159 && endPeriod === 'PM' 
+    ? '23:59' 
+    : convertTo24Hour(endTime, endPeriod);
 
   // Check if end time is after start time
   const isEndTimeValid = () => {
@@ -315,6 +336,11 @@ const generateTimeSlots = async () => {
     const startDate = dayjs(fromDate).format('YYYY-MM-DD');
     const endDate = dayjs(toDate).format('YYYY-MM-DD');
     const selectedDates = fromDate && endDate ? getDateRangeArray(startDate, endDate) : [startDate];
+
+    const start24 = convertTo24Hour(startTime, startPeriod);
+    const end24 = showEndTimeAs1159 && endPeriod === 'PM' 
+      ? '23:59' 
+      : convertTo24Hour(endTime, endPeriod);
 
     const payload = {
       doctorId,
@@ -731,18 +757,38 @@ const generateTimeSlots = async () => {
           <View style={styles.timeBox}>
             <Text style={styles.label}>End Time:</Text>
             <View style={styles.timeControl}>
-              <Text style={[styles.timeValue, !isEndTimeValid() && styles.invalidTime]}>{endTime}</Text>
+              <Text style={[styles.timeValue, !isEndTimeValid() && styles.invalidTime]}>
+                {showEndTimeAs1159 ? '11:59' : endTime}
+              </Text>
               <View style={styles.arrowGroup}>
                 <TouchableOpacity onPress={() => adjustTime('end', 'up', 'available')} style={styles.arrowButton}>
                   <Text style={styles.arrowButton}>▲</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => adjustTime('end', 'down', 'available')} style={styles.arrowButton}>
-                  <Text style={styles.arrowButton}>▼</Text>
+                <TouchableOpacity 
+                  onPress={() => adjustTime('end', 'down', 'available')} 
+                  style={styles.arrowButton}
+                  disabled={showEndTimeAs1159 ? false : parseInt(endTime, 10) === 1 && endPeriod === 'AM'}
+                >
+                  <Text style={[
+                    styles.arrowButton,
+                    (showEndTimeAs1159 ? false : parseInt(endTime, 10) === 1 && endPeriod === 'AM') && styles.disabledArrow
+                  ]}>▼</Text>
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
-                style={[styles.periodButton, { backgroundColor: endPeriod === 'PM' ? '#ffeaa7' : '#fff' }]}
-                onPress={() => setEndPeriod((prev) => (prev === 'AM' ? 'PM' : 'AM'))}
+                style={[
+                  styles.periodButton, 
+                  { 
+                    backgroundColor: endPeriod === 'PM' ? '#ffeaa7' : '#fff',
+                    opacity: showEndTimeAs1159 ? 0.5 : 1
+                  }
+                ]}
+                onPress={() => {
+                  if (!showEndTimeAs1159) {
+                    setEndPeriod((prev) => (prev === 'AM' ? 'PM' : 'AM'));
+                  }
+                }}
+                disabled={showEndTimeAs1159}
               >
                 <Text style={{ color: '#333' }}>{endPeriod}</Text>
               </TouchableOpacity>

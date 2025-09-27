@@ -405,6 +405,20 @@ const PrescriptionPreview = () => {
     fetchClinics();
   }, [doctorId]);
 
+  const monthShortLower = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const formatDDMonYYYYLower = (val) => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (isNaN(d.getTime())) {
+      // fallback: return as-is if parsing fails
+      return String(val);
+    }
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mon = monthShortLower[d.getMonth()];
+    const yyyy = d.getFullYear();
+    return `${dd}-${mon}-${yyyy}`;
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Replace your entire header section with this code */}
@@ -437,15 +451,26 @@ const PrescriptionPreview = () => {
       </View>
 
       {(formData.doctorInfo?.appointmentDate || formData.doctorInfo?.appointmentStartTime) && (
-        <View style={styles.appointmentSection}>
-          {formData.doctorInfo?.appointmentStartTime && (
+        <View
+          style={[
+            styles.appointmentSection,
+            { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
+          ]}
+        >
+          {formData.doctorInfo?.appointmentStartTime ? (
             <Text style={styles.appointmentText}>
               Time: {`${formData.doctorInfo.appointmentStartTime}`}
-                
+            </Text>
+          ) : <View />}
+
+          {patientDetails?.appointmentDate && (
+            <Text style={styles.appointmentText}>
+              Date: {formatDDMonYYYYLower(patientDetails.appointmentDate)}
             </Text>
           )}
         </View>
       )}
+
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Dr. {formData?.doctorInfo?.doctorName}</Text>
@@ -490,61 +515,61 @@ const PrescriptionPreview = () => {
 
             {/* NEW: use a single wrapping row and consistent "vitalCard" boxes for alignment */}
             <View style={styles.vitalsRow}>
-              { (formData.vitals.bpSystolic || formData.vitals.bpDiastolic) && (
+              {(formData.vitals.bpSystolic || formData.vitals.bpDiastolic) && (
                 <View style={styles.vitalCard}>
                   <Text style={styles.vitalLabel}>BP</Text>
                   <Text style={styles.vitalValue}>{formData.vitals.bpSystolic}/{formData.vitals.bpDiastolic} mmHg</Text>
                 </View>
-              ) }
+              )}
 
-              { formData.vitals.pulseRate && (
+              {formData.vitals.pulseRate && (
                 <View style={styles.vitalCard}>
                   <Text style={styles.vitalLabel}>Pulse</Text>
                   <Text style={styles.vitalValue}>{formData.vitals.pulseRate} bpm</Text>
                 </View>
-              ) }
+              )}
 
-              { formData.vitals.temperature && (
+              {formData.vitals.temperature && (
                 <View style={styles.vitalCard}>
                   <Text style={styles.vitalLabel}>Temp</Text>
                   <Text style={styles.vitalValue}>{formData.vitals.temperature} °F</Text>
                 </View>
-              ) }
+              )}
 
-              { formData.vitals.respiratoryRate && (
+              {formData.vitals.respiratoryRate && (
                 <View style={styles.vitalCard}>
                   <Text style={styles.vitalLabel}>RR</Text>
                   <Text style={styles.vitalValue}>{formData.vitals.respiratoryRate} /min</Text>
                 </View>
-              ) }
+              )}
 
-              { formData.vitals.spo2 && (
+              {formData.vitals.spo2 && (
                 <View style={styles.vitalCard}>
                   <Text style={styles.vitalLabel}>SpO2</Text>
                   <Text style={styles.vitalValue}>{formData.vitals.spo2} %</Text>
                 </View>
-              ) }
+              )}
 
-              { formData.vitals.height && (
+              {formData.vitals.height && (
                 <View style={styles.vitalCard}>
                   <Text style={styles.vitalLabel}>Height</Text>
                   <Text style={styles.vitalValue}>{formData.vitals.height} cm</Text>
                 </View>
-              ) }
+              )}
 
-              { formData.vitals.weight && (
+              {formData.vitals.weight && (
                 <View style={styles.vitalCard}>
                   <Text style={styles.vitalLabel}>Weight</Text>
                   <Text style={styles.vitalValue}>{formData.vitals.weight} kg</Text>
                 </View>
-              ) }
+              )}
 
-              { formData.vitals.bmi && (
+              {formData.vitals.bmi && (
                 <View style={styles.vitalCard}>
                   <Text style={styles.vitalLabel}>BMI</Text>
                   <Text style={styles.vitalValue}>{formData.vitals.bmi}</Text>
                 </View>
-              ) }
+              )}
 
             </View>
 
@@ -683,12 +708,12 @@ const PrescriptionPreview = () => {
         </TouchableOpacity>
       </View>
       <TouchableOpacity
-  style={styles.homeButton}
-  activeOpacity={0.8}
-  onPress={() => navigation.navigate('DoctorDashboard')}
->
-  <Text style={styles.homeButtonText}>Go To Dashboard</Text>
-</TouchableOpacity>
+        style={styles.homeButton}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('DoctorDashboard')}
+      >
+        <Text style={styles.homeButtonText}>Go To Dashboard</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -708,13 +733,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   homeButtonText: {
-  color: 'white',
-  fontWeight: 'bold',
-  alignItems:'center',
-  justifyContent:'center',
-  textAlign:'center'
-},
-homeButton: {
+    color: 'white',
+    fontWeight: 'bold',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center'
+  },
+  homeButton: {
     backgroundColor: '#000000ff',
     paddingVertical: 10,
     marginBottom: 28,
@@ -758,20 +783,20 @@ homeButton: {
     fontWeight: 'bold',
     color: 'white',
   },
-appointmentSection: {
-  backgroundColor: '#e8f4fd',
-  padding: 12,
-  borderRadius: 8,
-  marginBottom: 16,
-  flexDirection: 'row',
-  justifyContent: 'flex-end',   // <- push children to right
-  alignItems: 'center',         // <- vertical centering
-},
-appointmentText: {
-  color: '#0c4a6e',
-  fontWeight: '500',
-  textAlign: 'right',           // <- ensure text is right aligned
-},
+  appointmentSection: {
+    backgroundColor: '#e8f4fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',   // <- push children to right
+    alignItems: 'center',         // <- vertical centering
+  },
+  appointmentText: {
+    color: '#0c4a6e',
+    fontWeight: '500',
+    textAlign: 'right',           // <- ensure text is right aligned
+  },
 
   section: {
     backgroundColor: '#fff',

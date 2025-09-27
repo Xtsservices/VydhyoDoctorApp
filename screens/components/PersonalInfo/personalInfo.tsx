@@ -217,11 +217,6 @@ const PersonalInfoScreen: React.FC = () => {
     else if (!/^[A-Za-z]{3,}$/.test(ln))
       newErrors.lastName = 'Last Name must be letters only (min 3)';
 
-    if (!formData.medicalRegNumber.trim())
-      newErrors.medicalRegNumber = 'Medical Registration Number is required';
-    else if (!/^\d{4,7}$/.test(formData.medicalRegNumber))
-      newErrors.medicalRegNumber = 'Must be exactly 4 to 7 digits';
-
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Please enter a valid email address';
@@ -298,9 +293,9 @@ const PersonalInfoScreen: React.FC = () => {
           text1: 'Error',
           text2:
             'message' in (response as any) &&
-            (response as any).message &&
-            typeof (response as any).message === 'object' &&
-            'message' in (response as any).message
+              (response as any).message &&
+              typeof (response as any).message === 'object' &&
+              'message' in (response as any).message
               ? (response as any).message.message
               : 'Failed to update profile',
           position: 'top',
@@ -426,6 +421,24 @@ const PersonalInfoScreen: React.FC = () => {
   // final bottom for Next button: keyboard + safe area + android buffer + small gap
   const nextBottom =
     keyboardHeight > 0 ? keyboardHeight + insets.bottom + androidBuffer + 8 : insets.bottom + 24;
+
+  const normalizeMedReg = (s = "") =>
+    s.trim().toUpperCase().replace(/\s+/g, "").replace(/-/g, "/");
+
+
+  const MED_REG_PATTERNS = [
+    /^[A-Z]{2,6}\/\d{3,7}$/,                    // APMC/12345, TNMC/876543
+    /^[A-Z]{2,6}\/[A-Z]{1,4}\/\d{3,7}$/,        // TSMC/FMR/678901, DMC/R/34567
+    /^[A-Z]{2,6}\/\d{2,4}\/\d{3,7}$/,           // MMC/2014/123456, MCI/12/34567
+    /^[A-Z]{2,6}\/\d{4}\/[A-Z]{2}\/\d{3,7}$/,   // NMC/2020/MP/123456
+  ];
+
+  const isValidMedicalRegNumber = (input) => {
+    const val = normalizeMedReg(input);
+    return MED_REG_PATTERNS.some((re) => re.test(val));
+  };
+
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#DCFCE7' }}>
       <KeyboardAvoidingView
@@ -541,14 +554,29 @@ const PersonalInfoScreen: React.FC = () => {
                 style={styles.input}
                 value={formData.medicalRegNumber}
                 onFocus={() => onInputFocus('medicalRegNumber')}
+                // allow letters, numbers, slash and hyphen; auto-uppercase
                 onChangeText={text => {
-                  setFormData(prev => ({ ...prev, medicalRegNumber: text }));
+                  const cleaned = text.toUpperCase().replace(/[^A-Z0-9/ -]/g, '');
+                  setFormData(prev => ({ ...prev, medicalRegNumber: cleaned }));
                   setErrors(prev => ({ ...prev, medicalRegNumber: '' }));
                 }}
-                placeholder="Enter registration number"
+                onBlur={() => {
+                  if (!isValidMedicalRegNumber(formData.medicalRegNumber)) {
+                    setErrors(prev => ({
+                      ...prev,
+                      medicalRegNumber:
+                        'Invalid registration number. e.g. APMC/12345, TSMC/FMR/678901, MMC/2014/123456',
+                    }));
+                  } else {
+                    setErrors(prev => ({ ...prev, medicalRegNumber: '' }));
+                  }
+                }}
+                placeholder="e.g. APMC/12345 or TSMC/FMR/678901"
                 placeholderTextColor="#999"
-                keyboardType="numeric"
-                maxLength={7}
+                keyboardType="default"           // <-- not numeric; needs letters + '/'
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={25}                   // <-- realistic cap for formats above
               />
               {errors.medicalRegNumber ? (
                 <Text style={styles.errorText}>{errors.medicalRegNumber}</Text>
@@ -636,9 +664,9 @@ const PersonalInfoScreen: React.FC = () => {
               onPress={handleNext}
               activeOpacity={0.85}
             >
-            
-                <Text style={styles.nextText}>Next</Text>
-   
+
+              <Text style={styles.nextText}>Next</Text>
+
             </TouchableOpacity>
 
             {/* Language Modal */}
