@@ -926,6 +926,7 @@ const PrescriptionScreen = () => {
                   <Text style={styles.closeButton}>✕</Text>
                 </TouchableOpacity>
               </View>
+<View style={{ flex: 1 }}>
 
               <ScrollView style={styles.modalContent}>
                 {/* Top dropdown to pick a template by name (e.g., Fever) */}
@@ -1021,6 +1022,7 @@ const PrescriptionScreen = () => {
                   ))
                 )}
               </ScrollView>
+              </View>
             </View>
           </Modal>
 
@@ -1037,6 +1039,7 @@ const PrescriptionScreen = () => {
                   <Text style={styles.closeButton}>✕</Text>
                 </TouchableOpacity>
               </View>
+<View style={{ flex: 1 }}>
 
               <ScrollView style={styles.modalContent}>
                 {previousPrescriptions.length === 0 ? (
@@ -1096,6 +1099,7 @@ const PrescriptionScreen = () => {
                   ))
                 )}
               </ScrollView>
+              </View>
             </View>
           </Modal>
 

@@ -1054,7 +1054,7 @@ dispatch({ type: 'currentUser', payload: userData });
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>{selectedDocument?.type || 'Document'}</Text>
               {selectedDocument?.data ? (
-                <Image source={{ uri: getImageSrc(selectedDocument.data) || '' }} style={styles.modalImage} resizeMode="contain" />
+                <Image source={{ uri:(selectedDocument.data) || '' }} style={styles.modalImage} resizeMode="contain" />
               ) : (
                 <Text style={styles.noDataText}>No image available for this document.</Text>
               )}

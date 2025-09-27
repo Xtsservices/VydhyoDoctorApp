@@ -2104,7 +2104,7 @@ if (res?.status !== 'success') {
                           </TouchableOpacity>
                         )}
 
-                        {clinic.pharmacyQrCode && (
+                        {/* {clinic.pharmacyQrCode && (
                           <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => fetchClinicQRCode(clinic.addressId || clinic.id, 'pharmacy')}
@@ -2112,9 +2112,9 @@ if (res?.status !== 'success') {
                             <Icon name="qrcode" size={18} color="#3B82F6" />
                             <Text style={styles.actionButtonText}>View Pharmacy QR</Text>
                           </TouchableOpacity>
-                        )}
+                        )} */}
 
-                        {clinic.labQrCode && (
+                        {/* {clinic.labQrCode && (
                           <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => fetchClinicQRCode(clinic.addressId || clinic.id, 'lab')}
@@ -2122,7 +2122,7 @@ if (res?.status !== 'success') {
                             <Icon name="qrcode" size={18} color="#3B82F6" />
                             <Text style={styles.actionButtonText}>View Lab QR</Text>
                           </TouchableOpacity>
-                        )}
+                        )} */}
                         <TouchableOpacity style={styles.actionButton} onPress={() => openImageEditModal(clinic)}><Text style={styles.actionButtonText}>Edit Images</Text></TouchableOpacity>
                       </View>
                     </View>
