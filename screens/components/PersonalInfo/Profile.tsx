@@ -118,17 +118,7 @@ type DoctorData = {
 
 type EditModalType = 'personal' | 'professional' | 'kyc' | 'consultation' | 'bank' | null;
 
-const getImageSrc = (image: any): string | null => {
-  if (!image) return null;
-  if (typeof image === 'string') {
-    if (image.startsWith('http')) return image;
-    if (image.startsWith('data:')) return image;
-    return `https://your-api-base-url/${image}`;
-  }
-  if (image?.data && image?.mimeType) return `data:${image.mimeType};base64,${image.data}`;
-  if (image?.uri) return image.uri;
-  return null;
-};
+
 
 // Validators (client-side parity with web)
 const isValidIFSC = (v: string) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v);
@@ -777,7 +767,7 @@ dispatch({ type: 'currentUser', payload: userData });
 
   const showEditButtonKYC = !kycServer?.pan?.number;
   const showEditButtonBank = !doctorData.bankDetails?.accountNumber;
-  const avatarSrc = getImageSrc(doctorData.profilepic);
+  const avatarSrc = currentuserDetails?.profilepic
 
   return (
     <SafeAreaView style={styles.safeArea}>

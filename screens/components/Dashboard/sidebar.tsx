@@ -33,18 +33,7 @@ const Sidebar = () => {
     Array.isArray(currentuserDetails?.access) ? currentuserDetails.access : []
   );
 
-  // Unified getImageSrc function
-  const getImageSrc = (image: any): string | null => {
-    if (!image) return null;
-    if (typeof image === 'string') {
-      if (image.startsWith('http')) return image;
-      if (image.startsWith('data:')) return image;
-      return `https://your-api-base-url/${image}`; // Adjust base URL as per your API
-    }
-    if (image?.data && image?.mimeType) return `data:${image.mimeType};base64,${image.data}`;
-    if (image?.uri) return image.uri;
-    return null;
-  };
+
 
   // Get profile picture from currentuserDetails
   const profilePic = currentuserDetails?.profilepic;
@@ -209,7 +198,12 @@ const Sidebar = () => {
         }
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      Alert.alert(
+        'Error',
+        typeof error === 'object' && error !== null && 'message' in error
+          ? (error as any).message
+          : 'Failed to fetch user data. Please try again.'
+      );
     }
   };
 
@@ -250,7 +244,7 @@ const Sidebar = () => {
     }
   };
 
-  const imageSource = getImageSrc(profilePic);
+  const imageSource = profilePic
   const name =
     currentuserDetails?.role === 'doctor'
       ? `Dr. ${currentuserDetails?.firstname || ''} ${currentuserDetails?.lastname || ''}`

@@ -135,27 +135,39 @@ const PracticeScreen = () => {
     setCurrentOpdIndex(0);
   }, [opdAddresses.length]);
 
-  useEffect(() => {
-    const initializeAllLocations = async () => {
-      for (let i = 0; i < opdAddresses.length; i++) {
-        const addr = opdAddresses[i];
-        if (!isPrefilledAddr(addr)) {
-          await initLocation(i);
-        }
-      }
-    };
+ // --- coords helpers ---
+ const isBlankCoord = (v?: string) =>
+   !v || v.trim() === '' || Number.isNaN(Number(v));
 
-    initializeAllLocations();
+ const isDefaultIndia = (lat?: string, lng?: string) =>
+   lat === '20.5937' && lng === '78.9629';
 
-    return () => {
-      if (locationRetryTimeoutRef.current) clearTimeout(locationRetryTimeoutRef.current);
-      Object.values(reverseGeoDebounceRefs.current).forEach(timeout => {
-        if (timeout) clearTimeout(timeout);
-      });
+ const hasValidCoords = (a?: Partial<Address>) => {
+   if (!a) return false;
+   const lat = a.latitude, lng = a.longitude;
+   if (isBlankCoord(lat) || isBlankCoord(lng)) return false;
+   if (isDefaultIndia(lat!, lng!)) return false; // treat placeholder as "not set"
+   return true;
+ };
 
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+
+   useEffect(() => {
+   const initializeAsNeeded = async () => {
+     for (let i = 0; i < opdAddresses.length; i++) {
+       const addr = opdAddresses[i];
+       // If coords are missing/placeholder -> init; otherwise do nothing
+       if (!hasValidCoords(addr) && !isPrefilledAddr(addr)) {
+         await initLocation(i);
+       }
+     }
+   };
+   initializeAsNeeded();
+   return () => {
+     if (locationRetryTimeoutRef.current) clearTimeout(locationRetryTimeoutRef.current);
+     Object.values(reverseGeoDebounceRefs.current).forEach(t => t && clearTimeout(t));
+   };
+ }, [opdAddresses, prefilledKeys]);
 
   // ---------- NEW: keyboard listeners ----------
   useEffect(() => {
@@ -1235,6 +1247,7 @@ const PracticeScreen = () => {
 
                   <View style={styles.mapContainer} pointerEvents={viewOnly ? 'none' : 'auto'}>
                     <MapView
+                    key={`${index}-${addr.latitude}-${addr.longitude}`}
                       ref={(ref) => {
                         if (ref) {
                           mapRefs.current[index] = ref;
@@ -1242,12 +1255,19 @@ const PracticeScreen = () => {
                       }}
                       style={styles.map}
                       provider={PROVIDER_GOOGLE}
-                      initialRegion={{
-                        latitude: parseFloat(addr.latitude) || 20.5937,
-                        longitude: parseFloat(addr.longitude) || 78.9629,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      }}
+                      // initialRegion={{
+                      //   latitude: parseFloat(addr.latitude) || 20.5937,
+                      //   longitude: parseFloat(addr.longitude) || 78.9629,
+                      //   latitudeDelta: 0.01,
+                      //   longitudeDelta: 0.01,
+                      // }}
+
+                       region={{
+     latitude: parseFloat(String(addr.latitude).trim()) || 20.5937,
+   longitude: parseFloat(String(addr.longitude).trim()) || 78.9629,
+     latitudeDelta: 0.01,
+     longitudeDelta: 0.01,
+   }}
                       onRegionChange={(r) => handleRegionChange(index, r)}
                       onRegionChangeComplete={(r) => handleRegionChangeComplete(index, r)}
                       onPress={(e) => handleMapPress(index, e)}
@@ -1261,9 +1281,8 @@ const PracticeScreen = () => {
                     >
                       <Marker
                         coordinate={{
-                          latitude: parseFloat(addr.latitude) || 20.5937,
-                          longitude: parseFloat(addr.longitude) || 78.9629,
-                        }}
+                           latitude: parseFloat(String(addr.latitude).trim()) || 20.5937,
+                           longitude: parseFloat(String(addr.longitude).trim()) || 78.9629,}}
                       />
                     </MapView>
 
