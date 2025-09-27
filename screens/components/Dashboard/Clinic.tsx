@@ -888,13 +888,13 @@ n
       pharmacyGST: appt.pharmacyGST || appt.pharmacyGst || '',
       pharmacyPAN: appt.pharmacyPAN || appt.pharmacyPan || '',
       pharmacyAddress: appt.pharmacyAddress || '',
-      pharmacyHeaderImage: appt.pharmacyHeaderImage || '',
+      pharmacyHeaderImage: appt.pharmacyHeader || '',
       labName: appt.labName || '',
       labRegNum: appt.labRegNum || appt.labRegistrationNo || '',
       labGST: appt.labGST || appt.labGst || '',
       labPAN: appt.labPAN || appt.labPan || '',
       labAddress: appt.labAddress || '',
-      labHeaderImage: appt.labHeaderImage || '',
+      labHeaderImage: appt.labHeader || '',
       clinicQrCode: appt.clinicQrCode || '',
       pharmacyQrCode: appt.pharmacyQrCode || '',
       labQrCode: appt.labQrCode || '',
@@ -1493,7 +1493,11 @@ if (res?.status !== 'success') {
     return Math.min(desired, available);
   };
 
-
+  const isBlank = (v?: string | null) => {
+  if (v == null) return true;
+  if (typeof v === "string") return v.trim().length === 0;
+  return false;
+}; 
   return (
     <View style={styles.container}>
       {/* Camera modal for headers */}
@@ -1786,29 +1790,40 @@ if (res?.status !== 'success') {
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Pharmacy Header Image (Optional)</Text>
-                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyHeader')}>
-                    {pharmacyHeaderPreview ? <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy header</Text></View>}
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyHeader')}
+                    disabled={isBlank(selectedClinic?.pharmacyName)}
+                    
+                    >
+                    {pharmacyHeaderPreview ? <Image source={{ uri: pharmacyHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>{isBlank(selectedClinic?.pharmacyName) ? "First add pharmacy details to add header" : "Tap to upload pharmacy header"}</Text></View>}
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Pharmacy QR Code (Optional)</Text>
-                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('pharmacyQR')}>
-                    {pharmacyQrPreview ? <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload pharmacy QR code</Text></View>}
+                  <TouchableOpacity
+                   style={styles.uploadBox}
+                    onPress={() => handleFileChange('pharmacyQR')}
+                    disabled={isBlank(selectedClinic?.pharmacyName)}
+                    // accessibilityState={{ disabled: isBlank(selectedClinic?.pharmacyName) }}
+                    >
+                    {pharmacyQrPreview ? <Image source={{ uri: pharmacyQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>{isBlank(selectedClinic?.pharmacyName) ? "First add pharmacy details to add QR" : "Tap to upload pharmacy QR code"}</Text></View>}
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Lab Header Image (Optional)</Text>
-                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labHeader')}>
-                    {labHeaderPreview ? <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab header</Text></View>}
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labHeader')}
+                    disabled={isBlank(selectedClinic?.labName)}
+                    >
+                    {labHeaderPreview ? <Image source={{ uri: labHeaderPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="image-outline" size={32} color="#6B7280" /><Text style={styles.uploadText}>{isBlank(selectedClinic?.labName) ? "First add lab details to add header" : "Tap to upload lab header"}</Text></View>}
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Lab QR Code (Optional)</Text>
-                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labQR')}>
-                    {labQrPreview ? <Image source={{ uri: labQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>Tap to upload lab QR code</Text></View>}
+                  <TouchableOpacity style={styles.uploadBox} onPress={() => handleFileChange('labQR')}
+                    disabled={isBlank(selectedClinic?.labName)}>
+                    {labQrPreview ? <Image source={{ uri: labQrPreview }} style={styles.previewImage} /> : <View style={styles.uploadPlaceholder}><Icon name="qrcode" size={32} color="#6B7280" /><Text style={styles.uploadText}>{isBlank(selectedClinic?.labName) ? "First add lab details to add QR" : "Tap to upload lab QR code"}</Text></View>}
                   </TouchableOpacity>
                 </View>
               </ScrollView>

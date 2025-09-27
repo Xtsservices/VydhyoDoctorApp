@@ -171,7 +171,7 @@ const PersonalInfoScreen: React.FC = () => {
 
           setFormData(prev => ({
             ...prev,
-            profilePhoto: { uri: selectedImage.uri },
+            profilePhoto:  selectedImage.uri ,
           }));
 
           Toast.show({
@@ -334,7 +334,6 @@ const PersonalInfoScreen: React.FC = () => {
 
       AsyncStorage.setItem('stepNo', '7');
       const response = await AuthFetch('users/getUser', token);
-
       if (response?.data?.status !== 'success') {
         throw new Error(response?.data?.message || 'Failed to fetch user data');
       }
@@ -348,7 +347,7 @@ const PersonalInfoScreen: React.FC = () => {
         gender: userData?.gender || '',
         dateOfBirth: userData?.dateOfBirth || '',
         spokenLanguages: userData?.spokenLanguage || [],
-        profilePhoto: userData?.profilePhoto ? { uri: userData.profilePhoto } : null,
+        profilePhoto: userData?.profilepic || null,
         appLanguage: userData?.appLanguage || 'en',
         relationship: userData?.relationship || 'self',
         bloodGroup: userData?.bloodGroup || '',
@@ -427,7 +426,6 @@ const PersonalInfoScreen: React.FC = () => {
   // final bottom for Next button: keyboard + safe area + android buffer + small gap
   const nextBottom =
     keyboardHeight > 0 ? keyboardHeight + insets.bottom + androidBuffer + 8 : insets.bottom + 24;
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#DCFCE7' }}>
       <KeyboardAvoidingView
@@ -469,9 +467,9 @@ const PersonalInfoScreen: React.FC = () => {
 
               <View style={styles.profilePhotoContainer}>
                 <View style={styles.profileWrapper}>
-                  {formData.profilePhoto && formData.profilePhoto.uri ? (
+                  {formData.profilePhoto  ? (
                     <Image
-                      source={formData.profilePhoto}
+                    source={{ uri: formData.profilePhoto }}
                       style={styles.profilePhoto}
                       resizeMode="cover"
                       accessibilityLabel="Profile photo"
